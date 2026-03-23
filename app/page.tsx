@@ -260,7 +260,7 @@ export default function Home() {
                   </p>
 
                   <a
-                    href="https://www.levelete.com"
+                    href="https://www.levelete.com/hybridtrainingmastery"
                     target="_blank"
                     rel="noreferrer"
                     className="inline-block rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-zinc-950 hover:opacity-90 transition"
