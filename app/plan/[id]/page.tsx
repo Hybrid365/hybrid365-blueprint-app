@@ -339,7 +339,7 @@ export default async function PlanPage({ params }: PlanPageProps) {
 
   <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
     <a
-      href={cta.button_url || "https://www.levelete.com/hybridtrainingmastery"}
+      href={cta.button_url || "https://levelete.com/hybridtrainingmastery"}
       target="_blank"
       rel="noreferrer"
       className="inline-block rounded-2xl bg-yellow-400 px-7 py-3 text-sm md:text-base font-semibold text-black transition hover:opacity-90"
