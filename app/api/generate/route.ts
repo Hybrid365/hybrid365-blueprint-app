@@ -110,7 +110,12 @@ async function createAirtableRecord(input: Input, planJson: any, emailText: stri
   }
 }
 
-async function kitCreateSubscriber(email: string, blueprint: string): Promise<number> {
+async function kitCreateSubscriber(
+  email: string,
+  blueprint: string,
+  firstName: string,
+  planUrl: string
+): Promise<number> {
   const apiKey = process.env.KIT_API_KEY!;
 
   const res = await fetch("https://api.kit.com/v4/subscribers", {
@@ -121,7 +126,11 @@ async function kitCreateSubscriber(email: string, blueprint: string): Promise<nu
     },
     body: JSON.stringify({
       email_address: email,
-      fields: { blueprint },
+      fields: {
+        blueprint,
+        first_name: firstName || "",
+        plan_url: planUrl || "",
+      },
       state: "active",
     }),
   });
@@ -166,7 +175,6 @@ export async function POST(req: Request) {
     const input = InputSchema.parse(raw);
 
     const planJson = buildWeekBlueprint({
-      first_name: input.first_name,
       days_per_week: input.days_per_week,
       weekly_hours_band: input.weekly_hours_band,
       goal_focus: input.goal_focus,
@@ -182,7 +190,7 @@ export async function POST(req: Request) {
     const planWithId = {
       ...planJson,
       plan_id: planId,
-      first_name: input.first_name || "",
+
     };
 
 const planUrl =
@@ -194,8 +202,12 @@ const planUrl =
 
     await createAirtableRecord(input, planWithId, emailText);
 
-    const subscriberId = await kitCreateSubscriber(input.email, emailText);
-    await tagKitSubscriber(subscriberId);
+    const subscriberId = await kitCreateSubscriber(
+  input.email,
+  emailText,
+  input.first_name || "",
+  planUrl
+);
 
     return NextResponse.json({
   ok: true,
