@@ -348,7 +348,7 @@ export default async function PlanPage({ params }: PlanPageProps) {
     </a>
 
     <a
-      href="https://www.hybrid-365.com"
+      href="https://www.levelete.com/"
       target="_blank"
       rel="noreferrer"
       className="inline-block rounded-2xl border border-zinc-700 bg-zinc-900 px-7 py-3 text-sm md:text-base font-semibold text-white transition hover:opacity-90"
