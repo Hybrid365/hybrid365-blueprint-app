@@ -323,35 +323,44 @@ export default async function PlanPage({ params }: PlanPageProps) {
           </section>
 
           {/* CTA */}
-          <section className="rounded-[2rem] border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-6 md:p-10 text-center">
-            <p className="text-sm uppercase tracking-[0.2em] text-yellow-300">
-              Next Step
-            </p>
+<section className="rounded-[2rem] border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-6 md:p-10 text-center">
+  <p className="text-sm uppercase tracking-[0.2em] text-yellow-300">
+    Next Step
+  </p>
 
-            <h2 className="mt-3 text-3xl md:text-4xl font-bold text-white">
-              {cta.headline || "Want the next 6–8 weeks built for your goal?"}
-            </h2>
+  <h2 className="mt-3 text-3xl md:text-4xl font-bold text-white">
+    {cta.headline || "What happens next?"}
+  </h2>
 
-            <p className="mx-auto mt-4 max-w-2xl text-zinc-300 leading-7">
-              {cta.body ||
-                "Inside Hybrid365, we build the progression, structure, and accountability around you."}
-            </p>
+  <p className="mx-auto mt-4 max-w-2xl text-zinc-300 leading-7">
+    {cta.body ||
+      "This week is built using Hybrid365 principles. If you want to understand how to get the most from it — and how we build real progression — start here."}
+  </p>
 
-            {cta.button_url && (
-              <a
-                href={cta.button_url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-7 inline-block rounded-2xl bg-yellow-400 px-7 py-3 text-sm md:text-base font-semibold text-black transition hover:opacity-90"
-              >
-                Explore Hybrid365
-              </a>
-            )}
+  <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+    <a
+      href={cta.button_url || "https://www.levelete.com/hybridtrainingmastery"}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-block rounded-2xl bg-yellow-400 px-7 py-3 text-sm md:text-base font-semibold text-black transition hover:opacity-90"
+    >
+      Learn the Hybrid365 Method
+    </a>
 
-            <p className="mt-5 text-sm text-zinc-500">
-              Structured programming. Deeper personalisation. Ongoing accountability.
-            </p>
-          </section>
+    <a
+      href="https://www.hybrid-365.com"
+      target="_blank"
+      rel="noreferrer"
+      className="inline-block rounded-2xl border border-zinc-700 bg-zinc-900 px-7 py-3 text-sm md:text-base font-semibold text-white transition hover:opacity-90"
+    >
+      Go Straight To Full Coaching
+    </a>
+  </div>
+
+  <p className="mt-5 text-sm text-zinc-500">
+    Understand the method first — then decide if you want the full progression built for you.
+  </p>
+</section>
 
           {/* FOOTER */}
           <footer className="pt-4 text-center text-sm text-zinc-500">
