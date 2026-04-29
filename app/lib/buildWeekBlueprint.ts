@@ -499,7 +499,6 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
   return {
     intensity_split: intensitySplit(input.ability_level),
     profile: {
-      first_name: input.first_name || "",
       goal: formatGoal(input.goal_focus),
       training_days: `${input.days_per_week} / week`,
       priority: formatPriority(input.goal_focus),
