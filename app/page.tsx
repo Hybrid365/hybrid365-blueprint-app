@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 export default function Home() {
+  const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [daysPerWeek, setDaysPerWeek] = useState(4);
   const [preferredDays, setPreferredDays] = useState<string[]>([]);
@@ -17,7 +18,7 @@ export default function Home() {
   const [notes, setNotes] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; message?: string; error?: string } | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; planUrl?: string; message?: string; error?: string } | null>(null);
 
   const equipmentOptions = useMemo(
     () => [
@@ -42,6 +43,7 @@ export default function Home() {
     setResult(null);
 
     const payload = {
+      first_name: firstName,
       email,
       days_per_week: Number(daysPerWeek),
       preferred_days: preferredDays,
@@ -73,22 +75,69 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto max-w-3xl px-4 py-12">
-        <div className="mb-8">
+        <div className="mb-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-sm">
             <span className="h-2 w-2 rounded-full bg-yellow-400" />
             Hybrid365 Blueprint
           </div>
 
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight">
-            Build Your Hybrid Week <span className="text-yellow-400">(60 seconds)</span>
+          <h1 className="mt-4 text-4xl font-semibold tracking-tight leading-tight">
+            Get Your Personalised Hybrid Training Week
+            <br />
+            <span className="text-yellow-400">Built Using the Hybrid365 Method</span>
           </h1>
-          <p className="mt-3 text-zinc-300">
-            Answer a few questions. We’ll generate your weekly blueprint and email it to you in ~20 minutes.
+
+          <p className="mt-4 text-zinc-300 text-lg">
+            Answer a few questions and get a structured training week built around your goal, fitness level, and schedule.
+          </p>
+
+          <div className="mt-6 space-y-2 text-sm text-zinc-300">
+            <p>✓ Built around your goal, level & available time</p>
+            <p>✓ Designed to improve performance and physique</p>
+            <p>✓ Structured like real coaching — not random workouts</p>
+          </div>
+
+          <p className="mt-6 text-center text-xs text-zinc-500">
+            Built using the Hybrid365 method to develop strength, engine, and performance together.
+          </p>
+        </div>
+
+        <div className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
+          <h2 className="text-xl font-semibold text-white">
+            Most people don’t have a work ethic problem.
+            <br />
+            They have a structure problem.
+          </h2>
+
+          <p className="mt-3 text-zinc-300">Training hard isn’t the issue.</p>
+
+          <p className="mt-2 text-zinc-300">
+            Doing the right sessions, in the right order, with the right intent — that’s what actually drives progress.
+          </p>
+
+          <p className="mt-2 text-zinc-300">
+            This is what your Hybrid365 week is built to show you.
           </p>
         </div>
 
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 shadow-lg">
           <form onSubmit={onSubmit} className="space-y-6">
+            <div className="text-sm text-zinc-400 space-y-1">
+              <p>Takes 60 seconds</p>
+              <p>Plan delivered instantly + by email</p>
+              <p>Includes coaching notes for every session</p>
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-200">First Name</label>
+              <input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 outline-none focus:border-yellow-400"
+                placeholder="Your name"
+              />
+            </div>
+
             <div>
               <label className="text-sm text-zinc-200">Email</label>
               <input
@@ -243,29 +292,41 @@ export default function Home() {
               disabled={loading}
               className="w-full rounded-xl bg-yellow-400 px-4 py-3 font-semibold text-zinc-950 transition hover:opacity-90 disabled:opacity-60"
             >
-              {loading ? "Requesting..." : "Generate My Weekly Blueprint"}
+              {loading ? "Building..." : "Build My Personalised Week"}
             </button>
 
             {result && result.ok && (
               <div className="rounded-xl border border-green-800 bg-green-950/30 p-4 text-sm text-green-200 space-y-4">
+                <p className="text-white font-semibold">Your Hybrid365 week is ready.</p>
+
                 <p>
-                  Your Hybrid365 Blueprint is being built.
-                  <br />
-                  Check your email in ~20 minutes.
+                  This is your first structured week — not just a random plan.
+                  Follow it properly and you’ll start to feel the difference immediately.
                 </p>
+
+                {result.planUrl && (
+                  <a
+                    href={result.planUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block w-full rounded-xl bg-yellow-400 px-4 py-3 text-center font-semibold text-zinc-950"
+                  >
+                    View My Plan Now
+                  </a>
+                )}
 
                 <div className="rounded-lg border border-yellow-400/30 bg-yellow-400/5 p-4">
                   <p className="mb-3 text-sm text-white">
-                    While you wait, take a look at Hybrid Mastery and learn how to progress your training properly.
+                    Keep an eye on your inbox this week — you’ll receive extra Hybrid365 coaching emails to help you execute the sessions properly.
                   </p>
 
                   <a
-                    href="https://www.levelete.com/hybridtrainingmastery"
+                    href="https://www.hybrid-365.com"
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-block rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-zinc-950 hover:opacity-90 transition"
+                    className="inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition"
                   >
-                    Explore Hybrid Mastery
+                    Explore Hybrid365
                   </a>
                 </div>
               </div>
@@ -279,7 +340,11 @@ export default function Home() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs text-zinc-500">
+        <p className="mt-6 text-center text-sm text-zinc-400">
+          This is how you stop guessing your training and start progressing.
+        </p>
+
+        <p className="mt-3 text-center text-xs text-zinc-500">
           By submitting, you agree to receive your blueprint by email. Unsubscribe anytime.
         </p>
       </div>

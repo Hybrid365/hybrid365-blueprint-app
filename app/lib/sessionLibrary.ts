@@ -5,12 +5,89 @@ export type AbilityLevel = "beginner" | "intermediate" | "advanced";
 export type WeeklyHoursBand = "2-3" | "3-5" | "5-7" | "7-10" | "10+";
 export type DayKey = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
 
+export type UserEquipment =
+  | "Full gym"
+  | "Dumbbells only"
+  | "Treadmill"
+  | "Bike / Spin bike"
+  | "Rower"
+  | "SkiErg"
+  | "Sled"
+  | "None (bodyweight only)";
+
+export type SessionCategory = "run" | "strength" | "hybrid" | "aerobic" | "recovery";
+
+export type SessionType =
+  | "threshold_run"
+  | "interval_run"
+  | "tempo_run"
+  | "aerobic_run"
+  | "long_run"
+  | "strength_upper"
+  | "strength_lower"
+  | "strength_full"
+  | "hybrid_compromised"
+  | "hybrid_density"
+  | "hybrid_bodyweight"
+  | "aerobic_support"
+  | "recovery";
+
+export type StructureRole =
+  | "lower_full"
+  | "lower_primary"
+  | "upper_full"
+  | "upper_primary"
+  | "full_body_strength"
+  | "run_quality"
+  | "run_quality_beginner"
+  | "run_aerobic"
+  | "run_long"
+  | "hybrid_primary"
+  | "hybrid_density"
+  | "aerobic_support"
+  | "recovery";
+
+export type TimeRequirement = "30-45" | "45-75" | "75+";
+export type Intensity = "low" | "medium" | "high";
+export type Fatigue = "low" | "medium" | "high";
+
 export type SessionBlock = {
   warm_up?: string[];
   main: string[];
   cool_down?: string[];
   finish?: string[];
   notes?: string[];
+};
+
+export type SessionTemplate = {
+  id: string;
+  name: string;
+  type: SessionType;
+  category: SessionCategory;
+
+  intensity: Intensity;
+  fatigue: Fatigue;
+  duration: number;
+
+  goal: GoalFocus[];
+  experience: AbilityLevel[];
+
+  equipment: UserEquipment[];
+  time_requirement: TimeRequirement;
+
+  avoid_after: string[];
+  compatible_with: string[];
+
+  variation_group: string;
+  structure_roles: StructureRole[];
+
+  coaching: {
+    intent: string;
+    cue: string;
+    rpe: string;
+  };
+
+  prescription: SessionBlock;
 };
 
 export type DayPlan = {
@@ -27,6 +104,15 @@ export type PlanJson = {
     easy_percent: number;
     hard_percent: number;
   };
+  profile: {
+    goal: string;
+    training_days: string;
+    priority: string;
+    level: string;
+    weekly_hours: string;
+    equipment: string;
+  };
+  intro: string[];
   schedule: DayPlan[];
   cta: {
     headline: string;
@@ -35,176 +121,1031 @@ export type PlanJson = {
   };
 };
 
-export type Template = {
-  id: string;
-  title: string;
-  tags: string[];
-  time_cap_minutes?: number;
-  build: (ability: AbilityLevel, hours: WeeklyHoursBand) => SessionBlock;
-};
-
-function bikeAddon(hours: WeeklyHoursBand): string[] {
-  if (hours === "10+") return ["Optional: 30–45 min Z2 bike"];
-  if (hours === "7-10") return ["Optional: 25–30 min Z2 bike"];
-  if (hours === "5-7") return ["Optional: 20 min Z2 bike"];
-  return [];
+function allEquipment(...items: UserEquipment[]) {
+  return items;
 }
 
-function scaleRounds(base: number, ability: AbilityLevel): number {
-  if (ability === "beginner") return Math.max(3, base - 2);
-  if (ability === "intermediate") return Math.max(4, base - 1);
-  return base;
-}
-
-export const LOWER_STRENGTH: Template[] = [
+export const SESSION_LIBRARY: SessionTemplate[] = [
+  // ----------------------------
+  // THRESHOLD
+  // ----------------------------
   {
-    id: "LS-A",
-    title: "Lower Strength (Squat Bias)",
-    tags: ["lower", "strength", "hard"],
-    time_cap_minutes: 80,
-    build: (ability, hours) => ({
-      warm_up: ["8 min easy bike", "Dynamic hips/ankles", "2–3 ramp sets", ...bikeAddon(hours)],
+    id: "THR-4X2K",
+    name: "4 x 2km Threshold",
+    type: "threshold_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "high",
+    duration: 70,
+    goal: ["running", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue", "hybrid_high_fatigue"],
+    compatible_with: ["upper_full", "aerobic_support"],
+    variation_group: "threshold",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Build sustained threshold capacity.",
+      cue: "Control the first rep and keep all reps even.",
+      rpe: "7-8/10",
+    },
+    prescription: {
+      warm_up: ["1–2km easy jog", "3×20s strides"],
+      main: ["4×2km @ threshold effort", "120s jog recovery"],
+      cool_down: ["1–2km easy jog"],
+      notes: ["Smooth pacing beats a fast first rep and a fade."],
+    },
+  },
+  {
+    id: "THR-4X5M",
+    name: "4 x 5min Threshold",
+    type: "threshold_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full", "aerobic_support"],
+    variation_group: "threshold",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Improve threshold tolerance without excessive fatigue.",
+      cue: "Stay controlled through the first half of the session.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["10–15 min easy", "2–3 strides"],
+      main: ["4×5 min @ threshold effort", "90s easy jog recovery"],
+      cool_down: ["8–10 min easy"],
+      notes: ["This should feel hard but repeatable."],
+    },
+  },
+  {
+    id: "THR-3X8M",
+    name: "3 x 8min Threshold",
+    type: "threshold_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "medium",
+    duration: 60,
+    goal: ["running", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "threshold",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Build aerobic strength over longer sustained efforts.",
+      cue: "Hold back slightly early, finish stronger.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["10–15 min easy", "3×20s strides"],
+      main: ["3×8 min @ threshold effort", "90s easy jog recovery"],
+      cool_down: ["8–10 min easy"],
+      notes: ["Stay calm and rhythmical — no surging."],
+    },
+  },
+  {
+    id: "THR-2X12M",
+    name: "2 x 12min Threshold",
+    type: "threshold_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["running"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "threshold",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Extend time at threshold with minimal complexity.",
+      cue: "Aim for even effort, not a dramatic finish.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["10–15 min easy", "2–3 strides"],
+      main: ["2×12 min @ threshold effort", "2 min easy jog recovery"],
+      cool_down: ["8–10 min easy"],
+      notes: ["This session rewards patience."],
+    },
+  },
+  {
+    id: "THR-BROKEN",
+    name: "Broken Threshold (1.2km / 400m float)",
+    type: "threshold_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "high",
+    duration: 65,
+    goal: ["hybrid", "running"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["hybrid_high_fatigue", "lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "threshold",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Develop race-relevant pace changes under fatigue.",
+      cue: "Use the float to reset, not switch off.",
+      rpe: "8/10",
+    },
+    prescription: {
+      warm_up: ["1–2km easy", "3×20s strides"],
+      main: ["1.2km @ threshold", "400m float jog", "Repeat ×4–6"],
+      cool_down: ["1km easy"],
+      notes: ["Great Hyrox-style bridge between threshold and compromise."],
+    },
+  },
+  {
+    id: "THR-SHORT",
+    name: "Short Threshold (3 x 5min)",
+    type: "threshold_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 40,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full", "aerobic_support"],
+    variation_group: "threshold_short",
+    structure_roles: ["run_quality", "run_quality_beginner"],
+    coaching: {
+      intent: "Introduce threshold work in a time-efficient format.",
+      cue: "Stay in control — this is not a race effort.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["8–10 min easy jog"],
+      main: ["3×5 min @ threshold effort", "75–90s easy jog"],
+      cool_down: ["5–8 min easy"],
+      notes: ["Perfect when time is tight but quality still matters."],
+    },
+  },
+
+  // ----------------------------
+  // INTERVALS / SPEED
+  // ----------------------------
+  {
+    id: "INT-8X1K",
+    name: "8 x 1km Intervals",
+    type: "interval_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "high",
+    duration: 70,
+    goal: ["running"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "interval",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Increase top-end aerobic power.",
+      cue: "Consistency over hero reps.",
+      rpe: "8-9/10",
+    },
+    prescription: {
+      warm_up: ["2km easy", "4×20s strides"],
+      main: ["8×1km @ 5k pace / hard controlled effort", "90s easy jog"],
+      cool_down: ["1–2km easy"],
+      notes: ["Stop early if mechanics fall apart."],
+    },
+  },
+  {
+    id: "INT-6X1K10K",
+    name: "6 x 1km @ 10k Pace",
+    type: "interval_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["running", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "interval",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Build pace control and aerobic support at faster but sustainable pace.",
+      cue: "Run tall and stay smooth.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["10–15 min easy", "3 strides"],
+      main: ["6×1km @ 10k pace", "90s easy jog"],
+      cool_down: ["8–10 min easy"],
+      notes: ["This should feel snappy, not desperate."],
+    },
+  },
+  {
+    id: "INT-12X400",
+    name: "12 x 400m Intervals",
+    type: "interval_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "medium",
+    duration: 50,
+    goal: ["running"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "interval",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Improve speed and rhythm.",
+      cue: "Quick feet, relaxed shoulders.",
+      rpe: "8/10",
+    },
+    prescription: {
+      warm_up: ["1–2km easy", "4 strides"],
+      main: ["12×400m @ 5k pace", "60–90s recovery"],
+      cool_down: ["1km easy"],
+      notes: ["Controlled fast — no sprinting."],
+    },
+  },
+  {
+    id: "INT-8X600",
+    name: "8 x 600m Intervals",
+    type: "interval_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "medium",
+    duration: 50,
+    goal: ["running"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "interval",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Bridge between pure interval work and threshold support.",
+      cue: "Stay assertive but relaxed.",
+      rpe: "8/10",
+    },
+    prescription: {
+      warm_up: ["10–15 min easy", "3 strides"],
+      main: ["8×600m @ strong controlled pace", "75s easy recovery"],
+      cool_down: ["8–10 min easy"],
+      notes: ["Good when you want quality without the volume of 1ks."],
+    },
+  },
+  {
+    id: "INT-1600",
+    name: "1600m Repeats",
+    type: "interval_run",
+    category: "run",
+    intensity: "high",
+    fatigue: "high",
+    duration: 65,
+    goal: ["running"],
+    experience: ["advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "interval",
+    structure_roles: ["run_quality"],
+    coaching: {
+      intent: "Develop high-end aerobic power at long rep length.",
+      cue: "Commit to pacing discipline from rep one.",
+      rpe: "8-9/10",
+    },
+    prescription: {
+      warm_up: ["2km easy", "4 strides"],
+      main: ["1600m hard controlled effort", "90s rest", "Repeat ×3–4"],
+      cool_down: ["1–2km easy"],
+      notes: ["Advanced session — keep it honest and repeatable."],
+    },
+  },
+  {
+    id: "INT-SHORT-6X400",
+    name: "Short Intervals (6 x 400m)",
+    type: "interval_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 35,
+    goal: ["running", "hybrid"],
+    experience: ["beginner", "intermediate"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full", "aerobic_support"],
+    variation_group: "interval_short",
+    structure_roles: ["run_quality", "run_quality_beginner"],
+    coaching: {
+      intent: "Introduce interval structure in a lower-volume format.",
+      cue: "Stay smooth — build confidence, not chaos.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["8–10 min easy", "2 strides"],
+      main: ["6×400m @ strong controlled pace", "75s recovery"],
+      cool_down: ["5–8 min easy"],
+      notes: ["Great short-session quality touch."],
+    },
+  },
+
+  // ----------------------------
+  // TEMPO / FLOW
+  // ----------------------------
+  {
+    id: "TMP-400-400",
+    name: "400m On / 400m Float",
+    type: "tempo_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 45,
+    goal: ["hybrid", "running"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full", "strength_full"],
+    variation_group: "tempo",
+    structure_roles: ["run_quality", "run_aerobic"],
+    coaching: {
+      intent: "Improve pace control and aerobic resilience.",
+      cue: "The float is controlled, not a full reset.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["1–2km easy"],
+      main: ["400m @ strong steady pace", "400m float / easy Z2 pace", "Repeat ×8"],
+      cool_down: ["1km easy"],
+      notes: ["Excellent hybrid-friendly run quality without full redline."],
+    },
+  },
+  {
+    id: "TMP-300-300",
+    name: "300m On / 300m Float",
+    type: "tempo_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 40,
+    goal: ["hybrid", "running"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full"],
+    variation_group: "tempo",
+    structure_roles: ["run_quality", "run_aerobic"],
+    coaching: {
+      intent: "Create rhythm and efficient pace changes.",
+      cue: "Stay relaxed and avoid forcing the quick reps.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["10 min easy"],
+      main: ["300m on", "300m float", "Repeat ×8"],
+      cool_down: ["5–8 min easy"],
+      notes: ["Good when you want less total stress than longer threshold reps."],
+    },
+  },
+  {
+    id: "TMP-1KONOFF",
+    name: "1km On / 1km Off",
+    type: "tempo_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["running", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["upper_full"],
+    variation_group: "tempo",
+    structure_roles: ["run_quality", "run_long"],
+    coaching: {
+      intent: "Blend aerobic work with tempo rhythm.",
+      cue: "The off segments still matter — stay switched on.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["1–2km easy"],
+      main: ["1km steady / tempo", "1km easy Z2", "Repeat ×5"],
+      cool_down: ["1km easy"],
+      notes: ["Great bridge between tempo and long-run support."],
+    },
+  },
+  {
+    id: "TMP-SHORT-FLOW",
+    name: "Short Tempo Flow",
+    type: "tempo_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "low",
+    duration: 30,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["strength_full", "upper_full"],
+    variation_group: "tempo_short",
+    structure_roles: ["run_aerobic", "run_quality_beginner"],
+    coaching: {
+      intent: "Add quality while keeping total fatigue low.",
+      cue: "Stay light and controlled from start to finish.",
+      rpe: "6/10",
+    },
+    prescription: {
+      warm_up: ["5–8 min easy"],
+      main: ["20–25 min continuous tempo flow", "Alternate steady and easy rhythm every 2–3 min"],
+      cool_down: ["5 min easy"],
+      notes: ["Ideal when time is limited but you still want structure."],
+    },
+  },
+
+  // ----------------------------
+  // AEROBIC / LONG RUN
+  // ----------------------------
+  {
+    id: "AER-Z2-RUN",
+    name: "Z2 Run",
+    type: "aerobic_run",
+    category: "run",
+    intensity: "low",
+    fatigue: "low",
+    duration: 50,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["upper_full", "lower_full"],
+    variation_group: "aerobic_run",
+    structure_roles: ["run_aerobic"],
+    coaching: {
+      intent: "Build aerobic base with minimal recovery cost.",
+      cue: "Keep it conversational and controlled.",
+      rpe: "4-5/10",
+    },
+    prescription: {
+      main: ["30–60 min continuous Z2 run"],
+      notes: ["This is a discipline session — easy means easy."],
+    },
+  },
+  {
+    id: "AER-SHORT-Z2-RUN",
+    name: "Short Z2 Run",
+    type: "aerobic_run",
+    category: "run",
+    intensity: "low",
+    fatigue: "low",
+    duration: 25,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["strength_full", "upper_full", "lower_full"],
+    variation_group: "aerobic_run_short",
+    structure_roles: ["run_aerobic", "aerobic_support"],
+    coaching: {
+      intent: "Provide a low-cost aerobic touch.",
+      cue: "Stay well below threshold.",
+      rpe: "4/10",
+    },
+    prescription: {
+      main: ["20–30 min easy Z2 run"],
+      notes: ["Great add-on when total time is limited."],
+    },
+  },
+  {
+    id: "LONG-AEROBIC",
+    name: "Long Aerobic Run",
+    type: "long_run",
+    category: "run",
+    intensity: "low",
+    fatigue: "medium",
+    duration: 70,
+    goal: ["running", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "75+",
+    avoid_after: ["threshold_run"],
+    compatible_with: ["upper_full", "recovery"],
+    variation_group: "long_run",
+    structure_roles: ["run_long"],
+    coaching: {
+      intent: "Drive aerobic development and resilience.",
+      cue: "Stay patient early so the whole run stays aerobic.",
+      rpe: "5/10",
+    },
+    prescription: {
+      main: ["45–90 min continuous @ Z2"],
+      notes: ["Don’t turn this into a hidden tempo run."],
+    },
+  },
+  {
+    id: "LONG-PROGRESSIVE",
+    name: "Long Progressive Run",
+    type: "long_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 70,
+    goal: ["running", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "75+",
+    avoid_after: ["threshold_run"],
+    compatible_with: ["upper_full", "recovery"],
+    variation_group: "long_run",
+    structure_roles: ["run_long"],
+    coaching: {
+      intent: "Build finish strength while keeping the overall run controlled.",
+      cue: "Progress gradually — no sudden jump in effort.",
+      rpe: "5-7/10",
+    },
+    prescription: {
+      main: ["2km WU", "2km easy", "2km steady", "2km slightly quicker", "2km easy WD"],
+      notes: ["A controlled build beats a dramatic final surge."],
+    },
+  },
+  {
+    id: "LONG-PICKUPS",
+    name: "Long Run + Pick-ups",
+    type: "long_run",
+    category: "run",
+    intensity: "low",
+    fatigue: "medium",
+    duration: 60,
+    goal: ["running", "hybrid"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["threshold_run"],
+    compatible_with: ["upper_full"],
+    variation_group: "long_run",
+    structure_roles: ["run_long"],
+    coaching: {
+      intent: "Keep long-run stimulus aerobic while adding a little speed coordination.",
+      cue: "Pick-ups are light and fast, never strained.",
+      rpe: "5/10",
+    },
+    prescription: {
+      main: ["40–60 min Z2 run", "Then 6×30s pick-ups with full easy recovery"],
+      notes: ["Think rhythm and freshness, not speed session."],
+    },
+  },
+  {
+    id: "LONG-NEGATIVE",
+    name: "Negative Split Long Run",
+    type: "long_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 65,
+    goal: ["running", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["threshold_run"],
+    compatible_with: ["upper_full"],
+    variation_group: "long_run",
+    structure_roles: ["run_long"],
+    coaching: {
+      intent: "Teach control and late-run pacing.",
+      cue: "Only speed up if you still feel smooth.",
+      rpe: "5-6/10",
+    },
+    prescription: {
+      main: ["First half easy Z2", "Second half steady / slightly quicker"],
+      notes: ["This should still feel like a controlled aerobic session."],
+    },
+  },
+  {
+    id: "LONG-HYBRID",
+    name: "Hybrid Long Session",
+    type: "long_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 75,
+    goal: ["hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("SkiErg", "Rower", "Full gym"),
+    time_requirement: "75+",
+    avoid_after: ["threshold_run"],
+    compatible_with: ["upper_full"],
+    variation_group: "long_run",
+    structure_roles: ["run_long", "hybrid_primary"],
+    coaching: {
+      intent: "Build endurance with a hybrid performance bias.",
+      cue: "Keep transitions smooth — no panic spike after the erg.",
+      rpe: "6/10",
+    },
+    prescription: {
+      main: ["5km run", "1km ski or row", "5km run"],
+      notes: ["Excellent bridge between pure aerobic and race-specific work."],
+    },
+  },
+  {
+    id: "LONG-BROKEN",
+    name: "Broken Long Run",
+    type: "long_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 60,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: ["threshold_run"],
+    compatible_with: ["upper_full", "recovery"],
+    variation_group: "long_run",
+    structure_roles: ["run_long"],
+    coaching: {
+      intent: "Create long-run stimulus with lower mental cost.",
+      cue: "Treat the middle block as the main work.",
+      rpe: "5-6/10",
+    },
+    prescription: {
+      main: ["3km easy", "6km steady", "3km easy"],
+      notes: ["Useful when someone benefits from a clear middle focus block."],
+    },
+  },
+  {
+    id: "RUN-BROAD-BLEND",
+    name: "Quality / Aerobic Blend",
+    type: "tempo_run",
+    category: "run",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 50,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate"],
+    equipment: allEquipment("Treadmill", "Full gym", "None (bodyweight only)"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["strength_full", "upper_full"],
+    variation_group: "broad_run",
+    structure_roles: ["run_quality_beginner", "run_aerobic"],
+    coaching: {
+      intent: "Cover quality and aerobic stimulus when only one run slot exists.",
+      cue: "Flow through the session — no all-out efforts.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["8–10 min easy"],
+      main: ["10 min steady", "5 min easy", "10 min moderate tempo", "10 min easy aerobic"],
+      cool_down: ["5 min easy"],
+      notes: ["This is the broad run option when run frequency is low."],
+    },
+  },
+
+  // ----------------------------
+  // LOWER STRENGTH
+  // ----------------------------
+  {
+    id: "LOWER-FULL",
+    name: "Lower Full Strength",
+    type: "strength_lower",
+    category: "strength",
+    intensity: "high",
+    fatigue: "high",
+    duration: 65,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: ["interval_run"],
+    compatible_with: ["aerobic_support"],
+    variation_group: "lower_full",
+    structure_roles: ["lower_full", "lower_primary"],
+    coaching: {
+      intent: "Cover squat, hinge and unilateral work when only one lower day exists.",
+      cue: "Control every rep and keep good positions.",
+      rpe: "7-8/10",
+    },
+    prescription: {
+      warm_up: ["8 min easy bike", "Dynamic hips/ankles", "2–3 ramp sets"],
       main: [
-        ability === "beginner"
-          ? "Back Squat — 3×6 @ controlled load"
-          : "Back Squat — 4×6–8 @ ~70%",
+        "Back Squat — 4×6–8",
         "Reverse Lunges — 3×8–10 each side",
         "RDL — 3×8–12",
         "Back Extensions — 2×12–15",
       ],
-      notes: ["Leave 1–2 reps in reserve.", "Control the lowering phase."],
-    }),
+      notes: ["This is the default lower template when coverage matters most."],
+    },
   },
   {
-    id: "LS-B",
-    title: "Lower Strength (Hinge Bias)",
-    tags: ["lower", "strength", "hard"],
-    time_cap_minutes: 85,
-    build: (ability, hours) => ({
-      warm_up: ["5–8 min row", "Glute activation", ...bikeAddon(hours)],
+    id: "LOWER-SQUAT",
+    name: "Lower Strength (Squat Focus)",
+    type: "strength_lower",
+    category: "strength",
+    intensity: "high",
+    fatigue: "high",
+    duration: 60,
+    goal: ["hybrid", "muscle"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: ["interval_run"],
+    compatible_with: ["aerobic_support"],
+    variation_group: "lower_split",
+    structure_roles: ["lower_primary"],
+    coaching: {
+      intent: "Bias squat strength and lower-body force production.",
+      cue: "Brace hard and own the eccentric.",
+      rpe: "7-8/10",
+    },
+    prescription: {
+      warm_up: ["8 min easy bike", "Lower-body mobility"],
       main: [
-        ability === "beginner"
-          ? "Trap Bar Deadlift — 3×5 @ moderate load"
-          : "Trap Bar Deadlift — 4×4–6",
-        "Front Foot Elevated Split Squat — 3×8–10 each side",
-        "Barbell Hip Thrust — 3×8–12",
+        "Back Squat — 4×5–6",
+        "Front Foot Elevated Split Squat — 3×8 each side",
+        "Leg Press or Goblet Squat — 3×10",
+        "Calf Raises — 3×12–15",
+      ],
+      notes: ["Best when the week already includes another posterior-chain stimulus."],
+    },
+  },
+  {
+    id: "LOWER-POSTERIOR",
+    name: "Lower Strength (Posterior Chain)",
+    type: "strength_lower",
+    category: "strength",
+    intensity: "high",
+    fatigue: "high",
+    duration: 60,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: ["interval_run"],
+    compatible_with: ["aerobic_support"],
+    variation_group: "lower_split",
+    structure_roles: ["lower_primary"],
+    coaching: {
+      intent: "Build hinge strength and posterior-chain resilience.",
+      cue: "Push hips back and keep tension throughout.",
+      rpe: "7-8/10",
+    },
+    prescription: {
+      warm_up: ["5–8 min row", "Hamstring + glute prep"],
+      main: [
+        "RDL — 4×6–8",
+        "Hip Thrust — 4×8–10",
         "Hamstring Curl — 3×10–15",
-        "Standing Calf Raise — 3×12–15",
+        "Back Extensions — 3×12–15",
       ],
-      notes: ["Explode on the way up.", "No grinding reps."],
-    }),
+      finish: ["3 rounds — 15 KB swings + 10 reverse lunges"],
+      notes: ["Great for runners and Hyrox athletes needing stronger posterior chain output."],
+    },
   },
   {
-    id: "LS-C",
-    title: "Lower Strength (Hybrid Power)",
-    tags: ["lower", "strength", "hybrid", "hard"],
-    time_cap_minutes: 80,
-    build: (_ability, hours) => ({
-      warm_up: ["5 min ski or row", "Hip prep", ...bikeAddon(hours)],
+    id: "LOWER-POWER",
+    name: "Lower Power",
+    type: "strength_lower",
+    category: "strength",
+    intensity: "high",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["running", "hybrid"],
+    experience: ["advanced"],
+    equipment: allEquipment("Full gym"),
+    time_requirement: "45-75",
+    avoid_after: ["interval_run"],
+    compatible_with: ["aerobic_support"],
+    variation_group: "lower_split",
+    structure_roles: ["lower_primary"],
+    coaching: {
+      intent: "Build power and heavy-force output with lower volume.",
+      cue: "Move the bar with intent — no slow grinding reps.",
+      rpe: "7-8/10",
+    },
+    prescription: {
+      warm_up: ["Bike 6 min", "Dynamic prep", "2 ramp sets"],
       main: [
-        "Front Squat — 4×5",
-        "Walking Lunges — 3×20 steps",
-        "Romanian Deadlift — 3×10",
-        "Farmers Carry — 4×30m",
+        "Back Squat — 5×3",
+        "Trap Bar Deadlift — 4×4",
+        "Box Jumps — 3×5",
       ],
-      finish: ["Optional: 3 rounds — 12 wall balls + 10 burpees"],
-      notes: ["Keep mechanics crisp.", "Finisher should feel controlled, not reckless."],
-    }),
+      notes: ["Use when you want quality force production without a hypertrophy-heavy lower day."],
+    },
   },
   {
-    id: "LS-D",
-    title: "Lower Strength (Unilateral Stability)",
-    tags: ["lower", "strength", "stability", "moderate"],
-    time_cap_minutes: 75,
-    build: (_ability, hours) => ({
-      warm_up: ["5–8 min bike", "Single leg activation", ...bikeAddon(hours)],
+    id: "LOWER-UNILAT",
+    name: "Lower Unilateral Stability",
+    type: "strength_lower",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 50,
+    goal: ["running", "hybrid"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_aerobic"],
+    variation_group: "lower_split",
+    structure_roles: ["lower_primary"],
+    coaching: {
+      intent: "Improve durability and control through single-leg strength.",
+      cue: "Balance and control first, load second.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["5–8 min bike", "Single-leg activation"],
       main: [
         "Bulgarian Split Squat — 4×8 each leg",
         "Single Leg RDL — 3×8 each leg",
         "Step-Ups — 3×10 each leg",
         "Seated Calf Raises — 3×12–15",
       ],
-      notes: ["Balance and control over load.", "Build durability for running."],
-    }),
+      notes: ["Excellent support option when reducing overall lower fatigue matters."],
+    },
   },
-  {
-    id: "LS-E",
-    title: "Lower Strength (Posterior Chain)",
-    tags: ["lower", "strength", "posterior_chain", "moderate"],
-    time_cap_minutes: 75,
-    build: (_ability, hours) => ({
-      warm_up: ["5 min row", "Hamstring + glute prep", ...bikeAddon(hours)],
-      main: [
-        "Romanian Deadlift — 4×6–8",
-        "Hip Thrust — 4×8–10",
-        "Hamstring Curl — 3×10–15",
-        "Back Extensions — 3×12–15",
-      ],
-      finish: ["3 rounds — 15 KB swings + 10 reverse lunges"],
-      notes: ["Strong hinge improves running efficiency and sled work."],
-    }),
-  },
-];
 
-export const UPPER_STRENGTH: Template[] = [
+  // ----------------------------
+  // UPPER STRENGTH
+  // ----------------------------
   {
-    id: "US-A",
-    title: "Upper Strength (Pull Dominant)",
-    tags: ["upper", "strength", "moderate"],
-    time_cap_minutes: 75,
-    build: (_ability, hours) => ({
-      warm_up: ["5–8 min easy row", "Shoulder/scap prep", ...bikeAddon(hours)],
+    id: "UPPER-FULL",
+    name: "Upper Full Strength",
+    type: "strength_upper",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_quality", "run_aerobic", "aerobic_support"],
+    variation_group: "upper_full",
+    structure_roles: ["upper_full", "upper_primary"],
+    coaching: {
+      intent: "Cover all major upper patterns when only one upper day exists.",
+      cue: "Hit full range and leave 1–2 reps in reserve.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["5–8 min easy row", "Shoulder/scap prep"],
       main: [
-        "Weighted Pull-Ups — 4×8–10",
+        "Pull-Ups or Lat Pulldown — 4×6–8",
         "Incline DB Press — 3×6–8",
         "Chest Supported Row — 3×8–10",
         "Shoulder Press — 3×6–8",
-        "Biceps Curls — 3×10–12",
+        "Lateral Raises or Curls — 3×10–12",
       ],
-      notes: ["Leave 1–2 reps in reserve.", "Full ROM on all pulling."],
-    }),
+      notes: ["This is non-negotiable when upper frequency is only once per week."],
+    },
   },
   {
-    id: "US-B",
-    title: "Upper Strength (Push Dominant)",
-    tags: ["upper", "strength", "moderate"],
-    time_cap_minutes: 75,
-    build: (_ability, hours) => ({
-      warm_up: ["6 min bike or row", "Band shoulder prep", ...bikeAddon(hours)],
+    id: "UPPER-PUSH",
+    name: "Upper Push",
+    type: "strength_upper",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 50,
+    goal: ["muscle", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_aerobic"],
+    variation_group: "upper_split",
+    structure_roles: ["upper_primary"],
+    coaching: {
+      intent: "Bias pressing strength and upper-body output.",
+      cue: "Stay stacked and don’t chase ugly reps.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["Band shoulder prep", "5 min easy row"],
       main: [
         "Bench Press — 4×5–6",
-        "Neutral Grip Pull-Ups — 4×6–8",
-        "Single Arm DB Row — 3×8–12 each side",
-        "Arnold Press — 3×8–10",
-        "Triceps Dips / Pushdowns — 3×10–12",
+        "DB Shoulder Press — 3×8",
+        "Incline DB Press — 3×8–10",
+        "Triceps Pushdown / Dips — 3×10–12",
       ],
-      notes: ["Strong scap control.", "Smooth tempo."],
-    }),
+      notes: ["Use only when another upper session covers pulling properly."],
+    },
   },
   {
-    id: "US-C",
-    title: "Upper Strength (Hybrid Engine)",
-    tags: ["upper", "strength", "hybrid", "moderate"],
-    time_cap_minutes: 80,
-    build: (_ability, hours) => ({
-      warm_up: ["5–8 min ski/row", "Shoulder prep", ...bikeAddon(hours)],
+    id: "UPPER-PULL",
+    name: "Upper Pull",
+    type: "strength_upper",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 50,
+    goal: ["muscle", "hybrid", "running"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_aerobic"],
+    variation_group: "upper_split",
+    structure_roles: ["upper_primary"],
+    coaching: {
+      intent: "Bias pulling strength and postural support.",
+      cue: "Own the squeeze at the end of each row.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["5 min row", "Scap activation"],
       main: [
-        "DB Bench Press — 4×8",
-        "Bent Over Row — 4×8",
-        "Push Press — 3×5",
-        "Chin-Ups — 3×AMRAP",
+        "Weighted Pull-Ups / Assisted Pull-Ups — 4×6–8",
+        "Chest Supported Row — 4×8–10",
+        "Single Arm DB Row — 3×10 each side",
+        "Biceps Curl Variation — 3×10–12",
       ],
-      finish: ["8-min EMOM — 8 push-ups + 8 DB snatches"],
-      notes: ["Keep EMOM smooth.", "Quality reps only."],
-    }),
+      notes: ["Use only when the week also contains pushing elsewhere."],
+    },
   },
   {
-    id: "US-D",
-    title: "Upper Strength (Athletic Upper)",
-    tags: ["upper", "strength", "power", "moderate"],
-    time_cap_minutes: 75,
-    build: (_ability, hours) => ({
-      warm_up: ["5 min ski", "Band shoulder prep", ...bikeAddon(hours)],
+    id: "UPPER-BALANCED",
+    name: "Upper Balanced",
+    type: "strength_upper",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_aerobic", "run_quality"],
+    variation_group: "upper_split",
+    structure_roles: ["upper_primary"],
+    coaching: {
+      intent: "Create balanced push-pull upper-body support.",
+      cue: "Keep rep quality high across all movement patterns.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["5 min row", "Band prep"],
+      main: [
+        "Neutral Grip Pull-Ups — 4×6–8",
+        "DB Bench Press — 4×8",
+        "Single Arm Row — 3×10 each side",
+        "Arnold Press — 3×8–10",
+        "Lateral Raises — 3×12",
+      ],
+      notes: ["A strong general upper option when you want balance over bias."],
+    },
+  },
+  {
+    id: "UPPER-ATHLETIC",
+    name: "Upper Athletic",
+    type: "strength_upper",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["hybrid", "running"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_aerobic", "aerobic_support"],
+    variation_group: "upper_split",
+    structure_roles: ["upper_primary"],
+    coaching: {
+      intent: "Build athletic pressing and pulling with dynamic output.",
+      cue: "Move explosively but stay tidy.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["5 min ski", "Shoulder prep"],
       main: [
         "Push Press — 4×5",
         "Pull-Ups — 4×6–8",
@@ -212,16 +1153,32 @@ export const UPPER_STRENGTH: Template[] = [
         "Single Arm Row — 3×10",
       ],
       finish: ["3 rounds — 12 push-ups + 10 DB snatches"],
-      notes: ["Explosive intent on push press.", "Stay athletic, not sloppy."],
-    }),
+      notes: ["Useful for athletes who want upper strength with some engine crossover."],
+    },
   },
   {
-    id: "US-E",
-    title: "Upper Strength (Hyrox Specific)",
-    tags: ["upper", "hyrox", "moderate"],
-    time_cap_minutes: 75,
-    build: (_ability, hours) => ({
-      warm_up: ["5 min row", "Shoulder prep", ...bikeAddon(hours)],
+    id: "UPPER-HYROX",
+    name: "Upper Hyrox Specific",
+    type: "strength_upper",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_aerobic"],
+    variation_group: "upper_split",
+    structure_roles: ["upper_primary"],
+    coaching: {
+      intent: "Build upper-body fatigue resistance for Hyrox demands.",
+      cue: "Stay smooth and efficient under fatigue.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["5 min row", "Shoulder prep"],
       main: [
         "Wall Balls — 4×20",
         "DB Thrusters — 3×12",
@@ -229,409 +1186,781 @@ export const UPPER_STRENGTH: Template[] = [
         "Shoulder Press — 3×10",
       ],
       finish: ["6 min EMOM — 10 push-ups + 8 burpees"],
-      notes: ["Build fatigue resistance for race scenarios."],
-    }),
-  },
-];
-
-export const QUALITY_RUNS: Template[] = [
-  {
-    id: "THR-A",
-    title: "Threshold Intervals (4×2km LT1)",
-    tags: ["run", "threshold", "hard"],
-    time_cap_minutes: 75,
-    build: (ability) => ({
-      warm_up: ["1–2km easy jog", "3×20s strides"],
-      main: [
-        ability === "beginner"
-          ? "3×1.5km @ LT1 threshold — 120s jog"
-          : "4×2km @ LT1 threshold — 120s jog",
-      ],
-      cool_down: ["1–2km easy jog"],
-      notes: ["Hard but repeatable.", "Do not sprint the final rep."],
-    }),
-  },
-  {
-    id: "THR-B",
-    title: "Threshold Intervals (4×4min)",
-    tags: ["run", "threshold", "hard"],
-    time_cap_minutes: 60,
-    build: (ability) => ({
-      warm_up: ["1–2km easy jog", "3×20s strides"],
-      main: [
-        ability === "beginner"
-          ? "3×4 min @ threshold — 90s jog"
-          : "4×4 min @ threshold — 90s jog",
-      ],
-      cool_down: ["1km easy jog"],
-      notes: ["Controlled hard effort.", "Finish like you could do one more rep."],
-    }),
-  },
-  {
-    id: "THR-C",
-    title: "Threshold + Pace Change",
-    tags: ["run", "threshold", "pace_change", "hard"],
-    time_cap_minutes: 75,
-    build: (ability) => ({
-      warm_up: ["1–2km easy jog", "3×20s strides"],
-      main: [
-        ability === "beginner"
-          ? "1.2km @ strong steady pace, 120s rest, 300m fast controlled, 60s rest ×3–4"
-          : "1.2km @ 10km pace, 120s rest, 400m @ 5km pace, 60s rest ×4–6",
-      ],
-      cool_down: ["1–2km easy jog"],
-      notes: ["Gear change under fatigue.", "Keep the fast reps controlled."],
-    }),
-  },
-  {
-    id: "RUN-BEG-A",
-    title: "Controlled Intervals",
-    tags: ["run", "beginner_friendly", "moderate"],
-    time_cap_minutes: 55,
-    build: () => ({
-      warm_up: ["1–2km warm-up"],
-      main: ["6×2 min moderate effort — 90s easy jog"],
-      cool_down: ["1km cool-down"],
-      notes: ["Should feel like 7/10 effort."],
-    }),
-  },
-  {
-    id: "RUN-BEG-B",
-    title: "Tempo Intro",
-    tags: ["run", "beginner_friendly", "moderate"],
-    time_cap_minutes: 50,
-    build: () => ({
-      warm_up: ["1km easy"],
-      main: ["10–15 min steady tempo"],
-      cool_down: ["1km easy"],
-      notes: ["Controlled pace, not race effort."],
-    }),
-  },
-  {
-    id: "RUN-BEG-C",
-    title: "Fartlek Session",
-    tags: ["run", "beginner_friendly", "moderate"],
-    time_cap_minutes: 45,
-    build: () => ({
-      main: ["30 min continuous — 1 min faster / 2 min easy"],
-      notes: ["Playful but controlled.", "Never feels like a race."],
-    }),
-  },
-];
-
-export const AEROBIC_BASE: Template[] = [
-  {
-    id: "AER-A",
-    title: "Aerobic Base (Z2 Run + Strides)",
-    tags: ["aerobic", "easy"],
-    time_cap_minutes: 60,
-    build: (ability) => ({
-      main: [
-        ability === "beginner" ? "30–40 min Z2 run" : "40–60 min Z2 run",
-        "Then 6×20s strides",
-      ],
-      notes: ["Easy means easy.", "Strides are sharp, not sprinted."],
-    }),
-  },
-  {
-    id: "AER-B",
-    title: "Aerobic Base (Bike Builder)",
-    tags: ["aerobic", "bike", "easy"],
-    time_cap_minutes: 75,
-    build: (ability) => ({
-      main: [
-        ability === "beginner" ? "35–50 min continuous Z2 bike" : "45–75 min continuous Z2 bike",
-        "Optional: every 10 min add 20s high cadence",
-      ],
-      notes: ["Low impact, high aerobic return."],
-    }),
-  },
-  {
-    id: "AER-C",
-    title: "Aerobic Base (Mixed Session)",
-    tags: ["aerobic", "easy"],
-    time_cap_minutes: 55,
-    build: () => ({
-      main: ["20 min Z2 run", "20 min Z2 bike", "10 min mobility"],
-      notes: ["Great for variety and managing impact."],
-    }),
-  },
-  {
-    id: "AER-D",
-    title: "Aerobic Intervals (Controlled)",
-    tags: ["aerobic", "moderate"],
-    time_cap_minutes: 55,
-    build: () => ({
-      main: [
-        "10 min Z2",
-        "5×3 min slightly above Z2",
-        "2 min easy between reps",
-        "10 min easy",
-      ],
-      notes: ["Not threshold.", "Smooth aerobic pressure only."],
-    }),
-  },
-  {
-    id: "AER-E",
-    title: "Easy Run + Drill Work",
-    tags: ["aerobic", "mechanics", "easy"],
-    time_cap_minutes: 55,
-    build: (ability) => ({
-      main: [
-        ability === "beginner" ? "30–40 min Z2 run" : "30–50 min Z2 run",
-        "Then: A-skips ×2 sets, B-skips ×2 sets, High knees ×2 sets",
-      ],
-      notes: ["Build mechanics and efficiency.", "Stay relaxed."],
-    }),
-  },
-  {
-    id: "AER-F",
-    title: "Split Aerobic Day",
-    tags: ["aerobic", "double_day", "easy"],
-    time_cap_minutes: 60,
-    build: () => ({
-      main: ["AM: 20–30 min Z2 run", "PM: 30–45 min Z2 bike"],
-      notes: ["Great for higher training hours.", "Both sessions must feel easy."],
-    }),
-  },
-];
-
-export const LONG_RUNS: Template[] = [
-  {
-    id: "LONG-A",
-    title: "Long Aerobic Run",
-    tags: ["long", "easy"],
-    time_cap_minutes: 90,
-    build: (ability, hours) => {
-      const low = ability === "beginner" ? 30 : 40;
-      const high = hours === "10+" ? 90 : hours === "7-10" ? 75 : 60;
-      return {
-        main: [`${low}–${high} min continuous @ Z2`],
-        notes: ["Stay conversational.", "No surging."],
-      };
+      notes: ["Very Hyrox-specific — use when hybrid goal is primary."],
     },
   },
   {
-    id: "LONG-B",
-    title: "Progressive Long Run",
-    tags: ["long", "progressive", "moderate"],
-    time_cap_minutes: 75,
-    build: (ability) => ({
-      main:
-        ability === "beginner"
-          ? ["2km easy", "2km steady", "2km steady + slightly quicker", "1–2km easy"]
-          : ["2km WU", "2km -10s/km", "2km -5s/km", "2km @ 10km pace", "2km WD @ easy"],
-      notes: ["Controlled build.", "Finish strong, not flat-out."],
-    }),
-  },
-  {
-    id: "LONG-C",
-    title: "Long Run + Pick-Ups",
-    tags: ["long", "easy"],
-    time_cap_minutes: 70,
-    build: (ability) => ({
+    id: "UPPER-ENGINE",
+    name: "Upper Hybrid Engine",
+    type: "strength_upper",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 60,
+    goal: ["hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_aerobic"],
+    variation_group: "upper_split",
+    structure_roles: ["upper_primary"],
+    coaching: {
+      intent: "Combine upper strength with manageable engine demand.",
+      cue: "Keep the EMOM controlled and crisp.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["5–8 min ski/row", "Shoulder prep"],
       main: [
-        ability === "beginner" ? "35–50 min Z2" : "40–60 min Z2",
-        "Then 6×30s pick-ups",
+        "DB Bench Press — 4×8",
+        "Bent Over Row — 4×8",
+        "Push Press — 3×5",
+        "Chin-Ups — 3×AMRAP",
       ],
-      notes: ["Pick-ups are relaxed and smooth."],
-    }),
+      finish: ["8-min EMOM — 8 push-ups + 8 DB snatches"],
+      notes: ["Great crossover day for Hybrid365 athletes."],
+    },
   },
-  {
-    id: "LONG-D",
-    title: "Negative Split Long Run",
-    tags: ["long", "moderate"],
-    time_cap_minutes: 75,
-    build: (ability) => ({
-      main: [
-        ability === "beginner"
-          ? "First half easy, second half slightly quicker"
-          : "First half easy Z2, second half steady / controlled negative split",
-      ],
-      notes: ["Teaches control and finish strength."],
-    }),
-  },
-  {
-    id: "LONG-E",
-    title: "Hybrid Long Session",
-    tags: ["long", "hybrid", "moderate"],
-    time_cap_minutes: 80,
-    build: () => ({
-      main: ["5km run", "1km ski or row", "5km run"],
-      notes: ["Hybrid crossover session.", "Stay smooth across both runs."],
-    }),
-  },
-  {
-    id: "LONG-F",
-    title: "Broken Long Run",
-    tags: ["long", "moderate"],
-    time_cap_minutes: 70,
-    build: () => ({
-      main: ["3km easy", "6km steady", "3km easy"],
-      notes: ["Mentally easier but still effective."],
-    }),
-  },
-];
 
-export const COMPROMISED_HYROX: Template[] = [
+  // ----------------------------
+  // FULL BODY STRENGTH
+  // ----------------------------
   {
-    id: "COMP-A",
-    title: "Compromised Run (Ski Flow)",
-    tags: ["hyrox", "hard"],
-    time_cap_minutes: 65,
-    build: (ability) => ({
+    id: "FULL-DBPP",
+    name: "Full Body Strength",
+    type: "strength_full",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 55,
+    goal: ["hybrid", "running", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["run_aerobic", "aerobic_support"],
+    variation_group: "full_body",
+    structure_roles: ["full_body_strength"],
+    coaching: {
+      intent: "Cover the major lifts efficiently in one session.",
+      cue: "Move well first, then add effort.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      warm_up: ["5–8 min bike or row", "Full-body mobility"],
+      main: [
+        "Deadlift or RDL — 4×5",
+        "Push Press — 3×6",
+        "Pull-Ups / Lat Pulldown — 3×8",
+        "Split Squat — 3×8 each side",
+        "Core circuit — 2–3 rounds",
+      ],
+      notes: ["Useful when training frequency is lower or time is compressed."],
+    },
+  },
+  {
+    id: "FULL-HYBRID-CIRCUIT",
+    name: "Hybrid Strength Circuit",
+    type: "strength_full",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 45,
+    goal: ["hybrid"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Dumbbells only", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["run_aerobic"],
+    variation_group: "full_body",
+    structure_roles: ["full_body_strength"],
+    coaching: {
+      intent: "Create strength stimulus with athletic flow and limited setup.",
+      cue: "Stay smooth through transitions.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      main: [
+        "3–4 rounds:",
+        "Goblet Squat ×10",
+        "DB Press ×10",
+        "DB Row ×10 each side",
+        "RDL ×10",
+        "Core movement ×30–40s",
+      ],
+      notes: ["Excellent for lower-time users who still need full-body coverage."],
+    },
+  },
+  {
+    id: "FULL-SHORT",
+    name: "Short Full Body Strength",
+    type: "strength_full",
+    category: "strength",
+    intensity: "medium",
+    fatigue: "low",
+    duration: 35,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate"],
+    equipment: allEquipment("Full gym", "Dumbbells only", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["run_aerobic", "aerobic_support"],
+    variation_group: "full_body",
+    structure_roles: ["full_body_strength"],
+    coaching: {
+      intent: "Deliver full-body strength with minimal time cost.",
+      cue: "Prioritise clean movement over chasing load.",
+      rpe: "6/10",
+    },
+    prescription: {
+      main: [
+        "Squat pattern — 3×8",
+        "Push pattern — 3×8",
+        "Pull pattern — 3×8",
+        "Hinge pattern — 3×8",
+      ],
+      notes: ["Simple, effective, and easy to recover from."],
+    },
+  },
+
+  // ----------------------------
+  // HYBRID / COMPROMISED
+  // ----------------------------
+  {
+    id: "HYX-SKI-LUNGE-RUN",
+    name: "Ski + Lunges + Run",
+    type: "hybrid_compromised",
+    category: "hybrid",
+    intensity: "high",
+    fatigue: "high",
+    duration: 60,
+    goal: ["hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("SkiErg", "Full gym"),
+    time_requirement: "45-75",
+    avoid_after: ["threshold_run", "lower_high_fatigue"],
+    compatible_with: ["upper_full", "recovery"],
+    variation_group: "hybrid_primary",
+    structure_roles: ["hybrid_primary"],
+    coaching: {
+      intent: "Improve run quality after station fatigue.",
+      cue: "Compose yourself fast after the ski and lunges.",
+      rpe: "8/10",
+    },
+    prescription: {
       main: [
         "300m Ski",
         "10 Burpee to Plate",
         "10 Reverse Sandbag Lunges",
         "400m Run",
         "90s Rest",
-        `Repeat ×${scaleRounds(8, ability)}`,
+        "Repeat ×6–8",
       ],
-      notes: ["Keep run rhythm consistent.", "Don’t spike too early."],
-    }),
+      notes: ["Classic compromised run builder."],
+    },
   },
   {
-    id: "COMP-B",
-    title: "Compromised Run (Sled Builder)",
-    tags: ["hyrox", "sled", "hard"],
-    time_cap_minutes: 65,
-    build: (ability) => ({
-      main: [
-        "15 Wall Balls",
-        "20m Sled Push",
-        "20m Lunges",
-        "800m Run",
-        "90s Rest",
-        `Repeat ×${scaleRounds(5, ability)}`,
-      ],
-      notes: ["Maintain form on wall balls.", "Run immediately after sled."],
-    }),
-  },
-  {
-    id: "COMP-C",
-    title: "Compromised Run (Row Builder)",
-    tags: ["hyrox", "hard"],
-    time_cap_minutes: 70,
-    build: (ability) => ({
+    id: "HYX-ROW-BURPEE-RUN",
+    name: "Row + Burpees + Run",
+    type: "hybrid_compromised",
+    category: "hybrid",
+    intensity: "high",
+    fatigue: "high",
+    duration: 65,
+    goal: ["hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Rower", "Full gym"),
+    time_requirement: "45-75",
+    avoid_after: ["threshold_run", "lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "hybrid_primary",
+    structure_roles: ["hybrid_primary"],
+    coaching: {
+      intent: "Build repeatable output across stations and run transitions.",
+      cue: "Don’t let the row drag you into overpacing early.",
+      rpe: "8/10",
+    },
+    prescription: {
       main: [
         "500m Row",
         "30m Lunges",
         "20 Burpees",
         "1km Run",
         "90s Rest",
-        `Repeat ×${scaleRounds(5, ability)}`,
+        "Repeat ×5",
       ],
-      notes: ["Smooth transitions.", "Build repeatable engine."],
-    }),
+      notes: ["High-value race-style compromise session."],
+    },
   },
   {
-    id: "COMP-D",
-    title: "Compromised Density Builder",
-    tags: ["hyrox", "moderate"],
-    time_cap_minutes: 45,
-    build: () => ({
+    id: "HYX-WB-LUNGE-RUN",
+    name: "Wall Balls + Lunges + Run",
+    type: "hybrid_compromised",
+    category: "hybrid",
+    intensity: "high",
+    fatigue: "high",
+    duration: 60,
+    goal: ["hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Full gym", "Sled"),
+    time_requirement: "45-75",
+    avoid_after: ["threshold_run"],
+    compatible_with: ["upper_full"],
+    variation_group: "hybrid_primary",
+    structure_roles: ["hybrid_primary"],
+    coaching: {
+      intent: "Train repeated leg fatigue under aerobic pressure.",
+      cue: "Get back into run rhythm immediately.",
+      rpe: "8/10",
+    },
+    prescription: {
       main: [
-        "10 min AMRAP — 250m row + 10 burpees",
-        "Rest 2 min",
-        "Repeat ×3",
+        "15 Wall Balls",
+        "20m Sled Push",
+        "20m Lunges",
+        "800m Run",
+        "90s Rest",
+        "Repeat ×4–5",
       ],
-      notes: ["Consistent output over reckless pace."],
-    }),
+      notes: ["Big Hyrox specificity."],
+    },
   },
   {
-    id: "COMP-E",
-    title: "Compromised Strength Under Fatigue",
-    tags: ["hyrox", "hard"],
-    time_cap_minutes: 55,
-    build: () => ({
+    id: "HYX-FULL-FLOW",
+    name: "Full Hyrox Flow",
+    type: "hybrid_compromised",
+    category: "hybrid",
+    intensity: "high",
+    fatigue: "high",
+    duration: 55,
+    goal: ["hybrid"],
+    experience: ["advanced"],
+    equipment: allEquipment("SkiErg", "Rower", "Full gym"),
+    time_requirement: "45-75",
+    avoid_after: ["threshold_run"],
+    compatible_with: ["recovery"],
+    variation_group: "hybrid_primary",
+    structure_roles: ["hybrid_primary"],
+    coaching: {
+      intent: "Simulate flowing race-like transitions under fatigue.",
+      cue: "No panic pace changes — build rhythm.",
+      rpe: "8/10",
+    },
+    prescription: {
       main: [
-        "400m run",
-        "20m sled push",
-        "20 wall balls",
-        "90s rest",
-        "Repeat ×6",
+        "400m Run",
+        "400m Ski",
+        "400m Run",
+        "20 Lunges",
+        "Repeat ×4",
       ],
-      notes: ["Stay composed under load."],
-    }),
+      notes: ["Great lite race-sim day."],
+    },
   },
   {
-    id: "COMP-F",
-    title: "Compromised Engine Ladder",
-    tags: ["hyrox", "moderate"],
-    time_cap_minutes: 50,
-    build: () => ({
-      main: [
-        "500m ski + 20 lunges + 10 burpees",
-        "400m ski + 20 lunges + 10 burpees",
-        "300m ski + 20 lunges + 10 burpees",
-      ],
-      notes: ["Descending volume, increasing pressure."],
-    }),
+    id: "HYX-SKI-BURPEE-WB",
+    name: "Ski + Burpees + Wall Balls",
+    type: "hybrid_density",
+    category: "hybrid",
+    intensity: "high",
+    fatigue: "medium",
+    duration: 45,
+    goal: ["hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("SkiErg", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full"],
+    variation_group: "hybrid_density",
+    structure_roles: ["hybrid_density"],
+    coaching: {
+      intent: "Build density and station efficiency without a full race sim.",
+      cue: "Stay smooth between movements — don’t redline too early.",
+      rpe: "7-8/10",
+    },
+    prescription: {
+      main: ["400m Ski", "12 Burpee to Plate", "15 Wall Balls", "60s Rest", "Repeat ×8"],
+      notes: ["Excellent when you want a high-value station-focused hybrid day."],
+    },
   },
-];
+  {
+    id: "HYX-ROW-LUNGE-BIKE",
+    name: "Row + Lunges + Burpees + Bike",
+    type: "hybrid_density",
+    category: "hybrid",
+    intensity: "high",
+    fatigue: "medium",
+    duration: 50,
+    goal: ["hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Rower", "Bike / Spin bike", "Full gym"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["upper_full"],
+    variation_group: "hybrid_density",
+    structure_roles: ["hybrid_density"],
+    coaching: {
+      intent: "Build engine under repeated mixed-modality fatigue.",
+      cue: "Keep the bike honest but not destructive.",
+      rpe: "7-8/10",
+    },
+    prescription: {
+      main: [
+        "400m Row",
+        "20m Lunges",
+        "20m Burpees",
+        "60s Assault Bike",
+        "60s Rest",
+        "Repeat ×6–8",
+      ],
+      notes: ["Strong density builder with good variation."],
+    },
+  },
+  {
+    id: "HYX-AMRAP20",
+    name: "AMRAP 20 Hybrid",
+    type: "hybrid_density",
+    category: "hybrid",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 35,
+    goal: ["hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Rower", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full", "aerobic_support"],
+    variation_group: "hybrid_density",
+    structure_roles: ["hybrid_density"],
+    coaching: {
+      intent: "Create aerobic density with manageable skill demand.",
+      cue: "Consistent pace beats a fast start.",
+      rpe: "7/10",
+    },
+    prescription: {
+      main: ["AMRAP 20 min:", "250m Row", "10 Burpees", "15 Wall Balls"],
+      notes: ["Simple, effective, and easy to scale."],
+    },
+  },
+  {
+    id: "HYX-EMOM",
+    name: "EMOM Hybrid",
+    type: "hybrid_density",
+    category: "hybrid",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 20,
+    goal: ["hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Bike / Spin bike", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full", "strength_full"],
+    variation_group: "hybrid_density",
+    structure_roles: ["hybrid_density"],
+    coaching: {
+      intent: "Inject short, sharp conditioning without huge fatigue.",
+      cue: "Treat each minute as repeatable, not maximal.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      main: ["EMOM 15:", "Min 1: 12 cal bike", "Min 2: 10 burpees", "Min 3: rest"],
+      notes: ["Great shorter hybrid option."],
+    },
+  },
+  {
+    id: "HYX-BW-CIRCUIT",
+    name: "Bodyweight Hybrid Circuit",
+    type: "hybrid_bodyweight",
+    category: "hybrid",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 35,
+    goal: ["hybrid", "running", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["run_aerobic"],
+    variation_group: "hybrid_bodyweight",
+    structure_roles: ["hybrid_primary", "hybrid_density"],
+    coaching: {
+      intent: "Maintain hybrid feel without equipment.",
+      cue: "Keep transitions sharp and mechanics tidy.",
+      rpe: "7/10",
+    },
+    prescription: {
+      main: [
+        "4–5 rounds:",
+        "12 Burpees",
+        "20 Alternating Lunges",
+        "15 Push-Ups",
+        "200–400m Run or 60s fast feet",
+      ],
+      notes: ["Useful when equipment is limited but effort still matters."],
+    },
+  },
+  {
+    id: "HYX-BW-SHORT",
+    name: "Short Bodyweight Hybrid",
+    type: "hybrid_bodyweight",
+    category: "hybrid",
+    intensity: "medium",
+    fatigue: "low",
+    duration: 25,
+    goal: ["hybrid", "muscle"],
+    experience: ["beginner", "intermediate"],
+    equipment: allEquipment("None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["strength_full", "run_aerobic"],
+    variation_group: "hybrid_bodyweight",
+    structure_roles: ["hybrid_density"],
+    coaching: {
+      intent: "Give a short sharp hybrid stimulus with low setup.",
+      cue: "Keep moving but don’t lose quality.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      main: ["20–25 min circuit:", "Push-Ups", "Lunges", "Burpees", "Short run / march / shuttle"],
+      notes: ["Useful short option for low-equipment users."],
+    },
+  },
+  {
+    id: "HYX-SHORT-DENSITY",
+    name: "Short Hybrid Density",
+    type: "hybrid_density",
+    category: "hybrid",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 25,
+    goal: ["hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Rower", "Bike / Spin bike", "Full gym", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full", "strength_full"],
+    variation_group: "hybrid_density",
+    structure_roles: ["hybrid_density"],
+    coaching: {
+      intent: "Deliver a compressed hybrid stimulus when time is tight.",
+      cue: "Stay steady and avoid blowing up inside the first 10 minutes.",
+      rpe: "7/10",
+    },
+    prescription: {
+      main: ["15–20 min continuous density block", "Choose 2–3 movements + short aerobic pieces"],
+      notes: ["Built specifically for shorter session availability."],
+    },
+  },
+  {
+    id: "HYX-LOW-IMPACT",
+    name: "Low-Impact Hybrid Conditioning",
+    type: "hybrid_density",
+    category: "hybrid",
+    intensity: "medium",
+    fatigue: "low",
+    duration: 35,
+    goal: ["hybrid", "running"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Bike / Spin bike", "Rower", "SkiErg", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["lower_primary", "upper_full"],
+    variation_group: "hybrid_low_impact",
+    structure_roles: ["hybrid_density", "aerobic_support"],
+    coaching: {
+      intent: "Keep hybrid stimulus high while reducing impact stress.",
+      cue: "Drive output from the machine, not from sloppy intensity.",
+      rpe: "6-7/10",
+    },
+    prescription: {
+      main: [
+        "Alternating erg intervals",
+        "Light DB carries or lunges",
+        "Controlled bodyweight work",
+      ],
+      notes: ["Excellent fallback for niggles, fatigue, or impact management."],
+    },
+  },
 
-export const RECOVERY: Template[] = [
+  // ----------------------------
+  // AEROBIC SUPPORT / RECOVERY
+  // ----------------------------
   {
-    id: "REC-A",
-    title: "Recovery & Mobility",
-    tags: ["recovery", "easy"],
-    time_cap_minutes: 45,
-    build: (_ability, hours) => ({
+    id: "AER-Z2-BIKE",
+    name: "Z2 Bike",
+    type: "aerobic_support",
+    category: "aerobic",
+    intensity: "low",
+    fatigue: "low",
+    duration: 50,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Bike / Spin bike", "Full gym"),
+    time_requirement: "45-75",
+    avoid_after: [],
+    compatible_with: ["all"],
+    variation_group: "aerobic_support",
+    structure_roles: ["aerobic_support"],
+    coaching: {
+      intent: "Add aerobic volume without heavy joint stress.",
+      cue: "Steady breathing and controlled output.",
+      rpe: "4-5/10",
+    },
+    prescription: {
+      main: ["45–60 min steady Z2 bike"],
+      notes: ["High-value support work for hybrid athletes."],
+    },
+  },
+  {
+    id: "AER-SHORT-Z2-BIKE",
+    name: "Short Z2 Bike",
+    type: "aerobic_support",
+    category: "aerobic",
+    intensity: "low",
+    fatigue: "low",
+    duration: 25,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Bike / Spin bike", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["all"],
+    variation_group: "aerobic_support",
+    structure_roles: ["aerobic_support"],
+    coaching: {
+      intent: "Provide a short low-cost aerobic top-up.",
+      cue: "Keep it easy enough to finish fresher than you started.",
+      rpe: "4/10",
+    },
+    prescription: {
+      main: ["20–30 min easy Z2 bike"],
+      notes: ["Perfect add-on for busier days."],
+    },
+  },
+  {
+    id: "AER-MIXED",
+    name: "Mixed Aerobic",
+    type: "aerobic_support",
+    category: "aerobic",
+    intensity: "low",
+    fatigue: "low",
+    duration: 40,
+    goal: ["running", "hybrid"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Bike / Spin bike", "Treadmill", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["all"],
+    variation_group: "aerobic_support",
+    structure_roles: ["aerobic_support"],
+    coaching: {
+      intent: "Build aerobic work through mixed modalities.",
+      cue: "Treat both blocks as one easy session, not two hard ones.",
+      rpe: "4-5/10",
+    },
+    prescription: {
+      main: ["20 min Z2 bike", "20 min Z2 run"],
+      notes: ["Great variety option with low mental cost."],
+    },
+  },
+  {
+    id: "AER-BIKE-THRESHOLD",
+    name: "Bike Threshold",
+    type: "aerobic_support",
+    category: "aerobic",
+    intensity: "medium",
+    fatigue: "medium",
+    duration: 40,
+    goal: ["running", "hybrid"],
+    experience: ["intermediate", "advanced"],
+    equipment: allEquipment("Bike / Spin bike", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: ["lower_high_fatigue"],
+    compatible_with: ["upper_full"],
+    variation_group: "aerobic_support",
+    structure_roles: ["aerobic_support"],
+    coaching: {
+      intent: "Keep threshold stimulus when impact needs to be reduced.",
+      cue: "Steady pressure, not frantic cadence.",
+      rpe: "7/10",
+    },
+    prescription: {
+      warm_up: ["8 min easy spin"],
+      main: ["3×6 min at threshold-like effort", "2 min easy spin"],
+      cool_down: ["5–8 min easy"],
+      notes: ["Useful low-impact substitute for run quality."],
+    },
+  },
+  {
+    id: "AER-ROW-INTERVALS",
+    name: "Row Aerobic Intervals",
+    type: "aerobic_support",
+    category: "aerobic",
+    intensity: "medium",
+    fatigue: "low",
+    duration: 35,
+    goal: ["hybrid", "running"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Rower", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["upper_full", "recovery"],
+    variation_group: "aerobic_support",
+    structure_roles: ["aerobic_support"],
+    coaching: {
+      intent: "Build aerobic support with low impact and controlled output.",
+      cue: "Smooth strokes — no yanking the handle.",
+      rpe: "5-6/10",
+    },
+    prescription: {
+      main: ["5×3 min moderate aerobic row", "2 min easy row between reps"],
+      notes: ["Excellent row-based support option."],
+    },
+  },
+
+  // ----------------------------
+  // RECOVERY
+  // ----------------------------
+  {
+    id: "REC-WALK-MOBILITY",
+    name: "Recovery Walk + Mobility",
+    type: "recovery",
+    category: "recovery",
+    intensity: "low",
+    fatigue: "low",
+    duration: 30,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("None (bodyweight only)", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["all"],
+    variation_group: "recovery",
+    structure_roles: ["recovery"],
+    coaching: {
+      intent: "Improve recovery without adding meaningful fatigue.",
+      cue: "Leave the session feeling better, not tired.",
+      rpe: "2-3/10",
+    },
+    prescription: {
+      main: ["20–30 min easy walk", "10–15 min mobility"],
+      notes: ["Simple and effective."],
+    },
+  },
+  {
+    id: "REC-LOWER-LEG",
+    name: "Lower Leg Durability",
+    type: "recovery",
+    category: "recovery",
+    intensity: "low",
+    fatigue: "low",
+    duration: 25,
+    goal: ["running", "hybrid"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("None (bodyweight only)", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["all"],
+    variation_group: "recovery",
+    structure_roles: ["recovery"],
+    coaching: {
+      intent: "Build foot, ankle and calf durability.",
+      cue: "Move slowly and feel the target tissues working.",
+      rpe: "3/10",
+    },
+    prescription: {
       main: [
-        "Light walk / easy cycle — 20–30 min",
-        "Mobility flow — 15–20 min",
-        "Core stability — plank, dead bug, side plank",
-        "Glute activation — band walks, bridges",
-        ...(hours === "10+" ? ["Optional: 30 min Z2 spin"] : []),
+        "3 rounds — calf raises x15",
+        "Tib raises x20",
+        "Single-leg balance 30s",
+        "Optional easy walk 20 min",
       ],
-      notes: ["Leave feeling better than you started."],
-    }),
+      notes: ["Excellent support for running-heavy users."],
+    },
   },
   {
-    id: "REC-B",
-    title: "Recovery (Lower Leg Durability)",
-    tags: ["recovery", "durability", "easy"],
-    time_cap_minutes: 35,
-    build: () => ({
-      main: [
-        "3 rounds — calf raises x15, tib raises x20, single leg balance 30s",
-        "20–30 min walk",
-      ],
-      notes: ["Excellent for injury prevention."],
-    }),
+    id: "REC-MOBILITY-RESET",
+    name: "Mobility Reset",
+    type: "recovery",
+    category: "recovery",
+    intensity: "low",
+    fatigue: "low",
+    duration: 30,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("None (bodyweight only)", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["all"],
+    variation_group: "recovery",
+    structure_roles: ["recovery"],
+    coaching: {
+      intent: "Restore movement quality and downshift stress.",
+      cue: "Slow breathing and quality positions.",
+      rpe: "2/10",
+    },
+    prescription: {
+      main: ["20–30 min mobility flow", "5–10 min breathing / reset work"],
+      notes: ["Great when someone needs a real reset day."],
+    },
   },
   {
-    id: "REC-C",
-    title: "Recovery (Mobility Reset)",
-    tags: ["recovery", "mobility", "easy"],
-    time_cap_minutes: 40,
-    build: () => ({
-      main: ["30 min mobility flow", "10 min breathing work"],
-      notes: ["Reset the nervous system."],
-    }),
-  },
-  {
-    id: "REC-D",
-    title: "Recovery (Active Flush)",
-    tags: ["recovery", "easy"],
-    time_cap_minutes: 40,
-    build: () => ({
+    id: "REC-ACTIVE-FLUSH",
+    name: "Active Flush",
+    type: "recovery",
+    category: "recovery",
+    intensity: "low",
+    fatigue: "low",
+    duration: 35,
+    goal: ["running", "hybrid", "muscle"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("Bike / Spin bike", "Full gym", "None (bodyweight only)"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["all"],
+    variation_group: "recovery",
+    structure_roles: ["recovery"],
+    coaching: {
+      intent: "Flush fatigue and support recovery between bigger sessions.",
+      cue: "Everything should feel effortless.",
+      rpe: "2-3/10",
+    },
+    prescription: {
       main: ["15 min easy bike", "10 min mobility", "15 min walk"],
-      notes: ["Flush fatigue out of the legs."],
-    }),
+      notes: ["Very low-cost recovery day."],
+    },
   },
   {
-    id: "REC-E",
-    title: "Recovery (Foot & Ankle Strength)",
-    tags: ["recovery", "durability", "easy"],
-    time_cap_minutes: 30,
-    build: () => ({
+    id: "REC-FOOT-ANKLE",
+    name: "Foot & Ankle Strength",
+    type: "recovery",
+    category: "recovery",
+    intensity: "low",
+    fatigue: "low",
+    duration: 20,
+    goal: ["running", "hybrid"],
+    experience: ["beginner", "intermediate", "advanced"],
+    equipment: allEquipment("None (bodyweight only)", "Full gym"),
+    time_requirement: "30-45",
+    avoid_after: [],
+    compatible_with: ["all"],
+    variation_group: "recovery",
+    structure_roles: ["recovery"],
+    coaching: {
+      intent: "Improve tissue resilience at the foot/ankle complex.",
+      cue: "Quality positions over rushing reps.",
+      rpe: "2-3/10",
+    },
+    prescription: {
       main: [
-        "3 rounds — single leg calf raises x15, tib raises x20, short foot hold 20s, heel walks 20m",
-        "Optional: 20 min easy walk",
+        "3 rounds — single-leg calf raises x15",
+        "Tib raises x20",
+        "Short foot hold 20s",
+        "Heel walks 20m",
       ],
-      notes: ["Massive for durability and ankle resilience."],
-    }),
+      notes: ["Simple but valuable durability work."],
+    },
   },
 ];
