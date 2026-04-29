@@ -16,6 +16,7 @@ import {
 import { mapGoalToBias, pickWeeklyStructure } from "./weeklyStructures";
 
 export type BlueprintInput = {
+  first_name?: string;
   days_per_week: number;
   weekly_hours_band: WeeklyHoursBand;
   goal_focus: GoalFocus;
@@ -350,7 +351,11 @@ function buildIntro(input: BlueprintInput, structureLabel: string) {
   }
 
   intro.push(
-    "The goal is not to crush you for seven days — it’s to give you a week that feels organised, purposeful, and actually worth following."
+    "These sessions are not random. They’ve been selected around your current training level, available time, and setup so the week feels relevant to where you’re at right now."
+  );
+
+  intro.push(
+    "As the Hybrid365 engine continues to improve, this will become even more specific to your current numbers, race goals, and performance profile."
   );
 
   return intro;
@@ -494,6 +499,7 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
   return {
     intensity_split: intensitySplit(input.ability_level),
     profile: {
+      first_name: input.first_name || "",
       goal: formatGoal(input.goal_focus),
       training_days: `${input.days_per_week} / week`,
       priority: formatPriority(input.goal_focus),
@@ -504,9 +510,9 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
     intro: buildIntro(input, structure.label),
     schedule,
     cta: {
-      headline: "Want the next 6–8 weeks built for your goal?",
-      body: "This first week follows Hybrid365 principles. Inside the full coaching system, we build the progression, the structure, and the accountability around you.",
-      button_url: "https://www.hybrid-365.com",
-    },
+  headline: "What happens next?",
+  body: "This week is built using Hybrid365 principles. If you want to understand how to get the most from it — and how we build real progression — start here.",
+  button_url: "https://www.levelete.com/hybridtrainingmastery",
+},
   };
 }
