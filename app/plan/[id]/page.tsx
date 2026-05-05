@@ -239,6 +239,27 @@ export default async function PlanPage({ params }: PlanPageProps) {
             </div>
           </div>
 
+{/* Video Section */}
+<div className="mt-8">
+  <p className="text-sm uppercase tracking-[0.2em] text-yellow-300 mb-3">
+    Quick note from me
+  </p>
+
+  <div className="relative w-full overflow-hidden rounded-2xl border border-zinc-800">
+    <iframe
+      src="https://www.youtube.com/embed/dMOMVcctNns"
+      title="Hybrid365 Coaching Intro"
+      className="w-full aspect-video"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowFullScreen
+    />
+  </div>
+
+  <p className="mt-3 text-sm text-zinc-400">
+    Follow this week properly and you’ll feel the difference.
+  </p>
+</div>
+
           {/* TRAINING WEEK */}
           <section>
             {sectionTitle(
