@@ -40,31 +40,73 @@ function formatDay(day: string) {
 function asTextPlanForEmail(planJson: any, planUrl: string): string {
   const lines: string[] = [];
 
-  lines.push("YOUR FIRST WEEK INSIDE HYBRID365");
+  const firstName = planJson?.first_name?.trim();
+
+  lines.push("YOUR HYBRID365 TRAINING WEEK IS READY");
+  lines.push("Build a body that performs. Refuse Average.");
   lines.push("");
 
-  if (planJson?.first_name) {
-    lines.push(`${planJson.first_name}, your Hybrid365 week is ready.`);
+  if (firstName) {
+    lines.push(`${firstName}, your personalised Hybrid365 training week is ready.`);
   } else {
-    lines.push("Your Hybrid365 week is ready.");
+    lines.push("Your personalised Hybrid365 training week is ready.");
   }
 
   lines.push("");
-  lines.push("This is not a generic plan.");
-  lines.push("It’s structured around your current level, time availability, and training goal.");
+  lines.push("This is not a random collection of workouts.");
+  lines.push("");
+  lines.push(
+    "Your week has been built around your current goal, training level, available days, schedule and focus — so you can see how running, lifting, hybrid work and recovery should actually fit together."
+  );
   lines.push("");
 
   lines.push("VIEW YOUR PLAN:");
   lines.push(planUrl);
   lines.push("");
 
-  lines.push("Save this link — you’ll use it throughout the week.");
+  lines.push("Save this link — this is your training week blueprint.");
   lines.push("");
 
-  lines.push("Over the next few days, keep an eye on your inbox.");
-  lines.push("You’ll get coaching emails to help you execute these sessions properly.");
+  lines.push("HOW TO USE IT:");
+  lines.push("1. Read the full week before you start.");
+  lines.push("2. Pay attention to the order of sessions, not just the workouts themselves.");
+  lines.push("3. Keep easy work easy, and only push intensity where the plan asks for it.");
+  lines.push("4. Use the notes to understand the purpose behind each session.");
   lines.push("");
 
+  lines.push("WHY STRUCTURE MATTERS:");
+  lines.push(
+    "Most people do not fail at hybrid training because they lack effort. They fail because their week is poorly structured — too much intensity, random lifting, poor recovery, and no clear progression."
+  );
+  lines.push("");
+  lines.push(
+    "Hybrid365 is built to solve that: helping you become fast, fit and strong without guessing how to balance the week."
+  );
+  lines.push("");
+
+  lines.push("WANT THE FULL 12-WEEK VERSION?");
+  lines.push("");
+  lines.push(
+    "Inside the Hybrid365 Community, members get a personalised 12-week Hybrid Training Blueprint built around their goal, level, schedule and training focus."
+  );
+  lines.push("");
+  lines.push("You also get:");
+  lines.push("- Goal-specific tracks: Build Lean Muscle, Hybrid Performance, and Hyrox Performance");
+  lines.push("- Hybrid Performance Mastery education");
+  lines.push("- Running, strength and Hyrox training guidance");
+  lines.push("- Weekly check-ins and accountability");
+  lines.push("- Community challenges, leaderboards and prizes");
+  lines.push("- A structure designed to help you become fast, fit and strong");
+  lines.push("");
+
+  lines.push("Explore Hybrid365 Community:");
+  lines.push("https://plan.hybrid-365.com/community");
+  lines.push("");
+
+  lines.push("Execute the week properly.");
+  lines.push("Learn from it.");
+  lines.push("Refuse Average.");
+  lines.push("");
   lines.push("— Hybrid365");
 
   return lines.join("\n");
@@ -190,31 +232,31 @@ export async function POST(req: Request) {
     const planWithId = {
       ...planJson,
       plan_id: planId,
-
+      first_name: input.first_name?.trim() || "",
     };
 
-const planUrl =
-  process.env.NEXT_PUBLIC_BASE_URL
-    ? `${process.env.NEXT_PUBLIC_BASE_URL}/plan/${planId}`
-    : `http://localhost:3000/plan/${planId}`;
+    const planUrl = process.env.NEXT_PUBLIC_BASE_URL
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/plan/${planId}`
+      : `http://localhost:3000/plan/${planId}`;
 
     const emailText = asTextPlanForEmail(planWithId, planUrl);
 
     await createAirtableRecord(input, planWithId, emailText);
 
     const subscriberId = await kitCreateSubscriber(
-  input.email,
-  emailText,
-  input.first_name || "",
-  planUrl
-);
+      input.email,
+      emailText,
+      input.first_name || "",
+      planUrl
+    );
 
     return NextResponse.json({
-  ok: true,
-  planId,
-  planUrl,
-  message: "Your First Week Inside Hybrid365 is on its way. Check your email — and junk/spam just in case.",
-});
+      ok: true,
+      planId,
+      planUrl,
+      message:
+        "Your First Week Inside Hybrid365 is on its way. Check your email — and junk/spam just in case.",
+    });
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message || "Unknown error" },

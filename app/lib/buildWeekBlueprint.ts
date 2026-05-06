@@ -389,27 +389,49 @@ function lightAerobicDay(day: DayKey): DayPlan {
   };
 }
 
-function getPreferredDayOrder(preferred?: string[]): DayKey[] {
-  const map: Record<string, DayKey> = {
+function parsePreferredDayLabel(raw: string): DayKey | null {
+  const key = raw.trim().toLowerCase();
+  if (!key) return null;
+
+  const labels: Record<string, DayKey> = {
+    mon: "Mon",
     monday: "Mon",
+    tue: "Tue",
     tuesday: "Tue",
+    wed: "Wed",
     wednesday: "Wed",
+    thu: "Thu",
     thursday: "Thu",
+    fri: "Fri",
     friday: "Fri",
+    sat: "Sat",
     saturday: "Sat",
+    sun: "Sun",
     sunday: "Sun",
   };
 
+  return labels[key] ?? null;
+}
+
+function getPreferredDayOrder(preferred?: string[]): DayKey[] {
+  const allDays: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
   if (!preferred || preferred.length === 0) {
-    return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    return [...allDays];
   }
 
-  const preferredMapped = preferred
-    .map((d) => map[d.toLowerCase()])
-    .filter(Boolean);
+  const seen = new Set<DayKey>();
+  const preferredMapped: DayKey[] = [];
 
-  const allDays: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const remaining = allDays.filter((d) => !preferredMapped.includes(d));
+  for (const raw of preferred) {
+    const day = parsePreferredDayLabel(raw);
+    if (day && !seen.has(day)) {
+      seen.add(day);
+      preferredMapped.push(day);
+    }
+  }
+
+  const remaining = allDays.filter((d) => !seen.has(d));
 
   return [...preferredMapped, ...remaining];
 }
