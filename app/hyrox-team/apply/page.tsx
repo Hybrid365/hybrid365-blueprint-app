@@ -153,7 +153,11 @@ export default function HyroxTeamApplyPage() {
             {/* Hidden inputs */}
             <input type="hidden" name="_subject" value="New Hybrid365 Hyrox Team Application" />
             <input type="hidden" name="source" value="Hybrid365 Hyrox Team Application Page" />
-
+            <input
+  type="hidden"
+  name="_redirect"
+  value="https://plan.hybrid-365.com/hyrox-team/thank-you"
+/>
             {/* Personal Details */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 md:p-8">
               <h3 className="mb-6 text-xs font-medium uppercase tracking-[0.15em] text-[#F4D23C]">
