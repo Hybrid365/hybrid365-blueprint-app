@@ -53,10 +53,14 @@ function FormField({
 
   return (
     <div className="space-y-2">
-      <label htmlFor={name} className="block text-xs font-medium uppercase tracking-wider text-white/60">
+      <label
+        htmlFor={name}
+        className="block text-xs font-medium uppercase tracking-wider text-white/60"
+      >
         {label}
         {required && <span className="ml-1 text-[#F4D23C]">*</span>}
       </label>
+
       {textarea ? (
         <textarea
           id={name}
@@ -86,25 +90,21 @@ export default function HyroxTeamApplyPage() {
       {/* Hero Section */}
       <section className="px-5 pb-16 pt-20 md:px-8 md:pb-24 md:pt-28">
         <div className="mx-auto max-w-3xl">
-          {/* Eyebrow */}
           <div className="mb-6 text-xs font-medium uppercase tracking-[0.2em] text-[#F4D23C]">
             Team 001 / Application
           </div>
 
-          {/* Headline */}
           <h1 className="mb-6 text-4xl font-bold uppercase leading-[1.1] tracking-tight md:text-5xl lg:text-6xl">
             Apply for the
             <br />
             Hybrid365 Hyrox Team.
           </h1>
 
-          {/* Subheadline */}
           <p className="mb-10 max-w-2xl text-base leading-relaxed text-white/70 md:text-lg">
             A small, selective athlete project built around 1-1 Hyrox coaching, team accountability,
             documented progress and race-day performance.
           </p>
 
-          {/* Pills */}
           <div className="flex flex-wrap gap-3">
             <Pill>5–6 athletes max</Pill>
             <Pill>Applications reviewed manually</Pill>
@@ -145,24 +145,30 @@ export default function HyroxTeamApplyPage() {
       {/* Application Form Section */}
       <section className="border-t border-white/10 px-5 py-16 md:px-8 md:py-24">
         <div className="mx-auto max-w-3xl">
-          <form
-            action="https://formspree.io/f/xlgznozk"
-            method="POST"
-            className="space-y-8"
-          >
+          <form action="https://formspree.io/f/xlgznozk" method="POST" className="space-y-8">
             {/* Hidden inputs */}
-            <input type="hidden" name="_subject" value="New Hybrid365 Hyrox Team Application" />
-            <input type="hidden" name="source" value="Hybrid365 Hyrox Team Application Page" />
             <input
-  type="hidden"
-  name="_redirect"
-  value="https://plan.hybrid-365.com/hyrox-team/thank-you"
-/>
+              type="hidden"
+              name="_subject"
+              value="New Hybrid365 Hyrox Team Application"
+            />
+            <input
+              type="hidden"
+              name="source"
+              value="Hybrid365 Hyrox Team Application Page"
+            />
+            <input
+              type="hidden"
+              name="_next"
+              value="https://plan.hybrid-365.com/hyrox-team/thank-you"
+            />
+
             {/* Personal Details */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 md:p-8">
               <h3 className="mb-6 text-xs font-medium uppercase tracking-[0.15em] text-[#F4D23C]">
                 Personal Details
               </h3>
+
               <div className="grid gap-5 md:grid-cols-2">
                 <FormField label="Full Name" name="full_name" placeholder="Your full name" />
                 <FormField
@@ -186,6 +192,7 @@ export default function HyroxTeamApplyPage() {
               <h3 className="mb-6 text-xs font-medium uppercase tracking-[0.15em] text-[#F4D23C]">
                 Current Fitness
               </h3>
+
               <div className="grid gap-5 md:grid-cols-2">
                 <FormField
                   label="Current Hyrox Experience"
@@ -215,6 +222,7 @@ export default function HyroxTeamApplyPage() {
               <h3 className="mb-6 text-xs font-medium uppercase tracking-[0.15em] text-[#F4D23C]">
                 Training
               </h3>
+
               <div className="space-y-5">
                 <FormField
                   label="Current Weekly Training"
@@ -249,6 +257,7 @@ export default function HyroxTeamApplyPage() {
               <h3 className="mb-6 text-xs font-medium uppercase tracking-[0.15em] text-[#F4D23C]">
                 Team Fit
               </h3>
+
               <div className="space-y-5">
                 <div className="space-y-2">
                   <label
@@ -258,6 +267,7 @@ export default function HyroxTeamApplyPage() {
                     Are you happy for your progress to be documented?
                     <span className="ml-1 text-[#F4D23C]">*</span>
                   </label>
+
                   <select
                     id="documented"
                     name="documented"
@@ -287,6 +297,7 @@ export default function HyroxTeamApplyPage() {
                     Can you attend occasional team training sessions?
                     <span className="ml-1 text-[#F4D23C]">*</span>
                   </label>
+
                   <select
                     id="team_training"
                     name="team_training"
@@ -327,10 +338,14 @@ export default function HyroxTeamApplyPage() {
                   required
                   className="mt-1 h-5 w-5 shrink-0 cursor-pointer appearance-none rounded border border-white/20 bg-white/5 checked:border-[#F4D23C] checked:bg-[#F4D23C] focus:outline-none focus:ring-2 focus:ring-[#F4D23C]/50"
                 />
-                <label htmlFor="consent" className="cursor-pointer text-sm leading-relaxed text-white/70">
-                  I understand this is an application for a selective athlete project. I consent to my
-                  information being reviewed by the Hybrid365 team and understand that submitting this
-                  form does not guarantee a place on the team.
+
+                <label
+                  htmlFor="consent"
+                  className="cursor-pointer text-sm leading-relaxed text-white/70"
+                >
+                  I understand this is an application for a selective athlete project. I consent to
+                  my information being reviewed by the Hybrid365 team and understand that submitting
+                  this form does not guarantee a place on the team.
                 </label>
               </div>
             </div>
