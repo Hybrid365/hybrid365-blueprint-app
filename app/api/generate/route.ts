@@ -112,13 +112,19 @@ function asTextPlanForEmail(planJson: any, planUrl: string): string {
   return lines.join("\n");
 }
 
-async function createAirtableRecord(input: Input, planJson: any, emailText: string) {
+async function createAirtableRecord(
+  input: Input,
+  planJson: any,
+  emailText: string,
+  athleteUrl: string
+) {
   const token = process.env.AIRTABLE_TOKEN!;
   const baseId = process.env.AIRTABLE_BASE_ID!;
   const tableName = process.env.AIRTABLE_TABLE_NAME!;
 
   const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
 
+  // Requires a matching column in Airtable (e.g. Single line text "Athlete URL").
   const fields = {
     "First Name": input.first_name || "",
     Email: input.email,
@@ -133,6 +139,7 @@ async function createAirtableRecord(input: Input, planJson: any, emailText: stri
     Notes: input.notes || "",
     "Generated Plan JSON": JSON.stringify(planJson),
     "Generated Plan Email Version": emailText,
+    "Athlete URL": athleteUrl || "",
     Status: "generated",
   };
 
@@ -156,7 +163,8 @@ async function kitCreateSubscriber(
   email: string,
   blueprint: string,
   firstName: string,
-  planUrl: string
+  planUrl: string,
+  athleteUrl: string
 ): Promise<number> {
   const apiKey = process.env.KIT_API_KEY!;
 
@@ -172,6 +180,7 @@ async function kitCreateSubscriber(
         blueprint,
         first_name: firstName || "",
         plan_url: planUrl || "",
+        athlete_url: athleteUrl || "",
       },
       state: "active",
     }),
@@ -239,23 +248,43 @@ export async function POST(req: Request) {
       ? `${process.env.NEXT_PUBLIC_BASE_URL}/plan/${planId}`
       : `http://localhost:3000/plan/${planId}`;
 
+    const athleteUrl = process.env.NEXT_PUBLIC_BASE_URL
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/athlete/${planId}`
+      : `http://localhost:3000/athlete/${planId}`;
+
     const emailText = asTextPlanForEmail(planWithId, planUrl);
 
-    await createAirtableRecord(input, planWithId, emailText);
+    await createAirtableRecord(input, planWithId, emailText, athleteUrl);
 
     const subscriberId = await kitCreateSubscriber(
       input.email,
       emailText,
       input.first_name || "",
-      planUrl
+      planUrl,
+      athleteUrl
     );
+
+    // The tag is used to trigger the Kit Free Week automation.
+    const kitTagId = process.env.KIT_TAG_ID?.trim();
+    if (!kitTagId) {
+      console.warn(
+        "[generate] KIT_TAG_ID is missing — subscriber was created but Kit tag-based automation may not run."
+      );
+    } else {
+      try {
+        await tagKitSubscriber(subscriberId);
+      } catch (tagErr) {
+        console.error("[generate] Kit tag failed (subscriber still created):", tagErr);
+      }
+    }
 
     return NextResponse.json({
       ok: true,
       planId,
       planUrl,
+      athleteUrl,
       message:
-        "Your Hybrid365 plan is being prepared. Your access link will arrive by email in around 10–15 minutes. Check your inbox and junk/spam just in case.",
+        "Your Hybrid365 Athlete Profile is being prepared. Your access link will arrive by email in around 10–15 minutes. Check your inbox and junk/spam just in case.",
     });
   } catch (e: any) {
     return NextResponse.json(
