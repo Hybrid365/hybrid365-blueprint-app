@@ -195,6 +195,65 @@ export function mapGoalToBias(goal: GoalFocus): "hybrid" | "running" | "strength
   return "hybrid";
 }
 
+function scoreStructureForHours(structure: WeeklyStructure, hours: WeeklyHoursBand): number {
+  const roles = structure.roles;
+
+  const count = (role: StructureRole) => roles.filter((r) => r === role).length;
+  const has = (role: StructureRole) => roles.includes(role);
+
+  const fullBodyCount = count("full_body_strength");
+  const beginnerRunCount = count("run_quality_beginner");
+  const primaryRunQualityCount = count("run_quality");
+  const longRunCount = count("run_long");
+  const runAerobicCount = count("run_aerobic");
+  const aerobicSupportCount = count("aerobic_support");
+  const hybridPrimaryCount = count("hybrid_primary");
+  const hybridDensityCount = count("hybrid_density");
+  const lowerPrimaryCount = count("lower_primary");
+  const upperPrimaryCount = count("upper_primary");
+  const lowerFullCount = count("lower_full");
+  const upperFullCount = count("upper_full");
+
+  // Approximate complexity from role makeup only.
+  const complexityScore =
+    lowerPrimaryCount +
+    upperPrimaryCount +
+    hybridPrimaryCount +
+    hybridDensityCount +
+    longRunCount +
+    Math.max(0, primaryRunQualityCount - 1);
+
+  let score = 0;
+
+  // weekly_hours_band is used as a soft preference/tie-breaker only, not a hard filter.
+  if (hours === "2-3" || hours === "3-5") {
+    score += fullBodyCount * 2;
+    score += beginnerRunCount * 2;
+    score += (lowerFullCount + upperFullCount) * 1;
+    score += count("recovery");
+    score += count("aerobic_support");
+    score -= complexityScore;
+    score -= longRunCount;
+  } else if (hours === "5-7") {
+    // Keep close to current behaviour while slightly preferring balanced plans.
+    if (has("run_quality")) score += 1;
+    if (has("lower_primary") || has("lower_full")) score += 1;
+    if (has("upper_primary") || has("upper_full")) score += 1;
+    if (has("hybrid_primary") || has("hybrid_density")) score += 1;
+    if (has("aerobic_support")) score += 1;
+  } else if (hours === "7-10" || hours === "10+") {
+    score += longRunCount * 2;
+    score += runAerobicCount * 2;
+    score += aerobicSupportCount * 2;
+    score += hybridPrimaryCount;
+    score += primaryRunQualityCount;
+    if (lowerPrimaryCount > 0 && upperPrimaryCount > 0) score += 1;
+    if (hours === "10+" && structure.double_session_friendly) score += 2;
+  }
+
+  return score;
+}
+
 export function pickWeeklyStructure(input: {
   days_per_week: number;
   goal_focus: GoalFocus;
@@ -212,7 +271,17 @@ export function pickWeeklyStructure(input: {
       (!s.double_session_friendly || !!input.double_sessions)
   );
 
-  if (candidates.length > 0) return candidates[0];
+  if (candidates.length > 0) {
+    const ranked = candidates
+      .map((structure, index) => ({
+        structure,
+        index,
+        score: scoreStructureForHours(structure, input.weekly_hours_band),
+      }))
+      .sort((a, b) => b.score - a.score || a.index - b.index);
+
+    return ranked[0].structure;
+  }
 
   return (
     WEEKLY_STRUCTURES.find((s) => s.days_per_week === input.days_per_week && s.primary_bias === bias) ||
