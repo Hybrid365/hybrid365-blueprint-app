@@ -401,46 +401,41 @@ function buildIntro(
   parsedConstraints: ParsedConstraints
 ) {
   const intro: string[] = [];
-
   intro.push(
-    `This week is built around your goal of ${formatGoal(input.goal_focus).toLowerCase()} while training ${input.days_per_week} days per week.`
+    `This week prioritises ${formatGoal(input.goal_focus).toLowerCase()} across ${input.days_per_week} training days using the ${structureLabel.toLowerCase()} structure.`
   );
 
   intro.push(
-    `Based on your ${getExperienceText(input.ability_level)} training level, ${getHoursText(
-      input.weekly_hours_band
-    )}, and ${getEquipmentSummary(input.equipment)}, we’ve structured the week to feel specific to where you’re at right now.`
+    `The structure is built to ${getGoalReason(input.goal_focus)}, while still matching your current setup (${getEquipmentSummary(
+      input.equipment
+    )}).`
   );
 
-  intro.push(
-    `The ${structureLabel.toLowerCase()} structure was chosen to fit your availability while ${getGoalReason(
-      input.goal_focus
-    )}.`
-  );
+  const hoursReason = getHoursReason(input.weekly_hours_band, input.double_sessions);
+  if (hoursReason) {
+    intro.push(hoursReason);
+  } else {
+    intro.push(`Weekly volume is matched to your ${getHoursText(input.weekly_hours_band)} availability.`);
+  }
 
   intro.push(getLevelReason(input.ability_level));
 
-  const hoursReason = getHoursReason(input.weekly_hours_band, input.double_sessions);
-  if (hoursReason) intro.push(hoursReason);
-
-  const constraintReason = getConstraintReason(input.notes);
-  if (constraintReason) intro.push(constraintReason);
-  if (parsedConstraints.has_constraints && parsedConstraints.summary.length > 0) {
-    intro.push(
-      `You mentioned some constraints, so keep these in mind: ${parsedConstraints.summary.join(" ")}`
-    );
-  }
-
   if (runnerProfile.seconds !== null) {
-    intro.push(runnerProfile.guidance);
+    intro.push(`Running guidance: ${runnerProfile.guidance}`);
+  }
+
+  if (parsedConstraints.has_constraints && parsedConstraints.summary.length > 0) {
+    const hasPossibleLimitation =
+      parsedConstraints.flags.includes("injury_flags") ||
+      parsedConstraints.flags.includes("low_impact_preference");
+    const caution = hasPossibleLimitation
+      ? " You mentioned a possible limitation, so treat symptoms seriously and keep the work controlled."
+      : "";
+    intro.push(`You mentioned constraints, so keep these in mind: ${parsedConstraints.summary.join(" ")}${caution}`);
   }
 
   intro.push(
-    "These sessions are not random. They’ve been selected around your current training level, available time, and setup so the week feels relevant to where you’re at right now."
-  );
-
-  intro.push(
-    "As the Hybrid365 engine continues to improve, this will become even more specific to your current numbers, race goals, and performance profile."
+    "Execute this week by controlling easy work, hitting quality sessions with intent, and respecting recovery between hard days."
   );
 
   return intro;
