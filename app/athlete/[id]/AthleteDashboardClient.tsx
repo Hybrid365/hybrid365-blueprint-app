@@ -24,6 +24,7 @@ import {
   Sparkles,
   Wind,
   Gauge,
+  Copy,
 } from "lucide-react";
 
 type SessionDetail = {
@@ -335,6 +336,7 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
 
   const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const handleSessionClick = (session: SessionDetail) => {
     setSelectedSession(session);
@@ -374,6 +376,45 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
                   <p className="font-semibold text-[#F4D23C]">{athleteProfile.planStatus}</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12 rounded-2xl border border-[#F4D23C]/30 bg-zinc-950 p-5 sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+            <div className="min-w-0 max-w-2xl">
+              <h2 className="text-base font-semibold tracking-tight text-white sm:text-lg">Save this dashboard</h2>
+              <p className="mt-2 text-sm leading-relaxed text-white/65">
+                This is your training hub for the week. Bookmark this page or save the email so you can come back to your
+                sessions anytime.
+              </p>
+            </div>
+            <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(window.location.href);
+                    setLinkCopied(true);
+                    window.setTimeout(() => setLinkCopied(false), 2500);
+                  } catch {
+                    setLinkCopied(false);
+                  }
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4D23C] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 sm:min-w-[200px]"
+              >
+                {linkCopied ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Link copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Copy Dashboard Link
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </section>
