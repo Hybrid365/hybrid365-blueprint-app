@@ -255,7 +255,7 @@ export async function POST(req: Request) {
       planId,
       planUrl,
       message:
-        "Your First Week Inside Hybrid365 is on its way. Check your email — and junk/spam just in case.",
+        "Your Hybrid365 plan is being prepared. Your access link will arrive by email in around 10–15 minutes. Check your inbox and junk/spam just in case.",
     });
   } catch (e: any) {
     return NextResponse.json(

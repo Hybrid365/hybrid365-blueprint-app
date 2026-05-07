@@ -124,7 +124,7 @@ export default function Home() {
           <form onSubmit={onSubmit} className="space-y-6">
             <div className="text-sm text-zinc-400 space-y-1">
               <p>Takes 60 seconds</p>
-              <p>Plan delivered instantly + by email</p>
+              <p>Plan link delivered by email in around 10–15 minutes</p>
               <p>Includes coaching notes for every session</p>
             </div>
 
@@ -297,27 +297,24 @@ export default function Home() {
 
             {result && result.ok && (
               <div className="rounded-xl border border-green-800 bg-green-950/30 p-4 text-sm text-green-200 space-y-4">
-                <p className="text-white font-semibold">Your Hybrid365 week is ready.</p>
+                <p className="text-white font-semibold">Your Hybrid365 plan is being prepared.</p>
 
                 <p>
-                  This is your first structured week — not just a random plan.
-                  Follow it properly and you’ll start to feel the difference immediately.
+                  Your personalised week is now being built from the Hybrid365 programming system.
+                  Your access link will arrive by email in around 10–15 minutes.
                 </p>
 
-                {result.planUrl && (
-                  <a
-                    href={result.planUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-block w-full rounded-xl bg-yellow-400 px-4 py-3 text-center font-semibold text-zinc-950"
-                  >
-                    View My Plan Now
-                  </a>
-                )}
+                <div className="rounded-lg border border-zinc-700 bg-zinc-900/40 p-4 text-sm text-zinc-200">
+                  <p className="text-white font-semibold">What happens next:</p>
+                  <p className="mt-2">
+                    Analysing your goal. Matching your training days. Checking equipment and constraints.
+                    Building from the Hybrid365 session library.
+                  </p>
+                </div>
 
                 <div className="rounded-lg border border-yellow-400/30 bg-yellow-400/5 p-4">
                   <p className="mb-3 text-sm text-white">
-                    Keep an eye on your inbox this week — you’ll receive extra Hybrid365 coaching emails to help you execute the sessions properly.
+                    We’re using your goal, training days, weekly hours, running profile, equipment and notes to structure your week. Check your inbox and junk folder — your access link should arrive shortly.
                   </p>
 
                   <a
