@@ -14,6 +14,7 @@ import {
   WeeklyHoursBand,
 } from "./sessionLibrary";
 import { mapGoalToBias, pickWeeklyStructure } from "./weeklyStructures";
+import { classifyRunner, type RunnerProfile } from "./classifyRunner";
 
 export type BlueprintInput = {
   first_name?: string;
@@ -317,7 +318,7 @@ function structureReasonText(session: SessionTemplate, goal: GoalFocus) {
   return "This session plays a specific role in balancing quality, recovery, and performance across the week.";
 }
 
-function buildIntro(input: BlueprintInput, structureLabel: string) {
+function buildIntro(input: BlueprintInput, structureLabel: string, runnerProfile: RunnerProfile) {
   const intro: string[] = [];
 
   intro.push(
@@ -344,10 +345,8 @@ function buildIntro(input: BlueprintInput, structureLabel: string) {
   const constraintReason = getConstraintReason(input.notes);
   if (constraintReason) intro.push(constraintReason);
 
-  if (input.five_k_time && input.goal_focus === "running") {
-    intro.push(
-      `Your submitted 5k time (${input.five_k_time}) gives this week more context, so the structure leans toward improving your current running level rather than just adding random volume.`
-    );
+  if (runnerProfile.seconds !== null) {
+    intro.push(runnerProfile.guidance);
   }
 
   intro.push(
@@ -515,6 +514,7 @@ function fillSevenDayWeek(input: BlueprintInput, activeDays: DayPlan[]) {
 }
 
 export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
+  const runnerProfile = classifyRunner(input.five_k_time);
   const { structure, activeDays } = buildActivePlanDays(input);
   const schedule = fillSevenDayWeek(input, activeDays);
 
@@ -527,13 +527,14 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
       level: input.ability_level.charAt(0).toUpperCase() + input.ability_level.slice(1),
       weekly_hours: input.weekly_hours_band,
       equipment: (input.equipment || ["Full gym"]).join(", "),
+      runner_profile: runnerProfile,
     },
-    intro: buildIntro(input, structure.label),
+    intro: buildIntro(input, structure.label, runnerProfile),
     schedule,
     cta: {
   headline: "What happens next?",
   body: "This week is built using Hybrid365 principles. If you want to understand how to get the most from it — and how we build real progression — start here.",
   button_url: "https://www.levelete.com/hybridtrainingmastery",
 },
-  };
+  } as PlanJson;
 }
