@@ -190,6 +190,13 @@ function pickWeightedSession(
     options = SESSION_LIBRARY.filter((s) => roleMatches(s, role));
   }
 
+  const runner = classifyRunner(input.five_k_time);
+  const isRunRole =
+    role === "run_quality" ||
+    role === "run_quality_beginner" ||
+    role === "run_aerobic" ||
+    role === "run_long";
+
   const weighted = options.map((s) => {
     let weight = 1;
 
@@ -213,6 +220,48 @@ function pickWeightedSession(
 
     if (input.ability_level === "beginner" && s.intensity === "high") weight -= 1;
     if (input.double_sessions && s.category === "aerobic") weight += 1;
+
+    // Runner classification is a soft bias only (never a hard filter).
+    if (isRunRole && runner.label !== "unknown" && s.category === "run") {
+      switch (runner.label) {
+        case "beginner": {
+          if (s.type === "aerobic_run") weight += 2;
+          if (s.type === "tempo_run" && s.intensity !== "high") weight += 1;
+          if (s.type === "interval_run") weight -= 2;
+          if (s.type === "threshold_run") weight -= 1;
+          if (s.intensity === "high") weight -= 2;
+          break;
+        }
+        case "developing": {
+          if (s.type === "aerobic_run") weight += 2;
+          if (s.type === "tempo_run") weight += 2;
+          if (s.type === "threshold_run" && s.fatigue !== "high") weight += 1;
+          if (s.type === "interval_run") weight -= 1;
+          break;
+        }
+        case "intermediate": {
+          if (s.type === "threshold_run") weight += 1;
+          if (s.type === "tempo_run") weight += 1;
+          if (role === "run_quality" && s.type === "interval_run") weight += 1;
+          break;
+        }
+        case "advanced": {
+          if (s.type === "threshold_run") weight += 2;
+          if (s.type === "interval_run") weight += 2;
+          if (s.type === "tempo_run") weight += 1;
+          break;
+        }
+        case "high-performance": {
+          if (s.type === "threshold_run") weight += 2;
+          if (s.type === "interval_run") weight += 2;
+          if (s.type === "tempo_run") weight += 1;
+          if (role === "run_quality" && s.type === "aerobic_run") weight -= 1;
+          break;
+        }
+        default:
+          break;
+      }
+    }
 
     return { item: s, weight: Math.max(1, weight) };
   });
