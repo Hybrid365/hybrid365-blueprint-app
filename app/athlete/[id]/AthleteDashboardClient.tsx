@@ -656,26 +656,47 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
                 <p className="mt-2 text-sm text-white/75">{selectedSession.effortDescription}</p>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  disabled
-                  className="cursor-not-allowed rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/40"
-                >
-                  <CheckCircle2 className="mr-2 inline h-4 w-4" />
-                  Mark Complete
-                </button>
-                <a
-                  href="https://plan.hybrid-365.com/community"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-xl bg-[#F4D23C] px-4 py-2 text-sm font-semibold text-black"
-                >
-                  Unlock Tracking Features
-                </a>
+              <div className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex cursor-not-allowed items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/40"
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4 shrink-0" />
+                    Mark Complete
+                  </button>
+                  <a
+                    href="https://plan.hybrid-365.com/community"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-xl bg-[#F4D23C] px-4 py-2.5 text-center text-sm font-semibold text-black transition hover:opacity-90"
+                  >
+                    Unlock Tracking Features
+                  </a>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {["Log RPE", "Add Session Notes", "Track Completion Streak"].map((label) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Lock className="h-3.5 w-3.5 shrink-0 text-[#F4D23C]/80" aria-hidden />
+                        <span className="truncate text-xs font-medium text-white/85">{label}</span>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-[#F4D23C]/25 bg-[#F4D23C]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#F4D23C]">
+                        Locked
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-center text-xs leading-relaxed text-white/55">
+                  Completion tracking unlocks inside the full Hybrid365 Athlete Dashboard.
+                </p>
               </div>
-              <p className="mt-3 text-center text-xs text-white/55">
-                Completion tracking unlocks inside the full Athlete Dashboard.
-              </p>
             </div>
           </div>
         </div>
