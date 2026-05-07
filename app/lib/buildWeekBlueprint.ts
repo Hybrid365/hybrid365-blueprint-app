@@ -15,6 +15,7 @@ import {
 } from "./sessionLibrary";
 import { mapGoalToBias, pickWeeklyStructure } from "./weeklyStructures";
 import { classifyRunner, type RunnerProfile } from "./classifyRunner";
+import { parseConstraints, type ParsedConstraints } from "./parseConstraints";
 
 export type BlueprintInput = {
   first_name?: string;
@@ -157,6 +158,7 @@ function pickWeightedSession(
   role: StructureRole,
   input: BlueprintInput,
   usedIds: Set<string>,
+  parsedConstraints: ParsedConstraints,
   previousTag?: string
 ): SessionTemplate {
   const equipment = defaultEquipment(input.equipment);
@@ -199,6 +201,7 @@ function pickWeightedSession(
 
   const weighted = options.map((s) => {
     let weight = 1;
+    const hasFlag = (flag: string) => parsedConstraints.flags.includes(flag);
 
     if (!usedIds.has(s.id)) weight += 2;
     if (previousTag && !s.avoid_after.includes(previousTag)) weight += 2;
@@ -220,6 +223,30 @@ function pickWeightedSession(
 
     if (input.ability_level === "beginner" && s.intensity === "high") weight -= 1;
     if (input.double_sessions && s.category === "aerobic") weight += 1;
+
+    // Constraints are applied as conservative coaching bias only (no hard filtering).
+    const needsLowImpact = hasFlag("injury_flags") || hasFlag("low_impact_preference");
+    if (needsLowImpact) {
+      if (s.category === "run" && s.intensity === "high") weight -= 1;
+      if (s.category === "run" && s.type === "interval_run") weight -= 2;
+      if (s.category === "run" && s.type === "threshold_run" && s.fatigue === "high") weight -= 1;
+      if (s.category === "hybrid" && s.fatigue === "high") weight -= 1;
+      if (s.category === "run" && s.type === "aerobic_run") weight += 2;
+      if (s.category === "aerobic" && s.intensity !== "high") weight += 1;
+      if (s.category === "aerobic" || s.category === "recovery") weight += 1;
+    }
+
+    if (hasFlag("time_limit")) {
+      if (s.time_requirement === "30-45") weight += 2;
+      if (s.duration <= 45) weight += 1;
+      if (s.time_requirement === "75+") weight -= 2;
+      if (s.duration >= 65) weight -= 1;
+    }
+
+    if (hasFlag("equipment_limits")) {
+      // Existing equipment filters remain primary; this is a tiny tie-break for simpler options.
+      if (s.time_requirement === "30-45" || s.fatigue === "low") weight += 1;
+    }
 
     // Runner classification is a soft bias only (never a hard filter).
     if (isRunRole && runner.label !== "unknown" && s.category === "run") {
@@ -367,7 +394,12 @@ function structureReasonText(session: SessionTemplate, goal: GoalFocus) {
   return "This session plays a specific role in balancing quality, recovery, and performance across the week.";
 }
 
-function buildIntro(input: BlueprintInput, structureLabel: string, runnerProfile: RunnerProfile) {
+function buildIntro(
+  input: BlueprintInput,
+  structureLabel: string,
+  runnerProfile: RunnerProfile,
+  parsedConstraints: ParsedConstraints
+) {
   const intro: string[] = [];
 
   intro.push(
@@ -393,6 +425,11 @@ function buildIntro(input: BlueprintInput, structureLabel: string, runnerProfile
 
   const constraintReason = getConstraintReason(input.notes);
   if (constraintReason) intro.push(constraintReason);
+  if (parsedConstraints.has_constraints && parsedConstraints.summary.length > 0) {
+    intro.push(
+      `You mentioned some constraints, so keep these in mind: ${parsedConstraints.summary.join(" ")}`
+    );
+  }
 
   if (runnerProfile.seconds !== null) {
     intro.push(runnerProfile.guidance);
@@ -484,7 +521,7 @@ function getPreferredDayOrder(preferred?: string[]): DayKey[] {
   return [...preferredMapped, ...remaining];
 }
 
-function buildActivePlanDays(input: BlueprintInput) {
+function buildActivePlanDays(input: BlueprintInput, parsedConstraints: ParsedConstraints) {
   const structure = pickWeeklyStructure({
     days_per_week: input.days_per_week,
     goal_focus: input.goal_focus,
@@ -495,6 +532,7 @@ function buildActivePlanDays(input: BlueprintInput) {
 
   const usedIds = new Set<string>();
   const activeDays: DayPlan[] = [];
+  const assignedDays = new Set<DayKey>();
 
   let previousFatigueTag = "";
 
@@ -502,7 +540,7 @@ function buildActivePlanDays(input: BlueprintInput) {
 
   structure.roles.forEach((role, idx) => {
     const picked = addVolumeOverlay(
-      pickWeightedSession(role, input, usedIds, previousFatigueTag),
+      pickWeightedSession(role, input, usedIds, parsedConstraints, previousFatigueTag),
       input.weekly_hours_band,
       input.double_sessions
     );
@@ -514,7 +552,17 @@ function buildActivePlanDays(input: BlueprintInput) {
         ? "hybrid_high_fatigue"
         : picked.type;
 
-    const assignedDay = dayOrder[idx];
+    let assignedDay = dayOrder[idx];
+
+    // Conservative day-placement preference: avoid blocked run days where possible, but never drop sessions.
+    if (picked.category === "run" && parsedConstraints.no_running_days.includes(assignedDay)) {
+      const fallbackDay = dayOrder.find(
+        (day) => !parsedConstraints.no_running_days.includes(day) && !assignedDays.has(day)
+      );
+      if (fallbackDay) assignedDay = fallbackDay;
+    }
+
+    assignedDays.add(assignedDay);
 
     activeDays.push({
       day: assignedDay,
@@ -564,7 +612,8 @@ function fillSevenDayWeek(input: BlueprintInput, activeDays: DayPlan[]) {
 
 export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
   const runnerProfile = classifyRunner(input.five_k_time);
-  const { structure, activeDays } = buildActivePlanDays(input);
+  const parsedConstraints = parseConstraints(input.notes);
+  const { structure, activeDays } = buildActivePlanDays(input, parsedConstraints);
   const schedule = fillSevenDayWeek(input, activeDays);
 
   return {
@@ -577,8 +626,9 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
       weekly_hours: input.weekly_hours_band,
       equipment: (input.equipment || ["Full gym"]).join(", "),
       runner_profile: runnerProfile,
+      parsed_constraints: parsedConstraints,
     },
-    intro: buildIntro(input, structure.label, runnerProfile),
+    intro: buildIntro(input, structure.label, runnerProfile, parsedConstraints),
     schedule,
     cta: {
   headline: "What happens next?",
