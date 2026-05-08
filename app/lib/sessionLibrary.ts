@@ -1,5 +1,6 @@
 // app/lib/sessionLibrary.ts
 
+import type { PaceGuidance } from "./paceGuidance";
 export type GoalFocus = "running" | "hybrid" | "muscle";
 export type AbilityLevel = "beginner" | "intermediate" | "advanced";
 export type WeeklyHoursBand = "2-3" | "3-5" | "5-7" | "7-10" | "10+";
@@ -99,11 +100,44 @@ export type DayPlan = {
   tags?: string[];
 };
 
+export type WeeklyStressLabel = "low" | "balanced" | "high" | "very_high";
+
+export type WeeklyStressSummary = {
+  raw_score: number;
+  budget: number;
+  relative_load: number;
+  label: WeeklyStressLabel;
+  display_label: string;
+  hard_sessions: number;
+  high_fatigue_sessions: number;
+  planned_minutes: number;
+  estimated_hours: number;
+  daily_breakdown: Array<{
+    day: string;
+    title: string;
+    category: SessionCategory;
+    score: number;
+    label: "low" | "moderate" | "high" | "very_high";
+  }>;
+  notes: string[];
+};
+
+export type WeekContext = {
+  program_type: "free_week";
+  block_number: number | null;
+  week_number: number | null;
+  block_focus: "sample_week";
+  week_focus: "balanced_intro";
+  target_relative_load: number | null;
+};
+
 export type PlanJson = {
   intensity_split: {
     easy_percent: number;
     hard_percent: number;
   };
+  weekly_stress?: WeeklyStressSummary;
+  week_context?: WeekContext;
   profile: {
     goal: string;
     training_days: string;
@@ -111,6 +145,7 @@ export type PlanJson = {
     level: string;
     weekly_hours: string;
     equipment: string;
+    pace_guidance?: PaceGuidance;
   };
   intro: string[];
   schedule: DayPlan[];

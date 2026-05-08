@@ -16,6 +16,8 @@ import {
 import { mapGoalToBias, pickWeeklyStructure } from "./weeklyStructures";
 import { classifyRunner, type RunnerProfile } from "./classifyRunner";
 import { parseConstraints, type ParsedConstraints } from "./parseConstraints";
+import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
+import { computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 
 export type BlueprintInput = {
   first_name?: string;
@@ -516,7 +518,11 @@ function getPreferredDayOrder(preferred?: string[]): DayKey[] {
   return [...preferredMapped, ...remaining];
 }
 
-function buildActivePlanDays(input: BlueprintInput, parsedConstraints: ParsedConstraints) {
+function buildActivePlanDays(
+  input: BlueprintInput,
+  parsedConstraints: ParsedConstraints,
+  paceGuidance: PaceGuidance | null
+) {
   const structure = pickWeeklyStructure({
     days_per_week: input.days_per_week,
     goal_focus: input.goal_focus,
@@ -532,6 +538,8 @@ function buildActivePlanDays(input: BlueprintInput, parsedConstraints: ParsedCon
   let previousFatigueTag = "";
 
   const dayOrder = getPreferredDayOrder(input.preferred_days);
+
+  const stressByDay = new Map<DayKey, SessionStressInput>();
 
   structure.roles.forEach((role, idx) => {
     const picked = addVolumeOverlay(
@@ -559,6 +567,26 @@ function buildActivePlanDays(input: BlueprintInput, parsedConstraints: ParsedCon
 
     assignedDays.add(assignedDay);
 
+    const baseNotes = [
+      purposeText(picked),
+      structureReasonText(picked, input.goal_focus),
+      cueText(picked),
+      rpeText(picked),
+      ...(picked.prescription.notes || []),
+    ];
+    const paceNote =
+      paceGuidance && picked.category === "run" ? runSessionPaceNote(picked.type, paceGuidance) : null;
+
+    stressByDay.set(assignedDay, {
+      day: assignedDay,
+      title: picked.name,
+      category: picked.category,
+      type: picked.type,
+      intensity: picked.intensity,
+      fatigue: picked.fatigue,
+      duration: picked.duration,
+    });
+
     activeDays.push({
       day: assignedDay,
       title: picked.name,
@@ -568,51 +596,93 @@ function buildActivePlanDays(input: BlueprintInput, parsedConstraints: ParsedCon
         main: picked.prescription.main,
         cool_down: picked.prescription.cool_down,
         finish: picked.prescription.finish,
-        notes: [
-          purposeText(picked),
-          structureReasonText(picked, input.goal_focus),
-          cueText(picked),
-          rpeText(picked),
-          ...(picked.prescription.notes || []),
-        ],
+        notes: paceNote ? [...baseNotes, paceNote] : baseNotes,
       },
       time_cap_minutes: picked.duration,
       tags: [picked.type, picked.category, picked.variation_group],
     });
   });
 
-  return { structure, activeDays };
+  return { structure, activeDays, stressByDay };
 }
 
-function fillSevenDayWeek(input: BlueprintInput, activeDays: DayPlan[]) {
+function fillSevenDayWeek(activeDays: DayPlan[], stressByDay: Map<DayKey, SessionStressInput>) {
   const result: DayPlan[] = [];
+  const orderedStressInputs: SessionStressInput[] = [];
   const baseDays: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   for (let i = 0; i < 7; i++) {
-    const existing = activeDays.find((d) => d.day === baseDays[i]);
+    const dayKey = baseDays[i];
+    const existing = activeDays.find((d) => d.day === dayKey);
     if (existing) {
       result.push(existing);
+      const stress = stressByDay.get(dayKey);
+      if (!stress) {
+        throw new Error(`stressBudget: missing stress input for ${dayKey}`);
+      }
+      orderedStressInputs.push(stress);
       continue;
     }
 
-    if (baseDays[i] === "Thu" || baseDays[i] === "Sat") {
-      result.push(lightAerobicDay(baseDays[i]));
+    if (dayKey === "Thu" || dayKey === "Sat") {
+      result.push(lightAerobicDay(dayKey));
+      orderedStressInputs.push({
+        day: dayKey,
+        title: "Aerobic Support",
+        category: "aerobic",
+        type: "aerobic_support",
+        intensity: "low",
+        fatigue: "low",
+        duration: 35,
+      });
     } else {
-      result.push(recoveryDay(baseDays[i]));
+      result.push(recoveryDay(dayKey));
+      orderedStressInputs.push({
+        day: dayKey,
+        title: "Recovery / Mobility",
+        category: "recovery",
+        type: "recovery",
+        intensity: "low",
+        fatigue: "low",
+        duration: 30,
+      });
     }
   }
 
-  return result;
+  return { schedule: result, orderedStressInputs };
 }
 
 export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
   const runnerProfile = classifyRunner(input.five_k_time);
+  const paceGuidance =
+    runnerProfile.seconds !== null
+      ? computePaceGuidanceFromFiveKSeconds(runnerProfile.seconds)
+      : null;
   const parsedConstraints = parseConstraints(input.notes);
-  const { structure, activeDays } = buildActivePlanDays(input, parsedConstraints);
-  const schedule = fillSevenDayWeek(input, activeDays);
+  const { structure, activeDays, stressByDay } = buildActivePlanDays(input, parsedConstraints, paceGuidance);
+  const { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay);
+  const plannedMinutes = schedule.reduce((sum, day) => {
+    if (typeof day.time_cap_minutes !== "number") return sum;
+    return sum + day.time_cap_minutes;
+  }, 0);
+  const weekly_stress = computeWeeklyStress(
+    orderedStressInputs,
+    input.weekly_hours_band,
+    input.ability_level,
+    plannedMinutes
+  );
 
   return {
     intensity_split: intensitySplit(input.ability_level),
+    weekly_stress,
+    week_context: {
+      program_type: "free_week",
+      block_number: null,
+      week_number: null,
+      block_focus: "sample_week",
+      week_focus: "balanced_intro",
+      target_relative_load: null,
+    },
     profile: {
       goal: formatGoal(input.goal_focus),
       training_days: `${input.days_per_week} / week`,
@@ -622,6 +692,7 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
       equipment: (input.equipment || ["Full gym"]).join(", "),
       runner_profile: runnerProfile,
       parsed_constraints: parsedConstraints,
+      ...(paceGuidance ? { pace_guidance: paceGuidance } : {}),
     },
     intro: buildIntro(input, structure.label, runnerProfile, parsedConstraints),
     schedule,
