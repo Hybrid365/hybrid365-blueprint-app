@@ -123,12 +123,38 @@ export type WeeklyStressSummary = {
 };
 
 export type WeekContext = {
-  program_type: "free_week";
+  program_type: "free_week" | "community_12_week";
   block_number: number | null;
   week_number: number | null;
-  block_focus: "sample_week";
-  week_focus: "balanced_intro";
+  block_focus: "sample_week" | "build_the_base" | "build_the_engine" | "build_performance";
+  week_focus:
+    | "balanced_intro"
+    | "base_intro"
+    | "base_progression"
+    | "base_peak"
+    | "base_deload"
+    | "engine_intro"
+    | "threshold_build"
+    | "engine_peak"
+    | "engine_deload"
+    | "performance_intro"
+    | "specificity_peak"
+    | "sharpen_and_test"
+    | "test_or_taper";
   target_relative_load: number | null;
+  target_load_range: { min: number; max: number } | null;
+  training_emphasis: {
+    aerobic_base: "low" | "moderate" | "high";
+    threshold_volume: "low" | "moderate" | "high";
+    strength_focus: "movement_quality" | "strength_foundations" | "strength_progression" | "maintenance";
+    hybrid_specificity: "low" | "moderate" | "high";
+    intensity: "low_moderate" | "moderate" | "moderate_high" | "high";
+  } | null;
+};
+
+export type StressAlignment = {
+  status: "below_target" | "on_target" | "above_target";
+  message: string;
 };
 
 export type PlanJson = {
@@ -138,6 +164,7 @@ export type PlanJson = {
   };
   weekly_stress?: WeeklyStressSummary;
   week_context?: WeekContext;
+  stress_alignment?: StressAlignment | null;
   profile: {
     goal: string;
     training_days: string;

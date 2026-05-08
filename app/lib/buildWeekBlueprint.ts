@@ -18,6 +18,7 @@ import { classifyRunner, type RunnerProfile } from "./classifyRunner";
 import { parseConstraints, type ParsedConstraints } from "./parseConstraints";
 import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
 import { computeWeeklyStress, type SessionStressInput } from "./stressBudget";
+import { getProgressionTarget, getStressAlignment } from "./progressionTargets";
 
 export type BlueprintInput = {
   first_name?: string;
@@ -671,18 +672,14 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
     input.ability_level,
     plannedMinutes
   );
+  const weekContext = getProgressionTarget("free_week", null, null, input.goal_focus);
+  const stressAlignment = getStressAlignment(weekly_stress.relative_load, weekContext);
 
   return {
     intensity_split: intensitySplit(input.ability_level),
     weekly_stress,
-    week_context: {
-      program_type: "free_week",
-      block_number: null,
-      week_number: null,
-      block_focus: "sample_week",
-      week_focus: "balanced_intro",
-      target_relative_load: null,
-    },
+    week_context: weekContext,
+    stress_alignment: stressAlignment,
     profile: {
       goal: formatGoal(input.goal_focus),
       training_days: `${input.days_per_week} / week`,
