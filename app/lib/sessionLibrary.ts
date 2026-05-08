@@ -1,6 +1,7 @@
 // app/lib/sessionLibrary.ts
 
 import type { PaceGuidance } from "./paceGuidance";
+import type { SessionPriority } from "./sessionPriority";
 export type GoalFocus = "running" | "hybrid" | "muscle";
 export type AbilityLevel = "beginner" | "intermediate" | "advanced";
 export type WeeklyHoursBand = "2-3" | "3-5" | "5-7" | "7-10" | "10+";
@@ -98,6 +99,7 @@ export type DayPlan = {
   session: SessionBlock;
   time_cap_minutes?: number;
   tags?: string[];
+  priority?: SessionPriority;
 };
 
 export type WeeklyStressLabel = "low" | "balanced" | "high" | "very_high";

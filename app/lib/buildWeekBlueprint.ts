@@ -19,6 +19,7 @@ import { parseConstraints, type ParsedConstraints } from "./parseConstraints";
 import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
 import { computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import { getProgressionTarget, getStressAlignment } from "./progressionTargets";
+import { computeSessionPriority, createFillerPriority } from "./sessionPriority";
 
 export type BlueprintInput = {
   first_name?: string;
@@ -455,6 +456,7 @@ function recoveryDay(day: DayKey): DayPlan {
     },
     time_cap_minutes: 35,
     tags: ["recovery"],
+    priority: createFillerPriority("recovery"),
   };
 }
 
@@ -469,6 +471,7 @@ function lightAerobicDay(day: DayKey): DayPlan {
     },
     time_cap_minutes: 40,
     tags: ["aerobic_support"],
+    priority: createFillerPriority("aerobic_support"),
   };
 }
 
@@ -601,6 +604,11 @@ function buildActivePlanDays(
       },
       time_cap_minutes: picked.duration,
       tags: [picked.type, picked.category, picked.variation_group],
+      priority: computeSessionPriority({
+        goalFocus: input.goal_focus,
+        role,
+        session: picked,
+      }),
     });
   });
 
