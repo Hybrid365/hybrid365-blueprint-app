@@ -20,6 +20,7 @@ import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuida
 import { computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import { getProgressionTarget, getStressAlignment } from "./progressionTargets";
 import { computeSessionPriority, createFillerPriority } from "./sessionPriority";
+import { buildSubstitutionNotes } from "./substitutionGuidance";
 
 export type BlueprintInput = {
   first_name?: string;
@@ -158,6 +159,62 @@ function roleMatches(session: SessionTemplate, role: StructureRole) {
   return session.structure_roles.includes(role);
 }
 
+const MIN_SESSION_WEIGHT = 0.1;
+
+/** Lowercased text from session fields for lightweight keyword checks (equipment notes, substitution weighting). */
+function sessionText(session: SessionTemplate): string {
+  const chunks: string[] = [
+    session.name,
+    session.type,
+    session.variation_group,
+    session.coaching.intent,
+    session.coaching.cue,
+    ...(session.prescription.warm_up ?? []),
+    ...(session.prescription.main ?? []),
+    ...(session.prescription.cool_down ?? []),
+    ...(session.prescription.finish ?? []),
+    ...(session.prescription.notes ?? []),
+  ];
+  return chunks.join(" ").toLowerCase();
+}
+
+/** Mild penalty when athlete notes disallow a modality the session stresses. Uses raw constraint text only. */
+function equipmentModalityMismatchPenalty(rawNorm: string, blob: string): number {
+  let penalty = 0;
+
+  const mentionsNoRower =
+    /\bno\s+rower\b|\bno\s+rowing\s+machine\b|\bno\s+access\s+to\s+(?:the\s+|a\s+)?rower\b|\bdo\s+not\s+have\s+(?:a\s+)?rower\b|don[''\u2019]t\s+have\s+(?:a\s+)?rower\b/i.test(
+      rawNorm
+    );
+  if (mentionsNoRower) {
+    const rowInSession =
+      /\brower\b|\browing\b|\d+\s*m\s*row\b|row-based|row aerobic|row interval|easy row|steady row|moderate row|row,|row\./i.test(
+        blob
+      );
+    if (rowInSession) penalty -= 3;
+  }
+
+  const mentionsNoSki =
+    /\bno\s+skierg\b|\bno\s+ski\s+erg\b|\bdo\s+not\s+have\s+(?:a\s+)?(?:skierg|ski\s+erg)\b|don[''\u2019]t\s+have\s+(?:a\s+)?(?:skierg|ski\s+erg)\b|\bno\s+ski\b/i.test(
+      rawNorm
+    );
+  if (mentionsNoSki) {
+    const skiInSession =
+      /\bskierg\b|\bski\s+erg\b|\bski intervals\b|\d+\s*m\s*ski\b|\bkm\s+ski\b|ski or row|row or ski|ski,|ski\./i.test(
+        blob
+      );
+    if (skiInSession) penalty -= 3;
+  }
+
+  const mentionsNoSled =
+    /\bno\s+sled\b|\bdo\s+not\s+have\s+(?:a\s+)?sled\b|don[''\u2019]t\s+have\s+(?:a\s+)?sled\b/i.test(rawNorm);
+  if (mentionsNoSled && /\bsled\b|\bprowler\b/i.test(blob)) {
+    penalty -= 3;
+  }
+
+  return penalty;
+}
+
 function pickWeightedSession(
   role: StructureRole,
   input: BlueprintInput,
@@ -196,6 +253,8 @@ function pickWeightedSession(
     options = SESSION_LIBRARY.filter((s) => roleMatches(s, role));
   }
 
+  const rawNotesNorm = parsedConstraints.raw.trim().toLowerCase().replace(/\s+/g, " ");
+
   const runner = classifyRunner(input.five_k_time);
   const isRunRole =
     role === "run_quality" ||
@@ -206,6 +265,7 @@ function pickWeightedSession(
   const weighted = options.map((s) => {
     let weight = 1;
     const hasFlag = (flag: string) => parsedConstraints.flags.includes(flag);
+    const blob = sessionText(s);
 
     if (!usedIds.has(s.id)) weight += 2;
     if (previousTag && !s.avoid_after.includes(previousTag)) weight += 2;
@@ -231,25 +291,80 @@ function pickWeightedSession(
     // Constraints are applied as conservative coaching bias only (no hard filtering).
     const needsLowImpact = hasFlag("injury_flags") || hasFlag("low_impact_preference");
     if (needsLowImpact) {
-      if (s.category === "run" && s.intensity === "high") weight -= 1;
-      if (s.category === "run" && s.type === "interval_run") weight -= 2;
-      if (s.category === "run" && s.type === "threshold_run" && s.fatigue === "high") weight -= 1;
-      if (s.category === "hybrid" && s.fatigue === "high") weight -= 1;
-      if (s.category === "run" && s.type === "aerobic_run") weight += 2;
-      if (s.category === "aerobic" && s.intensity !== "high") weight += 1;
-      if (s.category === "aerobic" || s.category === "recovery") weight += 1;
+      if (s.type === "long_run") weight -= 7;
+      if (s.category === "run" && s.intensity === "high") weight -= 4;
+      if (s.type === "threshold_run") weight -= 3;
+      if (s.type === "interval_run") weight -= 4;
+      if (s.type === "tempo_run" && s.intensity === "high") weight -= 2;
+
+      if (s.type === "hybrid_compromised") weight -= 6;
+      else if (s.variation_group === "hybrid_primary" && s.category === "hybrid") weight -= 3;
+
+      if (s.category === "hybrid") {
+        if (s.fatigue === "high") weight -= 3;
+        else if (s.fatigue === "medium" && s.duration >= 50) weight -= 2;
+      }
+
+      if (
+        /\brace\s*[- ]?\s*sim\b|\brace[- ]specific\b|race.?style|race.?like|\bhyrox\b|compromised run\b/i.test(
+          blob
+        )
+      ) {
+        weight -= 3;
+      }
+
+      if (s.variation_group === "hybrid_low_impact") weight += 6;
+      if (s.type === "hybrid_bodyweight") weight += 5;
+
+      if (s.category === "run" && s.type === "aerobic_run") weight += 4;
+
+      if (s.category === "aerobic" && s.intensity !== "high") weight += 3;
+      if (s.type === "aerobic_support") weight += 3;
+
+      const ergBackedSupport =
+        s.type === "aerobic_support" &&
+        (s.equipment.includes("Bike / Spin bike") ||
+          s.equipment.includes("Rower") ||
+          s.equipment.includes("SkiErg"));
+      if (ergBackedSupport && s.category === "aerobic") weight += 3;
+
+      if ((s.category === "hybrid" || s.category === "strength" || s.category === "run") && s.fatigue === "low") {
+        weight += 2;
+      }
+
+      if (
+        s.category === "strength" &&
+        (s.variation_group === "movement_foundations" || s.variation_group === "lower_durability")
+      ) {
+        weight += 4;
+      }
+
+      if (s.category === "recovery") weight += 1;
     }
 
     if (hasFlag("time_limit")) {
-      if (s.time_requirement === "30-45") weight += 2;
-      if (s.duration <= 45) weight += 1;
-      if (s.time_requirement === "75+") weight -= 2;
-      if (s.duration >= 65) weight -= 1;
+      if (s.time_requirement === "30-45") weight += 6;
+      if (s.duration <= 45) weight += 4;
+      if (s.duration > 45 && s.duration <= 60) weight -= 3;
+      if (s.duration > 60) weight -= 6;
+      if (s.time_requirement === "75+") weight -= 8;
     }
 
     if (hasFlag("equipment_limits")) {
-      // Existing equipment filters remain primary; this is a tiny tie-break for simpler options.
-      if (s.time_requirement === "30-45" || s.fatigue === "low") weight += 1;
+      weight += equipmentModalityMismatchPenalty(rawNotesNorm, blob);
+      if (s.time_requirement === "30-45") weight += 2;
+      if (s.fatigue === "low") weight += 2;
+      if (s.type === "hybrid_bodyweight") weight += 5;
+      if (
+        s.category === "strength" &&
+        (s.variation_group === "full_body" ||
+          s.variation_group === "movement_foundations" ||
+          s.variation_group === "lower_durability")
+      ) {
+        weight += 3;
+      }
+      if (s.type === "aerobic_support" && s.duration <= 40) weight += 3;
+      if (s.duration <= 45) weight += 2;
     }
 
     // Runner classification is a soft bias only (never a hard filter).
@@ -294,7 +409,7 @@ function pickWeightedSession(
       }
     }
 
-    return { item: s, weight: Math.max(1, weight) };
+    return { item: s, weight: Math.max(MIN_SESSION_WEIGHT, weight) };
   });
 
   const pick = weightedPick(weighted);
@@ -302,12 +417,21 @@ function pickWeightedSession(
   return pick;
 }
 
-function addVolumeOverlay(session: SessionTemplate, hours: WeeklyHoursBand, doubleSessions?: boolean): SessionTemplate {
+function addVolumeOverlay(
+  session: SessionTemplate,
+  hours: WeeklyHoursBand,
+  doubleSessions?: boolean,
+  timeLimited?: boolean
+): SessionTemplate {
   const clone: SessionTemplate = JSON.parse(JSON.stringify(session));
 
   const extra: string[] = [];
 
-  if ((hours === "7-10" || hours === "10+") && clone.category === "strength") {
+  if (
+    !timeLimited &&
+    (hours === "7-10" || hours === "10+") &&
+    clone.category === "strength"
+  ) {
     extra.push(
       hours === "10+"
         ? "Optional: 30–45 min Z2 bike after lifting"
@@ -315,11 +439,11 @@ function addVolumeOverlay(session: SessionTemplate, hours: WeeklyHoursBand, doub
     );
   }
 
-  if (doubleSessions && clone.category === "strength") {
+  if (!timeLimited && doubleSessions && clone.category === "strength") {
     extra.push("Optional second session: 20–30 min easy Z2 bike");
   }
 
-  if ((hours === "7-10" || hours === "10+") && clone.type === "long_run") {
+  if (!timeLimited && (hours === "7-10" || hours === "10+") && clone.type === "long_run") {
     clone.prescription.notes = [
       ...(clone.prescription.notes || []),
       "If recovery is strong, extend the aerobic block slightly.",
@@ -549,7 +673,8 @@ function buildActivePlanDays(
     const picked = addVolumeOverlay(
       pickWeightedSession(role, input, usedIds, parsedConstraints, previousFatigueTag),
       input.weekly_hours_band,
-      input.double_sessions
+      input.double_sessions,
+      parsedConstraints.flags.includes("time_limit")
     );
 
     previousFatigueTag =
@@ -571,15 +696,29 @@ function buildActivePlanDays(
 
     assignedDays.add(assignedDay);
 
-    const baseNotes = [
+    const equipmentResolved = defaultEquipment(input.equipment);
+    const substitutionNotes = buildSubstitutionNotes({
+      parsedConstraints,
+      equipment: equipmentResolved,
+      session: picked,
+    }).filter((line) => typeof line === "string" && line.trim().length > 0);
+
+    const coachingPrefix = [
       purposeText(picked),
       structureReasonText(picked, input.goal_focus),
       cueText(picked),
       rpeText(picked),
-      ...(picked.prescription.notes || []),
     ];
+    const libraryNotes = [...(picked.prescription.notes || [])];
     const paceNote =
       paceGuidance && picked.category === "run" ? runSessionPaceNote(picked.type, paceGuidance) : null;
+
+    const sessionNotes = [
+      ...coachingPrefix,
+      ...(paceNote ? [paceNote] : []),
+      ...substitutionNotes,
+      ...libraryNotes,
+    ].filter((line) => typeof line === "string" && line.trim().length > 0);
 
     stressByDay.set(assignedDay, {
       day: assignedDay,
@@ -600,7 +739,7 @@ function buildActivePlanDays(
         main: picked.prescription.main,
         cool_down: picked.prescription.cool_down,
         finish: picked.prescription.finish,
-        notes: paceNote ? [...baseNotes, paceNote] : baseNotes,
+        notes: sessionNotes,
       },
       time_cap_minutes: picked.duration,
       tags: [picked.type, picked.category, picked.variation_group],
