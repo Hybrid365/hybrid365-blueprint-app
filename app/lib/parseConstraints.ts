@@ -72,6 +72,34 @@ const EQUIP_LIMIT_REGEX = new RegExp(
 
 const EQUIP_LIMIT_STRIP_REGEX = new RegExp(EQUIP_LIMIT_REGEX.source, "gi");
 
+const HYROX_BEGINNER_REGEX = new RegExp(
+  [
+    "first\\s+time\\s+doing\\s+hyrox",
+    "never\\s+done\\s+hyrox",
+    "first\\s+hyrox\\s+race",
+    "\\bfirst\\s+hyrox\\b",
+    "new\\s+to\\s+hyrox",
+    "beginner\\s+hyrox",
+    "\\bfirst\\s+race\\b",
+  ].join("|"),
+  "i"
+);
+
+const HYROX_BEGINNER_STRIP_REGEX = new RegExp(HYROX_BEGINNER_REGEX.source, "gi");
+
+const NEW_RUNNER_REGEX = new RegExp(
+  [
+    "not\\s+much\\s+running\\s+experience",
+    "just\\s+started\\s+running",
+    "\\bbeginner\\s+runner\\b",
+    "new\\s+to\\s+running",
+    "\\bnew\\s+runner\\b",
+  ].join("|"),
+  "i"
+);
+
+const NEW_RUNNER_STRIP_REGEX = new RegExp(NEW_RUNNER_REGEX.source, "gi");
+
 export function parseConstraints(notes?: string): ParsedConstraints {
   const raw = (notes ?? "").trim();
   const normalized = raw.toLowerCase().replace(/\s+/g, " ").trim();
@@ -126,6 +154,22 @@ export function parseConstraints(notes?: string): ParsedConstraints {
     summary.push("Equipment limitation detected.");
     guidance.push("Use adaptable sessions that match available equipment.");
     stripPatterns.push(EQUIP_LIMIT_STRIP_REGEX);
+  }
+
+  if (HYROX_BEGINNER_REGEX.test(normalized)) {
+    flags.push("hyrox_beginner");
+    summary.push("Beginner Hyrox context detected.");
+    guidance.push(
+      "Prioritise technique, controlled pacing and repeatable sessions before race-style intensity."
+    );
+    stripPatterns.push(HYROX_BEGINNER_STRIP_REGEX);
+  }
+
+  if (NEW_RUNNER_REGEX.test(normalized)) {
+    flags.push("new_runner");
+    summary.push("New runner context detected.");
+    guidance.push("Build running durability before chasing harder run sessions.");
+    stripPatterns.push(NEW_RUNNER_STRIP_REGEX);
   }
 
   for (const day of DAY_MAP) {

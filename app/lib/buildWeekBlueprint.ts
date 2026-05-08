@@ -161,6 +161,55 @@ function roleMatches(session: SessionTemplate, role: StructureRole) {
 
 const MIN_SESSION_WEIGHT = 0.1;
 
+type SessionPickContext = {
+  usedIds: Set<string>;
+  /** variation_group strings already picked this week */
+  usedVariationGroups: Set<string>;
+  /** Normalised session names already picked */
+  usedSessionNames: Set<string>;
+};
+
+/** Prefer unused templates when the role pool has alternatives — never empties options. */
+function sessionPoolWithDuplicateGuards(options: SessionTemplate[], ctx: SessionPickContext): SessionTemplate[] {
+  const nameKey = (s: SessionTemplate) => s.name.trim().toLowerCase();
+
+  let pool = options;
+  const noUsedId = options.filter((s) => !ctx.usedIds.has(s.id));
+  if (noUsedId.length > 0) pool = noUsedId;
+
+  const noDupName = pool.filter((s) => !ctx.usedSessionNames.has(nameKey(s)));
+  if (noDupName.length > 0) pool = noDupName;
+
+  return pool;
+}
+
+/** New Stage 5a templates and other anchors to prioritise when impact must stay low. */
+const LOW_IMPACT_PRIORITY_IDS = new Set([
+  "AER-BIKE-TEMPO-BUILD",
+  "AER-ROW-TEMPO-BUILD",
+  "AER-SKI-TEMPO-BUILD",
+  "HYX-LOW-IMPACT-ENGINE",
+  "HYX-CARRY-ERG-CONTROL",
+  "LOWER-KNEE-FRIENDLY",
+  "LOWER-ISOMETRIC-DURABILITY",
+  "RUN-LOW-IMPACT-ALT",
+  "AER-BIKE-LONG-BASE",
+]);
+
+/** Stage 5b beginner Hyrox / hybrid-intro templates — prefer when athlete or notes imply first Hyrox. */
+const HYBRID_INTRO_PRIORITY_IDS = new Set([
+  "HYX-BEGINNER-FLOW",
+  "HYX-STATION-TECHNIQUE",
+  "HYX-CONTROLLED-COMPROMISE",
+  "HYX-BEGINNER-DENSITY",
+  "RUN-WALK-HYBRID-INTRO",
+  "HYX-WALL-BALL-LUNGE-BASE",
+  "HYX-ERG-FOUNDATIONS",
+  "HYX-TRANSITION-PRACTICE",
+  "HYX-BEGINNER-CARRY-CIRCUIT",
+  "HYX-FIRST-RACE-PREP",
+]);
+
 /** Lowercased text from session fields for lightweight keyword checks (equipment notes, substitution weighting). */
 function sessionText(session: SessionTemplate): string {
   const chunks: string[] = [
@@ -218,7 +267,7 @@ function equipmentModalityMismatchPenalty(rawNorm: string, blob: string): number
 function pickWeightedSession(
   role: StructureRole,
   input: BlueprintInput,
-  usedIds: Set<string>,
+  pickContext: SessionPickContext,
   parsedConstraints: ParsedConstraints,
   previousTag?: string
 ): SessionTemplate {
@@ -253,6 +302,12 @@ function pickWeightedSession(
     options = SESSION_LIBRARY.filter((s) => roleMatches(s, role));
   }
 
+  const optionsPool = sessionPoolWithDuplicateGuards(options, pickContext);
+  const couldAvoidUsedId = options.some((s) => !pickContext.usedIds.has(s.id));
+  const couldAvoidDupName = options.some(
+    (s) => !pickContext.usedSessionNames.has(s.name.trim().toLowerCase())
+  );
+
   const rawNotesNorm = parsedConstraints.raw.trim().toLowerCase().replace(/\s+/g, " ");
 
   const runner = classifyRunner(input.five_k_time);
@@ -262,13 +317,30 @@ function pickWeightedSession(
     role === "run_aerobic" ||
     role === "run_long";
 
-  const weighted = options.map((s) => {
+  const HIGH_IMPACT_BLOB_HINT =
+    /\bburpees?\b|\bjumping\b|\bjump\s+jack\b|\bjumps?\b|\blunges?\b|\blong\s+run\b|race\s*[- ]?\s*sim\b|\bcompromised\b/i;
+
+  const beginnerHyroxContext =
+    parsedConstraints.flags.includes("hyrox_beginner") || input.ability_level === "beginner";
+
+  const newRunnerContext =
+    parsedConstraints.flags.includes("new_runner") ||
+    runner.label === "beginner" ||
+    runner.label === "developing";
+
+  const weighted = optionsPool.map((s) => {
     let weight = 1;
     const hasFlag = (flag: string) => parsedConstraints.flags.includes(flag);
     const blob = sessionText(s);
+    const nameLc = s.name.trim().toLowerCase();
 
-    if (!usedIds.has(s.id)) weight += 2;
+    if (!pickContext.usedIds.has(s.id)) weight += 2;
     if (previousTag && !s.avoid_after.includes(previousTag)) weight += 2;
+
+    if (!couldAvoidUsedId && pickContext.usedIds.has(s.id)) weight -= 22;
+    if (!couldAvoidDupName && pickContext.usedSessionNames.has(nameLc)) weight -= 18;
+
+    if (pickContext.usedVariationGroups.has(s.variation_group)) weight -= 5;
 
     if (input.goal_focus === "running") {
       if (s.category === "run") weight += 2;
@@ -288,9 +360,65 @@ function pickWeightedSession(
     if (input.ability_level === "beginner" && s.intensity === "high") weight -= 1;
     if (input.double_sessions && s.category === "aerobic") weight += 1;
 
+    if (beginnerHyroxContext) {
+      if (s.variation_group === "hybrid_intro") weight += 16;
+      if (HYBRID_INTRO_PRIORITY_IDS.has(s.id)) weight += 16;
+      else if (/beginner\s+hyrox|hyrox\s+intro|controlled\s+compromised|run-walk\s+hybrid/i.test(nameLc)) {
+        weight += 10;
+      }
+      if (s.fatigue === "low") weight += 5;
+      if (s.type === "aerobic_support" || s.variation_group === "aerobic_support") weight += 10;
+      if (s.variation_group === "lower_durability" || s.variation_group === "movement_foundations") {
+        weight += 12;
+      }
+    }
+
+    if (newRunnerContext) {
+      if (s.structure_roles.includes("run_quality_beginner")) weight += 11;
+      if (s.variation_group === "run_walk_base") weight += 13;
+      if (s.variation_group === "aerobic_run_short") weight += 11;
+      if (s.type === "aerobic_support" || s.variation_group === "aerobic_support") weight += 8;
+      if (s.category === "run" && s.type === "aerobic_run" && s.intensity === "low") weight += 7;
+      if (
+        isRunRole &&
+        s.category === "run" &&
+        s.variation_group === "tempo_beginner" &&
+        s.intensity !== "high"
+      ) {
+        weight += 6;
+      }
+    }
+
     // Constraints are applied as conservative coaching bias only (no hard filtering).
     const needsLowImpact = hasFlag("injury_flags") || hasFlag("low_impact_preference");
     if (needsLowImpact) {
+      const vg = s.variation_group;
+      if (vg === "hybrid_low_impact") weight += 14;
+      else if (vg === "lower_durability") weight += 12;
+      else if (vg === "movement_foundations") weight += 12;
+      else if (vg === "aerobic_support") weight += 9;
+
+      if (LOW_IMPACT_PRIORITY_IDS.has(s.id)) weight += 14;
+      else if (
+        nameLc.includes("bike tempo build") ||
+        nameLc.includes("row tempo build") ||
+        nameLc.includes("ski tempo build") ||
+        nameLc.includes("low-impact hybrid engine") ||
+        nameLc.includes("carry + erg control") ||
+        nameLc.includes("knee-friendly lower strength") ||
+        nameLc.includes("lower isometric durability") ||
+        nameLc.includes("low-impact run alternative") ||
+        nameLc.includes("long low-impact bike base")
+      ) {
+        weight += 12;
+      }
+
+      const exemptHighImpactPenalty =
+        vg === "hybrid_low_impact" || vg === "lower_durability";
+      if (!exemptHighImpactPenalty && HIGH_IMPACT_BLOB_HINT.test(blob)) {
+        weight -= 12;
+      }
+
       if (s.type === "long_run") weight -= 7;
       if (s.category === "run" && s.intensity === "high") weight -= 4;
       if (s.type === "threshold_run") weight -= 4;
@@ -316,8 +444,6 @@ function pickWeightedSession(
       ) {
         weight -= 3;
       }
-
-      if (s.variation_group === "hybrid_low_impact") weight += 8;
 
       // Bodyweight hybrid often still contains burpees + run tooling — avoid over-boosting for knees.
       if (s.type === "hybrid_bodyweight") {
@@ -346,13 +472,6 @@ function pickWeightedSession(
 
       if ((s.category === "hybrid" || s.category === "strength" || s.category === "run") && s.fatigue === "low") {
         weight += 2;
-      }
-
-      if (
-        s.category === "strength" &&
-        (s.variation_group === "movement_foundations" || s.variation_group === "lower_durability")
-      ) {
-        weight += 4;
       }
 
       if (s.category === "recovery") weight += 1;
@@ -425,6 +544,20 @@ function pickWeightedSession(
       }
     }
 
+    if (newRunnerContext && isRunRole && s.category === "run") {
+      if (s.type === "threshold_run") weight -= 11;
+      if (s.type === "interval_run") weight -= 11;
+      if (s.type === "tempo_run") weight -= 8;
+      if (
+        s.type === "long_run" &&
+        /\bpick(?:-|\s)?ups?\b|\bprogression\b|\btempo\b|\bnegative\s+split\b|\bsteady\s*\/?\s*slightly\s+quicker\b/i.test(
+          blob
+        )
+      ) {
+        weight -= 14;
+      }
+    }
+
     // Undo runner-profile pressure toward tempo / threshold runs when knees or impact tolerance are limited.
     if (needsLowImpact) {
       if (isRunRole && s.category === "run") {
@@ -456,16 +589,15 @@ function pickWeightedSession(
         weight += 8;
       }
 
-      if (s.category === "run" && usedIds.has(s.id)) {
-        weight -= 14;
-      }
     }
 
     return { item: s, weight: Math.max(MIN_SESSION_WEIGHT, weight) };
   });
 
   const pick = weightedPick(weighted);
-  usedIds.add(pick.id);
+  pickContext.usedIds.add(pick.id);
+  pickContext.usedVariationGroups.add(pick.variation_group);
+  pickContext.usedSessionNames.add(pick.name.trim().toLowerCase());
   return pick;
 }
 
@@ -711,7 +843,11 @@ function buildActivePlanDays(
     weekly_hours_band: input.weekly_hours_band,
   });
 
-  const usedIds = new Set<string>();
+  const pickContext: SessionPickContext = {
+    usedIds: new Set<string>(),
+    usedVariationGroups: new Set<string>(),
+    usedSessionNames: new Set<string>(),
+  };
   const activeDays: DayPlan[] = [];
   const assignedDays = new Set<DayKey>();
 
@@ -723,7 +859,7 @@ function buildActivePlanDays(
 
   structure.roles.forEach((role, idx) => {
     const picked = addVolumeOverlay(
-      pickWeightedSession(role, input, usedIds, parsedConstraints, previousFatigueTag),
+      pickWeightedSession(role, input, pickContext, parsedConstraints, previousFatigueTag),
       input.weekly_hours_band,
       input.double_sessions,
       parsedConstraints.flags.includes("time_limit")
