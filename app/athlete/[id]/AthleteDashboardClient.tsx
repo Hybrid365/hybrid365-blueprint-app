@@ -44,6 +44,17 @@ type SessionDetail = {
   coachingNotes: string;
   rpeGuide: string;
   effortDescription: string;
+  priorityRank: 1 | 2 | 3;
+  priorityDisplayLabel: string;
+  priorityCategoryLabel: string;
+  priorityReason: string;
+};
+
+const DEFAULT_SESSION_PRIORITY = {
+  priorityRank: 2 as const,
+  priorityDisplayLabel: "Priority 2",
+  priorityCategoryLabel: "Support Session",
+  priorityReason: "This session supports the structure of your week.",
 };
 
 type AthleteDashboardClientProps = {
@@ -101,6 +112,59 @@ function mapCategory(title: string): SessionDetail["category"] {
   return "Hybrid";
 }
 
+function parseSessionPriority(raw: unknown): Pick<
+  SessionDetail,
+  "priorityRank" | "priorityDisplayLabel" | "priorityCategoryLabel" | "priorityReason"
+> {
+  if (!raw || typeof raw !== "object") {
+    return DEFAULT_SESSION_PRIORITY;
+  }
+  const p = raw as Record<string, unknown>;
+  const rank = p.rank;
+  if (rank !== 1 && rank !== 2 && rank !== 3) {
+    return DEFAULT_SESSION_PRIORITY;
+  }
+  const fallbackCategory =
+    rank === 1 ? "Key Session" : rank === 2 ? "Support Session" : "Optional / Flexible";
+  const displayLabel =
+    typeof p.display_label === "string" && p.display_label.trim()
+      ? String(p.display_label).trim()
+      : `Priority ${rank}`;
+  const categoryLabel =
+    typeof p.category_label === "string" && p.category_label.trim()
+      ? String(p.category_label).trim()
+      : fallbackCategory;
+  const reason =
+    typeof p.reason === "string" && p.reason.trim()
+      ? String(p.reason).trim()
+      : DEFAULT_SESSION_PRIORITY.priorityReason;
+
+  return {
+    priorityRank: rank,
+    priorityDisplayLabel: displayLabel,
+    priorityCategoryLabel: categoryLabel,
+    priorityReason: reason,
+  };
+}
+
+function PriorityChip({ rank, label }: { rank: 1 | 2 | 3; label: string }) {
+  const styles =
+    rank === 1
+      ? "border-[#F4D23C] bg-[#F4D23C] font-semibold text-black shadow-[0_0_16px_rgba(244,210,60,0.12)]"
+      : rank === 2
+      ? "border-[#F4D23C]/35 bg-[#F4D23C]/12 text-[#F4D23C]"
+      : "border-white/10 bg-white/[0.04] text-white/50";
+
+  return (
+    <span
+      className={`inline-flex max-w-full shrink-0 items-center truncate rounded-full border px-2 py-0.5 text-[10px] font-medium leading-tight ${styles}`}
+      title={label}
+    >
+      {label}
+    </span>
+  );
+}
+
 function normalizeSchedule(schedule: any[]): SessionDetail[] {
   return schedule.map((item) => {
     const session = item?.session || {};
@@ -108,6 +172,7 @@ function normalizeSchedule(schedule: any[]): SessionDetail[] {
     const notes = asArray(session?.notes);
     const title = String(item?.title || "Session");
     const category = mapCategory(title);
+    const priority = parseSessionPriority(item?.priority);
 
     return {
       day: String(item?.day || "Day"),
@@ -128,6 +193,7 @@ function normalizeSchedule(schedule: any[]): SessionDetail[] {
       effortDescription: String(
         item?.intent || "Respect the purpose of the session and keep the effort controlled."
       ),
+      ...priority,
     };
   });
 }
@@ -186,11 +252,14 @@ function SessionCard({ session, onClick }: { session: SessionDetail; onClick: ()
       onClick={onClick}
       className="group flex min-w-[180px] flex-col gap-3 rounded-2xl border border-white/10 bg-zinc-950 p-4 text-left transition-all hover:border-[#F4D23C]/40 hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#F4D23C]"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wider text-white/60">{session.dayShort}</span>
-        <span className="rounded-full bg-[#F4D23C]/20 px-2 py-0.5 text-[10px] font-medium text-[#F4D23C]">
-          {session.status}
-        </span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <PriorityChip rank={session.priorityRank} label={session.priorityCategoryLabel} />
+          <span className="rounded-full bg-[#F4D23C]/20 px-2 py-0.5 text-[10px] font-medium text-[#F4D23C]">
+            {session.status}
+          </span>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-white/55 group-hover:text-[#F4D23C]" />
@@ -440,9 +509,10 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
             >
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <span className="text-sm font-medium uppercase tracking-wider text-[#F4D23C]">{nextSession.day}</span>
+                <PriorityChip rank={nextSession.priorityRank} label={nextSession.priorityCategoryLabel} />
                 <span className="text-white/50">—</span>
-                <span className="text-xl font-bold text-white sm:text-2xl">{nextSession.title}</span>
-                <ChevronRight className="ml-auto h-5 w-5 text-white/50" />
+                <span className="min-w-0 flex-1 text-xl font-bold text-white sm:text-2xl">{nextSession.title}</span>
+                <ChevronRight className="ml-auto h-5 w-5 shrink-0 text-white/50" />
               </div>
               <p className="mb-6 leading-relaxed text-white/70">{nextSession.intent}</p>
               <div className="mb-6 flex flex-wrap items-center gap-4 text-sm text-white/80">
@@ -570,10 +640,27 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
             <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/20" />
             <div className="mx-auto max-w-4xl p-4">
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.14em] text-[#F4D23C]">{selectedSession.day}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 gap-y-1">
+                    <p className="text-xs uppercase tracking-[0.14em] text-[#F4D23C]">{selectedSession.day}</p>
+                    <span className="text-xs font-semibold text-white/90 sm:text-sm">
+                      {selectedSession.priorityDisplayLabel} — {selectedSession.priorityCategoryLabel}
+                    </span>
+                  </div>
                   <h3 className="mt-1 text-2xl font-bold text-white">{selectedSession.title}</h3>
                   <p className="mt-2 text-white/70">{selectedSession.intent}</p>
+                  <div
+                    className={`mt-3 rounded-2xl border p-3 text-sm leading-relaxed ${
+                      selectedSession.priorityRank === 1
+                        ? "border-[#F4D23C]/35 bg-[#F4D23C]/10 text-white/90"
+                        : selectedSession.priorityRank === 2
+                        ? "border-[#F4D23C]/20 bg-white/[0.04] text-white/80"
+                        : "border-white/10 bg-black/20 text-white/60"
+                    }`}
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#F4D23C]/90">Session priority</p>
+                    <p className="mt-1 text-sm">{selectedSession.priorityReason}</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setDrawerOpen(false)}
