@@ -668,7 +668,7 @@ export const SESSION_LIBRARY: SessionTemplate[] = [
     avoid_after: [],
     compatible_with: ["upper_full", "lower_full"],
     variation_group: "aerobic_run",
-    structure_roles: ["run_aerobic"],
+    structure_roles: ["run_aerobic", "run_long"],
     coaching: {
       intent: "Build aerobic base with minimal recovery cost.",
       cue: "Keep it conversational and controlled.",
@@ -2176,7 +2176,7 @@ export const SESSION_LIBRARY: SessionTemplate[] = [
     avoid_after: [],
     compatible_with: ["all"],
     variation_group: "aerobic_support",
-    structure_roles: ["aerobic_support", "run_aerobic"],
+    structure_roles: ["aerobic_support", "run_aerobic", "run_long"],
     coaching: {
       intent: "Accumulate aerobic volume without stressing joints.",
       cue: "Nasal-breathing pace or easy conversational effort.",

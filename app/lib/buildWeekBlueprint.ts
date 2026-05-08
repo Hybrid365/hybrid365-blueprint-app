@@ -293,9 +293,13 @@ function pickWeightedSession(
     if (needsLowImpact) {
       if (s.type === "long_run") weight -= 7;
       if (s.category === "run" && s.intensity === "high") weight -= 4;
-      if (s.type === "threshold_run") weight -= 3;
-      if (s.type === "interval_run") weight -= 4;
-      if (s.type === "tempo_run" && s.intensity === "high") weight -= 2;
+      if (s.type === "threshold_run") weight -= 4;
+      if (s.type === "interval_run") weight -= 5;
+      if (s.type === "tempo_run") {
+        if (s.variation_group === "tempo_short") weight -= 2;
+        else weight -= 5;
+        if (s.duration >= 45 || s.fatigue === "medium" || s.fatigue === "high") weight -= 3;
+      }
 
       if (s.type === "hybrid_compromised") weight -= 6;
       else if (s.variation_group === "hybrid_primary" && s.category === "hybrid") weight -= 3;
@@ -313,10 +317,22 @@ function pickWeightedSession(
         weight -= 3;
       }
 
-      if (s.variation_group === "hybrid_low_impact") weight += 6;
-      if (s.type === "hybrid_bodyweight") weight += 5;
+      if (s.variation_group === "hybrid_low_impact") weight += 8;
 
-      if (s.category === "run" && s.type === "aerobic_run") weight += 4;
+      // Bodyweight hybrid often still contains burpees + run tooling — avoid over-boosting for knees.
+      if (s.type === "hybrid_bodyweight") {
+        if (
+          /\bburpees?\b|\bjumping\b|\bjump\s+jack\b|\d+\s*[-\u2013]\s*\d+m\s+run\b|\b\d+m\s+run\b/i.test(
+            blob
+          )
+        ) {
+          weight -= 4;
+        } else {
+          weight += 2;
+        }
+      }
+
+      if (s.category === "run" && s.type === "aerobic_run") weight += 5;
 
       if (s.category === "aerobic" && s.intensity !== "high") weight += 3;
       if (s.type === "aerobic_support") weight += 3;
@@ -406,6 +422,42 @@ function pickWeightedSession(
         }
         default:
           break;
+      }
+    }
+
+    // Undo runner-profile pressure toward tempo / threshold runs when knees or impact tolerance are limited.
+    if (needsLowImpact) {
+      if (isRunRole && s.category === "run") {
+        if (s.type === "tempo_run") weight -= 8;
+        if (s.type === "threshold_run") weight -= 5;
+        if (s.type === "interval_run") weight -= 8;
+        if (s.type === "aerobic_run") weight += 4;
+        if (s.type === "long_run") {
+          if (s.intensity === "low") weight += 8;
+          else weight -= 3;
+        }
+      }
+
+      if (
+        role === "run_quality" &&
+        s.type === "aerobic_support" &&
+        s.structure_roles.includes("run_quality") &&
+        s.category === "aerobic"
+      ) {
+        weight += 10;
+      }
+
+      if (
+        role === "run_long" &&
+        s.type === "aerobic_support" &&
+        s.structure_roles.includes("run_long") &&
+        s.category === "aerobic"
+      ) {
+        weight += 8;
+      }
+
+      if (s.category === "run" && usedIds.has(s.id)) {
+        weight -= 14;
       }
     }
 
