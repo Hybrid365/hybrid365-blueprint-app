@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-09T11:37:01.888Z",
+  "generated_at": "2026-05-09T11:45:06.343Z",
   "note": "Full PlanJson outputs from buildWeekBlueprint (local engine only)",
   "total": 13,
   "passed": 13,
@@ -31,22 +31,22 @@
           "hard_percent": 25
         },
         "weekly_stress": {
-          "raw_score": 7.8,
+          "raw_score": 6.4,
           "budget": 6.8,
-          "relative_load": 1.147,
+          "relative_load": 0.941,
           "label": "balanced",
           "display_label": "Balanced Load",
           "hard_sessions": 0,
           "high_fatigue_sessions": 0,
-          "planned_minutes": 265,
-          "estimated_hours": 4.4,
+          "planned_minutes": 260,
+          "estimated_hours": 4.3,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "Hybrid Muscle Circuit",
-              "category": "hybrid",
-              "score": 2.3,
-              "label": "moderate"
+              "title": "Recovery / Mobility",
+              "category": "recovery",
+              "score": 0.5,
+              "label": "low"
             },
             {
               "day": "Tue",
@@ -64,9 +64,9 @@
             },
             {
               "day": "Thu",
-              "title": "Dumbbell Carry Conditioning",
-              "category": "hybrid",
-              "score": 1.6,
+              "title": "Dumbbell Upper Hypertrophy",
+              "category": "strength",
+              "score": 2,
               "label": "moderate"
             },
             {
@@ -78,7 +78,7 @@
             },
             {
               "day": "Sat",
-              "title": "Base Progression Run",
+              "title": "Short Tempo Flow",
               "category": "run",
               "score": 1,
               "label": "low"
@@ -164,39 +164,30 @@
         ],
         "schedule": [
           {
-            "template_id": "HYBRID-MUSCLE-CIRCUIT",
+            "template_id": "FILLER-RECOVERY",
             "day": "Mon",
-            "title": "Hybrid Muscle Circuit",
-            "intent": "Hybrid density work to build fitness in a controlled way.",
+            "title": "Recovery / Mobility",
+            "intent": "Low-stress recovery support.",
             "session": {
               "main": [
-                "4 rounds:",
-                "10 DB front squats",
-                "10 DB floor press",
-                "10 DB rows each side",
-                "12 DB RDL",
-                "60s easy bike, walk, or rest"
+                "20–30 min easy walk or bike",
+                "10–15 min mobility"
               ],
               "notes": [
-                "Purpose: Combine muscle-building patterns with controlled conditioning.",
-                "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Controlled breathing and tempo — this is not a frantic metcon.",
-                "Effort guide: 7/10",
-                "Keep reps controlled; this is not a frantic metcon."
+                "Keep this genuinely easy — the goal is to recover well.",
+                "Safety adjustment: this was softened to keep the week appropriate for a beginner."
               ]
             },
-            "time_cap_minutes": 40,
+            "time_cap_minutes": 35,
             "tags": [
-              "hybrid_density",
-              "hybrid",
-              "hybrid_bodyweight"
+              "recovery"
             ],
             "priority": {
-              "rank": 2,
-              "label": "priority_2",
-              "display_label": "Priority 2",
-              "category_label": "Support Session",
-              "reason": "This supports the key work without carrying the same priority."
+              "rank": 3,
+              "label": "priority_3",
+              "display_label": "Priority 3",
+              "category_label": "Optional / Flexible",
+              "reason": "This supports recovery and can be kept easy."
             }
           },
           {
@@ -264,31 +255,35 @@
             }
           },
           {
-            "template_id": "HYX-DB-CARRY-CONDITIONING",
+            "template_id": "UPPER-DB-HYPERTROPHY",
             "day": "Thu",
-            "title": "Dumbbell Carry Conditioning",
+            "title": "Dumbbell Upper Hypertrophy",
             "intent": "Full upper-body coverage with push and pull balance.",
             "session": {
+              "warm_up": [
+                "5 min easy bike or walk",
+                "Shoulder band work"
+              ],
               "main": [
-                "5 rounds:",
-                "40m farmer carry",
-                "10 DB front squats",
-                "8 DB rows each side",
-                "60s easy walk — or easy bike if available"
+                "DB Floor Press — 4 × 8–12",
+                "Single Arm DB Row — 4 × 10 each side",
+                "Seated DB Shoulder Press — 3 × 10",
+                "DB Pullover or rear delt raise — 3 × 12",
+                "Curl + lateral raise superset — 3 rounds"
               ],
               "notes": [
-                "Purpose: Build grip, trunk and hybrid conditioning with minimal equipment.",
-                "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Stand tall under load — let your legs do the work, not your low back.",
+                "Purpose: Build upper-body muscle using only dumbbells.",
+                "This strength session is included to make sure the week is still driving muscle and strength forward, not just burning calories.",
+                "Execution focus: Full range with a controlled tempo — ego loading stays off the table.",
                 "Effort guide: 7/10",
-                "Posture tall, breathing controlled."
+                "Full range and controlled tempo."
               ]
             },
-            "time_cap_minutes": 35,
+            "time_cap_minutes": 45,
             "tags": [
-              "hybrid_density",
-              "hybrid",
-              "hybrid_low_impact"
+              "strength_upper",
+              "strength",
+              "upper_hypertrophy"
             ],
             "priority": {
               "rank": 2,
@@ -325,31 +320,35 @@
             }
           },
           {
-            "template_id": "RUN-BASE-PROGRESSION",
+            "template_id": "TMP-SHORT-FLOW",
             "day": "Sat",
-            "title": "Base Progression Run",
+            "title": "Short Tempo Flow",
             "intent": "Entry-level quality run that keeps structure without excess fatigue.",
             "session": {
+              "warm_up": [
+                "5–8 min easy"
+              ],
               "main": [
-                "15 min easy Z2",
-                "15 min steady aerobic",
-                "10 min slightly quicker steady",
+                "20–25 min continuous tempo flow",
+                "Alternate steady and easy rhythm every 2–3 min"
+              ],
+              "cool_down": [
                 "5 min easy"
               ],
               "notes": [
-                "Purpose: Build base fitness by finishing slightly stronger than you started.",
+                "Purpose: Add quality while keeping total fatigue low.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Progress gradually, never jump to race effort.",
-                "Effort guide: 5-6/10",
-                "Pace guide: based on your submitted 5km, easy aerobic work sits around 8:30–9:30/km. Use RPE and control first.",
-                "A controlled progression beats a hard finish."
+                "Execution focus: Stay light and controlled from start to finish.",
+                "Effort guide: 6/10",
+                "Pace guide: based on your submitted 5km, this session should sit around your tempo range of 7:10–7:35/km. Use RPE and control first.",
+                "Ideal when time is limited but you still want structure."
               ]
             },
-            "time_cap_minutes": 40,
+            "time_cap_minutes": 30,
             "tags": [
-              "aerobic_run",
+              "tempo_run",
               "run",
-              "base_progression"
+              "tempo_short"
             ],
             "priority": {
               "rank": 2,
@@ -414,9 +413,9 @@
           "hard_percent": 30
         },
         "weekly_stress": {
-          "raw_score": 11.1,
+          "raw_score": 10.6,
           "budget": 11,
-          "relative_load": 1.009,
+          "relative_load": 0.964,
           "label": "balanced",
           "display_label": "Balanced Load",
           "hard_sessions": 1,
@@ -433,30 +432,30 @@
             },
             {
               "day": "Tue",
-              "title": "Upper Pull",
+              "title": "Upper Full Strength",
               "category": "strength",
               "score": 2.5,
               "label": "moderate"
             },
             {
               "day": "Wed",
-              "title": "Base Progression Run",
+              "title": "Run-Walk Aerobic Base",
               "category": "run",
               "score": 1,
               "label": "low"
             },
             {
               "day": "Thu",
-              "title": "Short Full Body Strength",
+              "title": "Bodyweight Strength Base",
               "category": "strength",
-              "score": 1.4,
+              "score": 1,
               "label": "low"
             },
             {
               "day": "Fri",
-              "title": "Bike Low-Impact Intervals",
-              "category": "aerobic",
-              "score": 1.1,
+              "title": "Outdoor Walk-Run Aerobic",
+              "category": "run",
+              "score": 1,
               "label": "low"
             },
             {
@@ -588,34 +587,35 @@
             }
           },
           {
-            "template_id": "UPPER-PULL",
+            "template_id": "UPPER-FULL",
             "day": "Tue",
-            "title": "Upper Pull",
+            "title": "Upper Full Strength",
             "intent": "Upper-body strength and support.",
             "session": {
               "warm_up": [
-                "5 min row",
-                "Scap activation"
+                "5–8 min easy row",
+                "Shoulder/scap prep"
               ],
               "main": [
-                "Weighted Pull-Ups / Assisted Pull-Ups — 4×6–8",
-                "Chest Supported Row — 4×8–10",
-                "Single Arm DB Row — 3×10 each side",
-                "Biceps Curl Variation — 3×10–12"
+                "Pull-Ups or Lat Pulldown — 4×6–8",
+                "Incline DB Press — 3×6–8",
+                "Chest Supported Row — 3×8–10",
+                "Shoulder Press — 3×6–8",
+                "Lateral Raises or Curls — 3×10–12"
               ],
               "notes": [
-                "Purpose: Bias pulling strength and postural support.",
+                "Purpose: Cover all major upper patterns when only one upper day exists.",
                 "This strength session is included to make sure the week is still driving muscle and strength forward, not just burning calories.",
-                "Execution focus: Own the squeeze at the end of each row.",
-                "Effort guide: 7/10",
-                "Use only when the week also contains pushing elsewhere."
+                "Execution focus: Hit full range and leave 1–2 reps in reserve.",
+                "Effort guide: 6-7/10",
+                "This is non-negotiable when upper frequency is only once per week."
               ]
             },
-            "time_cap_minutes": 50,
+            "time_cap_minutes": 55,
             "tags": [
               "strength_upper",
               "strength",
-              "upper_split"
+              "upper_full"
             ],
             "priority": {
               "rank": 1,
@@ -626,31 +626,30 @@
             }
           },
           {
-            "template_id": "RUN-BASE-PROGRESSION",
+            "template_id": "RUN-WALK-AEROBIC",
             "day": "Wed",
-            "title": "Base Progression Run",
+            "title": "Run-Walk Aerobic Base",
             "intent": "Entry-level quality run that keeps structure without excess fatigue.",
             "session": {
               "main": [
-                "15 min easy Z2",
-                "15 min steady aerobic",
-                "10 min slightly quicker steady",
-                "5 min easy"
+                "5 min brisk walk",
+                "8 rounds: 2 min easy run + 1 min walk",
+                "5 min easy walk cool-down"
               ],
               "notes": [
-                "Purpose: Build base fitness by finishing slightly stronger than you started.",
+                "Purpose: Build beginner aerobic volume safely with controlled impact.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Progress gradually, never jump to race effort.",
-                "Effort guide: 5-6/10",
+                "Execution focus: Stay conversational and keep every run segment smooth.",
+                "Effort guide: 4/10",
                 "Pace guide: based on your submitted 5km, easy aerobic work sits around 7:10–8:00/km. Use RPE and control first.",
-                "A controlled progression beats a hard finish."
+                "If form fades, shorten run reps and keep quality high."
               ]
             },
-            "time_cap_minutes": 40,
+            "time_cap_minutes": 35,
             "tags": [
               "aerobic_run",
               "run",
-              "base_progression"
+              "run_walk_base"
             ],
             "priority": {
               "rank": 2,
@@ -661,30 +660,32 @@
             }
           },
           {
-            "template_id": "FULL-SHORT",
+            "template_id": "FULL-BODYWEIGHT-STRENGTH",
             "day": "Thu",
-            "title": "Short Full Body Strength",
+            "title": "Bodyweight Strength Base",
             "intent": "Condensed full-body strength coverage.",
             "session": {
               "main": [
-                "Squat pattern — 3×8",
-                "Push pattern — 3×8",
-                "Pull pattern — 3×8",
-                "Hinge pattern — 3×8"
+                "3–4 rounds:",
+                "Squat variation ×12",
+                "Push-up variation ×8–12",
+                "Hip hinge drill ×12",
+                "Split squat ×8 each side",
+                "Plank 30–45s"
               ],
               "notes": [
-                "Purpose: Deliver full-body strength with minimal time cost.",
+                "Purpose: Build movement quality and basic strength without equipment.",
                 "This strength session is included to make sure the week is still driving muscle and strength forward, not just burning calories.",
-                "Execution focus: Prioritise clean movement over chasing load.",
-                "Effort guide: 6/10",
-                "Simple, effective, and easy to recover from."
+                "Execution focus: Pause where you feel sloppy — quality is the load.",
+                "Effort guide: 5-6/10",
+                "Quality first, effort second."
               ]
             },
             "time_cap_minutes": 35,
             "tags": [
               "strength_full",
               "strength",
-              "full_body"
+              "movement_foundations"
             ],
             "priority": {
               "rank": 1,
@@ -695,41 +696,37 @@
             }
           },
           {
-            "template_id": "AER-BIKE-LOW-IMPACT-INTERVALS",
+            "template_id": "AER-OUTDOOR-WALK-RUN",
             "day": "Fri",
-            "title": "Bike Low-Impact Intervals",
+            "title": "Outdoor Walk-Run Aerobic",
             "intent": "Low-cost aerobic support that fits around harder sessions.",
             "session": {
-              "warm_up": [
-                "8 min easy spin"
-              ],
               "main": [
-                "6 x 3 min moderate-hard bike",
-                "2 min very easy spin between reps"
-              ],
-              "cool_down": [
-                "5–7 min easy spin"
+                "5 min brisk walk",
+                "10 rounds: 90s easy run + 60s walk",
+                "5 min easy walk"
               ],
               "notes": [
-                "Purpose: Build aerobic quality with minimal impact cost.",
-                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
-                "Execution focus: Stay controlled in work blocks and fully reset in recoveries.",
-                "Effort guide: 6/10",
-                "Excellent option when running impact needs managing."
+                "Purpose: Build aerobic consistency without needing gym equipment.",
+                "This session plays a specific role in balancing quality, recovery, and performance across the week.",
+                "Execution focus: Stay conversational — if you can’t speak in short sentences, ease off.",
+                "Effort guide: 4/10",
+                "Pace guide: based on your submitted 5km, easy aerobic work sits around 7:10–8:00/km. Use RPE and control first.",
+                "Keep this conversational."
               ]
             },
             "time_cap_minutes": 35,
             "tags": [
-              "aerobic_support",
-              "aerobic",
-              "aerobic_support"
+              "aerobic_run",
+              "run",
+              "run_walk_base"
             ],
             "priority": {
-              "rank": 3,
-              "label": "priority_3",
-              "display_label": "Priority 3",
-              "category_label": "Optional / Flexible",
-              "reason": "This is useful support work, but it is the easiest to flex if life gets busy."
+              "rank": 2,
+              "label": "priority_2",
+              "display_label": "Priority 2",
+              "category_label": "Support Session",
+              "reason": "This supports the key work without carrying the same priority."
             }
           },
           {
@@ -822,43 +819,43 @@
           "hard_percent": 35
         },
         "weekly_stress": {
-          "raw_score": 11.8,
+          "raw_score": 13.5,
           "budget": 16.1,
-          "relative_load": 0.733,
-          "label": "low",
-          "display_label": "Low Relative Load",
-          "hard_sessions": 1,
+          "relative_load": 0.839,
+          "label": "balanced",
+          "display_label": "Balanced Load",
+          "hard_sessions": 2,
           "high_fatigue_sessions": 1,
-          "planned_minutes": 300,
-          "estimated_hours": 5,
+          "planned_minutes": 345,
+          "estimated_hours": 5.8,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "Lower Strength (Posterior Chain)",
+              "title": "Lower Full Strength",
               "category": "strength",
               "score": 3.8,
               "label": "very_high"
             },
             {
               "day": "Tue",
-              "title": "Dumbbell Muscle Builder",
+              "title": "Full Body Strength",
               "category": "strength",
               "score": 2.5,
               "label": "moderate"
             },
             {
               "day": "Wed",
-              "title": "Upper Hypertrophy",
+              "title": "Upper Strength Hypertrophy",
               "category": "strength",
-              "score": 2.5,
-              "label": "moderate"
+              "score": 3,
+              "label": "high"
             },
             {
               "day": "Thu",
-              "title": "Short Z2 Bike",
-              "category": "aerobic",
-              "score": 0.6,
-              "label": "low"
+              "title": "Upper Body + Z2 Support",
+              "category": "strength",
+              "score": 1.8,
+              "label": "moderate"
             },
             {
               "day": "Fri",
@@ -883,7 +880,7 @@
             }
           ],
           "notes": [
-            "This is a lower-stress week designed to build consistency without excessive fatigue.",
+            "This week has a balanced stress profile for your level and available training time.",
             "This score is a planning guide, not a medical or physiological measurement."
           ]
         },
@@ -955,39 +952,39 @@
         ],
         "schedule": [
           {
-            "template_id": "LOWER-POSTERIOR",
+            "template_id": "LOWER-FULL",
             "day": "Mon",
-            "title": "Lower Strength (Posterior Chain)",
+            "title": "Lower Full Strength",
             "intent": "Primary lower-body strength day.",
             "session": {
               "warm_up": [
-                "5–8 min row",
-                "Hamstring + glute prep"
+                "8 min easy bike",
+                "Dynamic hips/ankles",
+                "2–3 ramp sets"
               ],
               "main": [
-                "RDL — 4×6–8",
-                "Hip Thrust — 4×8–10",
-                "Hamstring Curl — 3×10–15",
-                "Back Extensions — 3×12–15"
+                "Back Squat — 4×6–8",
+                "Reverse Lunges — 3×8–10 each side",
+                "RDL — 3×8–12",
+                "Back Extensions — 2×12–15"
               ],
               "finish": [
-                "3 rounds — 15 KB swings + 10 reverse lunges",
                 "Optional: 20–30 min Z2 bike after lifting",
                 "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Build hinge strength and posterior-chain resilience.",
+                "Purpose: Cover squat, hinge and unilateral work when only one lower day exists.",
                 "This strength session is included to make sure the week is still driving muscle and strength forward, not just burning calories.",
-                "Execution focus: Push hips back and keep tension throughout.",
+                "Execution focus: Control every rep and keep good positions.",
                 "Effort guide: 7-8/10",
-                "Great for runners and Hyrox athletes needing stronger posterior chain output."
+                "This is the default lower template when coverage matters most."
               ]
             },
-            "time_cap_minutes": 60,
+            "time_cap_minutes": 65,
             "tags": [
               "strength_lower",
               "strength",
-              "lower_split"
+              "lower_full"
             ],
             "priority": {
               "rank": 1,
@@ -998,39 +995,39 @@
             }
           },
           {
-            "template_id": "FULL-DB-MUSCLE",
+            "template_id": "FULL-DBPP",
             "day": "Tue",
-            "title": "Dumbbell Muscle Builder",
+            "title": "Full Body Strength",
             "intent": "Condensed full-body strength coverage.",
             "session": {
               "warm_up": [
-                "5 min easy cardio",
-                "Dynamic mobility"
+                "5–8 min bike or row",
+                "Full-body mobility"
               ],
               "main": [
-                "DB Front Squat — 4 x 8–10",
-                "DB Bench Press — 4 x 8–12",
-                "Single Arm DB Row — 4 x 10 each side",
-                "DB RDL — 3 x 10–12",
-                "Split Squat — 3 x 10 each side"
+                "Deadlift or RDL — 4×5",
+                "Push Press — 3×6",
+                "Pull-Ups / Lat Pulldown — 3×8",
+                "Split Squat — 3×8 each side",
+                "Core circuit — 2–3 rounds"
               ],
               "finish": [
                 "Optional: 20–30 min Z2 bike after lifting",
                 "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Provide complete muscle-focused full-body work with dumbbells.",
+                "Purpose: Cover the major lifts efficiently in one session.",
                 "This strength session is included to make sure the week is still driving muscle and strength forward, not just burning calories.",
-                "Execution focus: Use controlled reps and keep rest periods honest.",
-                "Effort guide: 7/10",
-                "Strong fallback when barbell options are limited."
+                "Execution focus: Move well first, then add effort.",
+                "Effort guide: 6-7/10",
+                "Useful when training frequency is lower or time is compressed."
               ]
             },
-            "time_cap_minutes": 50,
+            "time_cap_minutes": 55,
             "tags": [
               "strength_full",
               "strength",
-              "full_body_hypertrophy"
+              "full_body"
             ],
             "priority": {
               "rank": 1,
@@ -1041,28 +1038,28 @@
             }
           },
           {
-            "template_id": "UPPER-HYPERTROPHY",
+            "template_id": "UPPER-STRENGTH-HYPERTROPHY",
             "day": "Wed",
-            "title": "Upper Hypertrophy",
+            "title": "Upper Strength Hypertrophy",
             "intent": "Upper-body strength and support.",
             "session": {
               "main": [
-                "Incline DB Press — 4 x 8–12",
-                "Chest Supported Row — 4 x 8–12",
-                "Seated DB Shoulder Press — 3 x 10–12",
-                "Lat Pulldown or Pull-Ups — 3 x 8–12",
-                "Lateral Raise + Curl superset — 3 x 12–15"
+                "Heavy press variation — 4 × 5–6",
+                "Heavy row or pull-up variation — 4 × 5–8",
+                "DB incline press — 3 × 8–10",
+                "Single arm row — 3 × 10",
+                "Lateral raise + rear delt superset — 3 rounds"
               ],
               "finish": [
                 "Optional: 20–30 min Z2 bike after lifting",
                 "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Drive upper-body muscle gain with quality volume.",
+                "Purpose: Blend upper strength and hypertrophy for hybrid athletes.",
                 "This strength session is included to make sure the week is still driving muscle and strength forward, not just burning calories.",
-                "Execution focus: Control tempo, full range, stop 1–2 reps before failure.",
-                "Effort guide: 7/10",
-                "Total quality reps matter more than chasing load."
+                "Execution focus: Earn heavier sets with perfect positions, then accumulate clean volume.",
+                "Effort guide: 8/10",
+                "Progress the first two lifts; accumulate quality volume after."
               ]
             },
             "time_cap_minutes": 55,
@@ -1080,27 +1077,36 @@
             }
           },
           {
-            "template_id": "AER-SHORT-Z2-BIKE",
+            "template_id": "UPPER-BODY-PLUS-Z2",
             "day": "Thu",
-            "title": "Short Z2 Bike",
+            "title": "Upper Body + Z2 Support",
             "intent": "Low-cost aerobic support that fits around harder sessions.",
             "session": {
               "main": [
+                "DB Press — 3 × 10",
+                "Row — 3 × 10",
+                "Shoulder Press — 3 × 10",
+                "Pull or pulldown — 3 × 10",
+                "Finish:",
                 "20–30 min easy Z2 bike"
               ],
+              "finish": [
+                "Optional: 20–30 min Z2 bike after lifting",
+                "Optional second session: 20–30 min easy Z2 bike"
+              ],
               "notes": [
-                "Purpose: Provide a short low-cost aerobic top-up.",
-                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
-                "Execution focus: Keep it easy enough to finish fresher than you started.",
-                "Effort guide: 4/10",
-                "Perfect add-on for busier days."
+                "Purpose: Build upper-body volume while adding low-cost aerobic work.",
+                "This strength session is included to make sure the week is still driving muscle and strength forward, not just burning calories.",
+                "Execution focus: Lifting stays honest; the bike should feel like easy Z2, not another interval set.",
+                "Effort guide: 6-7/10",
+                "Useful when you want to combine lifting and aerobic support without stressing the legs."
               ]
             },
-            "time_cap_minutes": 25,
+            "time_cap_minutes": 60,
             "tags": [
-              "aerobic_support",
-              "aerobic",
-              "aerobic_support"
+              "strength_upper",
+              "strength",
+              "upper_hypertrophy"
             ],
             "priority": {
               "rank": 3,
@@ -1229,26 +1235,26 @@
           "hard_percent": 25
         },
         "weekly_stress": {
-          "raw_score": 6.2,
+          "raw_score": 7,
           "budget": 6.8,
-          "relative_load": 0.912,
+          "relative_load": 1.029,
           "label": "balanced",
           "display_label": "Balanced Load",
           "hard_sessions": 0,
           "high_fatigue_sessions": 0,
-          "planned_minutes": 250,
-          "estimated_hours": 4.2,
+          "planned_minutes": 255,
+          "estimated_hours": 4.3,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "Movement Foundations",
+              "title": "Muscle Maintenance for Runners",
               "category": "strength",
-              "score": 1,
+              "score": 1.4,
               "label": "low"
             },
             {
               "day": "Tue",
-              "title": "Outdoor Walk-Run Aerobic",
+              "title": "Run-Walk Aerobic Base",
               "category": "run",
               "score": 1,
               "label": "low"
@@ -1262,9 +1268,9 @@
             },
             {
               "day": "Thu",
-              "title": "Hyrox Erg Foundations",
-              "category": "aerobic",
-              "score": 0.8,
+              "title": "Run-Walk Hybrid Intro",
+              "category": "hybrid",
+              "score": 1.2,
               "label": "low"
             },
             {
@@ -1362,27 +1368,27 @@
         ],
         "schedule": [
           {
-            "template_id": "FULL-MOVEMENT-FOUNDATIONS",
+            "template_id": "MUSCLE-MAINTENANCE-RUNNER",
             "day": "Mon",
-            "title": "Movement Foundations",
+            "title": "Muscle Maintenance for Runners",
             "intent": "Condensed full-body strength coverage.",
             "session": {
               "main": [
-                "3 rounds: bodyweight squat x12",
-                "Hip hinge drill x10",
-                "Push-up variation x8–12",
-                "Row variation x10–12",
-                "Carry or plank 40–60s"
+                "DB RDL — 3 × 8",
+                "Split Squat — 2 × 8 each side",
+                "DB Bench Press — 3 × 8–10",
+                "Pull-Up or Row — 3 × 8–10",
+                "Core carry or plank — 3 rounds"
               ],
               "notes": [
-                "Purpose: Build baseline movement quality and trunk control.",
+                "Purpose: Maintain muscle and strength while keeping legs fresh for running.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Move deliberately; quality and control come before intensity.",
-                "Effort guide: 4-5/10",
-                "Ideal Block 1 base-builder for newer athletes."
+                "Execution focus: Leave 2–3 reps in reserve — you should finish feeling springier, not sluggish.",
+                "Effort guide: 6-7/10",
+                "Leave the gym feeling better, not destroyed."
               ]
             },
-            "time_cap_minutes": 35,
+            "time_cap_minutes": 40,
             "tags": [
               "strength_full",
               "strength",
@@ -1397,23 +1403,23 @@
             }
           },
           {
-            "template_id": "AER-OUTDOOR-WALK-RUN",
+            "template_id": "RUN-WALK-AEROBIC",
             "day": "Tue",
-            "title": "Outdoor Walk-Run Aerobic",
+            "title": "Run-Walk Aerobic Base",
             "intent": "Entry-level quality run that keeps structure without excess fatigue.",
             "session": {
               "main": [
                 "5 min brisk walk",
-                "10 rounds: 90s easy run + 60s walk",
-                "5 min easy walk"
+                "8 rounds: 2 min easy run + 1 min walk",
+                "5 min easy walk cool-down"
               ],
               "notes": [
-                "Purpose: Build aerobic consistency without needing gym equipment.",
+                "Purpose: Build beginner aerobic volume safely with controlled impact.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Stay conversational — if you can’t speak in short sentences, ease off.",
+                "Execution focus: Stay conversational and keep every run segment smooth.",
                 "Effort guide: 4/10",
                 "Pace guide: based on your submitted 5km, easy aerobic work sits around 7:45–8:40/km. Use RPE and control first.",
-                "Keep this conversational."
+                "If form fades, shorten run reps and keep quality high."
               ]
             },
             "time_cap_minutes": 35,
@@ -1466,37 +1472,38 @@
             }
           },
           {
-            "template_id": "HYX-ERG-FOUNDATIONS",
+            "template_id": "RUN-WALK-HYBRID-INTRO",
             "day": "Thu",
-            "title": "Hyrox Erg Foundations",
+            "title": "Run-Walk Hybrid Intro",
             "intent": "Hybrid density work to build fitness in a controlled way.",
             "session": {
               "main": [
-                "3 rounds:",
-                "5 min easy-moderate erg (row, ski, or bike)",
-                "2 min very easy active recovery on same or different machine",
-                "Change machine each round if equipment allows"
+                "6 rounds:",
+                "2 min easy run",
+                "1 min walk",
+                "8 bodyweight squats",
+                "6 incline push-ups or push-ups"
               ],
               "notes": [
-                "Purpose: Build basic erg confidence without excessive fatigue.",
-                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
-                "Execution focus: Rhythm first — let power follow form, not panic.",
+                "Purpose: Introduce hybrid work for newer runners using run-walk control.",
+                "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
+                "Execution focus: Conversation-speed running only — walk when quality dips.",
                 "Effort guide: 4-5/10",
-                "Learn rhythm and pacing before intensity."
+                "Stay conversational and controlled."
               ]
             },
             "time_cap_minutes": 35,
             "tags": [
-              "aerobic_support",
-              "aerobic",
-              "aerobic_support"
+              "hybrid_density",
+              "hybrid",
+              "hybrid_intro"
             ],
             "priority": {
-              "rank": 3,
-              "label": "priority_3",
-              "display_label": "Priority 3",
-              "category_label": "Optional / Flexible",
-              "reason": "This is useful support work, but it is the easiest to flex if life gets busy."
+              "rank": 2,
+              "label": "priority_2",
+              "display_label": "Priority 2",
+              "category_label": "Support Session",
+              "reason": "This supports the key work without carrying the same priority."
             }
           },
           {
@@ -1612,49 +1619,49 @@
           "hard_percent": 30
         },
         "weekly_stress": {
-          "raw_score": 13,
+          "raw_score": 9.9,
           "budget": 11,
-          "relative_load": 1.182,
-          "label": "high",
-          "display_label": "High Relative Load",
-          "hard_sessions": 1,
-          "high_fatigue_sessions": 1,
-          "planned_minutes": 305,
-          "estimated_hours": 5.1,
+          "relative_load": 0.9,
+          "label": "balanced",
+          "display_label": "Balanced Load",
+          "hard_sessions": 0,
+          "high_fatigue_sessions": 0,
+          "planned_minutes": 280,
+          "estimated_hours": 4.7,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "Wall Ball + Lunge Base",
-              "category": "hybrid",
+              "title": "Muscle Maintenance for Runners",
+              "category": "strength",
+              "score": 1.4,
+              "label": "low"
+            },
+            {
+              "day": "Tue",
+              "title": "No-Impact Threshold Builder",
+              "category": "aerobic",
               "score": 1.6,
               "label": "moderate"
             },
             {
-              "day": "Tue",
-              "title": "Short Intervals (6 x 400m)",
-              "category": "run",
-              "score": 2,
+              "day": "Wed",
+              "title": "Dumbbell Hybrid Density",
+              "category": "hybrid",
+              "score": 2.3,
               "label": "moderate"
             },
             {
-              "day": "Wed",
-              "title": "Ski + Lunges + Run",
-              "category": "hybrid",
-              "score": 4.3,
-              "label": "very_high"
-            },
-            {
               "day": "Thu",
-              "title": "Upper Push",
+              "title": "Upper Pull",
               "category": "strength",
               "score": 2.5,
               "label": "moderate"
             },
             {
               "day": "Fri",
-              "title": "Z2 Run",
-              "category": "run",
-              "score": 1.3,
+              "title": "Low-Impact Aerobic Base",
+              "category": "aerobic",
+              "score": 0.8,
               "label": "low"
             },
             {
@@ -1673,7 +1680,7 @@
             }
           ],
           "notes": [
-            "This week carries a higher training load. Prioritise sleep, nutrition and recovery around the key sessions.",
+            "This week has a balanced stress profile for your level and available training time.",
             "This score is a planning guide, not a medical or physiological measurement."
           ]
         },
@@ -1745,70 +1752,108 @@
         ],
         "schedule": [
           {
-            "template_id": "HYX-WALL-BALL-LUNGE-BASE",
+            "template_id": "MUSCLE-MAINTENANCE-RUNNER",
             "day": "Mon",
-            "title": "Wall Ball + Lunge Base",
+            "title": "Muscle Maintenance for Runners",
             "intent": "Primary lower-body strength day.",
             "session": {
               "main": [
-                "4 rounds:",
-                "15 wall balls or DB thrusters (light–moderate)",
-                "12 reverse lunges each leg",
-                "90s easy bike, row, or brisk walk"
+                "DB RDL — 3 × 8",
+                "Split Squat — 2 × 8 each side",
+                "DB Bench Press — 3 × 8–10",
+                "Pull-Up or Row — 3 × 8–10",
+                "Core carry or plank — 3 rounds"
+              ],
+              "finish": [
+                "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Build tolerance for two key Hyrox movement patterns.",
-                "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
-                "Execution focus: Same rep quality on round 4 as round 1.",
+                "Purpose: Maintain muscle and strength while keeping legs fresh for running.",
+                "This strength work supports performance by building positions, force output, and durability.",
+                "Execution focus: Leave 2–3 reps in reserve — you should finish feeling springier, not sluggish.",
                 "Effort guide: 6-7/10",
-                "Focus on repeatable reps and breathing control."
+                "Leave the gym feeling better, not destroyed."
+              ]
+            },
+            "time_cap_minutes": 40,
+            "tags": [
+              "strength_full",
+              "strength",
+              "movement_foundations"
+            ],
+            "priority": {
+              "rank": 3,
+              "label": "priority_3",
+              "display_label": "Priority 3",
+              "category_label": "Optional / Flexible",
+              "reason": "This is useful support work, but it is the easiest to flex if life gets busy."
+            }
+          },
+          {
+            "template_id": "AER-NO-IMPACT-THRESHOLD",
+            "day": "Tue",
+            "title": "No-Impact Threshold Builder",
+            "intent": "Quality run to improve pace under fatigue.",
+            "session": {
+              "warm_up": [
+                "8 min easy build"
+              ],
+              "main": [
+                "4 x 5 min threshold-like effort",
+                "2 min easy between reps"
+              ],
+              "cool_down": [
+                "6 min easy spin/row/ski"
+              ],
+              "notes": [
+                "Purpose: Preserve threshold stimulus when impact tolerance is limited.",
+                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
+                "Execution focus: Even pressure throughout each rep, avoid early surges.",
+                "Effort guide: 7/10",
+                "Use this as a low-impact substitute for hard run days."
+              ]
+            },
+            "time_cap_minutes": 40,
+            "tags": [
+              "aerobic_support",
+              "aerobic",
+              "aerobic_support"
+            ],
+            "priority": {
+              "rank": 1,
+              "label": "priority_1",
+              "display_label": "Priority 1",
+              "category_label": "Key Session",
+              "reason": "This is one of the main goal-driving sessions for the week."
+            }
+          },
+          {
+            "template_id": "HYX-DB-HYBRID-DENSITY",
+            "day": "Wed",
+            "title": "Dumbbell Hybrid Density",
+            "intent": "Primary Hybrid / Hyrox-specific session.",
+            "session": {
+              "main": [
+                "20 min quality density (rotate with short rests as needed):",
+                "8 DB deadlifts",
+                "8 DB push press",
+                "10 reverse lunges",
+                "10 push-ups",
+                "Rest as needed to keep form sharp"
+              ],
+              "notes": [
+                "Purpose: Create hybrid conditioning stimulus with only dumbbells.",
+                "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
+                "Execution focus: Sharp transitions, but never at the cost of shape.",
+                "Effort guide: 7/10",
+                "Move with intent, not chaos."
               ]
             },
             "time_cap_minutes": 35,
             "tags": [
               "hybrid_density",
               "hybrid",
-              "hybrid_intro"
-            ],
-            "priority": {
-              "rank": 2,
-              "label": "priority_2",
-              "display_label": "Priority 2",
-              "category_label": "Support Session",
-              "reason": "This supports the key work without carrying the same priority."
-            }
-          },
-          {
-            "template_id": "INT-SHORT-6X400",
-            "day": "Tue",
-            "title": "Short Intervals (6 x 400m)",
-            "intent": "Quality run to improve pace under fatigue.",
-            "session": {
-              "warm_up": [
-                "8–10 min easy",
-                "2 strides"
-              ],
-              "main": [
-                "6×400m @ strong controlled pace",
-                "75s recovery"
-              ],
-              "cool_down": [
-                "5–8 min easy"
-              ],
-              "notes": [
-                "Purpose: Introduce interval structure in a lower-volume format.",
-                "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Stay smooth — build confidence, not chaos.",
-                "Effort guide: 7/10",
-                "Pace guide: based on your submitted 5km, quality reps sit around your interval / 5km-work range of 4:55–5:10/km. Use RPE and control first.",
-                "Great short-session quality touch."
-              ]
-            },
-            "time_cap_minutes": 35,
-            "tags": [
-              "interval_run",
-              "run",
-              "interval_short"
+              "hybrid_bodyweight"
             ],
             "priority": {
               "rank": 1,
@@ -1819,66 +1864,30 @@
             }
           },
           {
-            "template_id": "HYX-SKI-LUNGE-RUN",
-            "day": "Wed",
-            "title": "Ski + Lunges + Run",
-            "intent": "Primary Hybrid / Hyrox-specific session.",
-            "session": {
-              "main": [
-                "300m Ski",
-                "10 Burpee to Plate",
-                "10 Reverse Sandbag Lunges",
-                "400m Run",
-                "90s Rest",
-                "Repeat ×6–8"
-              ],
-              "notes": [
-                "Purpose: Improve run quality after station fatigue.",
-                "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
-                "Execution focus: Compose yourself fast after the ski and lunges.",
-                "Effort guide: 8/10",
-                "Classic compromised run builder."
-              ]
-            },
-            "time_cap_minutes": 60,
-            "tags": [
-              "hybrid_compromised",
-              "hybrid",
-              "hybrid_primary"
-            ],
-            "priority": {
-              "rank": 1,
-              "label": "priority_1",
-              "display_label": "Priority 1",
-              "category_label": "Key Session",
-              "reason": "This is one of the main goal-driving sessions for the week."
-            }
-          },
-          {
-            "template_id": "UPPER-PUSH",
+            "template_id": "UPPER-PULL",
             "day": "Thu",
-            "title": "Upper Push",
+            "title": "Upper Pull",
             "intent": "Upper-body strength and support.",
             "session": {
               "warm_up": [
-                "Band shoulder prep",
-                "5 min easy row"
+                "5 min row",
+                "Scap activation"
               ],
               "main": [
-                "Bench Press — 4×5–6",
-                "DB Shoulder Press — 3×8",
-                "Incline DB Press — 3×8–10",
-                "Triceps Pushdown / Dips — 3×10–12"
+                "Weighted Pull-Ups / Assisted Pull-Ups — 4×6–8",
+                "Chest Supported Row — 4×8–10",
+                "Single Arm DB Row — 3×10 each side",
+                "Biceps Curl Variation — 3×10–12"
               ],
               "finish": [
                 "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Bias pressing strength and upper-body output.",
+                "Purpose: Bias pulling strength and postural support.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Stay stacked and don’t chase ugly reps.",
+                "Execution focus: Own the squeeze at the end of each row.",
                 "Effort guide: 7/10",
-                "Use only when another upper session covers pulling properly."
+                "Use only when the week also contains pushing elsewhere."
               ]
             },
             "time_cap_minutes": 50,
@@ -1896,35 +1905,34 @@
             }
           },
           {
-            "template_id": "AER-Z2-RUN",
+            "template_id": "AER-LOW-IMPACT-BASE",
             "day": "Fri",
-            "title": "Z2 Run",
+            "title": "Low-Impact Aerobic Base",
             "intent": "Longer aerobic development to improve overall endurance.",
             "session": {
               "main": [
-                "30–60 min continuous Z2 run"
+                "35–45 min continuous easy effort on bike, rower, or ski"
               ],
               "notes": [
-                "Purpose: Build aerobic base with minimal recovery cost.",
-                "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Keep it conversational and controlled.",
+                "Purpose: Accumulate aerobic volume without stressing joints.",
+                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
+                "Execution focus: Nasal-breathing pace or easy conversational effort.",
                 "Effort guide: 4-5/10",
-                "Pace guide: based on your submitted 5km, easy aerobic work sits around 6:25–7:10/km. Use RPE and control first.",
-                "This is a discipline session — easy means easy."
+                "Choose the modality that best matches your current constraints."
               ]
             },
-            "time_cap_minutes": 50,
+            "time_cap_minutes": 40,
             "tags": [
-              "aerobic_run",
-              "run",
-              "aerobic_run"
+              "aerobic_support",
+              "aerobic",
+              "aerobic_support"
             ],
             "priority": {
-              "rank": 2,
-              "label": "priority_2",
-              "display_label": "Priority 2",
-              "category_label": "Support Session",
-              "reason": "This supports the key work without carrying the same priority."
+              "rank": 3,
+              "label": "priority_3",
+              "display_label": "Priority 3",
+              "category_label": "Optional / Flexible",
+              "reason": "This is useful support work, but it is the easiest to flex if life gets busy."
             }
           },
           {
@@ -2012,57 +2020,57 @@
           "hard_percent": 35
         },
         "weekly_stress": {
-          "raw_score": 13.9,
+          "raw_score": 17.1,
           "budget": 16.1,
-          "relative_load": 0.863,
+          "relative_load": 1.062,
           "label": "balanced",
           "display_label": "Balanced Load",
-          "hard_sessions": 1,
-          "high_fatigue_sessions": 0,
-          "planned_minutes": 320,
-          "estimated_hours": 5.3,
+          "hard_sessions": 2,
+          "high_fatigue_sessions": 2,
+          "planned_minutes": 385,
+          "estimated_hours": 6.4,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "Lower Hypertrophy Low Fatigue",
+              "title": "Lower Full Strength",
               "category": "strength",
-              "score": 2,
-              "label": "moderate"
+              "score": 3.8,
+              "label": "very_high"
             },
             {
               "day": "Tue",
-              "title": "1km On / 1km Off",
+              "title": "6 x 1km @ 10k Pace",
               "category": "run",
               "score": 2.5,
               "label": "moderate"
             },
             {
               "day": "Wed",
-              "title": "Upper Athletic",
+              "title": "Upper Full Strength",
               "category": "strength",
               "score": 2.5,
               "label": "moderate"
             },
             {
               "day": "Thu",
-              "title": "Low-Impact Run Alternative",
+              "title": "Z2 Bike",
               "category": "aerobic",
-              "score": 1.1,
+              "score": 1,
               "label": "low"
             },
             {
               "day": "Fri",
-              "title": "Dumbbell Hybrid Density",
+              "title": "Full Hyrox Flow",
               "category": "hybrid",
-              "score": 2.3,
-              "label": "moderate"
+              "score": 4.3,
+              "label": "very_high"
             },
             {
               "day": "Sat",
-              "title": "3 x 10min Threshold",
+              "title": "Long Progressive Run",
               "category": "run",
-              "score": 3,
-              "label": "high"
+              "score": 2.5,
+              "label": "moderate"
             },
             {
               "day": "Sun",
@@ -2145,35 +2153,39 @@
         ],
         "schedule": [
           {
-            "template_id": "LOWER-HYPERTROPHY-LOW-FATIGUE",
+            "template_id": "LOWER-FULL",
             "day": "Mon",
-            "title": "Lower Hypertrophy Low Fatigue",
+            "title": "Lower Full Strength",
             "intent": "Primary lower-body strength day.",
             "session": {
+              "warm_up": [
+                "8 min easy bike",
+                "Dynamic hips/ankles",
+                "2–3 ramp sets"
+              ],
               "main": [
-                "Leg Press or Goblet Squat — 3 × 10–12",
-                "DB RDL — 3 × 10",
-                "Reverse Lunge — 2–3 × 10 each side",
-                "Hamstring Curl or Hamstring Slide — 3 × 12",
-                "Calf Raise — 3 × 12–20"
+                "Back Squat — 4×6–8",
+                "Reverse Lunges — 3×8–10 each side",
+                "RDL — 3×8–12",
+                "Back Extensions — 2×12–15"
               ],
               "finish": [
                 "Optional: 20–30 min Z2 bike after lifting",
                 "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Build lower-body muscle while managing fatigue for running and hybrid work.",
+                "Purpose: Cover squat, hinge and unilateral work when only one lower day exists.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Stop with 1–3 good reps in the tank — smooth reps beat grinding.",
-                "Effort guide: 7/10",
-                "Avoid turning this into a leg destruction day."
+                "Execution focus: Control every rep and keep good positions.",
+                "Effort guide: 7-8/10",
+                "This is the default lower template when coverage matters most."
               ]
             },
-            "time_cap_minutes": 45,
+            "time_cap_minutes": 65,
             "tags": [
               "strength_lower",
               "strength",
-              "lower_hypertrophy"
+              "lower_full"
             ],
             "priority": {
               "rank": 2,
@@ -2184,36 +2196,36 @@
             }
           },
           {
-            "template_id": "TMP-1KONOFF",
+            "template_id": "INT-6X1K10K",
             "day": "Tue",
-            "title": "1km On / 1km Off",
+            "title": "6 x 1km @ 10k Pace",
             "intent": "Quality run to improve pace under fatigue.",
             "session": {
               "warm_up": [
-                "1–2km easy"
+                "10–15 min easy",
+                "3 strides"
               ],
               "main": [
-                "1km steady / tempo",
-                "1km easy Z2",
-                "Repeat ×5"
+                "6×1km @ 10k pace",
+                "90s easy jog"
               ],
               "cool_down": [
-                "1km easy"
+                "8–10 min easy"
               ],
               "notes": [
-                "Purpose: Blend aerobic work with tempo rhythm.",
+                "Purpose: Build pace control and aerobic support at faster but sustainable pace.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: The off segments still matter — stay switched on.",
-                "Effort guide: 6-7/10",
-                "Pace guide: based on your submitted 5km, this session should sit around your tempo range of 4:10–4:25/km. Use RPE and control first.",
-                "Great bridge between tempo and long-run support."
+                "Execution focus: Run tall and stay smooth.",
+                "Effort guide: 7/10",
+                "Pace guide: based on your submitted 5km, quality reps sit around your interval / 5km-work range of 3:50–4:00/km. Use RPE and control first.",
+                "This should feel snappy, not desperate."
               ]
             },
             "time_cap_minutes": 55,
             "tags": [
-              "tempo_run",
+              "interval_run",
               "run",
-              "tempo"
+              "interval"
             ],
             "priority": {
               "rank": 1,
@@ -2224,39 +2236,39 @@
             }
           },
           {
-            "template_id": "UPPER-ATHLETIC",
+            "template_id": "UPPER-FULL",
             "day": "Wed",
-            "title": "Upper Athletic",
+            "title": "Upper Full Strength",
             "intent": "Upper-body strength and support.",
             "session": {
               "warm_up": [
-                "5 min ski",
-                "Shoulder prep"
+                "5–8 min easy row",
+                "Shoulder/scap prep"
               ],
               "main": [
-                "Push Press — 4×5",
-                "Pull-Ups — 4×6–8",
-                "DB Bench Press — 3×8",
-                "Single Arm Row — 3×10"
+                "Pull-Ups or Lat Pulldown — 4×6–8",
+                "Incline DB Press — 3×6–8",
+                "Chest Supported Row — 3×8–10",
+                "Shoulder Press — 3×6–8",
+                "Lateral Raises or Curls — 3×10–12"
               ],
               "finish": [
-                "3 rounds — 12 push-ups + 10 DB snatches",
                 "Optional: 20–30 min Z2 bike after lifting",
                 "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Build athletic pressing and pulling with dynamic output.",
+                "Purpose: Cover all major upper patterns when only one upper day exists.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Move explosively but stay tidy.",
+                "Execution focus: Hit full range and leave 1–2 reps in reserve.",
                 "Effort guide: 6-7/10",
-                "Useful for athletes who want upper strength with some engine crossover."
+                "This is non-negotiable when upper frequency is only once per week."
               ]
             },
             "time_cap_minutes": 55,
             "tags": [
               "strength_upper",
               "strength",
-              "upper_split"
+              "upper_full"
             ],
             "priority": {
               "rank": 2,
@@ -2267,26 +2279,23 @@
             }
           },
           {
-            "template_id": "RUN-LOW-IMPACT-ALT",
+            "template_id": "AER-Z2-BIKE",
             "day": "Thu",
-            "title": "Low-Impact Run Alternative",
+            "title": "Z2 Bike",
             "intent": "Low-cost aerobic support that fits around harder sessions.",
             "session": {
               "main": [
-                "Pick bike, rower, or ski:",
-                "10 min easy conversational effort",
-                "20 min steady sustainable aerobic rhythm",
-                "5 min easy cool-down spin or paddle"
+                "45–60 min steady Z2 bike"
               ],
               "notes": [
-                "Purpose: Preserve a run-slot habit with low-impact conditioning when pounding is ill-advised.",
+                "Purpose: Add aerobic volume without heavy joint stress.",
                 "This session keeps aerobic volume in the week without creating too much extra fatigue.",
-                "Execution focus: Steady nose-breathing where possible — no hero surges.",
-                "Effort guide: 5-6/10",
-                "Use when a run is scheduled but symptom control comes first."
+                "Execution focus: Steady breathing and controlled output.",
+                "Effort guide: 4-5/10",
+                "High-value support work for hybrid athletes."
               ]
             },
-            "time_cap_minutes": 35,
+            "time_cap_minutes": 50,
             "tags": [
               "aerobic_support",
               "aerobic",
@@ -2301,32 +2310,31 @@
             }
           },
           {
-            "template_id": "HYX-DB-HYBRID-DENSITY",
+            "template_id": "HYX-FULL-FLOW",
             "day": "Fri",
-            "title": "Dumbbell Hybrid Density",
+            "title": "Full Hyrox Flow",
             "intent": "Primary Hybrid / Hyrox-specific session.",
             "session": {
               "main": [
-                "20 min quality density (rotate with short rests as needed):",
-                "8 DB deadlifts",
-                "8 DB push press",
-                "10 reverse lunges",
-                "10 push-ups",
-                "Rest as needed to keep form sharp"
+                "400m Run",
+                "400m Ski",
+                "400m Run",
+                "20 Lunges",
+                "Repeat ×4"
               ],
               "notes": [
-                "Purpose: Create hybrid conditioning stimulus with only dumbbells.",
+                "Purpose: Simulate flowing race-like transitions under fatigue.",
                 "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
-                "Execution focus: Sharp transitions, but never at the cost of shape.",
-                "Effort guide: 7/10",
-                "Move with intent, not chaos."
+                "Execution focus: No panic pace changes — build rhythm.",
+                "Effort guide: 8/10",
+                "Great lite race-sim day."
               ]
             },
-            "time_cap_minutes": 35,
+            "time_cap_minutes": 55,
             "tags": [
-              "hybrid_density",
+              "hybrid_compromised",
               "hybrid",
-              "hybrid_bodyweight"
+              "hybrid_primary"
             ],
             "priority": {
               "rank": 1,
@@ -2337,29 +2345,33 @@
             }
           },
           {
-            "template_id": "RUN-THRESHOLD-3X10",
+            "template_id": "LONG-PROGRESSIVE",
             "day": "Sat",
-            "title": "3 x 10min Threshold",
+            "title": "Long Progressive Run",
             "intent": "Longer aerobic development to improve overall endurance.",
             "session": {
               "main": [
-                "3 × 10 min @ threshold effort",
-                "2–3 min easy jog recoveries"
+                "2km WU",
+                "2km easy",
+                "2km steady",
+                "2km slightly quicker",
+                "2km easy WD"
               ],
               "notes": [
-                "Purpose: Build sustained threshold capacity with longer controlled reps.",
+                "Purpose: Build finish strength while keeping the overall run controlled.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Settle into rhythm early — the last block is where discipline shows.",
-                "Effort guide: 7-8/10",
-                "Pace guide: based on your submitted 5km, this session should sit around your threshold range of 4:00–4:15/km. Use RPE and control first.",
-                "The final rep should be strong, not desperate."
+                "Execution focus: Progress gradually — no sudden jump in effort.",
+                "Effort guide: 5-7/10",
+                "Pace guide: based on your submitted 5km, this longer aerobic day fits your steady range (4:25–4:50/km). Use RPE and control first.",
+                "A controlled build beats a dramatic final surge.",
+                "If recovery is strong, extend the aerobic block slightly."
               ]
             },
-            "time_cap_minutes": 60,
+            "time_cap_minutes": 70,
             "tags": [
-              "threshold_run",
+              "long_run",
               "run",
-              "threshold"
+              "long_run"
             ],
             "priority": {
               "rank": 2,
@@ -2435,15 +2447,15 @@
           "hard_percent": 35
         },
         "weekly_stress": {
-          "raw_score": 15.8,
+          "raw_score": 12.9,
           "budget": 19.55,
-          "relative_load": 0.808,
-          "label": "balanced",
-          "display_label": "Balanced Load",
-          "hard_sessions": 2,
-          "high_fatigue_sessions": 1,
-          "planned_minutes": 365,
-          "estimated_hours": 6.1,
+          "relative_load": 0.66,
+          "label": "low",
+          "display_label": "Low Relative Load",
+          "hard_sessions": 1,
+          "high_fatigue_sessions": 0,
+          "planned_minutes": 345,
+          "estimated_hours": 5.8,
           "daily_breakdown": [
             {
               "day": "Mon",
@@ -2454,49 +2466,49 @@
             },
             {
               "day": "Tue",
-              "title": "6 x 1km @ 10k Pace",
+              "title": "300m On / 300m Float",
               "category": "run",
-              "score": 2.5,
+              "score": 2,
               "label": "moderate"
             },
             {
               "day": "Wed",
-              "title": "Upper Hybrid Engine",
+              "title": "Upper Full Strength",
               "category": "strength",
               "score": 2.5,
               "label": "moderate"
             },
             {
               "day": "Thu",
-              "title": "Short Z2 Bike",
+              "title": "Ski Tempo Build",
               "category": "aerobic",
-              "score": 0.6,
+              "score": 1.1,
               "label": "low"
             },
             {
               "day": "Fri",
-              "title": "Row + Burpees + Run",
-              "category": "hybrid",
-              "score": 4.3,
-              "label": "very_high"
-            },
-            {
-              "day": "Sat",
-              "title": "Hybrid Long Session",
+              "title": "Long Hyrox Endurance Brick",
               "category": "run",
               "score": 2.5,
               "label": "moderate"
             },
             {
+              "day": "Sat",
+              "title": "Z2 Run",
+              "category": "run",
+              "score": 1.3,
+              "label": "low"
+            },
+            {
               "day": "Sun",
-              "title": "Mobility Reset",
+              "title": "Active Flush",
               "category": "recovery",
-              "score": 0.4,
+              "score": 0.5,
               "label": "low"
             }
           ],
           "notes": [
-            "This week has a balanced stress profile for your level and available training time.",
+            "This is a lower-stress week designed to build consistency without excessive fatigue.",
             "This score is a planning guide, not a medical or physiological measurement."
           ]
         },
@@ -2610,36 +2622,36 @@
             }
           },
           {
-            "template_id": "INT-6X1K10K",
+            "template_id": "TMP-300-300",
             "day": "Tue",
-            "title": "6 x 1km @ 10k Pace",
+            "title": "300m On / 300m Float",
             "intent": "Quality run to improve pace under fatigue.",
             "session": {
               "warm_up": [
-                "10–15 min easy",
-                "3 strides"
+                "10 min easy"
               ],
               "main": [
-                "6×1km @ 10k pace",
-                "90s easy jog"
+                "300m on",
+                "300m float",
+                "Repeat ×8"
               ],
               "cool_down": [
-                "8–10 min easy"
+                "5–8 min easy"
               ],
               "notes": [
-                "Purpose: Build pace control and aerobic support at faster but sustainable pace.",
+                "Purpose: Create rhythm and efficient pace changes.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Run tall and stay smooth.",
-                "Effort guide: 7/10",
-                "Pace guide: based on your submitted 5km, quality reps sit around your interval / 5km-work range of 3:30–3:45/km. Use RPE and control first.",
-                "This should feel snappy, not desperate."
+                "Execution focus: Stay relaxed and avoid forcing the quick reps.",
+                "Effort guide: 6-7/10",
+                "Pace guide: based on your submitted 5km, this session should sit around your tempo range of 3:50–4:05/km. Use RPE and control first.",
+                "Good when you want less total stress than longer threshold reps."
               ]
             },
-            "time_cap_minutes": 55,
+            "time_cap_minutes": 40,
             "tags": [
-              "interval_run",
+              "tempo_run",
               "run",
-              "interval"
+              "tempo"
             ],
             "priority": {
               "rank": 1,
@@ -2650,39 +2662,39 @@
             }
           },
           {
-            "template_id": "UPPER-ENGINE",
+            "template_id": "UPPER-FULL",
             "day": "Wed",
-            "title": "Upper Hybrid Engine",
+            "title": "Upper Full Strength",
             "intent": "Upper-body strength and support.",
             "session": {
               "warm_up": [
-                "5–8 min ski/row",
-                "Shoulder prep"
+                "5–8 min easy row",
+                "Shoulder/scap prep"
               ],
               "main": [
-                "DB Bench Press — 4×8",
-                "Bent Over Row — 4×8",
-                "Push Press — 3×5",
-                "Chin-Ups — 3×AMRAP"
+                "Pull-Ups or Lat Pulldown — 4×6–8",
+                "Incline DB Press — 3×6–8",
+                "Chest Supported Row — 3×8–10",
+                "Shoulder Press — 3×6–8",
+                "Lateral Raises or Curls — 3×10–12"
               ],
               "finish": [
-                "8-min EMOM — 8 push-ups + 8 DB snatches",
                 "Optional: 30–45 min Z2 bike after lifting",
                 "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Combine upper strength with manageable engine demand.",
+                "Purpose: Cover all major upper patterns when only one upper day exists.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Keep the EMOM controlled and crisp.",
+                "Execution focus: Hit full range and leave 1–2 reps in reserve.",
                 "Effort guide: 6-7/10",
-                "Great crossover day for Hybrid365 athletes."
+                "This is non-negotiable when upper frequency is only once per week."
               ]
             },
-            "time_cap_minutes": 60,
+            "time_cap_minutes": 55,
             "tags": [
               "strength_upper",
               "strength",
-              "upper_split"
+              "upper_full"
             ],
             "priority": {
               "rank": 2,
@@ -2693,23 +2705,23 @@
             }
           },
           {
-            "template_id": "AER-SHORT-Z2-BIKE",
+            "template_id": "AER-SKI-TEMPO-BUILD",
             "day": "Thu",
-            "title": "Short Z2 Bike",
+            "title": "Ski Tempo Build",
             "intent": "Low-cost aerobic support that fits around harder sessions.",
             "session": {
               "main": [
-                "20–30 min easy Z2 bike"
+                "6 × 3 min controlled ski, 90s very easy ski between reps"
               ],
               "notes": [
-                "Purpose: Provide a short low-cost aerobic top-up.",
+                "Purpose: Train sustainable upper-body aerobic power without leg pounding.",
                 "This session keeps aerobic volume in the week without creating too much extra fatigue.",
-                "Execution focus: Keep it easy enough to finish fresher than you started.",
-                "Effort guide: 4/10",
-                "Perfect add-on for busier days."
+                "Execution focus: Long arms, patient hips, rhythmic cadence.",
+                "Effort guide: 6-7/10",
+                "Keep output honest but never sloppy on mechanics."
               ]
             },
-            "time_cap_minutes": 25,
+            "time_cap_minutes": 35,
             "tags": [
               "aerobic_support",
               "aerobic",
@@ -2724,59 +2736,25 @@
             }
           },
           {
-            "template_id": "HYX-ROW-BURPEE-RUN",
+            "template_id": "HYX-LONG-ENDURANCE-BRICK",
             "day": "Fri",
-            "title": "Row + Burpees + Run",
+            "title": "Long Hyrox Endurance Brick",
             "intent": "Primary Hybrid / Hyrox-specific session.",
             "session": {
               "main": [
-                "500m Row",
-                "30m Lunges",
-                "20 Burpees",
-                "1km Run",
-                "90s Rest",
-                "Repeat ×5"
+                "3km easy run",
+                "1km row or ski",
+                "3km steady run",
+                "1km row or ski",
+                "3km easy run"
               ],
               "notes": [
-                "Purpose: Build repeatable output across stations and run transitions.",
-                "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
-                "Execution focus: Don’t let the row drag you into overpacing early.",
-                "Effort guide: 8/10",
-                "High-value race-style compromise session."
-              ]
-            },
-            "time_cap_minutes": 65,
-            "tags": [
-              "hybrid_compromised",
-              "hybrid",
-              "hybrid_primary"
-            ],
-            "priority": {
-              "rank": 1,
-              "label": "priority_1",
-              "display_label": "Priority 1",
-              "category_label": "Key Session",
-              "reason": "This is one of the main goal-driving sessions for the week."
-            }
-          },
-          {
-            "template_id": "LONG-HYBRID",
-            "day": "Sat",
-            "title": "Hybrid Long Session",
-            "intent": "Longer aerobic development to improve overall endurance.",
-            "session": {
-              "main": [
-                "5km run",
-                "1km ski or row",
-                "5km run"
-              ],
-              "notes": [
-                "Purpose: Build endurance with a hybrid performance bias.",
+                "Purpose: Build long aerobic endurance with Hyrox-specific interruptions.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Keep transitions smooth — no panic spike after the erg.",
+                "Execution focus: Erg pieces are filler, not surges — keep heart rate honest and steady.",
                 "Effort guide: 6/10",
                 "Pace guide: based on your submitted 5km, this longer aerobic day fits your steady range (4:05–4:25/km). Use RPE and control first.",
-                "Excellent bridge between pure aerobic and race-specific work.",
+                "The ergs should not spike the session. Stay aerobic and controlled.",
                 "If recovery is strong, extend the aerobic block slightly."
               ]
             },
@@ -2787,6 +2765,38 @@
               "long_run"
             ],
             "priority": {
+              "rank": 1,
+              "label": "priority_1",
+              "display_label": "Priority 1",
+              "category_label": "Key Session",
+              "reason": "This is one of the main goal-driving sessions for the week."
+            }
+          },
+          {
+            "template_id": "AER-Z2-RUN",
+            "day": "Sat",
+            "title": "Z2 Run",
+            "intent": "Longer aerobic development to improve overall endurance.",
+            "session": {
+              "main": [
+                "30–60 min continuous Z2 run"
+              ],
+              "notes": [
+                "Purpose: Build aerobic base with minimal recovery cost.",
+                "This session plays a specific role in balancing quality, recovery, and performance across the week.",
+                "Execution focus: Keep it conversational and controlled.",
+                "Effort guide: 4-5/10",
+                "Pace guide: based on your submitted 5km, easy aerobic work sits around 4:35–5:05/km. Use RPE and control first.",
+                "This is a discipline session — easy means easy."
+              ]
+            },
+            "time_cap_minutes": 50,
+            "tags": [
+              "aerobic_run",
+              "run",
+              "aerobic_run"
+            ],
+            "priority": {
               "rank": 2,
               "label": "priority_2",
               "display_label": "Priority 2",
@@ -2795,24 +2805,25 @@
             }
           },
           {
-            "template_id": "REC-MOBILITY-RESET",
+            "template_id": "REC-ACTIVE-FLUSH",
             "day": "Sun",
-            "title": "Mobility Reset",
+            "title": "Active Flush",
             "intent": "Recovery, reset and durability support.",
             "session": {
               "main": [
-                "20–30 min mobility flow",
-                "5–10 min breathing / reset work"
+                "15 min easy bike",
+                "10 min mobility",
+                "15 min walk"
               ],
               "notes": [
-                "Purpose: Restore movement quality and downshift stress.",
+                "Purpose: Flush fatigue and support recovery between bigger sessions.",
                 "This day is here to improve recovery so the harder work actually lands.",
-                "Execution focus: Slow breathing and quality positions.",
-                "Effort guide: 2/10",
-                "Great when someone needs a real reset day."
+                "Execution focus: Everything should feel effortless.",
+                "Effort guide: 2-3/10",
+                "Very low-cost recovery day."
               ]
             },
-            "time_cap_minutes": 30,
+            "time_cap_minutes": 35,
             "tags": [
               "recovery",
               "recovery",
@@ -2862,15 +2873,15 @@
           "hard_percent": 25
         },
         "weekly_stress": {
-          "raw_score": 7.9,
+          "raw_score": 6.8,
           "budget": 6.8,
-          "relative_load": 1.162,
-          "label": "high",
-          "display_label": "High Relative Load",
+          "relative_load": 1,
+          "label": "balanced",
+          "display_label": "Balanced Load",
           "hard_sessions": 0,
           "high_fatigue_sessions": 0,
-          "planned_minutes": 290,
-          "estimated_hours": 4.8,
+          "planned_minutes": 275,
+          "estimated_hours": 4.6,
           "daily_breakdown": [
             {
               "day": "Mon",
@@ -2888,9 +2899,9 @@
             },
             {
               "day": "Wed",
-              "title": "Knee-Friendly Lower Strength",
-              "category": "strength",
-              "score": 1.4,
+              "title": "Aerobic Support",
+              "category": "aerobic",
+              "score": 0.8,
               "label": "low"
             },
             {
@@ -2916,16 +2927,15 @@
             },
             {
               "day": "Sun",
-              "title": "Z2 Run",
-              "category": "run",
-              "score": 1.3,
+              "title": "Low-Impact Aerobic Base",
+              "category": "aerobic",
+              "score": 0.8,
               "label": "low"
             }
           ],
           "notes": [
-            "This week carries a higher training load. Prioritise sleep, nutrition and recovery around the key sessions.",
-            "This score is a planning guide, not a medical or physiological measurement.",
-            "This is a higher-load week for a beginner. Keep easy work easy and reduce Priority 3 sessions if recovery feels poor."
+            "This week has a balanced stress profile for your level and available training time.",
+            "This score is a planning guide, not a medical or physiological measurement."
           ]
         },
         "week_context": {
@@ -2940,13 +2950,9 @@
         },
         "stress_alignment": null,
         "safety_flags": {
-          "level": "caution",
-          "flags": [
-            "beginner_high_relative_load"
-          ],
-          "notes": [
-            "This is a higher-load week for a beginner. Keep easy work easy and reduce Priority 3 sessions if recovery feels poor."
-          ]
+          "level": "none",
+          "flags": [],
+          "notes": []
         },
         "profile": {
           "goal": "Run Faster / Improve Engine",
@@ -3051,41 +3057,30 @@
             }
           },
           {
-            "template_id": "LOWER-KNEE-FRIENDLY",
+            "template_id": "FILLER-AEROBIC",
             "day": "Wed",
-            "title": "Knee-Friendly Lower Strength",
-            "intent": "Full lower-body coverage to build strength without gaps.",
+            "title": "Aerobic Support",
+            "intent": "Low-cost aerobic support to keep the week balanced.",
             "session": {
-              "warm_up": [
-                "8–10 min easy bike or brisk walk",
-                "Hip hinge + ankle dorsiflexion prep"
-              ],
               "main": [
-                "DB Romanian Deadlift — 4 × 8–10",
-                "Hip Thrust or Glute Bridge — 3 × 10–14",
-                "Step-Down off low box — 3 × 8 each side — only range that stays symptom-free",
-                "Calf raise + seated tib raise superset — 3 rounds moderate effort"
+                "20–40 min easy Z2 bike or jog",
+                "Optional: lower leg durability 2 rounds"
               ],
               "notes": [
-                "Purpose: Maintain lower-body strength without forcing angry knees through spicy ranges.",
-                "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: If a rep sharpens symptoms, shorten range immediately — chase control, not load.",
-                "Effort guide: 6-7/10",
-                "Pain-free range only on every pattern — reduce load before changing technique."
+                "Stay controlled and conversational throughout.",
+                "Safety adjustment: this was softened to keep the week appropriate for a beginner."
               ]
             },
-            "time_cap_minutes": 45,
+            "time_cap_minutes": 40,
             "tags": [
-              "strength_lower",
-              "strength",
-              "lower_durability"
+              "aerobic_support"
             ],
             "priority": {
               "rank": 3,
               "label": "priority_3",
               "display_label": "Priority 3",
               "category_label": "Optional / Flexible",
-              "reason": "This is useful support work, but it is the easiest to flex if life gets busy."
+              "reason": "This adds low-cost aerobic support and can be adjusted if needed."
             }
           },
           {
@@ -3180,27 +3175,27 @@
             }
           },
           {
-            "template_id": "AER-Z2-RUN",
+            "template_id": "AER-LOW-IMPACT-BASE",
             "day": "Sun",
-            "title": "Z2 Run",
+            "title": "Low-Impact Aerobic Base",
             "intent": "Longer aerobic development to improve overall endurance.",
             "session": {
               "main": [
-                "30–60 min continuous Z2 run"
+                "35–45 min continuous easy effort on bike, rower, or ski"
               ],
               "notes": [
-                "Purpose: Build aerobic base with minimal recovery cost.",
-                "This run is included because improving your engine is one of the biggest drivers of progress for your current goal.",
-                "Execution focus: Keep it conversational and controlled.",
+                "Purpose: Accumulate aerobic volume without stressing joints.",
+                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
+                "Execution focus: Nasal-breathing pace or easy conversational effort.",
                 "Effort guide: 4-5/10",
-                "This is a discipline session — easy means easy."
+                "Choose the modality that best matches your current constraints."
               ]
             },
-            "time_cap_minutes": 50,
+            "time_cap_minutes": 40,
             "tags": [
-              "aerobic_run",
-              "run",
-              "aerobic_run"
+              "aerobic_support",
+              "aerobic",
+              "aerobic_support"
             ],
             "priority": {
               "rank": 1,
@@ -3239,42 +3234,42 @@
           "hard_percent": 30
         },
         "weekly_stress": {
-          "raw_score": 9.6,
+          "raw_score": 13.3,
           "budget": 11,
-          "relative_load": 0.873,
-          "label": "balanced",
-          "display_label": "Balanced Load",
-          "hard_sessions": 1,
-          "high_fatigue_sessions": 0,
-          "planned_minutes": 305,
-          "estimated_hours": 5.1,
+          "relative_load": 1.209,
+          "label": "high",
+          "display_label": "High Relative Load",
+          "hard_sessions": 2,
+          "high_fatigue_sessions": 1,
+          "planned_minutes": 335,
+          "estimated_hours": 5.6,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "No-Impact Threshold Builder",
+              "title": "Erg Threshold Stack",
               "category": "aerobic",
-              "score": 1.6,
+              "score": 2.4,
               "label": "moderate"
             },
             {
               "day": "Tue",
-              "title": "Lower Durability Base",
+              "title": "Lower Full Strength",
               "category": "strength",
-              "score": 1,
-              "label": "low"
+              "score": 3.8,
+              "label": "very_high"
             },
             {
               "day": "Wed",
-              "title": "Dumbbell Strength Base",
+              "title": "Upper Full Strength",
               "category": "strength",
-              "score": 2,
+              "score": 2.5,
               "label": "moderate"
             },
             {
               "day": "Thu",
-              "title": "Erg Threshold Stack",
-              "category": "aerobic",
-              "score": 2.4,
+              "title": "Short Threshold (3 x 5min)",
+              "category": "run",
+              "score": 2,
               "label": "moderate"
             },
             {
@@ -3300,7 +3295,7 @@
             }
           ],
           "notes": [
-            "This week has a balanced stress profile for your level and available training time.",
+            "This week carries a higher training load. Prioritise sleep, nutrition and recovery around the key sessions.",
             "This score is a planning guide, not a medical or physiological measurement."
           ]
         },
@@ -3372,119 +3367,8 @@
         ],
         "schedule": [
           {
-            "template_id": "AER-NO-IMPACT-THRESHOLD",
-            "day": "Mon",
-            "title": "No-Impact Threshold Builder",
-            "intent": "Primary quality run to move your performance forward.",
-            "session": {
-              "warm_up": [
-                "8 min easy build"
-              ],
-              "main": [
-                "4 x 5 min threshold-like effort",
-                "2 min easy between reps"
-              ],
-              "cool_down": [
-                "6 min easy spin/row/ski"
-              ],
-              "notes": [
-                "Purpose: Preserve threshold stimulus when impact tolerance is limited.",
-                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
-                "Execution focus: Even pressure throughout each rep, avoid early surges.",
-                "Effort guide: 7/10",
-                "Use this as a low-impact substitute for hard run days."
-              ]
-            },
-            "time_cap_minutes": 40,
-            "tags": [
-              "aerobic_support",
-              "aerobic",
-              "aerobic_support"
-            ],
-            "priority": {
-              "rank": 1,
-              "label": "priority_1",
-              "display_label": "Priority 1",
-              "category_label": "Key Session",
-              "reason": "This is one of the main goal-driving sessions for the week."
-            }
-          },
-          {
-            "template_id": "LOWER-DURABILITY-BASE",
-            "day": "Tue",
-            "title": "Lower Durability Base",
-            "intent": "Full lower-body coverage to build strength without gaps.",
-            "session": {
-              "main": [
-                "Step-Downs — 3 x 8 each side",
-                "Split Squat Isometric Hold — 3 x 30s each side",
-                "Single-Leg RDL — 3 x 8 each side",
-                "Calf Raise + Tib Raise superset — 3 rounds"
-              ],
-              "notes": [
-                "Purpose: Build lower-limb tissue capacity for consistent running and hybrid training.",
-                "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Smooth reps, strict positions, and symmetrical control.",
-                "Effort guide: 5-6/10",
-                "Useful support block for niggles and base development."
-              ]
-            },
-            "time_cap_minutes": 45,
-            "tags": [
-              "strength_lower",
-              "strength",
-              "lower_durability"
-            ],
-            "priority": {
-              "rank": 3,
-              "label": "priority_3",
-              "display_label": "Priority 3",
-              "category_label": "Optional / Flexible",
-              "reason": "This is useful support work, but it is the easiest to flex if life gets busy."
-            }
-          },
-          {
-            "template_id": "FULL-DB-STRENGTH-BASE",
-            "day": "Wed",
-            "title": "Dumbbell Strength Base",
-            "intent": "Full upper-body coverage with push and pull balance.",
-            "session": {
-              "warm_up": [
-                "5–8 min easy cardio",
-                "Dynamic mobility"
-              ],
-              "main": [
-                "DB Front Squat — 3 × 8–10",
-                "DB RDL — 3 × 8–10",
-                "DB Floor Press — 3 × 8–12",
-                "Single Arm DB Row — 3 × 10 each side",
-                "Suitcase carry or plank — 3 rounds"
-              ],
-              "notes": [
-                "Purpose: Deliver full-body strength stimulus with only dumbbells.",
-                "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Keep load controlled and truly own each position.",
-                "Effort guide: 7/10",
-                "Keep load controlled and own positions throughout."
-              ]
-            },
-            "time_cap_minutes": 45,
-            "tags": [
-              "strength_full",
-              "strength",
-              "full_body_hypertrophy"
-            ],
-            "priority": {
-              "rank": 2,
-              "label": "priority_2",
-              "display_label": "Priority 2",
-              "category_label": "Support Session",
-              "reason": "This supports the key work without carrying the same priority."
-            }
-          },
-          {
             "template_id": "HYX-ERG-THRESHOLD-STACK",
-            "day": "Thu",
+            "day": "Mon",
             "title": "Erg Threshold Stack",
             "intent": "Primary quality run to move your performance forward.",
             "session": {
@@ -3514,6 +3398,123 @@
               "aerobic_support",
               "aerobic",
               "aerobic_support"
+            ],
+            "priority": {
+              "rank": 1,
+              "label": "priority_1",
+              "display_label": "Priority 1",
+              "category_label": "Key Session",
+              "reason": "This is one of the main goal-driving sessions for the week."
+            }
+          },
+          {
+            "template_id": "LOWER-FULL",
+            "day": "Tue",
+            "title": "Lower Full Strength",
+            "intent": "Full lower-body coverage to build strength without gaps.",
+            "session": {
+              "warm_up": [
+                "8 min easy bike",
+                "Dynamic hips/ankles",
+                "2–3 ramp sets"
+              ],
+              "main": [
+                "Back Squat — 4×6–8",
+                "Reverse Lunges — 3×8–10 each side",
+                "RDL — 3×8–12",
+                "Back Extensions — 2×12–15"
+              ],
+              "notes": [
+                "Purpose: Cover squat, hinge and unilateral work when only one lower day exists.",
+                "This strength work supports performance by building positions, force output, and durability.",
+                "Execution focus: Control every rep and keep good positions.",
+                "Effort guide: 7-8/10",
+                "This is the default lower template when coverage matters most."
+              ]
+            },
+            "time_cap_minutes": 65,
+            "tags": [
+              "strength_lower",
+              "strength",
+              "lower_full"
+            ],
+            "priority": {
+              "rank": 2,
+              "label": "priority_2",
+              "display_label": "Priority 2",
+              "category_label": "Support Session",
+              "reason": "This supports the key work without carrying the same priority."
+            }
+          },
+          {
+            "template_id": "UPPER-FULL",
+            "day": "Wed",
+            "title": "Upper Full Strength",
+            "intent": "Full upper-body coverage with push and pull balance.",
+            "session": {
+              "warm_up": [
+                "5–8 min easy row",
+                "Shoulder/scap prep"
+              ],
+              "main": [
+                "Pull-Ups or Lat Pulldown — 4×6–8",
+                "Incline DB Press — 3×6–8",
+                "Chest Supported Row — 3×8–10",
+                "Shoulder Press — 3×6–8",
+                "Lateral Raises or Curls — 3×10–12"
+              ],
+              "notes": [
+                "Purpose: Cover all major upper patterns when only one upper day exists.",
+                "This strength work supports performance by building positions, force output, and durability.",
+                "Execution focus: Hit full range and leave 1–2 reps in reserve.",
+                "Effort guide: 6-7/10",
+                "This is non-negotiable when upper frequency is only once per week."
+              ]
+            },
+            "time_cap_minutes": 55,
+            "tags": [
+              "strength_upper",
+              "strength",
+              "upper_full"
+            ],
+            "priority": {
+              "rank": 2,
+              "label": "priority_2",
+              "display_label": "Priority 2",
+              "category_label": "Support Session",
+              "reason": "This supports the key work without carrying the same priority."
+            }
+          },
+          {
+            "template_id": "THR-SHORT",
+            "day": "Thu",
+            "title": "Short Threshold (3 x 5min)",
+            "intent": "Primary quality run to move your performance forward.",
+            "session": {
+              "warm_up": [
+                "8–10 min easy jog"
+              ],
+              "main": [
+                "3×5 min @ threshold effort",
+                "75–90s easy jog"
+              ],
+              "cool_down": [
+                "5–8 min easy"
+              ],
+              "notes": [
+                "Purpose: Introduce threshold work in a time-efficient format.",
+                "This run is included because improving your engine is one of the biggest drivers of progress for your current goal.",
+                "Execution focus: Stay in control — this is not a race effort.",
+                "Effort guide: 6-7/10",
+                "Pace guide: based on your submitted 5km, this session should sit around your threshold range of 5:25–5:45/km. Use RPE and control first.",
+                "Perfect when time is tight but quality still matters."
+              ]
+            },
+            "time_cap_minutes": 40,
+            "tags": [
+              "threshold_run",
+              "run",
+              "threshold_short"
             ],
             "priority": {
               "rank": 1,
@@ -3644,57 +3645,57 @@
           "hard_percent": 35
         },
         "weekly_stress": {
-          "raw_score": 13.2,
+          "raw_score": 13.4,
           "budget": 19.55,
-          "relative_load": 0.675,
+          "relative_load": 0.685,
           "label": "low",
           "display_label": "Low Relative Load",
-          "hard_sessions": 1,
+          "hard_sessions": 2,
           "high_fatigue_sessions": 1,
           "planned_minutes": 345,
           "estimated_hours": 5.8,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "6 x 6min Threshold",
+              "title": "4 x 5min Threshold",
               "category": "run",
-              "score": 3.8,
-              "label": "very_high"
+              "score": 3,
+              "label": "high"
             },
             {
               "day": "Tue",
-              "title": "Dumbbell Lower Durability",
+              "title": "Lower Durability Base",
               "category": "strength",
-              "score": 1.4,
+              "score": 1,
               "label": "low"
             },
             {
               "day": "Wed",
-              "title": "Low-Impact Hybrid Conditioning",
-              "category": "hybrid",
-              "score": 1.6,
-              "label": "moderate"
+              "title": "Short Z2 Bike",
+              "category": "aerobic",
+              "score": 0.6,
+              "label": "low"
             },
             {
               "day": "Thu",
-              "title": "Upper Body + Z2 Support",
+              "title": "Upper Full Strength",
               "category": "strength",
-              "score": 1.8,
-              "label": "moderate"
-            },
-            {
-              "day": "Fri",
-              "title": "Long Progressive Run",
-              "category": "run",
               "score": 2.5,
               "label": "moderate"
             },
             {
-              "day": "Sat",
-              "title": "No-Impact Threshold Builder",
-              "category": "aerobic",
-              "score": 1.6,
+              "day": "Fri",
+              "title": "Long Run + Pick-ups",
+              "category": "run",
+              "score": 2,
               "label": "moderate"
+            },
+            {
+              "day": "Sat",
+              "title": "8 x 1km Intervals",
+              "category": "run",
+              "score": 3.8,
+              "label": "very_high"
             },
             {
               "day": "Sun",
@@ -3777,32 +3778,32 @@
         ],
         "schedule": [
           {
-            "template_id": "RUN-THRESHOLD-6X6",
+            "template_id": "THR-4X5M",
             "day": "Mon",
-            "title": "6 x 6min Threshold",
+            "title": "4 x 5min Threshold",
             "intent": "Primary quality run to move your performance forward.",
             "session": {
               "warm_up": [
                 "10–15 min easy",
-                "3 × 20s strides"
+                "2–3 strides"
               ],
               "main": [
-                "6 × 6 min @ threshold effort",
-                "75–90s easy jog recoveries"
+                "4×5 min @ threshold effort",
+                "90s easy jog recovery"
               ],
               "cool_down": [
-                "10 min easy"
+                "8–10 min easy"
               ],
               "notes": [
-                "Purpose: Build high-end threshold durability for advanced hybrid athletes.",
+                "Purpose: Improve threshold tolerance without excessive fatigue.",
                 "This run is included because improving your engine is one of the biggest drivers of progress for your current goal.",
-                "Execution focus: Every rep should feel repeatable — same shape, same breathing pattern.",
-                "Effort guide: 8/10",
+                "Execution focus: Stay controlled through the first half of the session.",
+                "Effort guide: 7/10",
                 "Pace guide: based on your submitted 5km, this session should sit around your threshold range of 3:35–3:45/km. Use RPE and control first.",
-                "Hold repeatable pressure. This is controlled threshold volume, not a race."
+                "This should feel hard but repeatable."
               ]
             },
-            "time_cap_minutes": 65,
+            "time_cap_minutes": 55,
             "tags": [
               "threshold_run",
               "run",
@@ -3817,31 +3818,30 @@
             }
           },
           {
-            "template_id": "LOWER-DB-DURABILITY",
+            "template_id": "LOWER-DURABILITY-BASE",
             "day": "Tue",
-            "title": "Dumbbell Lower Durability",
+            "title": "Lower Durability Base",
             "intent": "Full lower-body coverage to build strength without gaps.",
             "session": {
               "main": [
-                "DB Split Squat — 3 × 8 each side",
-                "DB RDL — 3 × 10",
-                "Step-Ups — 3 × 8 each side",
-                "Calf Raise — 3 × 15",
-                "Tib Raises — 3 × 15"
+                "Step-Downs — 3 x 8 each side",
+                "Split Squat Isometric Hold — 3 x 30s each side",
+                "Single-Leg RDL — 3 x 8 each side",
+                "Calf Raise + Tib Raise superset — 3 rounds"
               ],
               "finish": [
                 "Optional: 30–45 min Z2 bike after lifting",
                 "Optional second session: 20–30 min easy Z2 bike"
               ],
               "notes": [
-                "Purpose: Build lower-body durability without needing machines or barbells.",
+                "Purpose: Build lower-limb tissue capacity for consistent running and hybrid training.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Smooth reps and quiet landings beat heavier sloppy reps.",
-                "Effort guide: 6-7/10",
-                "Controlled reps — no chasing fatigue."
+                "Execution focus: Smooth reps, strict positions, and symmetrical control.",
+                "Effort guide: 5-6/10",
+                "Useful support block for niggles and base development."
               ]
             },
-            "time_cap_minutes": 40,
+            "time_cap_minutes": 45,
             "tags": [
               "strength_lower",
               "strength",
@@ -3856,69 +3856,27 @@
             }
           },
           {
-            "template_id": "HYX-LOW-IMPACT",
+            "template_id": "AER-SHORT-Z2-BIKE",
             "day": "Wed",
-            "title": "Low-Impact Hybrid Conditioning",
+            "title": "Short Z2 Bike",
             "intent": "Low-cost aerobic support that fits around harder sessions.",
             "session": {
               "main": [
-                "Alternating erg intervals",
-                "Light DB carries or lunges",
-                "Controlled bodyweight work"
-              ],
-              "notes": [
-                "Purpose: Keep hybrid stimulus high while reducing impact stress.",
-                "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Drive output from the machine, not from sloppy intensity.",
-                "Effort guide: 6-7/10",
-                "Excellent fallback for niggles, fatigue, or impact management."
-              ]
-            },
-            "time_cap_minutes": 35,
-            "tags": [
-              "hybrid_density",
-              "hybrid",
-              "hybrid_low_impact"
-            ],
-            "priority": {
-              "rank": 2,
-              "label": "priority_2",
-              "display_label": "Priority 2",
-              "category_label": "Support Session",
-              "reason": "This supports the key work without carrying the same priority."
-            }
-          },
-          {
-            "template_id": "UPPER-BODY-PLUS-Z2",
-            "day": "Thu",
-            "title": "Upper Body + Z2 Support",
-            "intent": "Full upper-body coverage with push and pull balance.",
-            "session": {
-              "main": [
-                "DB Press — 3 × 10",
-                "Row — 3 × 10",
-                "Shoulder Press — 3 × 10",
-                "Pull or pulldown — 3 × 10",
-                "Finish:",
                 "20–30 min easy Z2 bike"
               ],
-              "finish": [
-                "Optional: 30–45 min Z2 bike after lifting",
-                "Optional second session: 20–30 min easy Z2 bike"
-              ],
               "notes": [
-                "Purpose: Build upper-body volume while adding low-cost aerobic work.",
-                "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Lifting stays honest; the bike should feel like easy Z2, not another interval set.",
-                "Effort guide: 6-7/10",
-                "Useful when you want to combine lifting and aerobic support without stressing the legs."
+                "Purpose: Provide a short low-cost aerobic top-up.",
+                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
+                "Execution focus: Keep it easy enough to finish fresher than you started.",
+                "Effort guide: 4/10",
+                "Perfect add-on for busier days."
               ]
             },
-            "time_cap_minutes": 60,
+            "time_cap_minutes": 25,
             "tags": [
-              "strength_upper",
-              "strength",
-              "upper_hypertrophy"
+              "aerobic_support",
+              "aerobic",
+              "aerobic_support"
             ],
             "priority": {
               "rank": 3,
@@ -3929,29 +3887,69 @@
             }
           },
           {
-            "template_id": "LONG-PROGRESSIVE",
+            "template_id": "UPPER-FULL",
+            "day": "Thu",
+            "title": "Upper Full Strength",
+            "intent": "Full upper-body coverage with push and pull balance.",
+            "session": {
+              "warm_up": [
+                "5–8 min easy row",
+                "Shoulder/scap prep"
+              ],
+              "main": [
+                "Pull-Ups or Lat Pulldown — 4×6–8",
+                "Incline DB Press — 3×6–8",
+                "Chest Supported Row — 3×8–10",
+                "Shoulder Press — 3×6–8",
+                "Lateral Raises or Curls — 3×10–12"
+              ],
+              "finish": [
+                "Optional: 30–45 min Z2 bike after lifting",
+                "Optional second session: 20–30 min easy Z2 bike"
+              ],
+              "notes": [
+                "Purpose: Cover all major upper patterns when only one upper day exists.",
+                "This strength work supports performance by building positions, force output, and durability.",
+                "Execution focus: Hit full range and leave 1–2 reps in reserve.",
+                "Effort guide: 6-7/10",
+                "This is non-negotiable when upper frequency is only once per week."
+              ]
+            },
+            "time_cap_minutes": 55,
+            "tags": [
+              "strength_upper",
+              "strength",
+              "upper_full"
+            ],
+            "priority": {
+              "rank": 2,
+              "label": "priority_2",
+              "display_label": "Priority 2",
+              "category_label": "Support Session",
+              "reason": "This supports the key work without carrying the same priority."
+            }
+          },
+          {
+            "template_id": "LONG-PICKUPS",
             "day": "Fri",
-            "title": "Long Progressive Run",
+            "title": "Long Run + Pick-ups",
             "intent": "Longer aerobic development to improve overall endurance.",
             "session": {
               "main": [
-                "2km WU",
-                "2km easy",
-                "2km steady",
-                "2km slightly quicker",
-                "2km easy WD"
+                "40–60 min Z2 run",
+                "Then 6×30s pick-ups with full easy recovery"
               ],
               "notes": [
-                "Purpose: Build finish strength while keeping the overall run controlled.",
+                "Purpose: Keep long-run stimulus aerobic while adding a little speed coordination.",
                 "This run is included because improving your engine is one of the biggest drivers of progress for your current goal.",
-                "Execution focus: Progress gradually — no sudden jump in effort.",
-                "Effort guide: 5-7/10",
+                "Execution focus: Pick-ups are light and fast, never strained.",
+                "Effort guide: 5/10",
                 "Pace guide: based on your submitted 5km, this longer aerobic day fits your steady range (3:55–4:15/km). Use RPE and control first.",
-                "A controlled build beats a dramatic final surge.",
+                "Think rhythm and freshness, not speed session.",
                 "If recovery is strong, extend the aerobic block slightly."
               ]
             },
-            "time_cap_minutes": 70,
+            "time_cap_minutes": 60,
             "tags": [
               "long_run",
               "run",
@@ -3966,34 +3964,36 @@
             }
           },
           {
-            "template_id": "AER-NO-IMPACT-THRESHOLD",
+            "template_id": "INT-8X1K",
             "day": "Sat",
-            "title": "No-Impact Threshold Builder",
+            "title": "8 x 1km Intervals",
             "intent": "Primary quality run to move your performance forward.",
             "session": {
               "warm_up": [
-                "8 min easy build"
+                "2km easy",
+                "4×20s strides"
               ],
               "main": [
-                "4 x 5 min threshold-like effort",
-                "2 min easy between reps"
+                "8×1km @ 5k pace / hard controlled effort",
+                "90s easy jog"
               ],
               "cool_down": [
-                "6 min easy spin/row/ski"
+                "1–2km easy"
               ],
               "notes": [
-                "Purpose: Preserve threshold stimulus when impact tolerance is limited.",
-                "This session keeps aerobic volume in the week without creating too much extra fatigue.",
-                "Execution focus: Even pressure throughout each rep, avoid early surges.",
-                "Effort guide: 7/10",
-                "Use this as a low-impact substitute for hard run days."
+                "Purpose: Increase top-end aerobic power.",
+                "This run is included because improving your engine is one of the biggest drivers of progress for your current goal.",
+                "Execution focus: Consistency over hero reps.",
+                "Effort guide: 8-9/10",
+                "Pace guide: based on your submitted 5km, quality reps sit around your interval / 5km-work range of 3:25–3:35/km. Use RPE and control first.",
+                "Stop early if mechanics fall apart."
               ]
             },
-            "time_cap_minutes": 40,
+            "time_cap_minutes": 70,
             "tags": [
-              "aerobic_support",
-              "aerobic",
-              "aerobic_support"
+              "interval_run",
+              "run",
+              "interval"
             ],
             "priority": {
               "rank": 1,
@@ -4060,22 +4060,22 @@
           "hard_percent": 30
         },
         "weekly_stress": {
-          "raw_score": 11.5,
+          "raw_score": 10.5,
           "budget": 11,
-          "relative_load": 1.045,
+          "relative_load": 0.955,
           "label": "balanced",
           "display_label": "Balanced Load",
           "hard_sessions": 1,
           "high_fatigue_sessions": 0,
-          "planned_minutes": 340,
-          "estimated_hours": 5.7,
+          "planned_minutes": 310,
+          "estimated_hours": 5.2,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "Lower Pump + Durability",
+              "title": "Dumbbell Lower Durability",
               "category": "strength",
-              "score": 2,
-              "label": "moderate"
+              "score": 1.4,
+              "label": "low"
             },
             {
               "day": "Tue",
@@ -4086,16 +4086,16 @@
             },
             {
               "day": "Wed",
-              "title": "Upper Pump Hypertrophy",
+              "title": "Upper Balanced",
               "category": "strength",
-              "score": 2,
+              "score": 2.5,
               "label": "moderate"
             },
             {
               "day": "Thu",
-              "title": "Long Hyrox Endurance Brick",
-              "category": "run",
-              "score": 2.5,
+              "title": "Low-Impact Hybrid Engine",
+              "category": "hybrid",
+              "score": 1.6,
               "label": "moderate"
             },
             {
@@ -4208,39 +4208,39 @@
         ],
         "schedule": [
           {
-            "template_id": "LOWER-PUMP-DURABILITY",
+            "template_id": "LOWER-DB-DURABILITY",
             "day": "Mon",
-            "title": "Lower Pump + Durability",
+            "title": "Dumbbell Lower Durability",
             "intent": "Primary lower-body strength day.",
             "session": {
               "main": [
-                "Goblet Squat — 3 × 12",
-                "DB RDL — 3 × 12",
-                "Reverse Lunge — 3 × 10 each side",
-                "Hamstring Slide — 3 × 12",
-                "Calf + Tib superset — 3 rounds"
+                "DB Split Squat — 3 × 8 each side",
+                "DB RDL — 3 × 10",
+                "Step-Ups — 3 × 8 each side",
+                "Calf Raise — 3 × 15",
+                "Tib Raises — 3 × 15"
               ],
               "notes": [
-                "Purpose: Build lower-body volume and durability without heavy spinal loading.",
+                "Purpose: Build lower-body durability without needing machines or barbells.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Let the burn build gradually — no ugly last reps.",
-                "Effort guide: 7/10",
+                "Execution focus: Smooth reps and quiet landings beat heavier sloppy reps.",
+                "Effort guide: 6-7/10",
                 "Substitution guidance: stay pain-free and prioritise controlled range of motion over load.",
-                "Controlled burn, not maximal load."
+                "Controlled reps — no chasing fatigue."
               ]
             },
-            "time_cap_minutes": 45,
+            "time_cap_minutes": 40,
             "tags": [
               "strength_lower",
               "strength",
               "lower_durability"
             ],
             "priority": {
-              "rank": 2,
-              "label": "priority_2",
-              "display_label": "Priority 2",
-              "category_label": "Support Session",
-              "reason": "This supports the key work without carrying the same priority."
+              "rank": 3,
+              "label": "priority_3",
+              "display_label": "Priority 3",
+              "category_label": "Optional / Flexible",
+              "reason": "This is useful support work, but it is the easiest to flex if life gets busy."
             }
           },
           {
@@ -4285,31 +4285,35 @@
             }
           },
           {
-            "template_id": "UPPER-PUMP-HYPERTROPHY",
+            "template_id": "UPPER-BALANCED",
             "day": "Wed",
-            "title": "Upper Pump Hypertrophy",
+            "title": "Upper Balanced",
             "intent": "Upper-body strength and support.",
             "session": {
+              "warm_up": [
+                "5 min row",
+                "Band prep"
+              ],
               "main": [
-                "Incline DB Press — 3 × 10–12",
-                "Chest Supported Row — 3 × 10–12",
-                "DB Shoulder Press — 3 × 10",
-                "Lat Pulldown or Pull-Ups — 3 × 8–12",
-                "Lateral Raise + Curl superset — 3 rounds"
+                "Neutral Grip Pull-Ups — 4×6–8",
+                "DB Bench Press — 4×8",
+                "Single Arm Row — 3×10 each side",
+                "Arnold Press — 3×8–10",
+                "Lateral Raises — 3×12"
               ],
               "notes": [
-                "Purpose: Build upper-body volume without crushing recovery.",
+                "Purpose: Create balanced push-pull upper-body support.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Chase a controlled pump — full range and smooth tempo on every rep.",
-                "Effort guide: 7/10",
-                "Chase quality reps and pump, not maximal loading."
+                "Execution focus: Keep rep quality high across all movement patterns.",
+                "Effort guide: 6-7/10",
+                "A strong general upper option when you want balance over bias."
               ]
             },
-            "time_cap_minutes": 45,
+            "time_cap_minutes": 55,
             "tags": [
               "strength_upper",
               "strength",
-              "upper_hypertrophy"
+              "upper_split"
             ],
             "priority": {
               "rank": 2,
@@ -4320,32 +4324,32 @@
             }
           },
           {
-            "template_id": "HYX-LONG-ENDURANCE-BRICK",
+            "template_id": "HYX-LOW-IMPACT-ENGINE",
             "day": "Thu",
-            "title": "Long Hyrox Endurance Brick",
+            "title": "Low-Impact Hybrid Engine",
             "intent": "Primary Hybrid / Hyrox-specific session.",
             "session": {
               "main": [
-                "3km easy run",
-                "1km row or ski",
-                "3km steady run",
-                "1km row or ski",
-                "3km easy run"
+                "4–5 rounds:",
+                "90s moderate bike or row or ski (rotate modality each round)",
+                "40–60m light DB suitcase carry or marching step with soft knee",
+                "8 controlled air squats to comfortable depth — no bouncing",
+                "60s easy spin or paddle"
               ],
               "notes": [
-                "Purpose: Build long aerobic endurance with Hyrox-specific interruptions.",
-                "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Erg pieces are filler, not surges — keep heart rate honest and steady.",
-                "Effort guide: 6/10",
-                "Pace guide: based on your submitted 5km, this longer aerobic day fits your steady range (6:10–6:45/km). Use RPE and control first.",
-                "The ergs should not spike the session. Stay aerobic and controlled."
+                "Purpose: Keep hybrid stimulus high while staying off high-impact pounding.",
+                "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
+                "Execution focus: Transitions are deliberate — quality reps over chaos.",
+                "Effort guide: 6-7/10",
+                "Hybrid feel without jumps; stop any pattern that tweaks symptoms.",
+                "Safety adjustment: this was softened because you mentioned impact or injury concerns."
               ]
             },
-            "time_cap_minutes": 75,
+            "time_cap_minutes": 40,
             "tags": [
-              "long_run",
-              "run",
-              "long_run"
+              "hybrid_density",
+              "hybrid",
+              "hybrid_low_impact"
             ],
             "priority": {
               "rank": 1,
@@ -4474,21 +4478,21 @@
           "hard_percent": 30
         },
         "weekly_stress": {
-          "raw_score": 7.7,
+          "raw_score": 6.4,
           "budget": 6,
-          "relative_load": 1.283,
-          "label": "high",
-          "display_label": "High Relative Load",
+          "relative_load": 1.067,
+          "label": "balanced",
+          "display_label": "Balanced Load",
           "hard_sessions": 0,
           "high_fatigue_sessions": 0,
-          "planned_minutes": 220,
-          "estimated_hours": 3.7,
+          "planned_minutes": 207,
+          "estimated_hours": 3.5,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "Short Full Body Strength",
-              "category": "strength",
-              "score": 1.4,
+              "title": "Recovery / Mobility",
+              "category": "recovery",
+              "score": 0.4,
               "label": "low"
             },
             {
@@ -4500,7 +4504,7 @@
             },
             {
               "day": "Wed",
-              "title": "Base Progression Run",
+              "title": "Outdoor Walk-Run Aerobic",
               "category": "run",
               "score": 1,
               "label": "low"
@@ -4514,16 +4518,16 @@
             },
             {
               "day": "Fri",
-              "title": "Dumbbell Carry Conditioning",
-              "category": "hybrid",
-              "score": 1.6,
+              "title": "Dumbbell Upper Hypertrophy",
+              "category": "strength",
+              "score": 2,
               "label": "moderate"
             },
             {
               "day": "Sat",
-              "title": "Hybrid Muscle Circuit",
+              "title": "Wall Ball + Lunge Base",
               "category": "hybrid",
-              "score": 2.3,
+              "score": 1.6,
               "label": "moderate"
             },
             {
@@ -4535,11 +4539,8 @@
             }
           ],
           "notes": [
-            "This week carries a higher training load. Prioritise sleep, nutrition and recovery around the key sessions.",
-            "This score is a planning guide, not a medical or physiological measurement.",
-            "This week is slightly above your selected time window. Prioritise Priority 1 sessions and trim optional support work first.",
-            "Because you mentioned limited time, treat support sessions as flexible and keep the main work time-capped.",
-            "This week is high relative to your inputs. Do not chase optional volume; protect recovery and prioritise the key sessions."
+            "This week has a balanced stress profile for your level and available training time.",
+            "This score is a planning guide, not a medical or physiological measurement."
           ]
         },
         "week_context": {
@@ -4554,17 +4555,9 @@
         },
         "stress_alignment": null,
         "safety_flags": {
-          "level": "high",
-          "flags": [
-            "above_selected_time_band",
-            "time_limited_week",
-            "very_high_relative_load"
-          ],
-          "notes": [
-            "This week is slightly above your selected time window. Prioritise Priority 1 sessions and trim optional support work first.",
-            "Because you mentioned limited time, treat support sessions as flexible and keep the main work time-capped.",
-            "This week is high relative to your inputs. Do not chase optional volume; protect recovery and prioritise the key sessions."
-          ]
+          "level": "none",
+          "flags": [],
+          "notes": []
         },
         "profile": {
           "goal": "Improve Hybrid / Hyrox Performance",
@@ -4625,37 +4618,30 @@
         ],
         "schedule": [
           {
-            "template_id": "FULL-SHORT",
+            "template_id": "FILLER-RECOVERY",
             "day": "Mon",
-            "title": "Short Full Body Strength",
-            "intent": "Condensed full-body strength coverage.",
+            "title": "Recovery / Mobility",
+            "intent": "Low-stress recovery support.",
             "session": {
               "main": [
-                "Squat pattern — 3×8",
-                "Push pattern — 3×8",
-                "Pull pattern — 3×8",
-                "Hinge pattern — 3×8"
+                "20–30 min easy walk or bike",
+                "10–15 min mobility"
               ],
               "notes": [
-                "Purpose: Deliver full-body strength with minimal time cost.",
-                "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Prioritise clean movement over chasing load.",
-                "Effort guide: 6/10",
-                "Simple, effective, and easy to recover from."
+                "Keep this genuinely easy — the goal is to recover well.",
+                "Safety adjustment: this was shortened because you selected a low weekly time window or mentioned limited time."
               ]
             },
-            "time_cap_minutes": 35,
+            "time_cap_minutes": 22,
             "tags": [
-              "strength_full",
-              "strength",
-              "full_body"
+              "recovery"
             ],
             "priority": {
               "rank": 3,
               "label": "priority_3",
               "display_label": "Priority 3",
               "category_label": "Optional / Flexible",
-              "reason": "This is useful support work, but it is the easiest to flex if life gets busy."
+              "reason": "This supports recovery and can be kept easy."
             }
           },
           {
@@ -4685,31 +4671,30 @@
             }
           },
           {
-            "template_id": "RUN-BASE-PROGRESSION",
+            "template_id": "AER-OUTDOOR-WALK-RUN",
             "day": "Wed",
-            "title": "Base Progression Run",
+            "title": "Outdoor Walk-Run Aerobic",
             "intent": "Entry-level quality run that keeps structure without excess fatigue.",
             "session": {
               "main": [
-                "15 min easy Z2",
-                "15 min steady aerobic",
-                "10 min slightly quicker steady",
-                "5 min easy"
+                "5 min brisk walk",
+                "10 rounds: 90s easy run + 60s walk",
+                "5 min easy walk"
               ],
               "notes": [
-                "Purpose: Build base fitness by finishing slightly stronger than you started.",
+                "Purpose: Build aerobic consistency without needing gym equipment.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Progress gradually, never jump to race effort.",
-                "Effort guide: 5-6/10",
+                "Execution focus: Stay conversational — if you can’t speak in short sentences, ease off.",
+                "Effort guide: 4/10",
                 "Pace guide: based on your submitted 5km, easy aerobic work sits around 6:30–7:15/km. Use RPE and control first.",
-                "A controlled progression beats a hard finish."
+                "Keep this conversational."
               ]
             },
-            "time_cap_minutes": 40,
+            "time_cap_minutes": 35,
             "tags": [
               "aerobic_run",
               "run",
-              "base_progression"
+              "run_walk_base"
             ],
             "priority": {
               "rank": 2,
@@ -4746,32 +4731,35 @@
             }
           },
           {
-            "template_id": "HYX-DB-CARRY-CONDITIONING",
+            "template_id": "UPPER-DB-HYPERTROPHY",
             "day": "Fri",
-            "title": "Dumbbell Carry Conditioning",
+            "title": "Dumbbell Upper Hypertrophy",
             "intent": "Full upper-body coverage with push and pull balance.",
             "session": {
+              "warm_up": [
+                "5 min easy bike or walk",
+                "Shoulder band work"
+              ],
               "main": [
-                "5 rounds:",
-                "40m farmer carry",
-                "10 DB front squats",
-                "8 DB rows each side",
-                "60s easy walk — or easy bike if available"
+                "DB Floor Press — 4 × 8–12",
+                "Single Arm DB Row — 4 × 10 each side",
+                "Seated DB Shoulder Press — 3 × 10",
+                "DB Pullover or rear delt raise — 3 × 12",
+                "Curl + lateral raise superset — 3 rounds"
               ],
               "notes": [
-                "Purpose: Build grip, trunk and hybrid conditioning with minimal equipment.",
-                "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
-                "Execution focus: Stand tall under load — let your legs do the work, not your low back.",
+                "Purpose: Build upper-body muscle using only dumbbells.",
+                "This strength work supports performance by building positions, force output, and durability.",
+                "Execution focus: Full range with a controlled tempo — ego loading stays off the table.",
                 "Effort guide: 7/10",
-                "Substitution guidance: cap the session by time rather than chasing extra rounds.",
-                "Posture tall, breathing controlled."
+                "Full range and controlled tempo."
               ]
             },
-            "time_cap_minutes": 35,
+            "time_cap_minutes": 45,
             "tags": [
-              "hybrid_density",
-              "hybrid",
-              "hybrid_low_impact"
+              "strength_upper",
+              "strength",
+              "upper_hypertrophy"
             ],
             "priority": {
               "rank": 2,
@@ -4782,33 +4770,31 @@
             }
           },
           {
-            "template_id": "HYBRID-MUSCLE-CIRCUIT",
+            "template_id": "HYX-WALL-BALL-LUNGE-BASE",
             "day": "Sat",
-            "title": "Hybrid Muscle Circuit",
+            "title": "Wall Ball + Lunge Base",
             "intent": "Hybrid density work to build fitness in a controlled way.",
             "session": {
               "main": [
                 "4 rounds:",
-                "10 DB front squats",
-                "10 DB floor press",
-                "10 DB rows each side",
-                "12 DB RDL",
-                "60s easy bike, walk, or rest"
+                "15 wall balls or DB thrusters (light–moderate)",
+                "12 reverse lunges each leg",
+                "90s easy bike, row, or brisk walk"
               ],
               "notes": [
-                "Purpose: Combine muscle-building patterns with controlled conditioning.",
+                "Purpose: Build tolerance for two key Hyrox movement patterns.",
                 "This session is included to improve how well you hold pace and output once fatigue starts building — a major Hybrid / Hyrox limiter.",
-                "Execution focus: Controlled breathing and tempo — this is not a frantic metcon.",
-                "Effort guide: 7/10",
+                "Execution focus: Same rep quality on round 4 as round 1.",
+                "Effort guide: 6-7/10",
                 "Substitution guidance: cap the session by time rather than chasing extra rounds.",
-                "Keep reps controlled; this is not a frantic metcon."
+                "Focus on repeatable reps and breathing control."
               ]
             },
-            "time_cap_minutes": 40,
+            "time_cap_minutes": 35,
             "tags": [
               "hybrid_density",
               "hybrid",
-              "hybrid_bodyweight"
+              "hybrid_intro"
             ],
             "priority": {
               "rank": 2,
@@ -4877,36 +4863,36 @@
           "hard_percent": 35
         },
         "weekly_stress": {
-          "raw_score": 12.5,
+          "raw_score": 14.3,
           "budget": 16.1,
-          "relative_load": 0.776,
+          "relative_load": 0.888,
           "label": "balanced",
           "display_label": "Balanced Load",
-          "hard_sessions": 1,
-          "high_fatigue_sessions": 0,
-          "planned_minutes": 320,
-          "estimated_hours": 5.3,
+          "hard_sessions": 2,
+          "high_fatigue_sessions": 1,
+          "planned_minutes": 325,
+          "estimated_hours": 5.4,
           "daily_breakdown": [
             {
               "day": "Mon",
-              "title": "Muscle Maintenance for Runners",
+              "title": "Dumbbell Lower Durability",
               "category": "strength",
               "score": 1.4,
               "label": "low"
             },
             {
               "day": "Tue",
-              "title": "400m On / 400m Float",
+              "title": "Hyrox 1km Repeat Builder",
               "category": "run",
-              "score": 2,
-              "label": "moderate"
+              "score": 3.8,
+              "label": "very_high"
             },
             {
               "day": "Wed",
-              "title": "Upper Strength Hypertrophy",
+              "title": "Upper Athletic",
               "category": "strength",
-              "score": 3,
-              "label": "high"
+              "score": 2.5,
+              "label": "moderate"
             },
             {
               "day": "Thu",
@@ -4917,10 +4903,10 @@
             },
             {
               "day": "Fri",
-              "title": "Long Progressive Run",
+              "title": "3 x 10min Threshold",
               "category": "run",
-              "score": 2.5,
-              "label": "moderate"
+              "score": 3,
+              "label": "high"
             },
             {
               "day": "Sat",
@@ -5017,34 +5003,34 @@
         ],
         "schedule": [
           {
-            "template_id": "MUSCLE-MAINTENANCE-RUNNER",
+            "template_id": "LOWER-DB-DURABILITY",
             "day": "Mon",
-            "title": "Muscle Maintenance for Runners",
+            "title": "Dumbbell Lower Durability",
             "intent": "Primary lower-body strength day.",
             "session": {
               "main": [
-                "DB RDL — 3 × 8",
-                "Split Squat — 2 × 8 each side",
-                "DB Bench Press — 3 × 8–10",
-                "Pull-Up or Row — 3 × 8–10",
-                "Core carry or plank — 3 rounds"
+                "DB Split Squat — 3 × 8 each side",
+                "DB RDL — 3 × 10",
+                "Step-Ups — 3 × 8 each side",
+                "Calf Raise — 3 × 15",
+                "Tib Raises — 3 × 15"
               ],
               "finish": [
                 "Optional: 20–30 min Z2 bike after lifting"
               ],
               "notes": [
-                "Purpose: Maintain muscle and strength while keeping legs fresh for running.",
+                "Purpose: Build lower-body durability without needing machines or barbells.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Leave 2–3 reps in reserve — you should finish feeling springier, not sluggish.",
+                "Execution focus: Smooth reps and quiet landings beat heavier sloppy reps.",
                 "Effort guide: 6-7/10",
-                "Leave the gym feeling better, not destroyed."
+                "Controlled reps — no chasing fatigue."
               ]
             },
             "time_cap_minutes": 40,
             "tags": [
-              "strength_full",
+              "strength_lower",
               "strength",
-              "movement_foundations"
+              "lower_durability"
             ],
             "priority": {
               "rank": 3,
@@ -5055,36 +5041,36 @@
             }
           },
           {
-            "template_id": "TMP-400-400",
+            "template_id": "RUN-HYROX-1K-REPEATS",
             "day": "Tue",
-            "title": "400m On / 400m Float",
+            "title": "Hyrox 1km Repeat Builder",
             "intent": "Quality run to improve pace under fatigue.",
             "session": {
               "warm_up": [
-                "1–2km easy"
+                "12 min easy",
+                "3 × 20s strides"
               ],
               "main": [
-                "400m @ strong steady pace",
-                "400m float / easy Z2 pace",
-                "Repeat ×8"
+                "6 × 1km @ controlled Hyrox race effort",
+                "90s easy jog or walk recoveries"
               ],
               "cool_down": [
-                "1km easy"
+                "10 min easy"
               ],
               "notes": [
-                "Purpose: Improve pace control and aerobic resilience.",
+                "Purpose: Improve repeatable 1km output for Hyrox race demands.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: The float is controlled, not a full reset.",
-                "Effort guide: 6-7/10",
-                "Pace guide: based on your submitted 5km, this session should sit around your tempo range of 4:05–4:15/km. Use RPE and control first.",
-                "Excellent hybrid-friendly run quality without full redline."
+                "Execution focus: Controlled Hyrox rhythm — honest but never a standalone PR attempt.",
+                "Effort guide: 8/10",
+                "Pace guide: based on your submitted 5km, quality reps sit around your interval / 5km-work range of 3:40–3:55/km. Use RPE and control first.",
+                "Every rep should feel like it belongs inside a full Hyrox race, not a standalone 1km time trial."
               ]
             },
-            "time_cap_minutes": 45,
+            "time_cap_minutes": 60,
             "tags": [
-              "tempo_run",
+              "interval_run",
               "run",
-              "tempo"
+              "interval"
             ],
             "priority": {
               "rank": 1,
@@ -5095,34 +5081,38 @@
             }
           },
           {
-            "template_id": "UPPER-STRENGTH-HYPERTROPHY",
+            "template_id": "UPPER-ATHLETIC",
             "day": "Wed",
-            "title": "Upper Strength Hypertrophy",
+            "title": "Upper Athletic",
             "intent": "Upper-body strength and support.",
             "session": {
+              "warm_up": [
+                "5 min ski",
+                "Shoulder prep"
+              ],
               "main": [
-                "Heavy press variation — 4 × 5–6",
-                "Heavy row or pull-up variation — 4 × 5–8",
-                "DB incline press — 3 × 8–10",
-                "Single arm row — 3 × 10",
-                "Lateral raise + rear delt superset — 3 rounds"
+                "Push Press — 4×5",
+                "Pull-Ups — 4×6–8",
+                "DB Bench Press — 3×8",
+                "Single Arm Row — 3×10"
               ],
               "finish": [
+                "3 rounds — 12 push-ups + 10 DB snatches",
                 "Optional: 20–30 min Z2 bike after lifting"
               ],
               "notes": [
-                "Purpose: Blend upper strength and hypertrophy for hybrid athletes.",
+                "Purpose: Build athletic pressing and pulling with dynamic output.",
                 "This strength work supports performance by building positions, force output, and durability.",
-                "Execution focus: Earn heavier sets with perfect positions, then accumulate clean volume.",
-                "Effort guide: 8/10",
-                "Progress the first two lifts; accumulate quality volume after."
+                "Execution focus: Move explosively but stay tidy.",
+                "Effort guide: 6-7/10",
+                "Useful for athletes who want upper strength with some engine crossover."
               ]
             },
             "time_cap_minutes": 55,
             "tags": [
               "strength_upper",
               "strength",
-              "upper_hypertrophy"
+              "upper_split"
             ],
             "priority": {
               "rank": 2,
@@ -5168,33 +5158,29 @@
             }
           },
           {
-            "template_id": "LONG-PROGRESSIVE",
+            "template_id": "RUN-THRESHOLD-3X10",
             "day": "Fri",
-            "title": "Long Progressive Run",
+            "title": "3 x 10min Threshold",
             "intent": "Longer aerobic development to improve overall endurance.",
             "session": {
               "main": [
-                "2km WU",
-                "2km easy",
-                "2km steady",
-                "2km slightly quicker",
-                "2km easy WD"
+                "3 × 10 min @ threshold effort",
+                "2–3 min easy jog recoveries"
               ],
               "notes": [
-                "Purpose: Build finish strength while keeping the overall run controlled.",
+                "Purpose: Build sustained threshold capacity with longer controlled reps.",
                 "This session plays a specific role in balancing quality, recovery, and performance across the week.",
-                "Execution focus: Progress gradually — no sudden jump in effort.",
-                "Effort guide: 5-7/10",
-                "Pace guide: based on your submitted 5km, this longer aerobic day fits your steady range (4:15–4:40/km). Use RPE and control first.",
-                "A controlled build beats a dramatic final surge.",
-                "If recovery is strong, extend the aerobic block slightly."
+                "Execution focus: Settle into rhythm early — the last block is where discipline shows.",
+                "Effort guide: 7-8/10",
+                "Pace guide: based on your submitted 5km, this session should sit around your threshold range of 3:55–4:05/km. Use RPE and control first.",
+                "The final rep should be strong, not desperate."
               ]
             },
-            "time_cap_minutes": 70,
+            "time_cap_minutes": 60,
             "tags": [
-              "long_run",
+              "threshold_run",
               "run",
-              "long_run"
+              "threshold"
             ],
             "priority": {
               "rank": 2,

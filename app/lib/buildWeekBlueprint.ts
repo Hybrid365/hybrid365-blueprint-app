@@ -19,7 +19,7 @@ import { mapGoalToBias, pickWeeklyStructure } from "./weeklyStructures";
 import { classifyRunner, type RunnerProfile } from "./classifyRunner";
 import { parseConstraints, type ModalityAvoids, type ParsedConstraints } from "./parseConstraints";
 import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
-import { computeWeeklyStress, type SessionStressInput } from "./stressBudget";
+import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import { getProgressionTarget, getStressAlignment } from "./progressionTargets";
 import { computeSessionPriority, createFillerPriority } from "./sessionPriority";
 import { buildSubstitutionNotes } from "./substitutionGuidance";
@@ -159,6 +159,520 @@ function matchesTime(session: SessionTemplate, hours: WeeklyHoursBand) {
 
 function roleMatches(session: SessionTemplate, role: StructureRole) {
   return session.structure_roles.includes(role);
+}
+
+const LOW_IMPACT_AUTO_NOTE =
+  "Safety adjustment: this was softened because you mentioned impact or injury concerns.";
+const TIME_CAP_AUTO_NOTE =
+  "Safety adjustment: this was shortened because you selected a low weekly time window or mentioned limited time.";
+const BEGINNER_LOAD_AUTO_NOTE =
+  "Safety adjustment: this was softened to keep the week appropriate for a beginner.";
+
+/** Governor-only: disallow swaps that insist on modalities the athlete ruled out (mirrors modality_avoids weighting intent). */
+function governorTemplatePassesModality(s: SessionTemplate, avoids: ModalityAvoids): boolean {
+  const blob = sessionText(s);
+  if (avoids.sled) {
+    const sledHit =
+      s.equipment.includes("Sled") || /\bsled\b|\bprowler\b|\bsled\s+(?:push|pull|drag)\b/i.test(blob);
+    if (sledHit) return false;
+  }
+  if (avoids.rower) {
+    const rowHit =
+      s.equipment.includes("Rower") ||
+      blobLooksRowDominant(blob) ||
+      /500m\s*row\b|750m\s*row\b|1000m\s*row\b|2000m\s*row\b/i.test(blob);
+    if (rowHit) return false;
+  }
+  if (avoids.ski) {
+    const skiHit =
+      s.equipment.includes("SkiErg") ||
+      blobLooksSkiDominant(blob) ||
+      /500m\s*ski\b|750m\s*ski\b|\bkm\s*ski\b/i.test(blob);
+    if (skiHit) return false;
+  }
+  return true;
+}
+
+function templateEligibleForGovernorSwapWithConstraints(
+  s: SessionTemplate,
+  input: BlueprintInput,
+  parsedConstraints: ParsedConstraints
+): boolean {
+  const equipmentResolved = defaultEquipment(input.equipment);
+  return (
+    matchesLevel(s, input.ability_level) &&
+    matchesGoal(s, input.goal_focus) &&
+    matchesEquipment(s, equipmentResolved) &&
+    matchesTime(s, input.weekly_hours_band) &&
+    governorTemplatePassesModality(s, parsedConstraints.modality_avoids)
+  );
+}
+
+function findSessionByName(name: string): SessionTemplate | undefined {
+  return SESSION_LIBRARY.find((x) => x.name === name);
+}
+
+function pickGovernorTemplateByNames(
+  names: string[],
+  role: StructureRole,
+  input: BlueprintInput,
+  parsedConstraints: ParsedConstraints,
+  usedTitles: Set<string>,
+  requireRoleMatch: boolean,
+  allowDuplicateName?: boolean
+): SessionTemplate | null {
+  for (const name of names) {
+    const s = findSessionByName(name);
+    if (!s || !templateEligibleForGovernorSwapWithConstraints(s, input, parsedConstraints)) continue;
+    if (requireRoleMatch && !roleMatches(s, role)) continue;
+    if (!allowDuplicateName && usedTitles.has(s.name.trim().toLowerCase())) continue;
+    return s;
+  }
+  if (!requireRoleMatch) return null;
+  return pickGovernorTemplateByNames(
+    names,
+    role,
+    input,
+    parsedConstraints,
+    usedTitles,
+    false,
+    allowDuplicateName
+  );
+}
+
+function buildDayPlanAndStressFromTemplate(args: {
+  picked: SessionTemplate;
+  assignedDay: DayKey;
+  role: StructureRole;
+  input: BlueprintInput;
+  parsedConstraints: ParsedConstraints;
+  paceGuidance: PaceGuidance | null;
+  extraSessionNotes?: string[];
+}): { dayPlan: DayPlan; stress: SessionStressInput } {
+  const { picked, assignedDay, role, input, parsedConstraints, paceGuidance, extraSessionNotes } = args;
+  const equipmentResolved = defaultEquipment(input.equipment);
+  const substitutionNotes = buildSubstitutionNotes({
+    parsedConstraints,
+    equipment: equipmentResolved,
+    session: picked,
+  }).filter((line) => typeof line === "string" && line.trim().length > 0);
+
+  const coachingPrefix = [
+    purposeText(picked),
+    structureReasonText(picked, input.goal_focus),
+    cueText(picked),
+    rpeText(picked),
+  ];
+  const libraryNotes = [...(picked.prescription.notes || [])];
+  const paceNote =
+    paceGuidance && picked.category === "run" ? runSessionPaceNote(picked.type, paceGuidance) : null;
+
+  const sessionNotes = [
+    ...coachingPrefix,
+    ...(paceNote ? [paceNote] : []),
+    ...substitutionNotes,
+    ...libraryNotes,
+    ...(extraSessionNotes ?? []),
+  ].filter((line) => typeof line === "string" && line.trim().length > 0);
+
+  const stress: SessionStressInput = {
+    day: assignedDay,
+    title: picked.name,
+    category: picked.category,
+    type: picked.type,
+    intensity: picked.intensity,
+    fatigue: picked.fatigue,
+    duration: picked.duration,
+  };
+
+  const dayPlan: DayPlan = {
+    template_id: picked.id,
+    day: assignedDay,
+    title: picked.name,
+    intent: structureIntent(role, input.goal_focus),
+    session: {
+      warm_up: picked.prescription.warm_up,
+      main: picked.prescription.main,
+      cool_down: picked.prescription.cool_down,
+      finish: picked.prescription.finish,
+      notes: sessionNotes,
+    },
+    time_cap_minutes: picked.duration,
+    tags: [picked.type, picked.category, picked.variation_group],
+    priority: computeSessionPriority({
+      goalFocus: input.goal_focus,
+      role,
+      session: picked,
+    }),
+  };
+
+  return { dayPlan, stress };
+}
+
+function isSofteningExcludedLowImpactDay(day: DayPlan): boolean {
+  const tags = day.tags ?? [];
+  const t0 = tags[0];
+  const t1 = tags[1];
+  const vg = tags[2];
+  if (day.template_id === "FILLER-RECOVERY" || day.template_id === "FILLER-AEROBIC") return true;
+  if (t0 === "recovery" || t1 === "recovery" || tags.includes("recovery")) return true;
+  if (tags.includes("aerobic_support") || t0 === "aerobic_support") return true;
+  if (vg === "hybrid_low_impact" || tags.includes("hybrid_low_impact")) return true;
+  if (vg === "lower_durability" || tags.includes("lower_durability")) return true;
+  return false;
+}
+
+function isHighImpactOffenderForAutoSoftening(day: DayPlan): boolean {
+  if (isSofteningExcludedLowImpactDay(day)) return false;
+  const tags = day.tags ?? [];
+  const t0 = tags[0] ?? "";
+  if (t0 === "interval_run" || t0 === "threshold_run" || t0 === "long_run" || t0 === "hybrid_compromised") {
+    return true;
+  }
+  const hay = concatDayPlanInspectableText(day);
+  if (/lunges?|burpees?|\brun(?:ning)?\b|compromised|race[-\s]specific|\bsled\b/i.test(hay)) {
+    return true;
+  }
+  return false;
+}
+
+function lowImpactReplacementNameOrder(offender: DayPlan, role: StructureRole): string[] {
+  const t0 = offender.tags?.[0] ?? "";
+  if (t0 === "long_run") {
+    return ["Long Low-Impact Bike Base", "Low-Impact Aerobic Base", "Low-Impact Run Alternative", "Bike Tempo Build"];
+  }
+  if (t0 === "hybrid_compromised" || t0 === "hybrid_density") {
+    return ["Low-Impact Hybrid Engine", "Carry + Erg Control", "Bike Tempo Build", "Low-Impact Aerobic Base"];
+  }
+  if (
+    t0 === "threshold_run" ||
+    t0 === "interval_run" ||
+    (t0 === "tempo_run" && offender.tags?.[1] === "run")
+  ) {
+    return [
+      "No-Impact Threshold Builder",
+      "Low-Impact Run Alternative",
+      "Bike Tempo Build",
+      "Low-Impact Aerobic Base",
+    ];
+  }
+  if (t0 === "strength_lower" || t0 === "strength_full") {
+    return [
+      "Knee-Friendly Lower Strength",
+      "Lower Isometric Durability",
+      "Bodyweight Lower Durability",
+      "Low-Impact Aerobic Base",
+    ];
+  }
+  if (role === "run_long") {
+    return ["Long Low-Impact Bike Base", "Low-Impact Aerobic Base", "Low-Impact Run Alternative"];
+  }
+  if (role === "hybrid_primary" || role === "hybrid_density") {
+    return ["Low-Impact Hybrid Engine", "Carry + Erg Control", "Bike Tempo Build"];
+  }
+  return [
+    "Low-Impact Run Alternative",
+    "No-Impact Threshold Builder",
+    "Bike Tempo Build",
+    "Low-Impact Aerobic Base",
+    "Low-Impact Hybrid Engine",
+  ];
+}
+
+function isLibraryBackedDay(day: DayPlan): boolean {
+  if (day.template_id === "FILLER-RECOVERY" || day.template_id === "FILLER-AEROBIC") return false;
+  if (day.title === "Recovery / Mobility" || day.title === "Aerobic Support") return false;
+  return Boolean(day.template_id);
+}
+
+function isRecoveryStyledDay(day: DayPlan): boolean {
+  if (day.template_id === "FILLER-RECOVERY") return true;
+  const t0 = day.tags?.[0];
+  const cat = day.tags?.[1];
+  return t0 === "recovery" || cat === "recovery";
+}
+
+function countAutoSofteningTriggerCategories(args: {
+  input: BlueprintInput;
+  parsedConstraints: ParsedConstraints;
+  schedule: DayPlan[];
+  weeklyStress: WeeklyStressSummary;
+}): number {
+  const { input, parsedConstraints, schedule, weeklyStress } = args;
+  const lowImpactActive =
+    (parsedConstraints.flags.includes("injury_flags") ||
+      parsedConstraints.flags.includes("low_impact_preference")) &&
+    schedule.some((d) => isHighImpactOffenderForAutoSoftening(d));
+  const timeActive =
+    (input.weekly_hours_band === "2-3" || parsedConstraints.flags.includes("time_limit")) &&
+    (weeklyStress.estimated_hours > 3.5 || weeklyStress.relative_load > 1.15);
+  const beginnerActive = input.ability_level === "beginner" && weeklyStress.relative_load > 1.15;
+  return [lowImpactActive, timeActive, beginnerActive].filter(Boolean).length;
+}
+
+function replaceScheduleSlot(args: {
+  schedule: DayPlan[];
+  orderedStressInputs: SessionStressInput[];
+  index: number;
+  dayPlan: DayPlan;
+  stress: SessionStressInput;
+}): void {
+  args.schedule[args.index] = args.dayPlan;
+  args.orderedStressInputs[args.index] = args.stress;
+}
+
+function pickTimeSofteningReplacement(args: {
+  dayKey: DayKey;
+  recoveryMinutes: number;
+  aerobicSupportMinutes: number;
+  aerobicSupportStressDur: number;
+  input: BlueprintInput;
+  note: string;
+}): { dayPlan: DayPlan; stress: SessionStressInput } {
+  const { dayKey, recoveryMinutes, aerobicSupportMinutes, aerobicSupportStressDur, input, note } = args;
+  if (input.goal_focus === "running") {
+    const d = lightAerobicDay(dayKey, aerobicSupportMinutes);
+    return {
+      dayPlan: {
+        ...d,
+        session: {
+          ...d.session,
+          notes: [...(d.session.notes ?? []), note],
+        },
+      },
+      stress: {
+        day: dayKey,
+        title: "Aerobic Support",
+        category: "aerobic",
+        type: "aerobic_support",
+        intensity: "low",
+        fatigue: "low",
+        duration: aerobicSupportStressDur,
+      },
+    };
+  }
+  const d = recoveryDay(dayKey, recoveryMinutes);
+  return {
+    dayPlan: {
+      ...d,
+      session: {
+        ...d.session,
+        notes: [...(d.session.notes ?? []), note],
+      },
+    },
+    stress: {
+      day: dayKey,
+      title: "Recovery / Mobility",
+      category: "recovery",
+      type: "recovery",
+      intensity: "low",
+      fatigue: "low",
+      duration: recoveryMinutes,
+    },
+  };
+}
+
+/** Narrow post-fill substitutions (max two per week) before final stress + safety_flags. Mutates parallel arrays in lockstep. */
+function applyNarrowAutoSoftening(args: {
+  input: BlueprintInput;
+  parsedConstraints: ParsedConstraints;
+  paceGuidance: PaceGuidance | null;
+  schedule: DayPlan[];
+  orderedStressInputs: SessionStressInput[];
+  dayRoleByAssignedDay: Map<DayKey, StructureRole>;
+  weeklyStressBaseline: WeeklyStressSummary;
+  compressOffSessions: boolean;
+}): void {
+  const {
+    input,
+    parsedConstraints,
+    paceGuidance,
+    schedule,
+    orderedStressInputs,
+    dayRoleByAssignedDay,
+    weeklyStressBaseline,
+    compressOffSessions,
+  } = args;
+
+  const triggerCount = countAutoSofteningTriggerCategories({
+    input,
+    parsedConstraints,
+    schedule,
+    weeklyStress: weeklyStressBaseline,
+  });
+  if (triggerCount === 0) return;
+  const maxSubs = triggerCount >= 2 ? 2 : 1;
+  let substitutions = 0;
+  const softenedIndices = new Set<number>();
+
+  const titlesRef = (): Set<string> =>
+    new Set(schedule.map((d) => d.title.trim().toLowerCase()).filter((t) => t.length > 0));
+
+  const recoveryMinutes = compressOffSessions ? 22 : 35;
+  const aerobicSupportMinutes = compressOffSessions ? 26 : 40;
+  const aerobicSupportStressDur = compressOffSessions ? 26 : 35;
+
+  const needsLowImpactGovernor =
+    parsedConstraints.flags.includes("injury_flags") ||
+    parsedConstraints.flags.includes("low_impact_preference");
+
+  const baselineTimeTrigger =
+    (input.weekly_hours_band === "2-3" || parsedConstraints.flags.includes("time_limit")) &&
+    (weeklyStressBaseline.estimated_hours > 3.5 || weeklyStressBaseline.relative_load > 1.15);
+
+  const baselineBeginnerTrigger =
+    input.ability_level === "beginner" && weeklyStressBaseline.relative_load > 1.15;
+
+  // 1) Low-impact injury: earliest calendar offenders, at most two impact swaps capped by weekly budget.
+  let impactPasses = 0;
+  const maxImpactPasses = Math.min(2, maxSubs);
+  if (needsLowImpactGovernor && maxImpactPasses > 0) {
+    for (let i = 0; i < schedule.length; i++) {
+      if (substitutions >= maxSubs || impactPasses >= maxImpactPasses) break;
+      if (softenedIndices.has(i)) continue;
+      const day = schedule[i];
+      const dayKey = day.day;
+      const role = dayRoleByAssignedDay.get(dayKey);
+      if (!role || !isHighImpactOffenderForAutoSoftening(day) || !isLibraryBackedDay(day)) continue;
+
+      let tmpl =
+        pickGovernorTemplateByNames(
+          lowImpactReplacementNameOrder(day, role),
+          role,
+          input,
+          parsedConstraints,
+          titlesRef(),
+          true,
+          false
+        ) ??
+        pickGovernorTemplateByNames(
+          lowImpactReplacementNameOrder(day, role),
+          role,
+          input,
+          parsedConstraints,
+          titlesRef(),
+          true,
+          true
+        );
+
+      if (!tmpl) continue;
+
+      const { dayPlan, stress } = buildDayPlanAndStressFromTemplate({
+        picked: tmpl,
+        assignedDay: dayKey,
+        role,
+        input,
+        parsedConstraints,
+        paceGuidance,
+        extraSessionNotes: [LOW_IMPACT_AUTO_NOTE],
+      });
+      replaceScheduleSlot({ schedule, orderedStressInputs, index: i, dayPlan, stress });
+      softenedIndices.add(i);
+      impactPasses++;
+      substitutions++;
+    }
+  }
+
+  // 2) Time / band: trim dense support slots
+  if (
+    baselineTimeTrigger &&
+    substitutions < maxSubs
+  ) {
+    const candIdx = findTimeSofteningCandidateIndex(schedule, softenedIndices);
+    if (candIdx !== null && !softenedIndices.has(candIdx)) {
+      const dayKey = schedule[candIdx].day;
+      const { dayPlan, stress } = pickTimeSofteningReplacement({
+        dayKey,
+        recoveryMinutes,
+        aerobicSupportMinutes,
+        aerobicSupportStressDur,
+        input,
+        note: TIME_CAP_AUTO_NOTE,
+      });
+      replaceScheduleSlot({ schedule, orderedStressInputs, index: candIdx, dayPlan, stress });
+      softenedIndices.add(candIdx);
+      substitutions++;
+    }
+  }
+
+  // 3) Beginner overload: soften heaviest optional day
+  if (baselineBeginnerTrigger && substitutions < maxSubs) {
+    const candIdx = findBeginnerOverloadCandidateIndex(
+      schedule,
+      orderedStressInputs,
+      softenedIndices
+    );
+    if (candIdx !== null) {
+      const dayKey = schedule[candIdx].day;
+      const { dayPlan, stress } = pickTimeSofteningReplacement({
+        dayKey,
+        recoveryMinutes,
+        aerobicSupportMinutes,
+        aerobicSupportStressDur,
+        input,
+        note: BEGINNER_LOAD_AUTO_NOTE,
+      });
+      replaceScheduleSlot({ schedule, orderedStressInputs, index: candIdx, dayPlan, stress });
+      softenedIndices.add(candIdx);
+      substitutions++;
+    }
+  }
+}
+
+function findTimeSofteningCandidateIndex(
+  schedule: DayPlan[],
+  exclude: ReadonlySet<number>
+): number | null {
+  let bestIdx: number | null = null;
+  let bestRank = -1;
+  let bestDuration = -1;
+  for (let i = 0; i < schedule.length; i++) {
+    if (exclude.has(i)) continue;
+    const day = schedule[i];
+    const rank = day.priority?.rank ?? 99;
+    if (rank <= 1) continue;
+    if (!isLibraryBackedDay(day)) continue;
+    if (isRecoveryStyledDay(day)) continue;
+    const t0 = day.tags?.[0] ?? "";
+    const dur = typeof day.time_cap_minutes === "number" ? day.time_cap_minutes : 0;
+    if (!(dur > 35 || t0 === "hybrid_density" || t0 === "strength_full")) continue;
+
+    const better =
+      rank > bestRank ||
+      (rank === bestRank && (dur > bestDuration || bestIdx === null));
+    if (better) {
+      bestIdx = i;
+      bestRank = rank;
+      bestDuration = dur;
+    }
+  }
+  return bestIdx;
+}
+
+function findBeginnerOverloadCandidateIndex(
+  schedule: DayPlan[],
+  orderedStressInputs: SessionStressInput[],
+  exclude: ReadonlySet<number>
+): number | null {
+  let bestIdx: number | null = null;
+  let bestScore = -1;
+  for (let i = 0; i < schedule.length; i++) {
+    if (exclude.has(i)) continue;
+    const day = schedule[i];
+    const rank = day.priority?.rank ?? 99;
+    if (rank <= 1) continue;
+    if (!isLibraryBackedDay(day)) continue;
+    if (isRecoveryStyledDay(day)) continue;
+    const sIn = orderedStressInputs[i];
+    if (!sIn) continue;
+    const score =
+      computeSessionStress(sIn) + (typeof sIn.duration === "number" ? sIn.duration * 0.01 : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
 }
 
 const MIN_SESSION_WEIGHT = 0.1;
@@ -1022,6 +1536,7 @@ function buildActivePlanDays(
   const dayOrder = getPreferredDayOrder(input.preferred_days);
 
   const stressByDay = new Map<DayKey, SessionStressInput>();
+  const dayRoleByAssignedDay = new Map<DayKey, StructureRole>();
 
   const suppressStrengthRunExtras =
     parsedConstraints.flags.includes("time_limit") || input.weekly_hours_band === "2-3";
@@ -1056,64 +1571,22 @@ function buildActivePlanDays(
     }
 
     assignedDays.add(assignedDay);
+    dayRoleByAssignedDay.set(assignedDay, role);
 
-    const equipmentResolved = defaultEquipment(input.equipment);
-    const substitutionNotes = buildSubstitutionNotes({
+    const { dayPlan, stress } = buildDayPlanAndStressFromTemplate({
+      picked,
+      assignedDay,
+      role,
+      input,
       parsedConstraints,
-      equipment: equipmentResolved,
-      session: picked,
-    }).filter((line) => typeof line === "string" && line.trim().length > 0);
-
-    const coachingPrefix = [
-      purposeText(picked),
-      structureReasonText(picked, input.goal_focus),
-      cueText(picked),
-      rpeText(picked),
-    ];
-    const libraryNotes = [...(picked.prescription.notes || [])];
-    const paceNote =
-      paceGuidance && picked.category === "run" ? runSessionPaceNote(picked.type, paceGuidance) : null;
-
-    const sessionNotes = [
-      ...coachingPrefix,
-      ...(paceNote ? [paceNote] : []),
-      ...substitutionNotes,
-      ...libraryNotes,
-    ].filter((line) => typeof line === "string" && line.trim().length > 0);
-
-    stressByDay.set(assignedDay, {
-      day: assignedDay,
-      title: picked.name,
-      category: picked.category,
-      type: picked.type,
-      intensity: picked.intensity,
-      fatigue: picked.fatigue,
-      duration: picked.duration,
+      paceGuidance,
     });
 
-    activeDays.push({
-      template_id: picked.id,
-      day: assignedDay,
-      title: picked.name,
-      intent: structureIntent(role, input.goal_focus),
-      session: {
-        warm_up: picked.prescription.warm_up,
-        main: picked.prescription.main,
-        cool_down: picked.prescription.cool_down,
-        finish: picked.prescription.finish,
-        notes: sessionNotes,
-      },
-      time_cap_minutes: picked.duration,
-      tags: [picked.type, picked.category, picked.variation_group],
-      priority: computeSessionPriority({
-        goalFocus: input.goal_focus,
-        role,
-        session: picked,
-      }),
-    });
+    stressByDay.set(assignedDay, stress);
+    activeDays.push(dayPlan);
   });
 
-  return { structure, activeDays, stressByDay };
+  return { structure, activeDays, stressByDay, dayRoleByAssignedDay };
 }
 
 function fillSevenDayWeek(
@@ -1304,11 +1777,37 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
   const compressOffSessions =
     parsedConstraints.flags.includes("time_limit") || input.weekly_hours_band === "2-3";
 
-  const { structure, activeDays, stressByDay } = buildActivePlanDays(input, parsedConstraints, paceGuidance);
+  const { structure, activeDays, stressByDay, dayRoleByAssignedDay } = buildActivePlanDays(
+    input,
+    parsedConstraints,
+    paceGuidance
+  );
   const { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay, {
     compressOffSessions,
   });
-  const plannedMinutes = schedule.reduce((sum, day) => {
+  let plannedMinutes = schedule.reduce((sum, day) => {
+    if (typeof day.time_cap_minutes !== "number") return sum;
+    return sum + day.time_cap_minutes;
+  }, 0);
+  const weeklyStressBaseline = computeWeeklyStress(
+    orderedStressInputs,
+    input.weekly_hours_band,
+    input.ability_level,
+    plannedMinutes
+  );
+
+  applyNarrowAutoSoftening({
+    input,
+    parsedConstraints,
+    paceGuidance,
+    schedule,
+    orderedStressInputs,
+    dayRoleByAssignedDay,
+    weeklyStressBaseline,
+    compressOffSessions,
+  });
+
+  plannedMinutes = schedule.reduce((sum, day) => {
     if (typeof day.time_cap_minutes !== "number") return sum;
     return sum + day.time_cap_minutes;
   }, 0);
