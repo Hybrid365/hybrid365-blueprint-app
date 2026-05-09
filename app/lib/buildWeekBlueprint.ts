@@ -7,15 +7,17 @@ import {
   DayPlan,
   GoalFocus,
   PlanJson,
+  PlanSafetyFlags,
   SESSION_LIBRARY,
   SessionTemplate,
   StructureRole,
   UserEquipment,
   WeeklyHoursBand,
+  WeeklyStressSummary,
 } from "./sessionLibrary";
 import { mapGoalToBias, pickWeeklyStructure } from "./weeklyStructures";
 import { classifyRunner, type RunnerProfile } from "./classifyRunner";
-import { parseConstraints, type ParsedConstraints } from "./parseConstraints";
+import { parseConstraints, type ModalityAvoids, type ParsedConstraints } from "./parseConstraints";
 import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
 import { computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import { getProgressionTarget, getStressAlignment } from "./progressionTargets";
@@ -167,7 +169,45 @@ type SessionPickContext = {
   usedVariationGroups: Set<string>;
   /** Normalised session names already picked */
   usedSessionNames: Set<string>;
+  /** Running goal: count of quality runs (threshold / interval / hard tempo) picked so far */
+  runningQualitySessionCount: number;
+  runningThresholdSessionCount: number;
+  runningIntervalSessionCount: number;
+  /** variation_group keys for quality run picks only (duplicate quality vg bias) */
+  runningQualityVariationGroups: Set<string>;
 };
+
+/** Harder run sessions that stack fatigue when duplicated in one week. */
+function isQualityRunSession(s: SessionTemplate): boolean {
+  if (s.category !== "run") return false;
+  if (s.type === "threshold_run" || s.type === "interval_run") return true;
+  if (s.type === "tempo_run" && (s.intensity === "medium" || s.intensity === "high")) return true;
+  const vg = s.variation_group.toLowerCase();
+  if (vg === "threshold" || vg === "interval" || vg === "tempo") return true;
+  return false;
+}
+
+/** Threshold/tempo styles appropriate for base-building / novice tolerance. */
+function isBeginnerFriendlyRunQuality(s: SessionTemplate): boolean {
+  const vg = s.variation_group.toLowerCase();
+  return (
+    vg.includes("beginner") ||
+    vg.includes("short") ||
+    vg.includes("base") ||
+    vg === "run_walk_base" ||
+    vg === "aerobic_run_short" ||
+    vg === "aerobic_run" ||
+    vg === "tempo_beginner"
+  );
+}
+
+function registerRunningQualityPick(ctx: SessionPickContext, picked: SessionTemplate) {
+  if (picked.category !== "run" || !isQualityRunSession(picked)) return;
+  ctx.runningQualitySessionCount += 1;
+  if (picked.type === "threshold_run") ctx.runningThresholdSessionCount += 1;
+  if (picked.type === "interval_run") ctx.runningIntervalSessionCount += 1;
+  ctx.runningQualityVariationGroups.add(picked.variation_group);
+}
 
 /** Prefer unused templates when the role pool has alternatives — never empties options. */
 function sessionPoolWithDuplicateGuards(options: SessionTemplate[], ctx: SessionPickContext): SessionTemplate[] {
@@ -211,7 +251,7 @@ const HYBRID_INTRO_PRIORITY_IDS = new Set([
 ]);
 
 /** Lowercased text from session fields for lightweight keyword checks (equipment notes, substitution weighting). */
-function sessionText(session: SessionTemplate): string {
+export function sessionText(session: SessionTemplate): string {
   const chunks: string[] = [
     session.name,
     session.type,
@@ -227,38 +267,50 @@ function sessionText(session: SessionTemplate): string {
   return chunks.join(" ").toLowerCase();
 }
 
-/** Mild penalty when athlete notes disallow a modality the session stresses. Uses raw constraint text only. */
-function equipmentModalityMismatchPenalty(rawNorm: string, blob: string): number {
+function blobLooksRowDominant(blob: string): boolean {
+  if (blob.includes("rower") || /\browing\s+machine\b/.test(blob)) return true;
+  if (/\b\d+m\s+(?:steady|easy|moderate|controlled)?\s*row\b|\b\d+m\s*row\b/.test(blob))
+    return true;
+  if (/\beasy\s+row\b|\bsteady\s+row\b|\bmoderate\s+row\b|\bcontrolled\s+row\b/.test(blob)) return true;
+  if (/\bsteady\s+paddle\b/.test(blob)) return true;
+  if (/\b(row\s+or\s+ski|ski\s+or\s+row)\b/.test(blob)) return true;
+  return false;
+}
+
+function blobLooksSkiDominant(blob: string): boolean {
+  if (blob.includes("skierg") || blob.includes("ski erg")) return true;
+  if (/\b\d+m\s+(?:steady|easy|moderate|controlled)?\s*ski\b|\b\d+m\s*ski\b/.test(blob))
+    return true;
+  if (/\beasy\s+ski\b|\bsteady\s+ski\b|\bmoderate\s+ski\b|\bcontrolled\s+ski\b/.test(blob)) return true;
+  if (/\b(row\s+or\s+ski|ski\s+or\s+row)\b/.test(blob)) return true;
+  return false;
+}
+
+/** Strong soft penalty when notes explicitly disallow equipment the session insists on (never hard-filters pools). */
+function explicitUnavailableModalityPenalty(s: SessionTemplate, blob: string, avoids: ModalityAvoids): number {
   let penalty = 0;
 
-  const mentionsNoRower =
-    /\bno\s+rower\b|\bno\s+rowing\s+machine\b|\bno\s+access\s+to\s+(?:the\s+|a\s+)?rower\b|\bdo\s+not\s+have\s+(?:a\s+)?rower\b|don[''\u2019]t\s+have\s+(?:a\s+)?rower\b/i.test(
-      rawNorm
-    );
-  if (mentionsNoRower) {
-    const rowInSession =
-      /\brower\b|\browing\b|\d+\s*m\s*row\b|row-based|row aerobic|row interval|easy row|steady row|moderate row|row,|row\./i.test(
-        blob
-      );
-    if (rowInSession) penalty -= 3;
+  if (avoids.sled) {
+    const sledHit =
+      s.equipment.includes("Sled") ||
+      /\bsled\b|\bprowler\b|\bsled\s+(?:push|pull|drag)\b/.test(blob);
+    if (sledHit) penalty -= 54;
   }
 
-  const mentionsNoSki =
-    /\bno\s+skierg\b|\bno\s+ski\s+erg\b|\bdo\s+not\s+have\s+(?:a\s+)?(?:skierg|ski\s+erg)\b|don[''\u2019]t\s+have\s+(?:a\s+)?(?:skierg|ski\s+erg)\b|\bno\s+ski\b/i.test(
-      rawNorm
-    );
-  if (mentionsNoSki) {
-    const skiInSession =
-      /\bskierg\b|\bski\s+erg\b|\bski intervals\b|\d+\s*m\s*ski\b|\bkm\s+ski\b|ski or row|row or ski|ski,|ski\./i.test(
-        blob
-      );
-    if (skiInSession) penalty -= 3;
+  if (avoids.rower) {
+    const rowHit =
+      s.equipment.includes("Rower") ||
+      blobLooksRowDominant(blob) ||
+      /500m\s*row\b|750m\s*row\b|1000m\s*row\b|2000m\s*row\b/.test(blob);
+    if (rowHit) penalty -= 54;
   }
 
-  const mentionsNoSled =
-    /\bno\s+sled\b|\bdo\s+not\s+have\s+(?:a\s+)?sled\b|don[''\u2019]t\s+have\s+(?:a\s+)?sled\b/i.test(rawNorm);
-  if (mentionsNoSled && /\bsled\b|\bprowler\b/i.test(blob)) {
-    penalty -= 3;
+  if (avoids.ski) {
+    const skiHit =
+      s.equipment.includes("SkiErg") ||
+      blobLooksSkiDominant(blob) ||
+      /500m\s*ski\b|750m\s*ski\b|\bkm\s+ski\b/.test(blob);
+    if (skiHit) penalty -= 54;
   }
 
   return penalty;
@@ -308,7 +360,7 @@ function pickWeightedSession(
     (s) => !pickContext.usedSessionNames.has(s.name.trim().toLowerCase())
   );
 
-  const rawNotesNorm = parsedConstraints.raw.trim().toLowerCase().replace(/\s+/g, " ");
+  const weeklyHoursBand = input.weekly_hours_band;
 
   const runner = classifyRunner(input.five_k_time);
   const isRunRole =
@@ -327,6 +379,13 @@ function pickWeightedSession(
     parsedConstraints.flags.includes("new_runner") ||
     runner.label === "beginner" ||
     runner.label === "developing";
+
+  const runningBaseBias =
+    input.goal_focus === "running" &&
+    (input.ability_level === "beginner" ||
+      runner.label === "unknown" ||
+      runner.label === "beginner" ||
+      runner.label === "developing");
 
   const weighted = optionsPool.map((s) => {
     let weight = 1;
@@ -477,16 +536,7 @@ function pickWeightedSession(
       if (s.category === "recovery") weight += 1;
     }
 
-    if (hasFlag("time_limit")) {
-      if (s.time_requirement === "30-45") weight += 6;
-      if (s.duration <= 45) weight += 4;
-      if (s.duration > 45 && s.duration <= 60) weight -= 3;
-      if (s.duration > 60) weight -= 6;
-      if (s.time_requirement === "75+") weight -= 8;
-    }
-
     if (hasFlag("equipment_limits")) {
-      weight += equipmentModalityMismatchPenalty(rawNotesNorm, blob);
       if (s.time_requirement === "30-45") weight += 2;
       if (s.fatigue === "low") weight += 2;
       if (s.type === "hybrid_bodyweight") weight += 5;
@@ -591,6 +641,116 @@ function pickWeightedSession(
 
     }
 
+    weight += explicitUnavailableModalityPenalty(s, blob, parsedConstraints.modality_avoids);
+
+    if (weeklyHoursBand === "2-3") {
+      if (s.duration <= 35) weight += 14;
+      else if (s.duration <= 45) weight += 9;
+      if (s.time_requirement === "30-45") weight += 13;
+      if (s.duration > 45 && s.duration < 60) weight -= 29;
+      if (s.duration >= 60) weight -= 54;
+      if (s.time_requirement === "45-75") weight -= 18;
+      if (s.time_requirement === "75+") weight -= 62;
+    }
+
+    if (weeklyHoursBand === "3-5") {
+      if (s.duration <= 45) weight += 7;
+      if (s.duration >= 60) weight -= 14;
+      if (s.time_requirement === "75+") weight -= 22;
+    }
+
+    const timeLimitedPick = hasFlag("time_limit");
+    if (timeLimitedPick) {
+      if (s.time_requirement === "30-45") weight += 13;
+      if (s.duration <= 38) weight += 10;
+      if (s.duration > 45 && s.duration < 60) weight -= 34;
+      if (s.duration >= 60) weight -= 42;
+      if (s.duration >= 75) weight -= 24;
+      if (s.time_requirement === "45-75" && s.duration > 42) weight -= 12;
+      if (s.time_requirement === "75+") weight -= 28;
+      if (!(s.structure_roles.includes("run_aerobic") && input.goal_focus === "running")) {
+        const looksLikeBikeZ2Finish =
+          s.category === "aerobic" &&
+          s.duration >= 48 &&
+          (/\bz2\b|easy.?moderate.?bike|\bbike\b|\bspin\b|\bsteady\s+rhythm\b/i.test(blob) ||
+            s.type === "aerobic_support");
+        if (looksLikeBikeZ2Finish) weight -= 16;
+      }
+    }
+
+    // --- Running goal: protect base / unknown runners; spread quality across the week ---
+    if (input.goal_focus === "running") {
+      if (runningBaseBias) {
+        if (s.category === "run") {
+          if (s.type === "interval_run") weight -= 26;
+          if (s.type === "threshold_run" && !isBeginnerFriendlyRunQuality(s)) weight -= 24;
+          if (s.type === "threshold_run" && isBeginnerFriendlyRunQuality(s)) weight += 6;
+          if (s.intensity === "high") weight -= 14;
+          if (s.type === "aerobic_run") weight += 12;
+          if (s.variation_group === "run_walk_base") weight += 14;
+          if (s.variation_group === "base_progression") weight += 12;
+          if (s.variation_group === "aerobic_run_short") weight += 14;
+          if (s.structure_roles.includes("run_quality_beginner")) weight += 10;
+          if (s.fatigue === "low") weight += 8;
+          if (s.type === "tempo_run" && s.intensity === "high") weight -= 12;
+          if (s.type === "tempo_run" && isBeginnerFriendlyRunQuality(s)) weight += 6;
+          if (s.type === "tempo_run" && !isBeginnerFriendlyRunQuality(s) && s.intensity !== "high") {
+            weight -= 8;
+          }
+        }
+        if (s.category === "strength") {
+          if (s.variation_group === "lower_durability" || s.variation_group === "movement_foundations") {
+            weight += 10;
+          }
+        }
+      }
+
+      if (isRunRole && s.category === "run") {
+        if (
+          isQualityRunSession(s) &&
+          pickContext.runningQualityVariationGroups.has(s.variation_group)
+        ) {
+          weight -= 22;
+        }
+
+        if (pickContext.runningThresholdSessionCount >= 1 && s.type === "threshold_run") {
+          weight -= 28;
+        }
+        if (pickContext.runningIntervalSessionCount >= 1 && s.type === "interval_run") {
+          weight -= 28;
+        }
+
+        if (pickContext.runningQualitySessionCount >= 2 && isQualityRunSession(s)) {
+          weight -= 36;
+        }
+
+        if (pickContext.runningQualitySessionCount >= 1) {
+          if (s.type === "aerobic_run") weight += 9;
+          if (s.type === "long_run" && s.intensity === "low") weight += 10;
+          if (s.type === "aerobic_support") weight += 7;
+          if (s.variation_group === "aerobic_run_short") weight += 8;
+        }
+      }
+
+      if (s.category === "run") {
+        if (role === "run_long") {
+          if (s.type === "long_run") weight += 16;
+          if (s.type === "aerobic_run") weight += 12;
+          if (s.type === "threshold_run" || s.type === "interval_run") weight -= 34;
+          if (
+            pickContext.runningQualitySessionCount >= 1 &&
+            (s.type === "threshold_run" || s.type === "interval_run")
+          ) {
+            weight -= 26;
+          }
+        }
+        if (role === "run_aerobic") {
+          if (s.type === "aerobic_run") weight += 14;
+          if (s.type === "threshold_run" || s.type === "interval_run") weight -= 32;
+        }
+      }
+    }
+
     return { item: s, weight: Math.max(MIN_SESSION_WEIGHT, weight) };
   });
 
@@ -605,14 +765,14 @@ function addVolumeOverlay(
   session: SessionTemplate,
   hours: WeeklyHoursBand,
   doubleSessions?: boolean,
-  timeLimited?: boolean
+  suppressOptionalExtras?: boolean
 ): SessionTemplate {
   const clone: SessionTemplate = JSON.parse(JSON.stringify(session));
 
   const extra: string[] = [];
 
   if (
-    !timeLimited &&
+    !suppressOptionalExtras &&
     (hours === "7-10" || hours === "10+") &&
     clone.category === "strength"
   ) {
@@ -623,11 +783,11 @@ function addVolumeOverlay(
     );
   }
 
-  if (!timeLimited && doubleSessions && clone.category === "strength") {
+  if (!suppressOptionalExtras && doubleSessions && clone.category === "strength") {
     extra.push("Optional second session: 20–30 min easy Z2 bike");
   }
 
-  if (!timeLimited && (hours === "7-10" || hours === "10+") && clone.type === "long_run") {
+  if (!suppressOptionalExtras && (hours === "7-10" || hours === "10+") && clone.type === "long_run") {
     clone.prescription.notes = [
       ...(clone.prescription.notes || []),
       "If recovery is strong, extend the aerobic block slightly.",
@@ -753,8 +913,9 @@ function buildIntro(
   return intro;
 }
 
-function recoveryDay(day: DayKey): DayPlan {
+function recoveryDay(day: DayKey, timeCapMinutes = 35): DayPlan {
   return {
+    template_id: "FILLER-RECOVERY",
     day,
     title: "Recovery / Mobility",
     intent: "Low-stress recovery support.",
@@ -762,14 +923,15 @@ function recoveryDay(day: DayKey): DayPlan {
       main: ["20–30 min easy walk or bike", "10–15 min mobility"],
       notes: ["Keep this genuinely easy — the goal is to recover well."],
     },
-    time_cap_minutes: 35,
+    time_cap_minutes: timeCapMinutes,
     tags: ["recovery"],
     priority: createFillerPriority("recovery"),
   };
 }
 
-function lightAerobicDay(day: DayKey): DayPlan {
+function lightAerobicDay(day: DayKey, timeCapMinutes = 40): DayPlan {
   return {
+    template_id: "FILLER-AEROBIC",
     day,
     title: "Aerobic Support",
     intent: "Low-cost aerobic support to keep the week balanced.",
@@ -777,7 +939,7 @@ function lightAerobicDay(day: DayKey): DayPlan {
       main: ["20–40 min easy Z2 bike or jog", "Optional: lower leg durability 2 rounds"],
       notes: ["Stay controlled and conversational throughout."],
     },
-    time_cap_minutes: 40,
+    time_cap_minutes: timeCapMinutes,
     tags: ["aerobic_support"],
     priority: createFillerPriority("aerobic_support"),
   };
@@ -847,6 +1009,10 @@ function buildActivePlanDays(
     usedIds: new Set<string>(),
     usedVariationGroups: new Set<string>(),
     usedSessionNames: new Set<string>(),
+    runningQualitySessionCount: 0,
+    runningThresholdSessionCount: 0,
+    runningIntervalSessionCount: 0,
+    runningQualityVariationGroups: new Set<string>(),
   };
   const activeDays: DayPlan[] = [];
   const assignedDays = new Set<DayKey>();
@@ -857,13 +1023,20 @@ function buildActivePlanDays(
 
   const stressByDay = new Map<DayKey, SessionStressInput>();
 
+  const suppressStrengthRunExtras =
+    parsedConstraints.flags.includes("time_limit") || input.weekly_hours_band === "2-3";
+
   structure.roles.forEach((role, idx) => {
     const picked = addVolumeOverlay(
       pickWeightedSession(role, input, pickContext, parsedConstraints, previousFatigueTag),
       input.weekly_hours_band,
       input.double_sessions,
-      parsedConstraints.flags.includes("time_limit")
+      suppressStrengthRunExtras
     );
+
+    if (input.goal_focus === "running") {
+      registerRunningQualityPick(pickContext, picked);
+    }
 
     previousFatigueTag =
       picked.type === "strength_lower" && picked.fatigue === "high"
@@ -919,6 +1092,7 @@ function buildActivePlanDays(
     });
 
     activeDays.push({
+      template_id: picked.id,
       day: assignedDay,
       title: picked.name,
       intent: structureIntent(role, input.goal_focus),
@@ -942,10 +1116,18 @@ function buildActivePlanDays(
   return { structure, activeDays, stressByDay };
 }
 
-function fillSevenDayWeek(activeDays: DayPlan[], stressByDay: Map<DayKey, SessionStressInput>) {
+function fillSevenDayWeek(
+  activeDays: DayPlan[],
+  stressByDay: Map<DayKey, SessionStressInput>,
+  opts?: { compressOffSessions?: boolean }
+) {
   const result: DayPlan[] = [];
   const orderedStressInputs: SessionStressInput[] = [];
   const baseDays: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const recoveryMinutes = opts?.compressOffSessions ? 22 : 35;
+  const aerobicSupportMinutes = opts?.compressOffSessions ? 26 : 40;
+  const aerobicSupportStressDur = opts?.compressOffSessions ? 26 : 35;
 
   for (let i = 0; i < 7; i++) {
     const dayKey = baseDays[i];
@@ -961,7 +1143,7 @@ function fillSevenDayWeek(activeDays: DayPlan[], stressByDay: Map<DayKey, Sessio
     }
 
     if (dayKey === "Thu" || dayKey === "Sat") {
-      result.push(lightAerobicDay(dayKey));
+      result.push(lightAerobicDay(dayKey, aerobicSupportMinutes));
       orderedStressInputs.push({
         day: dayKey,
         title: "Aerobic Support",
@@ -969,10 +1151,10 @@ function fillSevenDayWeek(activeDays: DayPlan[], stressByDay: Map<DayKey, Sessio
         type: "aerobic_support",
         intensity: "low",
         fatigue: "low",
-        duration: 35,
+        duration: aerobicSupportStressDur,
       });
     } else {
-      result.push(recoveryDay(dayKey));
+      result.push(recoveryDay(dayKey, recoveryMinutes));
       orderedStressInputs.push({
         day: dayKey,
         title: "Recovery / Mobility",
@@ -980,12 +1162,136 @@ function fillSevenDayWeek(activeDays: DayPlan[], stressByDay: Map<DayKey, Sessio
         type: "recovery",
         intensity: "low",
         fatigue: "low",
-        duration: 30,
+        duration: recoveryMinutes,
       });
     }
   }
 
   return { schedule: result, orderedStressInputs };
+}
+
+const LOW_IMPACT_REVIEW_RE =
+  /burpees?|lunges?|\brun(?:ning)?\b|compromised|race[-\s]specific|\bsled\b/i;
+
+function dedupeOrderedStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of values) {
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
+}
+
+function concatDayPlanInspectableText(day: DayPlan): string {
+  const s = day.session;
+  const parts: string[] = [
+    day.title,
+    ...(day.tags ?? []),
+    ...(s.main ?? []),
+    ...(s.finish ?? []),
+    ...(s.notes ?? []),
+  ];
+  return parts.join("\u0000").toLowerCase();
+}
+
+function isClearlyLowImpactAerobicOrRecovery(day: DayPlan): boolean {
+  if (day.template_id === "FILLER-RECOVERY" || day.template_id === "FILLER-AEROBIC") {
+    return true;
+  }
+  if (day.title === "Recovery / Mobility" || day.title === "Aerobic Support") {
+    return true;
+  }
+  const tags = day.tags ?? [];
+  const t0 = tags[0];
+  const t1 = tags[1];
+  if (t0 === "recovery" || tags.includes("recovery") || t1 === "recovery") {
+    return true;
+  }
+  if (t0 === "aerobic_support") {
+    return true;
+  }
+  if (t1 === "aerobic") {
+    return true;
+  }
+  return false;
+}
+
+export function buildSafetyFlags({
+  input,
+  parsedConstraints,
+  weeklyStress,
+  schedule,
+}: {
+  input: BlueprintInput;
+  parsedConstraints: ParsedConstraints;
+  weeklyStress: WeeklyStressSummary;
+  schedule: DayPlan[];
+}): PlanSafetyFlags {
+  const flags: string[] = [];
+  const notes: string[] = [];
+  let level: PlanSafetyFlags["level"] = "none";
+
+  const bumpCaution = (flag: string, note: string) => {
+    flags.push(flag);
+    notes.push(note);
+    if (level === "none") level = "caution";
+  };
+
+  const bumpHigh = (flag: string, note: string) => {
+    flags.push(flag);
+    notes.push(note);
+    level = "high";
+  };
+
+  if (input.weekly_hours_band === "2-3" && weeklyStress.estimated_hours > 3.5) {
+    bumpCaution(
+      "above_selected_time_band",
+      "This week is slightly above your selected time window. Prioritise Priority 1 sessions and trim optional support work first."
+    );
+  }
+
+  if (parsedConstraints.flags.includes("time_limit") && weeklyStress.estimated_hours > 3.5) {
+    bumpCaution(
+      "time_limited_week",
+      "Because you mentioned limited time, treat support sessions as flexible and keep the main work time-capped."
+    );
+  }
+
+  if (input.ability_level === "beginner" && weeklyStress.relative_load > 1.15) {
+    bumpCaution(
+      "beginner_high_relative_load",
+      "This is a higher-load week for a beginner. Keep easy work easy and reduce Priority 3 sessions if recovery feels poor."
+    );
+  }
+
+  if (parsedConstraints.flags.includes("injury_flags") || parsedConstraints.flags.includes("low_impact_preference")) {
+    for (const day of schedule) {
+      if (isClearlyLowImpactAerobicOrRecovery(day)) continue;
+      const haystack = concatDayPlanInspectableText(day);
+      if (LOW_IMPACT_REVIEW_RE.test(haystack)) {
+        bumpCaution(
+          "low_impact_review_needed",
+          "You mentioned impact or injury concerns. Keep any running, lunges or burpees controlled, and swap to bike/row/ski if symptoms appear."
+        );
+        break;
+      }
+    }
+  }
+
+  if (weeklyStress.relative_load > 1.25) {
+    bumpHigh(
+      "very_high_relative_load",
+      "This week is high relative to your inputs. Do not chase optional volume; protect recovery and prioritise the key sessions."
+    );
+  }
+
+  return {
+    level,
+    flags: dedupeOrderedStrings(flags),
+    notes: dedupeOrderedStrings(notes),
+  };
 }
 
 export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
@@ -995,8 +1301,13 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
       ? computePaceGuidanceFromFiveKSeconds(runnerProfile.seconds)
       : null;
   const parsedConstraints = parseConstraints(input.notes);
+  const compressOffSessions =
+    parsedConstraints.flags.includes("time_limit") || input.weekly_hours_band === "2-3";
+
   const { structure, activeDays, stressByDay } = buildActivePlanDays(input, parsedConstraints, paceGuidance);
-  const { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay);
+  const { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay, {
+    compressOffSessions,
+  });
   const plannedMinutes = schedule.reduce((sum, day) => {
     if (typeof day.time_cap_minutes !== "number") return sum;
     return sum + day.time_cap_minutes;
@@ -1007,14 +1318,28 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
     input.ability_level,
     plannedMinutes
   );
+  const safety_flags = buildSafetyFlags({
+    input,
+    parsedConstraints,
+    weeklyStress: weekly_stress,
+    schedule,
+  });
+  const weekly_stress_with_safety =
+    safety_flags.notes.length > 0
+      ? {
+          ...weekly_stress,
+          notes: dedupeOrderedStrings([...weekly_stress.notes, ...safety_flags.notes]),
+        }
+      : weekly_stress;
   const weekContext = getProgressionTarget("free_week", null, null, input.goal_focus);
   const stressAlignment = getStressAlignment(weekly_stress.relative_load, weekContext);
 
   return {
     intensity_split: intensitySplit(input.ability_level),
-    weekly_stress,
+    weekly_stress: weekly_stress_with_safety,
     week_context: weekContext,
     stress_alignment: stressAlignment,
+    safety_flags,
     profile: {
       goal: formatGoal(input.goal_focus),
       training_days: `${input.days_per_week} / week`,

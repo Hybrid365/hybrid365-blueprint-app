@@ -1,3 +1,10 @@
+/** Modalities user explicitly ruled out in notes (soft engine bias; not form equipment). */
+export type ModalityAvoids = {
+  sled: boolean;
+  rower: boolean;
+  ski: boolean;
+};
+
 export type ParsedConstraints = {
   raw: string;
   has_constraints: boolean;
@@ -6,6 +13,8 @@ export type ParsedConstraints = {
   guidance: string[];
   unmatched_text: string;
   no_running_days: string[];
+  /** Parsed from notes: user said they can't use sled / rower / SkiErg. */
+  modality_avoids: ModalityAvoids;
 };
 
 const DAY_MAP: Array<{ name: string; short: string }> = [
@@ -100,6 +109,32 @@ const NEW_RUNNER_REGEX = new RegExp(
 
 const NEW_RUNNER_STRIP_REGEX = new RegExp(NEW_RUNNER_REGEX.source, "gi");
 
+/**
+ * Interpret free-text constraints for modalities the athlete cannot access.
+ * Normalise notes first (trim, lower-case, collapse whitespace).
+ */
+export function getUnavailableEquipmentFromNotes(normalizedNotes: string): ModalityAvoids {
+  const n = normalizedNotes.replace(/\s+/g, " ").trim();
+  const empty = { sled: false, rower: false, ski: false };
+
+  if (!n) return empty;
+
+  const noSled =
+    /\bno\s+sled\b|\bwithout\s+(?:a\s+)?sled\b|\bdon'?t\s+have\s+(?:a\s+)?sled\b|\bdo\s+not\s+have\s+(?:a\s+)?sled\b|\bno\s+access\s+to\s+(?:the\s+|a\s+)?sled\b/i.test(n);
+
+  const noRower =
+    /\bno\s+rower\b|\bno\s+rowing\s+machine\b|\bno\s+rowing\b|\bdon'?t\s+have\s+(?:a\s+)?rower\b|\bdo\s+not\s+have\s+(?:a\s+)?rower\b|\bwithout\s+(?:the\s+|a\s+)?rower\b|\bno\s+access\s+to\s+(?:the\s+|a\s+)?row(?:er|ing\s+machine)\b|\b(can'?t|cannot)\s+use\s+(?:the\s+)?row(?:er|\s+machine)\b/i.test(
+      n
+    );
+
+  const noSki =
+    /\bno\s+ski(?:\s+erg)?\b|\bno\s+skierg\b|\bdon'?t\s+have\s+(?:a\s+)?(?:ski\s+erg|skierg)\b|\bdo\s+not\s+have\s+(?:a\s+)?(?:ski\s+erg|skierg)\b|\bwithout\s+(?:a\s+|the\s+)?(?:ski\s+erg|skierg)\b|\bno\s+access\s+to\s+(?:the\s+|a\s+)?(?:ski\s+erg|skierg)\b|\bdon'?t\s+have\s+\bski\b|\b(can'?t|cannot)\s+use\s+(?:the\s+)?(?:ski\s+erg|skierg)\b/i.test(
+      n
+    );
+
+  return { sled: noSled, rower: noRower, ski: noSki };
+}
+
 export function parseConstraints(notes?: string): ParsedConstraints {
   const raw = (notes ?? "").trim();
   const normalized = raw.toLowerCase().replace(/\s+/g, " ").trim();
@@ -109,6 +144,7 @@ export function parseConstraints(notes?: string): ParsedConstraints {
   const guidance: string[] = [];
   const noRunningDays: string[] = [];
   const stripPatterns: RegExp[] = [];
+  const modality_avoids = getUnavailableEquipmentFromNotes(normalized);
 
   if (!normalized) {
     return {
@@ -119,6 +155,7 @@ export function parseConstraints(notes?: string): ParsedConstraints {
       guidance,
       unmatched_text: "",
       no_running_days: noRunningDays,
+      modality_avoids,
     };
   }
 
@@ -205,5 +242,6 @@ export function parseConstraints(notes?: string): ParsedConstraints {
     guidance,
     unmatched_text: unmatchedText,
     no_running_days: noRunningDays,
+    modality_avoids,
   };
 }

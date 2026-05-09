@@ -100,6 +100,8 @@ export type DayPlan = {
   time_cap_minutes?: number;
   tags?: string[];
   priority?: SessionPriority;
+  /** Session library id when this day maps to SESSION_LIBRARY; fillers use synthetic ids. */
+  template_id?: string;
 };
 
 export type WeeklyStressLabel = "low" | "balanced" | "high" | "very_high";
@@ -159,6 +161,12 @@ export type StressAlignment = {
   message: string;
 };
 
+export type PlanSafetyFlags = {
+  level: "none" | "caution" | "high";
+  flags: string[];
+  notes: string[];
+};
+
 export type PlanJson = {
   intensity_split: {
     easy_percent: number;
@@ -167,6 +175,7 @@ export type PlanJson = {
   weekly_stress?: WeeklyStressSummary;
   week_context?: WeekContext;
   stress_alignment?: StressAlignment | null;
+  safety_flags?: PlanSafetyFlags;
   profile: {
     goal: string;
     training_days: string;
