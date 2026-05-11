@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ClipboardList, Timer, User, Settings } from "lucide-react";
+import { Home, ClipboardList, Timer, User, Settings, LineChart, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", icon: Home, label: "Home" },
   { href: "/assessment", icon: ClipboardList, label: "Assessment" },
   { href: "/testing", icon: Timer, label: "Testing" },
+  { href: "/programme", icon: LayoutGrid, label: "Programme" },
+  { href: "/progress", icon: LineChart, label: "Progress" },
   { href: "/profile", icon: User, label: "Profile" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];

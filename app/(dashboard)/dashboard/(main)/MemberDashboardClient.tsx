@@ -17,6 +17,7 @@ import {
   Gauge,
   Heart,
   Info,
+  LayoutGrid,
   LineChart,
   Lock,
   Moon,
@@ -794,6 +795,8 @@ export default function MemberDashboardClient({
           <div className="mt-5 flex flex-wrap gap-2">
             {[
               { href: "/dashboard", label: "Dashboard" },
+              { href: "/dashboard/programme", label: "Programme" },
+              { href: "/dashboard/progress", label: "Progress" },
               { href: "/dashboard/assessment", label: "Assessment" },
               { href: "/dashboard/testing", label: "Testing" },
             ].map((item) => (
@@ -1199,6 +1202,38 @@ export default function MemberDashboardClient({
 
           {/* ——— Sidebar ——— */}
           <aside className="min-w-0 space-y-8 lg:sticky lg:top-6 lg:self-start">
+            <Link
+              href="/dashboard/programme"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 transition hover:border-yellow-500/30 hover:bg-zinc-900"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400/15 ring-1 ring-yellow-400/25">
+                  <LayoutGrid className="h-5 w-5 text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">View full programme</p>
+                  <p className="text-xs text-zinc-500">12-week roadmap & sessions</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-zinc-500" />
+            </Link>
+
+            <Link
+              href="/dashboard/progress"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 transition hover:border-yellow-500/30 hover:bg-zinc-900"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400/15 ring-1 ring-yellow-400/25">
+                  <LineChart className="h-5 w-5 text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">View full progress</p>
+                  <p className="text-xs text-zinc-500">Adherence, recovery, benchmarks</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-zinc-500" />
+            </Link>
+
             <div>
               <h3 className="mb-4 text-lg font-bold text-white sm:text-xl">Next session</h3>
               {!weekUnlocked ? (
