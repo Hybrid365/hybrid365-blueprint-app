@@ -22,6 +22,7 @@ import {
   Lock,
   Moon,
   Play,
+  Share2,
   Sparkles,
   Star,
   Target,
@@ -47,6 +48,10 @@ import {
   type ExtractedWeekRationale,
 } from "@/app/lib/memberDashboardSchedule";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
+import { shareCardInputFromMemberSession } from "@/app/lib/sessionShareCardText";
+import { DashboardHabitsTeaser } from "@/components/dashboard/DashboardHabitsTeaser";
+import type { SessionShareCardProps } from "@/components/share/SessionShareCard";
+import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
 
 export type WeekPayload = {
   week_number: number;
@@ -193,10 +198,12 @@ function SessionRowCard({
   session,
   completed,
   onView,
+  onShare,
 }: {
   session: SessionWithKey;
   completed: boolean;
   onView: () => void;
+  onShare?: () => void;
 }) {
   return (
     <div
@@ -248,6 +255,16 @@ function SessionRowCard({
         </div>
       </div>
       <div className="flex shrink-0 flex-col items-end justify-center gap-2 sm:flex-row sm:items-center">
+        {completed && onShare ? (
+          <button
+            type="button"
+            onClick={onShare}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-3 py-2 text-sm font-medium text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-900/50"
+          >
+            <Share2 className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Share</span>
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onView}
@@ -298,6 +315,7 @@ export default function MemberDashboardClient({
   const [draftNotes, setDraftNotes] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [checkInSaving, setCheckInSaving] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
@@ -481,6 +499,10 @@ export default function MemberDashboardClient({
     setDrawerOpen(true);
   }
 
+  function openSessionShare(session: SessionWithKey) {
+    setShareCard(shareCardInputFromMemberSession(session, sessionLogs[session.sessionKey]));
+  }
+
   async function saveSessionLog(completed: boolean) {
     if (!selectedSession || !programmeInstanceId) return;
     setSaving(true);
@@ -519,7 +541,9 @@ export default function MemberDashboardClient({
       }
       const payload = (await res.json()) as { log: SessionLogRecord };
       setSessionLogs((prev) => ({ ...prev, [selectedSession.sessionKey]: payload.log }));
-      setDrawerOpen(false);
+      if (!completed) {
+        setDrawerOpen(false);
+      }
     } catch (err) {
       setSessionLogs((prev) => {
         if (!previous) {
@@ -797,6 +821,7 @@ export default function MemberDashboardClient({
               { href: "/dashboard", label: "Dashboard" },
               { href: "/dashboard/programme", label: "Programme" },
               { href: "/dashboard/progress", label: "Progress" },
+              { href: "/dashboard/habits", label: "Habits" },
               { href: "/dashboard/assessment", label: "Assessment" },
               { href: "/dashboard/testing", label: "Testing" },
             ].map((item) => (
@@ -1193,6 +1218,11 @@ export default function MemberDashboardClient({
                       session={session}
                       completed={Boolean(sessionLogs[session.sessionKey]?.completed)}
                       onView={() => openSessionDrawer(session)}
+                      onShare={
+                        sessionLogs[session.sessionKey]?.completed
+                          ? () => openSessionShare(session)
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -1233,6 +1263,8 @@ export default function MemberDashboardClient({
               </div>
               <ChevronRight className="h-5 w-5 shrink-0 text-zinc-500" />
             </Link>
+
+            <DashboardHabitsTeaser />
 
             <div>
               <h3 className="mb-4 text-lg font-bold text-white sm:text-xl">Next session</h3>
@@ -1835,11 +1867,38 @@ export default function MemberDashboardClient({
                     Save as incomplete
                   </button>
                 </div>
+
+                {selectedLog?.completed ? (
+                  <div className="mt-6 rounded-xl border border-yellow-500/20 bg-yellow-400/[0.06] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-yellow-400/95">Share your session</p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      Opens a clean, screenshot-ready card — story tips appear on the next screen.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => selectedSession && openSessionShare(selectedSession)}
+                      className="mt-3 w-full rounded-xl border border-yellow-500/35 bg-yellow-400/10 py-2.5 text-sm font-semibold text-yellow-200 transition hover:border-yellow-400/55 hover:bg-yellow-400/15"
+                    >
+                      View Share Card
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => selectedSession && openSessionShare(selectedSession)}
+                    className="mt-4 w-full text-center text-xs font-medium text-zinc-500 transition hover:text-zinc-300"
+                  >
+                    Preview share card (today&apos;s session)
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
+      {shareCard ? (
+        <SessionShareCardModal open onClose={() => setShareCard(null)} card={shareCard} />
+      ) : null}
     </div>
   );
 }

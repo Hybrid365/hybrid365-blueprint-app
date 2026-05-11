@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   Lock,
   Play,
+  Share2,
   Star,
   Target,
   Timer,
@@ -31,6 +32,9 @@ import {
   PROGRAMME_BLOCKS,
   type SessionWithKey,
 } from "@/app/lib/programmePageMetrics";
+import { shareCardInputFromMemberSession } from "@/app/lib/sessionShareCardText";
+import type { SessionShareCardProps } from "@/components/share/SessionShareCard";
+import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
 
 export type WeekPayload = {
   week_number: number;
@@ -74,6 +78,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/programme", label: "Programme" },
   { href: "/dashboard/progress", label: "Progress" },
+  { href: "/dashboard/habits", label: "Habits" },
   { href: "/dashboard/assessment", label: "Assessment" },
   { href: "/dashboard/testing", label: "Testing" },
 ];
@@ -121,6 +126,7 @@ export default function ProgrammeClient({
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(defaultSelectedWeek);
   const [drawerSession, setDrawerSession] = useState<SessionWithKey | null>(null);
+  const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
 
   const logByKey = useMemo(
     () => Object.fromEntries(initialSessionLogs.map((l) => [l.session_key, l])),
@@ -680,19 +686,36 @@ export default function ProgrammeClient({
                       ? "This session is marked complete."
                       : "Mark sessions complete from the main dashboard to update your progress."}
                   </p>
-                  <Link
-                    href="/dashboard"
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-yellow-300"
-                  >
-                    Open dashboard
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShareCard(
+                          shareCardInputFromMemberSession(drawerSession, logByKey[drawerSession.sessionKey])
+                        )
+                      }
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-yellow-500/35 bg-yellow-400/10 px-4 py-2.5 text-sm font-semibold text-yellow-200 transition hover:border-yellow-400/55 hover:bg-yellow-400/15"
+                    >
+                      <Share2 className="h-4 w-4 shrink-0" />
+                      View Share Card
+                    </button>
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-yellow-300"
+                    >
+                      Open dashboard
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         ) : null}
       </main>
+      {shareCard ? (
+        <SessionShareCardModal open onClose={() => setShareCard(null)} card={shareCard} />
+      ) : null}
     </div>
   );
 }

@@ -190,6 +190,7 @@ export default function ProgressClient({
               { href: "/dashboard", label: "Dashboard" },
               { href: "/dashboard/programme", label: "Programme" },
               { href: "/dashboard/progress", label: "Progress" },
+              { href: "/dashboard/habits", label: "Habits" },
               { href: "/dashboard/assessment", label: "Assessment" },
               { href: "/dashboard/testing", label: "Testing" },
             ].map((item) => (
