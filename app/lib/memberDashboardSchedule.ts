@@ -26,6 +26,26 @@ export type MemberSessionDetail = {
   priorityReason: string;
 };
 
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+export function buildSessionKey(args: {
+  weekNumber: number;
+  day: string;
+  index: number;
+  title: string;
+}): string {
+  const safeDay = slugify(args.day || "day");
+  const safeTitle = slugify(args.title || "session");
+  return `week-${args.weekNumber}-${safeDay}-${args.index}-${safeTitle}`;
+}
+
 const DEFAULT_SESSION_PRIORITY = {
   priorityRank: 2 as const,
   priorityDisplayLabel: "Priority 2",

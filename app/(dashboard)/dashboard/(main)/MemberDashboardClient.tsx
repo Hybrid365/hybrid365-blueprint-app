@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/app/lib/supabase/client";
 import {
+  buildSessionKey,
   extractPlanInsights,
   extractScheduleFromPlanJson,
   normalizeMemberSchedule,
@@ -48,7 +49,45 @@ export type MemberDashboardClientProps = {
   programmeTitle: string;
   membershipExpiresAt: string | null;
   instanceCurrentWeek: number | null;
+  programmeInstanceId: string | null;
   weeksFromDb: WeekPayload[];
+  initialSessionLogs: SessionLogRecord[];
+  initialWeeklyCheckIns: WeeklyCheckInRecord[];
+};
+
+type SessionLogRecord = {
+  id: string;
+  week_number: number;
+  session_key: string;
+  session_title: string | null;
+  session_day: string | null;
+  completed: boolean;
+  completed_at: string | null;
+  rpe: number | null;
+  notes: string | null;
+};
+
+type SessionWithKey = MemberSessionDetail & {
+  sessionKey: string;
+  weekNumber: number;
+  scheduleIndex: number;
+};
+
+type WeeklyCheckInRecord = {
+  id: string;
+  week_number: number;
+  bodyweight_kg: number | null;
+  sleep_hours: number | null;
+  energy_score: number | null;
+  recovery_score: number | null;
+  stress_score: number | null;
+  motivation_score: number | null;
+  adherence_score: number | null;
+  biggest_win: string | null;
+  biggest_struggle: string | null;
+  pain_or_injury: string | null;
+  notes: string | null;
+  submitted_at: string | null;
 };
 
 const BLOCKS = [
@@ -131,19 +170,35 @@ function sessionCategories(session: MemberSessionDetail): SessionCategoryLabel[]
 
 function SessionRowCard({
   session,
+  completed,
   onView,
 }: {
-  session: MemberSessionDetail;
+  session: SessionWithKey;
+  completed: boolean;
   onView: () => void;
 }) {
   return (
-    <div className="flex items-stretch gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-5 transition-all hover:border-zinc-700/60 hover:bg-zinc-900 sm:gap-5 sm:p-6">
+    <div
+      className={`flex items-stretch gap-4 rounded-2xl border p-5 transition-all sm:gap-5 sm:p-6 ${
+        completed
+          ? "border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400/40"
+          : "border-zinc-800 bg-zinc-900/90 hover:border-zinc-700/60 hover:bg-zinc-900"
+      }`}
+    >
       <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-800/80 sm:h-16 sm:w-16">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Day</span>
         <span className="text-sm font-bold text-white">{session.dayShort}</span>
       </div>
       <div className="min-w-0 flex-1 py-0.5">
-        <h4 className="text-base font-semibold leading-snug text-white sm:text-lg">{session.title}</h4>
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="text-base font-semibold leading-snug text-white sm:text-lg">{session.title}</h4>
+          {completed ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Completed
+            </span>
+          ) : null}
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {sessionCategories(session).map((cat) => (
             <span
@@ -172,7 +227,7 @@ function SessionRowCard({
           onClick={onView}
           className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-700/60 hover:bg-zinc-700 hover:text-white"
         >
-          <span className="hidden sm:inline">View</span>
+          <span className="hidden sm:inline">{completed ? "Edit" : "View"}</span>
           <ChevronRight className="h-5 w-5 text-zinc-400" />
         </button>
       </div>
@@ -185,7 +240,10 @@ export default function MemberDashboardClient({
   programmeTitle,
   membershipExpiresAt,
   instanceCurrentWeek,
+  programmeInstanceId,
   weeksFromDb,
+  initialSessionLogs,
+  initialWeeklyCheckIns,
 }: MemberDashboardClientProps) {
   const router = useRouter();
   const allWeeks = useMemo(() => buildTwelveWeeks(weeksFromDb), [weeksFromDb]);
@@ -199,8 +257,34 @@ export default function MemberDashboardClient({
     clampWeek(instanceCurrentWeek) ?? clampWeek(derivedFromFlags) ?? 1;
 
   const [selectedWeek, setSelectedWeek] = useState(effectiveCurrentWeek);
-  const [selectedSession, setSelectedSession] = useState<MemberSessionDetail | null>(null);
+  const [selectedSession, setSelectedSession] = useState<SessionWithKey | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sessionLogs, setSessionLogs] = useState<Record<string, SessionLogRecord>>(
+    () => Object.fromEntries(initialSessionLogs.map((log) => [log.session_key, log]))
+  );
+  const [draftRpe, setDraftRpe] = useState<number | null>(null);
+  const [draftNotes, setDraftNotes] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [checkInOpen, setCheckInOpen] = useState(false);
+  const [checkInSaving, setCheckInSaving] = useState(false);
+  const [checkInError, setCheckInError] = useState<string | null>(null);
+  const [checkInSuccess, setCheckInSuccess] = useState<string | null>(null);
+  const [weeklyCheckIns, setWeeklyCheckIns] = useState<Record<number, WeeklyCheckInRecord>>(
+    () => Object.fromEntries(initialWeeklyCheckIns.map((entry) => [entry.week_number, entry]))
+  );
+  const [checkInDraft, setCheckInDraft] = useState({
+    bodyweight_kg: "",
+    sleep_hours: "",
+    energy_score: "",
+    recovery_score: "",
+    stress_score: "",
+    motivation_score: "",
+    biggest_win: "",
+    biggest_struggle: "",
+    pain_or_injury: "",
+    notes: "",
+  });
 
   const selectedPayload =
     allWeeks.find((w) => w.week_number === selectedWeek) ?? allWeeks[effectiveCurrentWeek - 1];
@@ -208,10 +292,20 @@ export default function MemberDashboardClient({
     allWeeks.find((w) => w.week_number === effectiveCurrentWeek) ?? allWeeks[0];
 
   const scheduleRaw = extractScheduleFromPlanJson(selectedPayload?.plan_json);
-  const sessions = useMemo(
-    () => (scheduleRaw ? normalizeMemberSchedule(scheduleRaw) : []),
-    [scheduleRaw]
-  );
+  const sessions = useMemo(() => {
+    if (!scheduleRaw) return [];
+    return normalizeMemberSchedule(scheduleRaw).map((session, index) => ({
+      ...session,
+      weekNumber: selectedWeek,
+      scheduleIndex: index,
+      sessionKey: buildSessionKey({
+        weekNumber: selectedWeek,
+        day: session.day,
+        index,
+        title: session.title,
+      }),
+    }));
+  }, [scheduleRaw, selectedWeek]);
   const hasPlanForSelectedWeek = Boolean(scheduleRaw && scheduleRaw.length > 0);
   const weekUnlocked = Boolean(selectedPayload?.is_unlocked);
 
@@ -236,7 +330,24 @@ export default function MemberDashboardClient({
   const progressPercent = Math.min(100, Math.round((effectiveCurrentWeek / 12) * 100));
   const currentBlockMeta = BLOCKS.find((b) => b.id === blockIdForWeek(effectiveCurrentWeek))!;
   const totalSessionsThisWeek = sessions.length;
-  const nextSession = sessions[0] ?? null;
+  const completedCount = sessions.filter((s) => sessionLogs[s.sessionKey]?.completed).length;
+  const nextSession = sessions.find((s) => !sessionLogs[s.sessionKey]?.completed) ?? null;
+  const allSessionsCompleted = sessions.length > 0 && completedCount === sessions.length;
+  const adherencePercent =
+    totalSessionsThisWeek > 0 ? Math.round((completedCount / totalSessionsThisWeek) * 100) : null;
+  const currentWeekCheckIn = weeklyCheckIns[effectiveCurrentWeek] ?? null;
+  const checkInDue = !currentWeekCheckIn;
+  const nextCheckInStatus = currentWeekCheckIn ? "Complete" : "Due Sunday";
+  const allCheckIns = Object.values(weeklyCheckIns).sort((a, b) => a.week_number - b.week_number);
+  const weightSeries = allCheckIns.filter((c) => typeof c.bodyweight_kg === "number");
+  const latestWeight = weightSeries.length > 0 ? weightSeries[weightSeries.length - 1].bodyweight_kg : null;
+  const startingWeight = weightSeries.length > 0 ? weightSeries[0].bodyweight_kg : null;
+  const totalWeightChange =
+    latestWeight != null && startingWeight != null ? latestWeight - startingWeight : null;
+  const rpeValues = Object.values(sessionLogs)
+    .filter((log) => log.week_number === selectedWeek && typeof log.rpe === "number")
+    .map((log) => Number(log.rpe));
+  const averageRpe = rpeValues.length ? (rpeValues.reduce((a, b) => a + b, 0) / rpeValues.length).toFixed(1) : null;
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -245,9 +356,187 @@ export default function MemberDashboardClient({
     router.refresh();
   }
 
+  function openSessionDrawer(session: SessionWithKey) {
+    const existing = sessionLogs[session.sessionKey];
+    setSelectedSession(session);
+    setDraftRpe(existing?.rpe ?? null);
+    setDraftNotes(existing?.notes ?? "");
+    setSaveError(null);
+    setDrawerOpen(true);
+  }
+
+  async function saveSessionLog(completed: boolean) {
+    if (!selectedSession || !programmeInstanceId) return;
+    setSaving(true);
+    setSaveError(null);
+    const optimistic: SessionLogRecord = {
+      id: sessionLogs[selectedSession.sessionKey]?.id ?? `optimistic-${selectedSession.sessionKey}`,
+      week_number: selectedSession.weekNumber,
+      session_key: selectedSession.sessionKey,
+      session_title: selectedSession.title,
+      session_day: selectedSession.day,
+      completed,
+      completed_at: completed ? new Date().toISOString() : null,
+      rpe: draftRpe,
+      notes: draftNotes.trim() || null,
+    };
+    const previous = sessionLogs[selectedSession.sessionKey];
+    setSessionLogs((prev) => ({ ...prev, [selectedSession.sessionKey]: optimistic }));
+    try {
+      const res = await fetch("/api/dashboard/session-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          programme_instance_id: programmeInstanceId,
+          week_number: selectedSession.weekNumber,
+          session_key: selectedSession.sessionKey,
+          session_title: selectedSession.title,
+          session_day: selectedSession.day,
+          completed,
+          rpe: draftRpe,
+          notes: draftNotes,
+        }),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error || "Failed to save session");
+      }
+      const payload = (await res.json()) as { log: SessionLogRecord };
+      setSessionLogs((prev) => ({ ...prev, [selectedSession.sessionKey]: payload.log }));
+      setDrawerOpen(false);
+    } catch (err) {
+      setSessionLogs((prev) => {
+        if (!previous) {
+          const copy = { ...prev };
+          delete copy[selectedSession.sessionKey];
+          return copy;
+        }
+        return { ...prev, [selectedSession.sessionKey]: previous };
+      });
+      setSaveError(err instanceof Error ? err.message : "Unable to save session");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openCheckInDrawer() {
+    const existing = weeklyCheckIns[effectiveCurrentWeek];
+    setCheckInDraft({
+      bodyweight_kg: existing?.bodyweight_kg != null ? String(existing.bodyweight_kg) : "",
+      sleep_hours: existing?.sleep_hours != null ? String(existing.sleep_hours) : "",
+      energy_score: existing?.energy_score != null ? String(existing.energy_score) : "",
+      recovery_score: existing?.recovery_score != null ? String(existing.recovery_score) : "",
+      stress_score: existing?.stress_score != null ? String(existing.stress_score) : "",
+      motivation_score: existing?.motivation_score != null ? String(existing.motivation_score) : "",
+      biggest_win: existing?.biggest_win ?? "",
+      biggest_struggle: existing?.biggest_struggle ?? "",
+      pain_or_injury: existing?.pain_or_injury ?? "",
+      notes: existing?.notes ?? "",
+    });
+    setCheckInError(null);
+    setCheckInSuccess(null);
+    setCheckInOpen(true);
+  }
+
+  function asNumberOrNull(v: string) {
+    const trimmed = v.trim();
+    if (!trimmed) return null;
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function parseBodyweightKg(v: string) {
+    const trimmed = v.trim();
+    if (!trimmed) return null;
+    const cleaned = trimmed.replace(/,/g, ".").replace(/[^0-9.-]/g, "");
+    if (!cleaned || cleaned === "-" || cleaned === "." || cleaned === "-.") return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function userFriendlyCheckInError(message?: string) {
+    if (!message) return "We couldn't save your weekly check-in. Please try again.";
+    if (message.toLowerCase().includes("adherence")) return "Adherence must be between 0 and 100.";
+    if (message.toLowerCase().includes("energy")) return "Energy must be between 1 and 10.";
+    if (message.toLowerCase().includes("recovery")) return "Recovery must be between 1 and 10.";
+    if (message.toLowerCase().includes("stress")) return "Stress must be between 1 and 10.";
+    if (message.toLowerCase().includes("motivation")) return "Motivation must be between 1 and 10.";
+    return message;
+  }
+
+  async function saveWeeklyCheckIn() {
+    if (!programmeInstanceId) return;
+    setCheckInSaving(true);
+    setCheckInError(null);
+    const previous = weeklyCheckIns[effectiveCurrentWeek];
+    const optimistic: WeeklyCheckInRecord = {
+      id: previous?.id ?? `optimistic-${effectiveCurrentWeek}`,
+      week_number: effectiveCurrentWeek,
+      bodyweight_kg: parseBodyweightKg(checkInDraft.bodyweight_kg),
+      sleep_hours: asNumberOrNull(checkInDraft.sleep_hours),
+      energy_score: asNumberOrNull(checkInDraft.energy_score),
+      recovery_score: asNumberOrNull(checkInDraft.recovery_score),
+      stress_score: asNumberOrNull(checkInDraft.stress_score),
+      motivation_score: asNumberOrNull(checkInDraft.motivation_score),
+      adherence_score: adherencePercent,
+      biggest_win: checkInDraft.biggest_win.trim() || null,
+      biggest_struggle: checkInDraft.biggest_struggle.trim() || null,
+      pain_or_injury: checkInDraft.pain_or_injury.trim() || null,
+      notes: checkInDraft.notes.trim() || null,
+      submitted_at: new Date().toISOString(),
+    };
+    setWeeklyCheckIns((prev) => ({ ...prev, [effectiveCurrentWeek]: optimistic }));
+    try {
+      const res = await fetch("/api/dashboard/weekly-check-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          programme_instance_id: programmeInstanceId,
+          week_number: effectiveCurrentWeek,
+          bodyweight_kg: optimistic.bodyweight_kg,
+          sleep_hours: optimistic.sleep_hours,
+          energy_score: optimistic.energy_score,
+          recovery_score: optimistic.recovery_score,
+          stress_score: optimistic.stress_score,
+          motivation_score: optimistic.motivation_score,
+          adherence_score: optimistic.adherence_score,
+          biggest_win: optimistic.biggest_win,
+          biggest_struggle: optimistic.biggest_struggle,
+          pain_or_injury: optimistic.pain_or_injury,
+          notes: optimistic.notes,
+        }),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(userFriendlyCheckInError(payload.error));
+      }
+      const payload = (await res.json()) as { checkIn: WeeklyCheckInRecord };
+      setWeeklyCheckIns((prev) => ({ ...prev, [effectiveCurrentWeek]: payload.checkIn }));
+      setCheckInSuccess("Weekly check-in saved.");
+      setCheckInOpen(false);
+    } catch (err) {
+      setWeeklyCheckIns((prev) => {
+        if (!previous) {
+          const copy = { ...prev };
+          delete copy[effectiveCurrentWeek];
+          return copy;
+        }
+        return { ...prev, [effectiveCurrentWeek]: previous };
+      });
+      setCheckInError(
+        err instanceof Error
+          ? userFriendlyCheckInError(err.message)
+          : "We couldn't save your weekly check-in. Please try again."
+      );
+    } finally {
+      setCheckInSaving(false);
+    }
+  }
+
   const displayName = email.includes("@") ? email.split("@")[0] : email || "Member";
 
   const blockPillLabel = `Block ${blockIdForWeek(effectiveCurrentWeek)} · ${currentBlockMeta.name}`;
+  const selectedLog = selectedSession ? sessionLogs[selectedSession.sessionKey] : null;
 
   const roadmapPillClass = (
     week: number,
@@ -426,12 +715,16 @@ export default function MemberDashboardClient({
                     <span className="text-sm font-medium text-zinc-300">Sessions</span>
                   </div>
                   <p className="text-2xl font-bold leading-tight text-white sm:text-3xl">
-                    0{" "}
+                    {weekUnlocked && hasPlanForSelectedWeek ? completedCount : 0}{" "}
                     <span className="text-xl font-semibold text-zinc-500 sm:text-2xl">
                       / {weekUnlocked && hasPlanForSelectedWeek ? totalSessionsThisWeek : "—"}
                     </span>
                   </p>
-                  <p className="mt-2 text-xs font-medium text-zinc-500">Completion logging is next</p>
+                  <p className="mt-2 text-xs font-medium text-zinc-500">
+                    {allSessionsCompleted && totalSessionsThisWeek > 0
+                      ? "Week complete"
+                      : "Completion logging is live"}
+                  </p>
                 </div>
                 <div className="group rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition hover:border-zinc-700/60 sm:p-6">
                   <div className="mb-3 flex items-center gap-2.5">
@@ -452,8 +745,10 @@ export default function MemberDashboardClient({
                     </div>
                     <span className="text-sm font-medium text-zinc-300">Next check-in</span>
                   </div>
-                  <p className="text-2xl font-bold text-white sm:text-3xl">Sunday</p>
-                  <p className="mt-2 text-xs font-medium text-zinc-500">Check-ins coming next</p>
+                  <p className="text-2xl font-bold text-white sm:text-3xl">{nextCheckInStatus}</p>
+                  <p className="mt-2 text-xs font-medium text-zinc-500">
+                    {checkInDue ? "Check-in due this week" : "Check-in complete this week"}
+                  </p>
                 </div>
                 <div className="group rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition hover:border-zinc-700/60 sm:p-6">
                   <div className="mb-3 flex items-center gap-2.5">
@@ -557,7 +852,7 @@ export default function MemberDashboardClient({
                 <h3 className="text-xl font-bold text-white sm:text-2xl">This week&apos;s sessions</h3>
                 {weekUnlocked && hasPlanForSelectedWeek ? (
                   <span className="rounded-full border border-zinc-800 bg-zinc-800 px-3 py-1 text-sm font-medium text-zinc-300">
-                    {sessions.length} sessions
+                    {completedCount}/{sessions.length} completed
                   </span>
                 ) : null}
               </div>
@@ -568,14 +863,12 @@ export default function MemberDashboardClient({
                 programmePendingCard
               ) : (
                 <div className="space-y-4">
-                  {sessions.map((session, idx) => (
+                  {sessions.map((session) => (
                     <SessionRowCard
-                      key={`${session.day}-${session.title}-${idx}`}
+                      key={session.sessionKey}
                       session={session}
-                      onView={() => {
-                        setSelectedSession(session);
-                        setDrawerOpen(true);
-                      }}
+                      completed={Boolean(sessionLogs[session.sessionKey]?.completed)}
+                      onView={() => openSessionDrawer(session)}
                     />
                   ))}
                 </div>
@@ -593,6 +886,14 @@ export default function MemberDashboardClient({
                 </div>
               ) : !hasPlanForSelectedWeek ? (
                 nextSessionPending
+              ) : allSessionsCompleted ? (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-6 sm:p-8">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">Next session</p>
+                  <p className="mt-3 text-lg font-semibold text-white">Week complete</p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                    Great work. You have completed all sessions for this week.
+                  </p>
+                </div>
               ) : nextSession ? (
                 <div className="rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 p-6 sm:p-8">
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -629,114 +930,161 @@ export default function MemberDashboardClient({
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedSession(nextSession);
-                      setDrawerOpen(true);
-                    }}
+                    onClick={() => openSessionDrawer(nextSession)}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3.5 text-base font-bold text-zinc-950 shadow-lg shadow-yellow-400/25 transition hover:bg-yellow-300"
                   >
                     <Play className="h-5 w-5" />
-                    View session
+                    Start session
                   </button>
                 </div>
               ) : null}
             </div>
 
-            {/* Check-in preview */}
+            {/* Weekly check-in */}
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 sm:p-7">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-lg font-bold text-white">Weekly check-in</h3>
-                <span className="rounded-full border border-zinc-800 bg-zinc-800 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Preview
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
+                    currentWeekCheckIn
+                      ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+                      : "border-zinc-800 bg-zinc-800 text-zinc-400"
+                  }`}
+                >
+                  {currentWeekCheckIn ? "Check-in complete" : "Check-in due"}
                 </span>
               </div>
               <p className="mb-5 text-sm leading-relaxed text-zinc-400">
-                Check-ins coming next — weekly bodyweight and readiness, saved to your profile.
+                Log recovery and bodyweight for Week {effectiveCurrentWeek}.
               </p>
-              <div className="mb-5 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-                <label className="mb-2 block text-sm font-medium text-zinc-300">Bodyweight (kg)</label>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-                  <input
-                    type="text"
-                    readOnly
-                    disabled
-                    placeholder="—"
-                    className="min-h-[52px] flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-4 text-lg font-medium text-zinc-500"
-                  />
-                  <button
-                    type="button"
-                    disabled
-                    className="rounded-xl border border-zinc-800 bg-zinc-800 px-5 py-3 text-sm font-semibold text-zinc-500"
-                  >
-                    Coming soon
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { icon: Moon, label: "Sleep", sub: "hours", color: "text-blue-400" },
-                  { icon: Zap, label: "Energy", sub: "/ 10", color: "text-yellow-400" },
-                  { icon: Battery, label: "Recovery", sub: "/ 10", color: "text-emerald-400" },
-                ].map((cell) => (
-                  <div
-                    key={cell.label}
-                    className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-center sm:p-5"
-                  >
-                    <cell.icon className={`mx-auto mb-2 h-5 w-5 ${cell.color}`} />
-                    <p className="text-xs font-medium text-zinc-500">{cell.label}</p>
-                    <p className="mt-1 text-2xl font-bold text-zinc-600">—</p>
-                    <p className="text-xs text-zinc-600">{cell.sub}</p>
+                  {
+                    icon: TrendingUp,
+                    label: "Bodyweight",
+                    value:
+                      currentWeekCheckIn?.bodyweight_kg != null
+                        ? `${currentWeekCheckIn.bodyweight_kg} kg`
+                        : "—",
+                  },
+                  {
+                    icon: Moon,
+                    label: "Sleep",
+                    value:
+                      currentWeekCheckIn?.sleep_hours != null
+                        ? `${currentWeekCheckIn.sleep_hours} h`
+                        : "—",
+                  },
+                  {
+                    icon: Zap,
+                    label: "Energy",
+                    value:
+                      currentWeekCheckIn?.energy_score != null
+                        ? `${currentWeekCheckIn.energy_score}/10`
+                        : "—",
+                  },
+                  {
+                    icon: Battery,
+                    label: "Recovery",
+                    value:
+                      currentWeekCheckIn?.recovery_score != null
+                        ? `${currentWeekCheckIn.recovery_score}/10`
+                        : "—",
+                  },
+                ].map((metric) => (
+                  <div key={metric.label} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+                    <div className="mb-2 flex items-center gap-2 text-zinc-400">
+                      <metric.icon className="h-4 w-4 text-yellow-400/80" />
+                      <span className="text-xs font-medium uppercase tracking-wide">{metric.label}</span>
+                    </div>
+                    <p className="text-lg font-semibold text-white">{metric.value}</p>
                   </div>
                 ))}
               </div>
+              {checkInSuccess ? <p className="mt-3 text-sm text-emerald-300">{checkInSuccess}</p> : null}
+              {checkInError ? <p className="mt-3 text-sm text-red-300">{checkInError}</p> : null}
+              <button
+                type="button"
+                onClick={openCheckInDrawer}
+                className="mt-5 w-full rounded-xl bg-yellow-400 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300"
+              >
+                {currentWeekCheckIn ? "Edit check-in" : "Complete check-in"}
+              </button>
             </div>
 
             {/* Progress preview */}
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 sm:p-7">
               <div className="mb-1 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">Progress preview</h3>
-                <span className="text-xs font-medium text-zinc-500">Sample layout</span>
+                <span className="text-xs font-medium text-zinc-500">Live</span>
               </div>
-              <p className="mb-5 text-sm text-zinc-500">
-                Real progress data appears after logging begins — this is a polished placeholder only.
-              </p>
+              <p className="mb-5 text-sm text-zinc-500">Bodyweight and training response from your check-ins and logs.</p>
               <div className="mb-5 rounded-xl border border-zinc-800 bg-zinc-950/50 p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="text-sm font-medium text-zinc-300">Bodyweight trend</span>
-                  <span className="text-xs text-zinc-500">Illustrative</span>
+                  <span className="text-xs text-zinc-500">{weightSeries.length} logs</span>
                 </div>
-                <div className="flex h-32 items-end justify-between gap-2 sm:h-36">
-                  {[42, 55, 48, 62, 38, 50, 44].map((h, i) => (
-                    <div key={i} className="flex flex-1 flex-col items-center justify-end gap-2">
-                      <div
-                        className="w-full max-w-[2.5rem] rounded-t-md bg-gradient-to-t from-yellow-600/40 to-yellow-400/50"
-                        style={{ height: `${h}%` }}
-                      />
-                      <span className="text-[10px] font-medium text-zinc-600">W{i + 1}</span>
-                    </div>
-                  ))}
-                </div>
+                {weightSeries.length === 0 ? (
+                  <p className="text-sm text-zinc-500">Bodyweight trend appears after your first check-in.</p>
+                ) : (
+                  <div className="flex h-32 items-end justify-between gap-2 sm:h-36">
+                    {weightSeries.map((entry) => {
+                      const base = startingWeight ?? entry.bodyweight_kg ?? 0;
+                      const value = entry.bodyweight_kg ?? base;
+                      const pct = Math.max(20, Math.min(100, 50 + (value - base) * 8));
+                      return (
+                        <div
+                          key={entry.week_number}
+                          className="flex flex-1 flex-col items-center justify-end gap-2"
+                        >
+                          <div
+                            className="w-full max-w-[2.5rem] rounded-t-md bg-gradient-to-t from-yellow-600/40 to-yellow-400/60"
+                            style={{ height: `${pct}%` }}
+                          />
+                          <span className="text-[10px] font-medium text-zinc-600">W{entry.week_number}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {[
-                  { icon: Activity, label: "Bodyweight", k: "Live data soon" },
-                  { icon: CheckCircle2, label: "Adherence", k: "Live data soon" },
-                  { icon: Heart, label: "Avg RPE", k: "Live data soon" },
-                ].map((m) => (
-                  <div
-                    key={m.label}
-                    className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 sm:p-5"
-                  >
-                    <div className="mb-2 flex items-center gap-2">
-                      <m.icon className="h-4 w-4 text-zinc-500" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        {m.label}
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold text-zinc-600">—</p>
-                    <p className="mt-1 text-xs text-zinc-600">{m.k}</p>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 sm:p-5">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-zinc-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Bodyweight</span>
                   </div>
-                ))}
+                  <p className="text-2xl font-bold text-white">{latestWeight != null ? `${latestWeight} kg` : "—"}</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {startingWeight != null && totalWeightChange != null
+                      ? `Start ${startingWeight} kg (${totalWeightChange >= 0 ? "+" : ""}${totalWeightChange.toFixed(
+                          1
+                        )} kg)`
+                      : "Awaiting first check-in"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 sm:p-5">
+                  <div className="mb-2 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-zinc-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Adherence (%)</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white">{adherencePercent != null ? `${adherencePercent}%` : "—"}</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {totalSessionsThisWeek > 0
+                      ? `${completedCount}/${totalSessionsThisWeek} sessions complete`
+                      : "No sessions this week"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 sm:p-5">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-zinc-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Avg RPE</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white">{averageRpe ?? "—"}</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {rpeValues.length > 0 ? `${rpeValues.length} logged sessions` : "Add RPE in session log"}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -814,6 +1162,137 @@ export default function MemberDashboardClient({
         </footer>
       </div>
 
+      {checkInOpen && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Close weekly check-in"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={() => setCheckInOpen(false)}
+          />
+          <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-3xl border-t border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
+            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-600" />
+            <div className="mx-auto max-w-3xl p-5 pb-12 sm:p-8">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-yellow-400">
+                    Week {effectiveCurrentWeek}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-bold text-white sm:text-3xl">Weekly check-in</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCheckInOpen(false)}
+                  className="rounded-xl border border-zinc-800 bg-zinc-800 p-2.5 text-zinc-300 hover:bg-zinc-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Bodyweight (kg)
+                  </span>
+                  <input
+                    value={checkInDraft.bodyweight_kg}
+                    onChange={(e) =>
+                      setCheckInDraft((prev) => ({ ...prev, bodyweight_kg: e.target.value }))
+                    }
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    placeholder="e.g. 78.4"
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+                  />
+                </label>
+                <label className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Sleep hours
+                  </span>
+                  <input
+                    value={checkInDraft.sleep_hours}
+                    onChange={(e) =>
+                      setCheckInDraft((prev) => ({ ...prev, sleep_hours: e.target.value }))
+                    }
+                    inputMode="decimal"
+                    placeholder="e.g. 7.5"
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+                  />
+                </label>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {[
+                  ["energy_score", "Energy"],
+                  ["recovery_score", "Recovery"],
+                  ["stress_score", "Stress"],
+                  ["motivation_score", "Motivation"],
+                ].map(([key, label]) => (
+                  <label key={key} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      {label} (1-10)
+                    </span>
+                    <input
+                      value={checkInDraft[key as keyof typeof checkInDraft]}
+                      onChange={(e) =>
+                        setCheckInDraft((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
+                      inputMode="numeric"
+                      placeholder="1-10"
+                      className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 space-y-3">
+                <textarea
+                  value={checkInDraft.biggest_win}
+                  onChange={(e) => setCheckInDraft((prev) => ({ ...prev, biggest_win: e.target.value }))}
+                  rows={2}
+                  placeholder="Biggest win this week"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                />
+                <textarea
+                  value={checkInDraft.biggest_struggle}
+                  onChange={(e) =>
+                    setCheckInDraft((prev) => ({ ...prev, biggest_struggle: e.target.value }))
+                  }
+                  rows={2}
+                  placeholder="Biggest struggle this week"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                />
+                <textarea
+                  value={checkInDraft.pain_or_injury}
+                  onChange={(e) =>
+                    setCheckInDraft((prev) => ({ ...prev, pain_or_injury: e.target.value }))
+                  }
+                  rows={2}
+                  placeholder="Pain or injury notes"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                />
+                <textarea
+                  value={checkInDraft.notes}
+                  onChange={(e) => setCheckInDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                  rows={3}
+                  placeholder="Extra notes"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                />
+              </div>
+              {checkInError ? <p className="mt-3 text-sm text-red-300">{checkInError}</p> : null}
+              <div className="mt-5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={saveWeeklyCheckIn}
+                  disabled={checkInSaving || !programmeInstanceId}
+                  className="flex-1 rounded-xl bg-yellow-400 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {checkInSaving ? "Saving..." : "Save check-in"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {drawerOpen && selectedSession && (
         <div className="fixed inset-0 z-50">
           <button
@@ -865,7 +1344,7 @@ export default function MemberDashboardClient({
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
                   <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     <Gauge className="h-4 w-4" />
-                    RPE
+                    Guide
                   </p>
                   <p className="mt-2 text-lg font-semibold text-white">{selectedSession.rpeGuide}</p>
                 </div>
@@ -892,11 +1371,72 @@ export default function MemberDashboardClient({
                 ) : null
               )}
 
-              <div className="mt-8 rounded-xl border border-zinc-800 bg-yellow-400/5 p-5">
-                <p className="text-sm font-bold text-yellow-400">Read-only preview</p>
-                <p className="mt-2 text-sm text-zinc-400">
-                  Mark complete, RPE, and notes will be available in an upcoming release.
-                </p>
+              <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-white">Session log</p>
+                  {selectedLog?.completed ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Completed
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-xs font-medium text-zinc-400">
+                      Not completed
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">RPE</p>
+                  <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setDraftRpe(value)}
+                        className={`rounded-lg border px-2 py-2 text-sm font-semibold transition ${
+                          draftRpe === value
+                            ? "border-yellow-400 bg-yellow-400 text-zinc-950"
+                            : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-zinc-700/60"
+                        }`}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Notes</p>
+                  <textarea
+                    value={draftNotes}
+                    onChange={(e) => setDraftNotes(e.target.value)}
+                    rows={4}
+                    placeholder="Optional notes about this session..."
+                    className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none transition focus:border-zinc-700/60"
+                  />
+                </div>
+
+                {saveError ? <p className="mt-3 text-sm text-red-300">{saveError}</p> : null}
+
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    disabled={saving || !programmeInstanceId}
+                    onClick={() => saveSessionLog(true)}
+                    className="flex-1 rounded-xl bg-yellow-400 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Saving..." : selectedLog?.completed ? "Save changes" : "Mark complete"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving || !programmeInstanceId}
+                    onClick={() => saveSessionLog(false)}
+                    className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-zinc-700/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Save as incomplete
+                  </button>
+                </div>
               </div>
             </div>
           </div>

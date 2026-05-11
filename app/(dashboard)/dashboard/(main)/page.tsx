@@ -17,6 +17,35 @@ type ProgrammeWeekRow = {
   plan_json: unknown | null;
 };
 
+type SessionLogRow = {
+  id: string;
+  week_number: number;
+  session_key: string;
+  session_title: string | null;
+  session_day: string | null;
+  completed: boolean;
+  completed_at: string | null;
+  rpe: number | null;
+  notes: string | null;
+};
+
+type WeeklyCheckInRow = {
+  id: string;
+  week_number: number;
+  bodyweight_kg: number | null;
+  sleep_hours: number | null;
+  energy_score: number | null;
+  recovery_score: number | null;
+  stress_score: number | null;
+  motivation_score: number | null;
+  adherence_score: number | null;
+  biggest_win: string | null;
+  biggest_struggle: string | null;
+  pain_or_injury: string | null;
+  notes: string | null;
+  submitted_at: string | null;
+};
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -36,6 +65,8 @@ export default async function DashboardPage() {
   const typedInstance = instance as ProgrammeInstanceRow | null;
 
   let weeks: ProgrammeWeekRow[] = [];
+  let initialSessionLogs: SessionLogRow[] = [];
+  let initialWeeklyCheckIns: WeeklyCheckInRow[] = [];
   if (typedInstance?.id) {
     const { data: weekRows } = await supabase
       .from("programme_weeks")
@@ -44,6 +75,29 @@ export default async function DashboardPage() {
       .order("week_number", { ascending: true });
 
     weeks = (weekRows ?? []) as ProgrammeWeekRow[];
+
+    const { data: logs } = await supabase
+      .from("session_logs")
+      .select(
+        "id, week_number, session_key, session_title, session_day, completed, completed_at, rpe, notes"
+      )
+      .eq("user_id", user.id)
+      .eq("programme_instance_id", typedInstance.id)
+      .in(
+        "week_number",
+        weeks.length > 0 ? weeks.map((w) => w.week_number) : [1]
+      );
+    initialSessionLogs = (logs ?? []) as SessionLogRow[];
+
+    const { data: checkIns } = await supabase
+      .from("weekly_check_ins")
+      .select(
+        "id, week_number, bodyweight_kg, sleep_hours, energy_score, recovery_score, stress_score, motivation_score, adherence_score, biggest_win, biggest_struggle, pain_or_injury, notes, submitted_at"
+      )
+      .eq("user_id", user.id)
+      .eq("programme_instance_id", typedInstance.id)
+      .order("week_number", { ascending: true });
+    initialWeeklyCheckIns = (checkIns ?? []) as WeeklyCheckInRow[];
   }
 
   const { data: membership } = await supabase
@@ -75,7 +129,10 @@ export default async function DashboardPage() {
         membership?.expires_at ? String(membership.expires_at) : null
       }
       instanceCurrentWeek={instanceCurrentWeek}
+      programmeInstanceId={typedInstance?.id ?? null}
       weeksFromDb={weeksFromDb}
+      initialSessionLogs={initialSessionLogs}
+      initialWeeklyCheckIns={initialWeeklyCheckIns}
     />
   );
 }
