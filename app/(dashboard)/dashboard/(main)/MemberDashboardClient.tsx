@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -53,6 +54,8 @@ export type MemberDashboardClientProps = {
   weeksFromDb: WeekPayload[];
   initialSessionLogs: SessionLogRecord[];
   initialWeeklyCheckIns: WeeklyCheckInRecord[];
+  assessmentCompleted: boolean;
+  coreTestsLogged: number;
 };
 
 type SessionLogRecord = {
@@ -251,6 +254,8 @@ export default function MemberDashboardClient({
   weeksFromDb,
   initialSessionLogs,
   initialWeeklyCheckIns,
+  assessmentCompleted,
+  coreTestsLogged,
 }: MemberDashboardClientProps) {
   const router = useRouter();
   const allWeeks = useMemo(() => buildTwelveWeeks(weeksFromDb), [weeksFromDb]);
@@ -693,6 +698,21 @@ export default function MemberDashboardClient({
               </div>
             </div>
           </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {[
+              { href: "/dashboard", label: "Dashboard" },
+              { href: "/dashboard/assessment", label: "Assessment" },
+              { href: "/dashboard/testing", label: "Testing" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-300 transition hover:border-zinc-700/60 hover:text-white"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </header>
 
         <div className="grid gap-10 lg:grid-cols-[1fr_min(380px,34%)] xl:grid-cols-[1fr_420px] xl:gap-12">
@@ -778,6 +798,36 @@ export default function MemberDashboardClient({
                   <p className="text-xl font-bold leading-tight text-white sm:text-2xl">{currentBlockMeta.name}</p>
                   <p className="mt-2 text-xs font-medium text-zinc-500">Block {currentBlockMeta.id} of 3</p>
                 </div>
+              </div>
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Athlete assessment</p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {assessmentCompleted ? "Complete" : "Not complete"}
+                </p>
+                <Link
+                  href="/dashboard/assessment"
+                  className="mt-4 inline-flex rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-sm font-medium text-zinc-300 transition hover:border-zinc-700/60 hover:text-white"
+                >
+                  Open assessment
+                </Link>
+              </div>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Baseline testing</p>
+                <p className="mt-2 text-lg font-semibold text-white">{coreTestsLogged} / 4 core tests logged</p>
+                <Link
+                  href="/dashboard/testing"
+                  className="mt-4 inline-flex rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-sm font-medium text-zinc-300 transition hover:border-zinc-700/60 hover:text-white"
+                >
+                  Open testing
+                </Link>
+              </div>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Next retest</p>
+                <p className="mt-2 text-lg font-semibold text-white">Week 4</p>
+                <p className="mt-4 text-sm text-zinc-500">Placeholder milestone for first retest checkpoint.</p>
               </div>
             </section>
 

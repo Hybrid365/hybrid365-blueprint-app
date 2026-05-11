@@ -46,6 +46,15 @@ type WeeklyCheckInRow = {
   submitted_at: string | null;
 };
 
+type AthleteAssessmentRow = {
+  id: string;
+  completed_at: string | null;
+};
+
+type BenchmarkTestRow = {
+  test_type: string | null;
+};
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -67,6 +76,8 @@ export default async function DashboardPage() {
   let weeks: ProgrammeWeekRow[] = [];
   let initialSessionLogs: SessionLogRow[] = [];
   let initialWeeklyCheckIns: WeeklyCheckInRow[] = [];
+  let assessmentCompleted = false;
+  let coreTestsLogged = 0;
   if (typedInstance?.id) {
     const { data: weekRows } = await supabase
       .from("programme_weeks")
@@ -98,6 +109,26 @@ export default async function DashboardPage() {
       .eq("programme_instance_id", typedInstance.id)
       .order("week_number", { ascending: true });
     initialWeeklyCheckIns = (checkIns ?? []) as WeeklyCheckInRow[];
+
+    const { data: assessment } = await supabase
+      .from("athlete_assessments")
+      .select("id, completed_at")
+      .eq("user_id", user.id)
+      .eq("programme_instance_id", typedInstance.id)
+      .maybeSingle();
+    const typedAssessment = assessment as AthleteAssessmentRow | null;
+    assessmentCompleted = Boolean(typedAssessment?.completed_at);
+
+    const { data: tests } = await supabase
+      .from("benchmark_tests")
+      .select("test_type")
+      .eq("user_id", user.id)
+      .eq("programme_instance_id", typedInstance.id);
+    const typedTests = (tests ?? []) as BenchmarkTestRow[];
+    const coreTypes = new Set(["5km time trial", "1km SkiErg", "1km Row", "Bodyweight"]);
+    coreTestsLogged = new Set(
+      typedTests.map((t) => t.test_type).filter((v): v is string => typeof v === "string" && coreTypes.has(v))
+    ).size;
   }
 
   const { data: membership } = await supabase
@@ -133,6 +164,8 @@ export default async function DashboardPage() {
       weeksFromDb={weeksFromDb}
       initialSessionLogs={initialSessionLogs}
       initialWeeklyCheckIns={initialWeeklyCheckIns}
+      assessmentCompleted={assessmentCompleted}
+      coreTestsLogged={coreTestsLogged}
     />
   );
 }
