@@ -16,11 +16,13 @@ import {
   FileText,
   Gauge,
   Heart,
+  Info,
   LineChart,
   Lock,
   Moon,
   Play,
   Sparkles,
+  Star,
   Target,
   Timer,
   TrendingUp,
@@ -32,10 +34,14 @@ import { createClient } from "@/app/lib/supabase/client";
 import {
   buildSessionKey,
   extractPlanInsights,
+  extractProgrammeRationale,
+  extractWeekRationale,
   extractScheduleFromPlanJson,
   normalizeMemberSchedule,
   type MemberSessionDetail,
   type SessionCategoryLabel,
+  type ExtractedProgrammeRationale,
+  type ExtractedWeekRationale,
 } from "@/app/lib/memberDashboardSchedule";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 
@@ -227,6 +233,11 @@ function SessionRowCard({
           >
             {priorityKeyLabel(session)}
           </span>
+          {session.doubleSession ? (
+            <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-300">
+              {session.doubleSession.label}
+            </span>
+          ) : null}
         </div>
         <div className="mt-3 flex items-center gap-2 text-sm text-zinc-400">
           <Clock className="h-4 w-4 shrink-0 text-yellow-400/80" />
@@ -343,6 +354,22 @@ export default function MemberDashboardClient({
   );
   const selectedInsights = useMemo(
     () => extractPlanInsights(selectedPayload?.plan_json),
+    [selectedPayload?.plan_json]
+  );
+
+  // Programme-level rationale lives in Week 1 plan_json
+  const week1PlanJson = useMemo(
+    () => allWeeks.find((w) => w.week_number === 1)?.plan_json ?? null,
+    [allWeeks]
+  );
+  const programmeRationale = useMemo(
+    (): ExtractedProgrammeRationale | null => extractProgrammeRationale(week1PlanJson),
+    [week1PlanJson]
+  );
+
+  // Week-level rationale from selected week
+  const weekRationale = useMemo(
+    (): ExtractedWeekRationale | null => extractWeekRationale(selectedPayload?.plan_json ?? null),
     [selectedPayload?.plan_json]
   );
 
@@ -888,6 +915,55 @@ export default function MemberDashboardClient({
               </div>
             </section>
 
+            {/* ── Why this programme ── */}
+            {programmeRationale ? (
+              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 sm:p-8">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-400/20 ring-1 ring-yellow-400/25">
+                    <Star className="h-4 w-4 text-yellow-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Why this programme</h3>
+                </div>
+                <p className="mb-4 text-xl font-bold text-white">{programmeRationale.headline}</p>
+                <ul className="space-y-2 text-sm leading-relaxed text-zinc-300">
+                  {programmeRationale.summary.slice(0, 3).map((s) => (
+                    <li key={s} className="flex gap-2">
+                      <span className="mt-1 shrink-0 text-yellow-400">·</span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+                {programmeRationale.key_priorities.length > 0 ? (
+                  <div className="mt-5">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">Key priorities</p>
+                    <ul className="space-y-1.5">
+                      {programmeRationale.key_priorities.map((p) => (
+                        <li key={p} className="flex items-start gap-2 text-sm text-zinc-300">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400/80" />
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {programmeRationale.how_to_get_the_most_from_it.length > 0 ? (
+                  <details className="mt-5">
+                    <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500 hover:text-zinc-300">
+                      How to get the most from it
+                    </summary>
+                    <ul className="mt-3 space-y-1.5">
+                      {programmeRationale.how_to_get_the_most_from_it.map((tip) => (
+                        <li key={tip} className="flex items-start gap-2 text-sm text-zinc-400">
+                          <span className="mt-1 shrink-0 text-yellow-400/70">›</span>
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
+              </section>
+            ) : null}
+
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Athlete assessment</p>
@@ -1002,6 +1078,37 @@ export default function MemberDashboardClient({
                 {selectedPayload?.title ? <span className="text-zinc-500"> · {selectedPayload.title}</span> : null}
               </p>
             </section>
+
+            {/* ── This week's focus ── */}
+            {weekUnlocked && weekRationale ? (
+              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-6">
+                <div className="mb-3 flex items-center gap-2.5">
+                  <Info className="h-4 w-4 shrink-0 text-yellow-400/80" />
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">
+                    {weekRationale.week_role}
+                  </p>
+                </div>
+                <p className="text-sm leading-relaxed text-zinc-300">{weekRationale.why_this_week_matters}</p>
+                {weekRationale.key_sessions_to_prioritise.length > 0 ? (
+                  <div className="mt-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Prioritise</p>
+                    <ul className="space-y-1">
+                      {weekRationale.key_sessions_to_prioritise.map((s) => (
+                        <li key={s} className="flex items-start gap-2 text-sm text-zinc-300">
+                          <span className="mt-1 shrink-0 text-yellow-400">›</span>
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {weekRationale.coach_note ? (
+                  <p className="mt-4 border-t border-zinc-800 pt-3 text-xs italic leading-relaxed text-zinc-500">
+                    Coach: {weekRationale.coach_note}
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
 
             {/* Sessions */}
             <section>
@@ -1538,6 +1645,37 @@ export default function MemberDashboardClient({
                   </div>
                 ) : null
               )}
+
+              {/* ── Optional PM / Double session ── */}
+              {selectedSession.doubleSession ? (
+                <div className="mt-5 rounded-xl border border-blue-500/25 bg-blue-950/20 p-5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-300">
+                      {selectedSession.doubleSession.label}
+                    </span>
+                    <p className="text-sm font-bold text-white">{selectedSession.doubleSession.title}</p>
+                    <span className="ml-auto text-xs text-zinc-500">{selectedSession.doubleSession.time_cap_minutes} min</span>
+                  </div>
+                  <p className="mb-3 text-sm leading-relaxed text-zinc-400">{selectedSession.doubleSession.intent}</p>
+                  {selectedSession.doubleSession.main.length > 0 ? (
+                    <ul className="space-y-1.5 text-sm text-zinc-300">
+                      {selectedSession.doubleSession.main.map((line) => (
+                        <li key={line} className="flex gap-2">
+                          <span className="shrink-0 text-blue-400">·</span>
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {selectedSession.doubleSession.notes.length > 0 ? (
+                    <ul className="mt-3 space-y-1 text-xs text-zinc-500">
+                      {selectedSession.doubleSession.notes.map((n) => (
+                        <li key={n} className="italic">{n}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">

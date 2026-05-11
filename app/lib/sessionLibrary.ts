@@ -102,6 +102,8 @@ export type DayPlan = {
   priority?: SessionPriority;
   /** Session library id when this day maps to SESSION_LIBRARY; fillers use synthetic ids. */
   template_id?: string;
+  /** Optional secondary (PM / support) session added by the double-session planner. */
+  double_session?: import("./doubleSessionPlanner").DoubleSessionDetail;
 };
 
 export type WeeklyStressLabel = "low" | "balanced" | "high" | "very_high";
@@ -184,6 +186,9 @@ export type PlanJson = {
     weekly_hours: string;
     equipment: string;
     pace_guidance?: PaceGuidance;
+    /** Parser constraints — also used by free-week; included here for type-safety. */
+    parsed_constraints?: unknown;
+    runner_profile?: unknown;
   };
   intro: string[];
   schedule: DayPlan[];
@@ -192,6 +197,10 @@ export type PlanJson = {
     body: string;
     button_url: string;
   };
+  /** Personalised programme-level rationale (paid 12-week only). */
+  programme_rationale?: import("./programmeRationale").ProgrammeRationale;
+  /** Week-level rationale (paid 12-week only). */
+  week_rationale?: import("./programmeRationale").WeekRationale;
 };
 
 function allEquipment(...items: UserEquipment[]) {

@@ -1,7 +1,33 @@
 import type { PaidProgrammeInput } from "./generate12WeekProgramme";
 import type { GoalFocus, WeeklyHoursBand } from "./sessionLibrary";
+import type { RationaleContext } from "./programmeRationale";
 
 const WEEKLY_HOURS_BANDS = new Set<string>(["2-3", "3-5", "5-7", "7-10", "10+"]);
+
+const DAY_KEY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+/** Normalise DB / UI labels to PlanJson DayKey (Mon–Sun) for double-session matching. */
+export function normalizeDoubleSessionDays(
+  days: string[] | null | undefined
+): string[] {
+  if (!days?.length) return [];
+  const prefixes = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of days) {
+    const t = String(raw).trim().toLowerCase();
+    if (!t) continue;
+    const prefix = t.slice(0, 3);
+    const idx = prefixes.indexOf(prefix);
+    if (idx < 0) continue;
+    const key = DAY_KEY_ORDER[idx];
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(key);
+    }
+  }
+  return out;
+}
 
 export type AthleteAssessmentRowForProgramme = {
   first_name?: string | null;
@@ -220,8 +246,36 @@ export function mapAssessmentToProgrammeInput(params: {
     ? [...params.assessment.preferred_training_days]
     : [];
 
-  const double_sessions =
-    (params.assessment.double_session_days?.length ?? 0) > 0;
+  const double_session_days = normalizeDoubleSessionDays(params.assessment.double_session_days);
+  const double_sessions = double_session_days.length > 0;
+
+  const has_injury = Boolean(
+    params.assessment.injury_flags?.length ||
+    params.assessment.movements_to_avoid?.length
+  );
+
+  const hasBaseline5k = Boolean(
+    params.assessment.recent_5k_time?.trim() ||
+    fiveKTimeFromBenchmarks(params.benchmarkTests)
+  );
+  const hasBenchmarkTests = params.benchmarkTests.length > 0;
+
+  const rationale_context: Omit<RationaleContext, "input"> = {
+    assessment: {
+      event_type: params.assessment.event_type,
+      event_date: params.assessment.event_date,
+      target_time: params.assessment.target_time,
+      biggest_limiter: params.assessment.biggest_limiter,
+      injury_flags: params.assessment.injury_flags,
+      movements_to_avoid: params.assessment.movements_to_avoid,
+      hyrox_pb: params.assessment.hyrox_pb,
+      hyrox_experience: params.assessment.hyrox_experience,
+      strength_experience: params.assessment.strength_experience,
+    },
+    hasBaseline5k,
+    hasBenchmarkTests,
+    double_session_days,
+  };
 
   return {
     first_name: first,
@@ -232,8 +286,11 @@ export function mapAssessmentToProgrammeInput(params: {
     weekly_hours_band,
     preferred_days,
     double_sessions,
+    double_session_days,
     equipment: normalizeEquipment(params.assessment.equipment ?? undefined),
     five_k_time,
     notes: buildNotes({ assessment: params.assessment, tests: params.benchmarkTests }),
+    has_injury,
+    rationale_context,
   };
 }

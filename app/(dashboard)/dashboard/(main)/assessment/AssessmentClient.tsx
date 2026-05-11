@@ -73,6 +73,39 @@ const BAND_TO_SESSION_PILL: Record<string, string> = {
   "10+": "90+ min",
 };
 
+/** Matches plan `DayKey` (Mon–Sun) for double_session_days / doubleSessionPlanner */
+const DOUBLE_DAY_KEYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+function normalizeStoredDoubleDay(raw: string): string | null {
+  const t = raw.trim().toLowerCase();
+  if (!t) return null;
+  const prefix = t.slice(0, 3);
+  const map: Record<string, string> = {
+    mon: "Mon",
+    tue: "Tue",
+    wed: "Wed",
+    thu: "Thu",
+    fri: "Fri",
+    sat: "Sat",
+    sun: "Sun",
+  };
+  return map[prefix] ?? null;
+}
+
+function initialDoubleSessionDaysFromAssessment(a: AssessmentRow | null): string[] {
+  if (!a?.double_session_days?.length) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const d of a.double_session_days) {
+    const n = normalizeStoredDoubleDay(String(d));
+    if (n && !seen.has(n)) {
+      seen.add(n);
+      out.push(n);
+    }
+  }
+  return out;
+}
+
 function toggleArray(value: string, arr: string[]) {
   return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
 }
@@ -194,30 +227,35 @@ export default function AssessmentClient({
   const [generatingProgramme, setGeneratingProgramme] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateSuccess, setGenerateSuccess] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    goal: initialAssessment?.goal_focus ?? "",
-    eventStatus: initialAssessment?.event_type ?? "",
-    eventDate: initialAssessment?.event_date ?? "",
-    targetTime: initialAssessment?.target_time ?? "",
-    daysPerWeek:
-      initialAssessment?.training_days_per_week != null
-        ? `${initialAssessment.training_days_per_week} days`
-        : "",
-    sessionLength: (() => {
-      const b = initialAssessment?.weekly_hours_band?.trim();
-      if (!b) return "";
-      return BAND_TO_SESSION_PILL[b] ?? b;
-    })(),
-    fiveKm: initialAssessment?.recent_5k_time ?? "",
-    rowing: "",
-    skiErg: "",
-    weight:
-      initialAssessment?.bodyweight_kg != null ? String(initialAssessment.bodyweight_kg) : "",
-    height: "",
-    experience: experiencePillFromDb(initialAssessment?.strength_experience),
-    equipment: initialAssessment?.equipment ?? [],
-    limitations: initialAssessment?.notes ?? "",
-    priorities: initialAssessment?.injury_flags ?? [],
+  const [formData, setFormData] = useState(() => {
+    const doubleSessionDays = initialDoubleSessionDaysFromAssessment(initialAssessment);
+    return {
+      goal: initialAssessment?.goal_focus ?? "",
+      eventStatus: initialAssessment?.event_type ?? "",
+      eventDate: initialAssessment?.event_date ?? "",
+      targetTime: initialAssessment?.target_time ?? "",
+      daysPerWeek:
+        initialAssessment?.training_days_per_week != null
+          ? `${initialAssessment.training_days_per_week} days`
+          : "",
+      sessionLength: (() => {
+        const b = initialAssessment?.weekly_hours_band?.trim();
+        if (!b) return "";
+        return BAND_TO_SESSION_PILL[b] ?? b;
+      })(),
+      fiveKm: initialAssessment?.recent_5k_time ?? "",
+      rowing: "",
+      skiErg: "",
+      weight:
+        initialAssessment?.bodyweight_kg != null ? String(initialAssessment.bodyweight_kg) : "",
+      height: "",
+      experience: experiencePillFromDb(initialAssessment?.strength_experience),
+      equipment: initialAssessment?.equipment ?? [],
+      limitations: initialAssessment?.notes ?? "",
+      priorities: initialAssessment?.injury_flags ?? [],
+      doubleSessionsChoice: doubleSessionDays.length > 0 ? ("selected" as const) : ("none" as const),
+      doubleSessionDays,
+    };
   });
 
   async function onSave() {
@@ -247,7 +285,11 @@ export default function AssessmentClient({
             return fallback || null;
           })(),
           preferred_training_days: initialAssessment?.preferred_training_days ?? null,
-          double_session_days: initialAssessment?.double_session_days ?? null,
+          double_session_days: (() => {
+            if (formData.doubleSessionsChoice !== "selected") return null;
+            if (!formData.doubleSessionDays.length) return null;
+            return formData.doubleSessionDays;
+          })(),
           current_running_volume_km: initialAssessment?.current_running_volume_km ?? null,
           longest_recent_run_km: initialAssessment?.longest_recent_run_km ?? null,
           recent_5k_time: formData.fiveKm || initialAssessment?.recent_5k_time || null,
@@ -495,6 +537,47 @@ export default function AssessmentClient({
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">Session Length</label>
                 <PillSelector options={["30-45 min", "45-60 min", "60-90 min", "90+ min"]} selected={formData.sessionLength} onChange={(v) => setFormData({ ...formData, sessionLength: v })} />
+              </div>
+              <div className="rounded-xl border border-border/80 bg-secondary/30 p-4">
+                <label className="text-sm text-muted-foreground mb-2 block">
+                  Can you train twice in one day?
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground/80">(optional)</span>
+                </label>
+                <PillSelector
+                  options={["No double sessions", "Yes, on selected days"]}
+                  selected={
+                    formData.doubleSessionsChoice === "selected"
+                      ? "Yes, on selected days"
+                      : "No double sessions"
+                  }
+                  onChange={(v) =>
+                    setFormData({
+                      ...formData,
+                      doubleSessionsChoice: v === "Yes, on selected days" ? "selected" : "none",
+                      doubleSessionDays: v === "Yes, on selected days" ? formData.doubleSessionDays : [],
+                    })
+                  }
+                />
+                {formData.doubleSessionsChoice === "selected" ? (
+                  <div className="mt-4 space-y-2">
+                    <label className="text-sm text-muted-foreground mb-2 block">Select days</label>
+                    <PillSelector
+                      options={[...DOUBLE_DAY_KEYS]}
+                      selected={formData.doubleSessionDays}
+                      multi
+                      onChange={(day) =>
+                        setFormData({
+                          ...formData,
+                          doubleSessionDays: toggleArray(day, formData.doubleSessionDays),
+                        })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+                      Double-session days are used mainly for low-cost aerobic, mobility, or support work — not extra
+                      hard sessions.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </div>
             <div className="mt-4 flex justify-end">

@@ -4,9 +4,17 @@ import {
 } from "./buildWeekBlueprint";
 import { getProgressionTarget } from "./progressionTargets";
 import type { PlanJson } from "./sessionLibrary";
+import {
+  buildProgrammeRationale,
+  buildWeekRationale,
+  type RationaleContext,
+} from "./programmeRationale";
+import { applyDoubleSessions } from "./doubleSessionPlanner";
 
 export type PaidProgrammeInput = BlueprintInput & {
   email?: string;
+  /** Raw assessment context forwarded for rationale generation */
+  rationale_context?: Omit<RationaleContext, "input">;
 };
 
 export type GeneratedProgrammeWeek = {
@@ -47,6 +55,14 @@ export function generate12WeekProgramme(
 ): GeneratedProgrammeWeek[] {
   const weeks: GeneratedProgrammeWeek[] = [];
 
+  // Build programme-level rationale once
+  const rationaleCtx: RationaleContext = {
+    input,
+    ...(input.rationale_context ?? {}),
+    double_session_days: input.double_session_days ?? input.rationale_context?.double_session_days,
+  };
+  const programme_rationale = buildProgrammeRationale(rationaleCtx);
+
   for (let weekNumber = 1; weekNumber <= 12; weekNumber += 1) {
     const blockNumber = blockForWeek(weekNumber);
     const progressionTarget = getProgressionTarget(
@@ -67,11 +83,33 @@ export function generate12WeekProgramme(
       progression_target: progressionTarget,
     });
 
+    // Apply double-session layer additively
+    const scheduleWithDoubles = applyDoubleSessions({
+      schedule: generated.schedule,
+      goal_focus: input.goal_focus,
+      ability_level: input.ability_level,
+      weekly_hours_band: input.weekly_hours_band,
+      double_sessions: Boolean(input.double_sessions),
+      double_session_days: input.double_session_days,
+      has_injury: Boolean(input.has_injury),
+    });
+
+    // Week-level rationale
+    const week_rationale = buildWeekRationale(
+      progressionTarget.week_focus as Parameters<typeof buildWeekRationale>[0],
+      weekNumber,
+      input.goal_focus
+    );
+
     const plan_json: PlanJson = {
       ...generated,
+      schedule: scheduleWithDoubles,
       week_context: progressionTarget,
-      stress_alignment:
-        generated.stress_alignment ?? null,
+      stress_alignment: generated.stress_alignment ?? null,
+      // Only attach programme_rationale to week 1 to avoid massive JSON repetition;
+      // the dashboard reads it from the first week or the instance.
+      ...(weekNumber === 1 ? { programme_rationale } : {}),
+      week_rationale,
     };
 
     weeks.push({

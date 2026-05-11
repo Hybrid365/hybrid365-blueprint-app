@@ -36,10 +36,14 @@ export type BlueprintInput = {
   goal_focus: GoalFocus;
   ability_level: AbilityLevel;
   double_sessions?: boolean;
+  /** Specific days the athlete can do doubles, e.g. ["Monday","Wednesday"] */
+  double_session_days?: string[];
   preferred_days?: string[];
   equipment?: string[];
   five_k_time?: string;
   notes?: string;
+  /** Optional raw flags passed through for rationale generation */
+  has_injury?: boolean;
 };
 
 export type BuildWeekBlueprintOptions = {

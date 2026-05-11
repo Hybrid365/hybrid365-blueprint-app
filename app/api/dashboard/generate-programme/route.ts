@@ -89,6 +89,15 @@ export async function POST() {
     profile,
   });
 
+  console.info("[generate-programme] mapped programme input (doubles)", {
+    double_sessions: blueprintInput.double_sessions,
+    double_session_days: blueprintInput.double_session_days,
+    weekly_hours_band: blueprintInput.weekly_hours_band,
+    ability_level: blueprintInput.ability_level,
+    days_per_week: blueprintInput.days_per_week,
+    has_injury: blueprintInput.has_injury,
+  });
+
   const { data: existingInstance } = await supabase
     .from("programme_instances")
     .select("id")

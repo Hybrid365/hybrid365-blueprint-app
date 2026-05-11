@@ -3,6 +3,16 @@
  * Keeps parity with AthleteDashboardClient session mapping without modifying /athlete routes.
  */
 
+export type DoubleSessionSummary = {
+  label: string;
+  title: string;
+  intent: string;
+  time_cap_minutes: number;
+  category: string;
+  main: string[];
+  notes: string[];
+};
+
 export type MemberSessionDetail = {
   day: string;
   dayShort: string;
@@ -24,6 +34,8 @@ export type MemberSessionDetail = {
   priorityDisplayLabel: string;
   priorityCategoryLabel: string;
   priorityReason: string;
+  /** Optional PM / support session from double-session planner */
+  doubleSession?: DoubleSessionSummary;
 };
 
 function slugify(value: string): string {
@@ -135,6 +147,23 @@ export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetai
     const category = mapCategory(title, tagArr);
     const priority = parseSessionPriority(row?.priority);
 
+    // Parse double_session if present
+    let doubleSession: DoubleSessionSummary | undefined;
+    const ds = row?.double_session as Record<string, unknown> | null | undefined;
+    if (ds?.enabled === true && ds.secondary && typeof ds.secondary === "object") {
+      const sec = ds.secondary as Record<string, unknown>;
+      const secSess = (sec.session as Record<string, unknown>) ?? {};
+      doubleSession = {
+        label: typeof ds.label === "string" ? ds.label : "Optional Support",
+        title: typeof sec.title === "string" ? sec.title : "Support Session",
+        intent: typeof sec.intent === "string" ? sec.intent : "",
+        time_cap_minutes: typeof sec.time_cap_minutes === "number" ? sec.time_cap_minutes : 20,
+        category: typeof sec.category === "string" ? sec.category : "recovery",
+        main: asArray(secSess.main),
+        notes: asArray(secSess.notes),
+      };
+    }
+
     return {
       day: String(row?.day || "Day"),
       dayShort: dayShort(String(row?.day || "Day")),
@@ -157,6 +186,7 @@ export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetai
         row?.intent || "Respect the purpose of the session and keep the effort controlled."
       ),
       ...priority,
+      ...(doubleSession ? { doubleSession } : {}),
     };
   });
 }
@@ -165,6 +195,58 @@ function humanizeWeekFocus(raw: string): string {
   return raw
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export type ExtractedProgrammeRationale = {
+  headline: string;
+  summary: string[];
+  key_priorities: string[];
+  why_this_structure: string;
+  how_to_get_the_most_from_it: string[];
+};
+
+export type ExtractedWeekRationale = {
+  week_role: string;
+  why_this_week_matters: string;
+  key_sessions_to_prioritise: string[];
+  coach_note: string;
+};
+
+export function extractProgrammeRationale(planJson: unknown): ExtractedProgrammeRationale | null {
+  if (!planJson || typeof planJson !== "object") return null;
+  const o = planJson as Record<string, unknown>;
+  const r = o.programme_rationale;
+  if (!r || typeof r !== "object") return null;
+  const m = r as Record<string, unknown>;
+  const headline = typeof m.headline === "string" ? m.headline : null;
+  if (!headline) return null;
+  return {
+    headline,
+    summary: Array.isArray(m.summary) ? m.summary.map(String) : [],
+    key_priorities: Array.isArray(m.key_priorities) ? m.key_priorities.map(String) : [],
+    why_this_structure: typeof m.why_this_structure === "string" ? m.why_this_structure : "",
+    how_to_get_the_most_from_it: Array.isArray(m.how_to_get_the_most_from_it)
+      ? m.how_to_get_the_most_from_it.map(String)
+      : [],
+  };
+}
+
+export function extractWeekRationale(planJson: unknown): ExtractedWeekRationale | null {
+  if (!planJson || typeof planJson !== "object") return null;
+  const o = planJson as Record<string, unknown>;
+  const r = o.week_rationale;
+  if (!r || typeof r !== "object") return null;
+  const m = r as Record<string, unknown>;
+  const week_role = typeof m.week_role === "string" ? m.week_role : null;
+  if (!week_role) return null;
+  return {
+    week_role,
+    why_this_week_matters: typeof m.why_this_week_matters === "string" ? m.why_this_week_matters : "",
+    key_sessions_to_prioritise: Array.isArray(m.key_sessions_to_prioritise)
+      ? m.key_sessions_to_prioritise.map(String)
+      : [],
+    coach_note: typeof m.coach_note === "string" ? m.coach_note : "",
+  };
 }
 
 /** week_context.week_focus and weekly_stress.display_label from stored PlanJson */
