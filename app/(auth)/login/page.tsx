@@ -5,52 +5,102 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/app/lib/supabase/client";
 
+const SUCCESS_COPY = "Check your email for the sign-in link.";
+const OTP_ERROR_HEADLINE = "We couldn’t send the sign-in link. Please try again.";
+const OTP_TIMEOUT_MS = 30_000;
+
+type LoginBanner =
+  | { kind: "callback"; detail: string }
+  | { kind: "otp"; headline: string; detail: string };
+
+function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(timeoutMessage)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
   const urlError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">(
-    urlError ? "error" : "idle"
-  );
-  const [message, setMessage] = useState(
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [banner, setBanner] = useState<LoginBanner | null>(
     urlError === "auth"
-      ? "That sign-in link expired or was already used. Request a fresh link below."
-      : ""
+      ? {
+          kind: "callback",
+          detail:
+            "That sign-in link expired or was already used. Request a fresh link below.",
+        }
+      : null
   );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("loading");
-    setMessage("");
+    setSubmitting(true);
+    setSent(false);
+    setBanner(null);
 
-    const supabase = createClient();
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
-    const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next.startsWith("/") ? next : "/dashboard")}`;
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo,
-      },
-    });
-
-    if (error) {
-      setStatus("error");
-      setMessage(error.message);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setSubmitting(false);
+      setBanner({
+        kind: "otp",
+        headline: OTP_ERROR_HEADLINE,
+        detail: "Enter a valid email address.",
+      });
       return;
     }
 
-    setStatus("sent");
-    setMessage("Check your email for the sign-in link.");
+    // Must match Supabase redirect allowlist: `${origin}/auth/callback` (+ optional `next` for post-login routing).
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next.startsWith("/") ? next : "/dashboard")}`;
+
+    try {
+      const supabase = createClient();
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email: trimmed,
+          options: {
+            emailRedirectTo,
+          },
+        }),
+        OTP_TIMEOUT_MS,
+        "Request timed out. Check your connection and try again."
+      );
+
+      if (error) {
+        console.error("[login] signInWithOtp error object", error);
+        setBanner({
+          kind: "otp",
+          headline: OTP_ERROR_HEADLINE,
+          detail: error.message || JSON.stringify(error),
+        });
+        return;
+      }
+
+      setSent(true);
+    } catch (unknown) {
+      const err = unknown instanceof Error ? unknown : new Error(String(unknown));
+      console.error("[login] signInWithOtp failed (thrown)", unknown);
+      setBanner({
+        kind: "otp",
+        headline: OTP_ERROR_HEADLINE,
+        detail: err.message || "Unknown error",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
-      {status === "sent" ? (
-        <p className="text-center text-sm text-zinc-300">{message}</p>
+      {sent ? (
+        <p className="text-center text-sm leading-relaxed text-zinc-300">{SUCCESS_COPY}</p>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
@@ -70,19 +120,41 @@ function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white placeholder:text-zinc-600 focus:border-[#F4D23C]/60 focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/40"
               placeholder="you@example.com"
-              disabled={status === "loading"}
+              disabled={submitting}
             />
           </div>
-          {message && status === "error" ? (
-            <p className="text-sm text-red-400">{message}</p>
+
+          {banner ? (
+            <div className="rounded-xl border border-red-500/30 bg-red-950/30 px-3 py-3 text-sm">
+              {banner.kind === "otp" ? (
+                <>
+                  <p className="font-medium text-red-200">{banner.headline}</p>
+                  {banner.detail ? (
+                    <p
+                      className={`mt-2 text-xs leading-relaxed text-red-200/80 ${process.env.NODE_ENV === "development" ? "font-mono" : ""}`}
+                    >
+                      {banner.detail}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-sm leading-relaxed text-red-200/95">{banner.detail}</p>
+              )}
+            </div>
           ) : null}
+
           <button
             type="submit"
-            disabled={status === "loading"}
+            disabled={submitting}
+            aria-busy={submitting}
             className="w-full rounded-xl bg-[#F4D23C] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[#e6c235] disabled:opacity-60"
           >
-            {status === "loading" ? "Sending…" : "Email me a link"}
+            {submitting ? "Sending…" : "Email me a link"}
           </button>
+
+          <p className="text-center text-xs leading-relaxed text-zinc-500">
+            Use the latest email link. Sign-in links can expire or be invalidated if you request a new one.
+          </p>
         </form>
       )}
     </div>
