@@ -5,6 +5,10 @@
 import { countHabitsHit, shiftLocalDateKey, type DailyHabitLogRow } from "./dailyHabitLogs";
 import { HYBRID_CHALLENGE_DURATION_WEEKS, HYBRID_CHALLENGE_POINTS } from "./hybridChallengeConfig";
 import {
+  coreBaselineAreaFlags,
+  type HybridBaselineChecklist,
+} from "./benchmarkCoreAreas";
+import {
   buildSessionKey,
   extractScheduleFromPlanJson,
   normalizeMemberSchedule,
@@ -198,19 +202,11 @@ export function getWeeklyTrainingSnapshot(
   };
 }
 
-export function baselineChecklist(tests: { test_type: string | null }[]): {
-  bodyweight: boolean;
-  km5: boolean;
-  ski1: boolean;
-  row1: boolean;
-} {
-  const types = new Set(tests.map((t) => t.test_type).filter(Boolean) as string[]);
-  return {
-    km5: types.has("5km time trial"),
-    ski1: types.has("1km SkiErg"),
-    row1: types.has("1km Row"),
-    bodyweight: types.has("Bodyweight"),
-  };
+export type { HybridBaselineChecklist } from "./benchmarkCoreAreas";
+
+/** Challenge baseline checklist — four hybrid areas + optional photos handled in UI. */
+export function baselineChecklist(tests: { test_type: string | null }[]): HybridBaselineChecklist {
+  return coreBaselineAreaFlags(tests);
 }
 
 export type LeaderboardAggregate = {

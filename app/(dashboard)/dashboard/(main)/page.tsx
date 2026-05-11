@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
+import { countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
 import MemberDashboardClient, {
   type WeekPayload,
 } from "./MemberDashboardClient";
@@ -79,17 +80,7 @@ export default async function DashboardPage() {
     .select("test_type")
     .eq("user_id", user.id);
   const typedAllTests = (allCoreTests ?? []) as BenchmarkTestRow[];
-  const coreTypes = new Set([
-    "5km time trial",
-    "1km SkiErg",
-    "1km Row",
-    "Bodyweight",
-  ]);
-  const coreTestsLogged = new Set(
-    typedAllTests
-      .map((t) => t.test_type)
-      .filter((v): v is string => typeof v === "string" && coreTypes.has(v))
-  ).size;
+  const coreTestsLogged = countCoreBaselineAreas(typedAllTests);
 
   const { data: instance } = await supabase
     .from("programme_instances")

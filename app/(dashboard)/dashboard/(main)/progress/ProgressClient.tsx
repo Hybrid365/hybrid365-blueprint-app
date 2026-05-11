@@ -18,6 +18,7 @@ import {
   Target,
   Timer,
   TrendingUp,
+  TrendingDown,
   Waves,
   Wind,
   Zap,
@@ -29,6 +30,8 @@ import type {
   ProgrammeWeekLike,
   RecoveryTrendRow,
 } from "@/app/lib/progressMetrics";
+import { isTimeLowerIsBetterBenchmark } from "@/app/lib/progressMetrics";
+import { isStrengthBenchmarkType } from "@/app/lib/benchmarkCoreAreas";
 
 type AdherenceSnapshot = {
   completedUnlocked: number;
@@ -64,6 +67,7 @@ type Props = {
   bodyweightTrend: BodyweightTrend;
   avgRpe: RpeSnapshot;
   groupedBenchmarks: GroupedBenchmark[];
+  hasStrengthBenchmarks: boolean;
   recoveryTrends: RecoveryTrendRow[];
   checkInsSubmitted: number;
   latestBodyweightKg: number | null;
@@ -99,9 +103,57 @@ function benchmarkIcon(type: GroupedBenchmark["type"]) {
       return <Waves className="h-5 w-5 text-yellow-400/90" />;
     case "Bodyweight":
       return <Scale className="h-5 w-5 text-yellow-400/90" />;
-    default:
+    case "5km time trial":
+    case "3km time trial":
+    case "Hyrox race":
+    case "Challenge workout":
       return <Timer className="h-5 w-5 text-yellow-400/90" />;
+    case "Wall ball test":
+      return <Activity className="h-5 w-5 text-yellow-400/90" />;
+    default:
+      if (isStrengthBenchmarkType(type)) {
+        return <Dumbbell className="h-5 w-5 text-yellow-400/90" />;
+      }
+      return <Target className="h-5 w-5 text-yellow-400/90" />;
   }
+}
+
+function BenchmarkTrendBadge({ b }: { b: GroupedBenchmark }) {
+  if (!b.logged || b.numericChange == null || b.type === "Bodyweight") return null;
+  if (isTimeLowerIsBetterBenchmark(b.type)) {
+    if (b.numericChange > 0) {
+      return (
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
+          <TrendingUp className="h-3 w-3" /> faster
+        </span>
+      );
+    }
+    if (b.numericChange < 0) {
+      return (
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-200">
+          <TrendingDown className="h-3 w-3" /> slower
+        </span>
+      );
+    }
+    return null;
+  }
+  if (isStrengthBenchmarkType(b.type) || b.type === "Wall ball test" || b.type === "Other") {
+    if (b.numericChange > 0) {
+      return (
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
+          <TrendingUp className="h-3 w-3" /> up
+        </span>
+      );
+    }
+    if (b.numericChange < 0) {
+      return (
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-200">
+          <TrendingDown className="h-3 w-3" /> down
+        </span>
+      );
+    }
+  }
+  return null;
 }
 
 function BodyweightSpark({ series }: { series: { week: number; kg: number }[] }) {
@@ -159,6 +211,7 @@ export default function ProgressClient({
   bodyweightTrend,
   avgRpe,
   groupedBenchmarks,
+  hasStrengthBenchmarks,
   recoveryTrends,
   checkInsSubmitted,
   latestBodyweightKg,
@@ -218,8 +271,8 @@ export default function ProgressClient({
               </div>
               <h2 className="mt-4 text-xl font-bold text-white">Progress unlocks with your programme</h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-300">
-                Complete your assessment, generate your 12-week plan, then log sessions and weekly check-ins — this
-                page becomes your long-term training dashboard.
+                Your progress graph builds as you complete sessions and check-ins. Finish your assessment, generate your
+                12-week plan, then this page becomes your training story.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
@@ -477,7 +530,14 @@ export default function ProgressClient({
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="mt-6 space-y-4">
+                {!hasStrengthBenchmarks ? (
+                  <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/50 p-4 text-sm leading-relaxed text-zinc-400">
+                    Add a strength marker so your progress reflects more than just running and ergs — pull-ups,
+                    push-ups, squat or bench numbers, or a carry all count.
+                  </div>
+                ) : null}
+                <div className="grid gap-4 sm:grid-cols-2">
                 {groupedBenchmarks.map((b) => (
                   <div
                     key={b.type}
@@ -493,11 +553,7 @@ export default function ProgressClient({
                           <p className="text-xs text-zinc-500">{b.entryCount} result{b.entryCount === 1 ? "" : "s"}</p>
                         </div>
                       </div>
-                      {b.logged && b.numericChange != null && b.type !== "Bodyweight" && b.numericChange > 0 ? (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
-                          <TrendingUp className="h-3 w-3" /> faster
-                        </span>
-                      ) : null}
+                      {b.logged ? <BenchmarkTrendBadge b={b} /> : null}
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                       <div>
@@ -514,6 +570,7 @@ export default function ProgressClient({
                     </p>
                   </div>
                 ))}
+                </div>
               </div>
             </section>
 
@@ -567,8 +624,9 @@ export default function ProgressClient({
 
         {hasProgramme && adherence.totalUnlockedSlots > 0 && adherence.completedUnlocked === 0 ? (
           <div className="mx-auto mt-6 max-w-5xl px-4 md:px-8">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-center text-sm text-zinc-400">
-              No sessions marked complete yet — open a session from the dashboard and tap complete when you are done.
+            <div className="rounded-xl border border-yellow-500/15 bg-yellow-400/[0.04] p-4 text-center text-sm leading-relaxed text-zinc-300">
+              Your progress graph builds as you complete sessions and check-ins. Open a session from the dashboard, train
+              with intent, then mark it complete — the picture sharpens every week.
             </div>
           </div>
         ) : null}

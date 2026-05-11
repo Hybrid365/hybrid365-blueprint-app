@@ -839,70 +839,280 @@ export default function MemberDashboardClient({
         </header>
 
         {!programmeGenerated ? (
-          <section className="mb-10 rounded-2xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/[0.08] to-zinc-900/90 p-6 sm:p-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Setup pathway</p>
-            <h2 className="mt-2 text-xl font-bold text-white sm:text-2xl">Finish onboarding to unlock your plan</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-300">
-              Complete your assessment first, optionally log baseline tests, then generate your personalised 12-week
-              programme.
-            </p>
+          <section className="mb-10">
+            <div className="relative overflow-hidden rounded-2xl border border-yellow-500/20 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-6 shadow-xl shadow-black/40 sm:p-10">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_50%_-30%,rgba(250,204,21,0.14),transparent)]" />
+              <div className="relative">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-yellow-400/90">Start here</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
+                  Welcome to Hybrid365
+                </h2>
+                <p className="mt-3 text-lg font-semibold leading-snug text-yellow-200/95 sm:text-xl">
+                  Refuse average. Build your structure. Become stronger, fitter and faster.
+                </p>
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
+                  Before your programme is built, we need to understand your goal, training availability, current fitness
+                  and what you&apos;re working around. Your answers shape the 12-week plan.
+                </p>
 
-            <div className="mt-6 space-y-3">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 1 · Required</p>
-                <p className="mt-1 text-sm font-semibold text-white">Complete athlete assessment</p>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className={assessmentCompleted ? "text-emerald-300 text-sm" : "text-zinc-400 text-sm"}>
-                    {assessmentCompleted ? "Completed" : "In progress"}
-                  </span>
-                  <Link
-                    href="/dashboard/assessment"
-                    className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:border-zinc-600 hover:text-white"
-                  >
-                    Open assessment
-                  </Link>
+                <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                  {(() => {
+                    const s1 = assessmentCompleted;
+                    const s2 = coreTestsLogged >= 4;
+                    const steps: {
+                      n: 1 | 2 | 3 | 4;
+                      label: string;
+                      variant: "done" | "active" | "recommended" | "hold";
+                    }[] = [
+                      { n: 1, label: "Profile", variant: s1 ? "done" : "active" },
+                      {
+                        n: 2,
+                        label: "Baseline",
+                        variant: s2 ? "done" : s1 ? "recommended" : "hold",
+                      },
+                      { n: 3, label: "Generate", variant: s1 ? "active" : "hold" },
+                      { n: 4, label: "Train", variant: "hold" },
+                    ];
+                    return steps.map((step) => {
+                      const circle =
+                        step.variant === "done"
+                          ? "bg-emerald-500/20 text-emerald-300 ring-2 ring-emerald-400/35"
+                          : step.variant === "active"
+                            ? "bg-yellow-400 text-zinc-950 ring-2 ring-yellow-300/45"
+                            : step.variant === "recommended"
+                              ? "border border-amber-500/35 bg-amber-950/25 text-amber-200"
+                              : "border border-zinc-700 bg-zinc-900 text-zinc-500";
+                      return (
+                        <div
+                          key={step.n}
+                          className="rounded-xl border border-zinc-800/90 bg-zinc-950/50 px-2 py-3.5 text-center sm:py-4"
+                        >
+                          <div
+                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${circle}`}
+                          >
+                            {step.variant === "done" ? <CheckCircle2 className="h-5 w-5" /> : step.n}
+                          </div>
+                          <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                            Step {step.n}
+                          </p>
+                          <p className="text-xs font-semibold text-zinc-300">{step.label}</p>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
-              </div>
 
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 2 · Optional</p>
-                <p className="mt-1 text-sm font-semibold text-white">Add baseline testing</p>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className="text-sm text-zinc-400">Baseline testing: {coreTestsLogged}/4 logged</span>
-                  <Link
-                    href="/dashboard/testing"
-                    className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:border-zinc-600 hover:text-white"
+                <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                  {/* Step 1 */}
+                  <div
+                    className={`rounded-xl border p-5 sm:p-6 ${
+                      assessmentCompleted
+                        ? "border-emerald-500/25 bg-emerald-950/20"
+                        : "border-yellow-500/30 bg-yellow-400/[0.04]"
+                    }`}
                   >
-                    Open testing
-                  </Link>
-                </div>
-              </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-400/15 ring-1 ring-yellow-400/25">
+                        <User className="h-5 w-5 text-yellow-400" />
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          assessmentCompleted
+                            ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                            : "border-yellow-400/50 bg-yellow-400/15 text-yellow-200"
+                        }`}
+                      >
+                        {assessmentCompleted ? "Complete" : "Required · Active"}
+                      </span>
+                    </div>
+                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Build your athlete profile</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                      Goal, availability, equipment, current level and limitations — so we can programme with intent.
+                    </p>
+                    <Link
+                      href="/dashboard/assessment"
+                      className={`mt-4 inline-flex w-full min-h-[44px] items-center justify-center rounded-xl px-4 py-3 text-sm font-bold transition sm:w-auto ${
+                        assessmentCompleted
+                          ? "border border-zinc-700 bg-zinc-900 text-zinc-200 hover:border-zinc-600"
+                          : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
+                      }`}
+                    >
+                      {assessmentCompleted ? "Review assessment" : "Complete assessment"}
+                    </Link>
+                  </div>
 
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 3</p>
-                <p className="mt-1 text-sm font-semibold text-white">Generate programme</p>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className="text-sm text-zinc-400">
-                    {assessmentCompleted
-                      ? "Ready now (tests optional)"
-                      : "Available after completing assessment"}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={!assessmentCompleted || generatingProgramme}
-                    onClick={handleGenerateProgramme}
-                    className="rounded-lg bg-yellow-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  {/* Step 2 */}
+                  <div
+                    className={`rounded-xl border p-5 sm:p-6 ${
+                      !assessmentCompleted
+                        ? "border-zinc-800/80 bg-zinc-950/40 opacity-70"
+                        : coreTestsLogged >= 4
+                          ? "border-emerald-500/25 bg-emerald-950/15"
+                          : "border-amber-500/25 bg-amber-950/10"
+                    }`}
                   >
-                    {generatingProgramme ? "Generating…" : "Generate programme"}
-                  </button>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-800 ring-1 ring-zinc-700">
+                        <Gauge className="h-5 w-5 text-zinc-300" />
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          !assessmentCompleted
+                            ? "border-zinc-700 bg-zinc-900 text-zinc-500"
+                            : coreTestsLogged >= 4
+                              ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                              : "border-amber-500/40 bg-amber-500/15 text-amber-200"
+                        }`}
+                      >
+                        {!assessmentCompleted ? "Locked" : coreTestsLogged >= 4 ? "Complete" : "Recommended"}
+                      </span>
+                    </div>
+                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Set your baseline</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                      Bodyweight, a run marker (5 km or 3 km), one engine test (Ski or Row), and at least one strength
+                      marker. You can generate without this — baselines make progress tracking much richer.
+                    </p>
+                    {assessmentCompleted ? (
+                      <Link
+                        href="/dashboard/testing"
+                        className="mt-4 inline-flex w-full min-h-[44px] items-center justify-center rounded-xl border border-amber-500/35 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-400/15 sm:w-auto"
+                      >
+                        Add baseline tests
+                      </Link>
+                    ) : (
+                      <span className="mt-4 inline-flex w-full min-h-[44px] cursor-not-allowed items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-600 sm:w-auto">
+                        Add baseline tests
+                      </span>
+                    )}
+                    <p className="mt-2 text-xs text-zinc-500">Baseline testing: {coreTestsLogged}/4 core areas complete</p>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div
+                    className={`rounded-xl border p-5 sm:p-6 ${
+                      !assessmentCompleted
+                        ? "border-zinc-800/80 bg-zinc-950/40 opacity-70"
+                        : "border-yellow-500/25 bg-yellow-400/[0.05]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-400/15 ring-1 ring-yellow-400/25">
+                        <Sparkles className="h-5 w-5 text-yellow-400" />
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          !assessmentCompleted
+                            ? "border-zinc-700 bg-zinc-900 text-zinc-500"
+                            : "border-yellow-400/50 bg-yellow-400/15 text-yellow-200"
+                        }`}
+                      >
+                        {!assessmentCompleted ? "Locked" : "Ready"}
+                      </span>
+                    </div>
+                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Generate your 12-week programme</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                      Your plan is built from your profile, goal, schedule and performance — hybrid strength, engine and
+                      physique in one structured arc.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={!assessmentCompleted || generatingProgramme}
+                      onClick={handleGenerateProgramme}
+                      className="mt-4 inline-flex w-full min-h-[44px] items-center justify-center rounded-xl bg-yellow-400 px-4 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {generatingProgramme ? "Generating…" : "Generate programme"}
+                    </button>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="rounded-xl border border-zinc-800/90 bg-zinc-950/50 p-5 opacity-80 sm:p-6">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-800 ring-1 ring-zinc-700">
+                        <Zap className="h-5 w-5 text-zinc-400" />
+                      </div>
+                      <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                        Next
+                      </span>
+                    </div>
+                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Start training + tracking</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                      After generate: follow your programme, log sessions, hit daily habits, weekly check-ins, and join
+                      the Hybrid Challenge — track the work, earn the result.
+                    </p>
+                    <p className="mt-3 text-xs font-medium text-zinc-600">Unlocks when your plan is live.</p>
+                  </div>
                 </div>
+
+                <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-6">
+                  <h3 className="text-base font-bold text-yellow-200/95 sm:text-lg">Structure beats motivation</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                    Hybrid365 is built for athletes who want to run better, lift properly, perform harder and look like
+                    they train. The goal is simple: build the structure that lets you become stronger, fitter and faster.
+                  </p>
+                </div>
+
+                <div className="mt-8 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  {!assessmentCompleted ? (
+                    <Link
+                      href="/dashboard/assessment"
+                      className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-center text-sm font-bold text-zinc-950 shadow-lg shadow-yellow-400/20 transition hover:bg-yellow-300 sm:flex-none sm:px-8"
+                    >
+                      Complete assessment
+                    </Link>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={generatingProgramme}
+                        onClick={handleGenerateProgramme}
+                        className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-lg shadow-yellow-400/20 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-8"
+                      >
+                        {generatingProgramme ? "Generating…" : "Generate programme"}
+                      </button>
+                      <Link
+                        href="/dashboard/testing"
+                        className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-zinc-600 bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-zinc-500 sm:flex-none"
+                      >
+                        Add baseline tests
+                      </Link>
+                    </>
+                  )}
+                </div>
+
+                {generateError ? <p className="mt-4 text-sm text-red-300">{generateError}</p> : null}
+                {generateSuccess ? <p className="mt-4 text-sm text-emerald-300">{generateSuccess}</p> : null}
               </div>
             </div>
-
-            {generateError ? <p className="mt-4 text-sm text-red-300">{generateError}</p> : null}
-            {generateSuccess ? <p className="mt-4 text-sm text-emerald-300">{generateSuccess}</p> : null}
           </section>
-        ) : null}
+        ) : (
+          <section className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400/90">Next steps</p>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
+              Train with intent. Stack sessions, habits and check-ins — then open Progress and the Hybrid Challenge to
+              prove the work.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href="/dashboard/habits"
+                className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-yellow-500/30 bg-yellow-400/10 px-4 py-2 text-sm font-semibold text-yellow-200 transition hover:bg-yellow-400/15"
+              >
+                Habits
+              </Link>
+              <Link
+                href="/dashboard/progress"
+                className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-zinc-600"
+              >
+                Progress
+              </Link>
+              <Link
+                href="/dashboard/challenge"
+                className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-zinc-600"
+              >
+                Challenge
+              </Link>
+            </div>
+          </section>
+        )}
 
         <div className="grid gap-10 lg:grid-cols-[1fr_min(380px,34%)] xl:grid-cols-[1fr_420px] xl:gap-12">
           {/* ——— Main column ——— */}
@@ -1067,7 +1277,7 @@ export default function MemberDashboardClient({
               <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Baseline testing</p>
                 <p className="mt-2 text-lg font-semibold text-white">
-                  Baseline testing: {coreTestsLogged}/4 logged
+                  Baseline testing: {coreTestsLogged}/4 core areas complete
                 </p>
                 <Link
                   href="/dashboard/testing"

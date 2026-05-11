@@ -17,6 +17,10 @@
 
 import type { BlueprintInput } from "./buildWeekBlueprint";
 import type { GoalFocus } from "./sessionLibrary";
+import {
+  countCoreBaselineAreas,
+  isStrengthBenchmarkType,
+} from "./benchmarkCoreAreas";
 import { parseConstraints } from "./parseConstraints";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -49,13 +53,33 @@ export type PaidProgrammeIntelligence = {
 
 export type BenchmarkSignals = {
   has_5k: boolean;
+  has_3k: boolean;
   has_skierg: boolean;
   has_row: boolean;
   has_bodyweight: boolean;
+  /** True if any run marker (5 km or 3 km) is logged. */
+  has_any_run: boolean;
+  /** True if SkiErg or Row logged. */
+  has_engine: boolean;
+  /** Any canonical strength benchmark type logged. */
+  has_strength_marker: boolean;
+  strength_marker_count: number;
+  /** 0–4: body, run, engine, strength areas (see `benchmarkCoreAreas`). */
+  core_areas_score: number;
+  /** Engine markers comparatively thin vs strength baselines. */
+  engine_weaker_than_strength: boolean;
   latest_5k: string | null;
+  latest_3k: string | null;
   latest_skierg: string | null;
   latest_row: string | null;
   latest_bodyweight: number | null;
+  latest_pullup_reps: number | null;
+  latest_pushup_reps: number | null;
+  latest_squat_rm_kg: number | null;
+  latest_bench_rm_kg: number | null;
+  latest_hinge_display: string | null;
+  latest_farmer_carry: string | null;
+  /** @deprecated use core_areas_score */
   logged_core_types: number;
 };
 
@@ -137,14 +161,17 @@ export function inferLimiterFocus(
 
 function benchmarkConfidence(
   sig: BenchmarkSignals | undefined,
-  hasBaseline5k: boolean
+  hasBaseline5k: boolean,
+  goal: GoalFocus,
+  limiter: PaidProgrammeIntelligence["limiter_focus"]
 ): PaidProgrammeIntelligence["benchmark_confidence"] {
-  let c = 0;
-  if (sig?.has_5k || hasBaseline5k) c += 1;
-  if (sig?.has_skierg) c += 1;
-  if (sig?.has_row) c += 1;
-  if (sig?.has_bodyweight) c += 1;
+  let c = sig?.core_areas_score ?? 0;
+  if (hasBaseline5k && !sig?.has_any_run && !sig?.has_5k) c = Math.min(4, c + 1);
+  const wantsStrengthEvidence =
+    goal === "muscle" || limiter === "body_composition" || limiter === "strength";
+  if (wantsStrengthEvidence && sig?.has_strength_marker) c = Math.min(4, c + 1);
   if (c >= 3) return "high";
+  if (c >= 2) return "medium";
   if (c >= 1) return "medium";
   return "low";
 }
@@ -154,6 +181,7 @@ export type BenchmarkRowLite = {
   test_type: string | null;
   test_time: string | null;
   test_value: number | null;
+  test_unit?: string | null;
   tested_at: string | null;
 };
 
@@ -163,24 +191,38 @@ export function buildBenchmarkSignals(tests: BenchmarkRowLite[]): BenchmarkSigna
     String(b.tested_at ?? "").localeCompare(String(a.tested_at ?? ""))
   );
   let latest_5k: string | null = null;
+  let latest_3k: string | null = null;
   let latest_skierg: string | null = null;
   let latest_row: string | null = null;
   let latest_bodyweight: number | null = null;
   let has_5k = false;
+  let has_3k = false;
   let has_skierg = false;
   let has_row = false;
   let has_bodyweight = false;
+  let latest_pullup_reps: number | null = null;
+  let latest_pushup_reps: number | null = null;
+  let latest_squat_rm_kg: number | null = null;
+  let latest_bench_rm_kg: number | null = null;
+  let latest_hinge_display: string | null = null;
+  let latest_farmer_carry: string | null = null;
+  const strengthTypesSeen = new Set<string>();
 
   for (const row of sorted) {
     const ty = (row.test_type ?? "").trim();
     const tyl = ty.toLowerCase();
     const time = row.test_time?.trim() || null;
+    const val = row.test_value != null && Number.isFinite(row.test_value) ? Number(row.test_value) : null;
 
     if (!has_5k && (ty === "5km time trial" || tyl === "5km tt" || tyl === "5k time trial")) {
       if (time) {
         has_5k = true;
         latest_5k = time;
       }
+    }
+    if (!has_3k && ty === "3km time trial" && time) {
+      has_3k = true;
+      latest_3k = time;
     }
     if (!has_skierg && ty === "1km SkiErg" && time) {
       has_skierg = true;
@@ -199,23 +241,62 @@ export function buildBenchmarkSignals(tests: BenchmarkRowLite[]): BenchmarkSigna
       has_bodyweight = true;
       latest_bodyweight = row.test_value;
     }
+
+    if (isStrengthBenchmarkType(ty)) {
+      strengthTypesSeen.add(ty);
+      if (ty === "Pull-up max reps" && val != null && latest_pullup_reps == null) latest_pullup_reps = val;
+      if (ty === "Push-up max reps" && val != null && latest_pushup_reps == null) latest_pushup_reps = val;
+      if ((ty === "Squat 5RM" || ty === "Squat 8RM") && val != null && latest_squat_rm_kg == null) {
+        latest_squat_rm_kg = val;
+      }
+      if (ty === "DB Bench 8RM" && val != null && latest_bench_rm_kg == null) latest_bench_rm_kg = val;
+      if ((ty === "RDL 8RM" || ty === "Trap bar deadlift 5RM") && latest_hinge_display == null) {
+        const bit =
+          val != null
+            ? `${val}${row.test_unit?.trim() ? ` ${row.test_unit}` : " kg"}`
+            : time ?? "logged";
+        latest_hinge_display = `${ty.includes("RDL") ? "RDL" : "Trap bar"} ${bit}`;
+      }
+      if (ty === "Farmer carry 40m" && latest_farmer_carry == null) {
+        latest_farmer_carry = time ?? (val != null ? String(val) : "logged");
+      }
+    }
   }
 
-  let logged_core_types = 0;
-  if (has_5k) logged_core_types += 1;
-  if (has_skierg) logged_core_types += 1;
-  if (has_row) logged_core_types += 1;
-  if (has_bodyweight) logged_core_types += 1;
+  const has_any_run = has_5k || has_3k;
+  const has_engine = has_skierg || has_row;
+  const has_strength_marker = strengthTypesSeen.size > 0;
+  const core_areas_score = countCoreBaselineAreas(tests as { test_type: string | null }[]);
+  const engine_weaker_than_strength =
+    has_strength_marker &&
+    strengthTypesSeen.size >= 2 &&
+    (!has_engine || (!has_any_run && !has_5k));
+
+  const logged_core_types = core_areas_score;
 
   return {
     has_5k,
+    has_3k,
     has_skierg,
     has_row,
     has_bodyweight,
+    has_any_run,
+    has_engine,
+    has_strength_marker,
+    strength_marker_count: strengthTypesSeen.size,
+    core_areas_score,
+    engine_weaker_than_strength,
     latest_5k,
+    latest_3k,
     latest_skierg,
     latest_row,
     latest_bodyweight,
+    latest_pullup_reps,
+    latest_pushup_reps,
+    latest_squat_rm_kg,
+    latest_bench_rm_kg,
+    latest_hinge_display,
+    latest_farmer_carry,
     logged_core_types,
   };
 }
@@ -324,13 +405,39 @@ function rationaleNotes(args: {
     lines.push("Impact / injury signals: conservative progression and substitution-first language throughout.");
   }
 
-  if (!hasBenchmarkTests && !sig?.has_5k) {
+  const wantsStrengthEvidence =
+    intel.primary_goal === "muscle" ||
+    intel.limiter_focus === "body_composition" ||
+    intel.limiter_focus === "strength";
+
+  if (!hasBenchmarkTests && !sig?.has_5k && !sig?.has_any_run) {
     lines.push("Benchmarks: programme runs without full baselines — logging tests will sharpen tracking and confidence.");
   } else {
-    if (sig?.latest_5k) lines.push(`5km signal: ${sig.latest_5k} informs running pace expectations where relevant.`);
-    if (sig?.latest_skierg) lines.push(`1km SkiErg: ${sig.latest_skierg} adds engine context for erg-heavy weeks.`);
-    if (sig?.latest_row) lines.push(`1km Row: ${sig.latest_row} adds engine context for erg-heavy weeks.`);
+    if (sig?.latest_5k) lines.push(`5 km signal: ${sig.latest_5k} informs running pace expectations where relevant.`);
+    if (sig?.latest_3k) lines.push(`3 km signal: ${sig.latest_3k} supports run pacing where a shorter trial is used.`);
+    if (sig?.latest_skierg) lines.push(`1 km SkiErg: ${sig.latest_skierg} adds engine context for erg-heavy weeks.`);
+    if (sig?.latest_row) lines.push(`1 km Row: ${sig.latest_row} adds engine context for erg-heavy weeks.`);
     if (sig?.latest_bodyweight != null) lines.push(`Bodyweight marker: ${sig.latest_bodyweight} kg logged for trajectory context.`);
+    if (sig?.has_strength_marker) {
+      const bits: string[] = [];
+      if (sig.latest_pullup_reps != null) bits.push(`pull-ups ${sig.latest_pullup_reps} reps`);
+      if (sig.latest_pushup_reps != null) bits.push(`push-ups ${sig.latest_pushup_reps} reps`);
+      if (sig.latest_squat_rm_kg != null) bits.push(`squat ${sig.latest_squat_rm_kg} kg`);
+      if (sig.latest_bench_rm_kg != null) bits.push(`DB bench ${sig.latest_bench_rm_kg} kg`);
+      if (sig.latest_hinge_display) bits.push(sig.latest_hinge_display);
+      if (sig.latest_farmer_carry) bits.push(`farmer carry ${sig.latest_farmer_carry}`);
+      if (bits.length) lines.push(`Strength baselines logged (${bits.join(", ")}) — lifting progress can be tracked alongside engine work.`);
+      else lines.push("Strength baselines logged — measurable lift markers are on file for hybrid tracking.");
+    }
+    if (sig?.engine_weaker_than_strength) {
+      lines.push("Profile skew: strength baselines are ahead of engine markers — copy will bias protecting strength quality while aerobic capacity catches up.");
+    }
+  }
+
+  if (wantsStrengthEvidence && !sig?.has_strength_marker) {
+    lines.push(
+      "Strength markers: add at least one lift or rep-max test (squat, bench, pull-ups, etc.) so strength-focused goals have measurable baselines alongside engine data."
+    );
   }
 
   if (assessment?.hyrox_experience && /competitive|pro|elite/i.test(assessment.hyrox_experience)) {
@@ -353,7 +460,12 @@ export function buildPaidProgrammeIntelligence(input: BuildIntelligenceArgs): Pa
   const sig = input.rationale_context?.benchmark_signals;
   const hasBaseline5k = Boolean(input.rationale_context?.hasBaseline5k);
   const hasBenchmarkTests = Boolean(input.rationale_context?.hasBenchmarkTests);
-  const benchmark_confidence = benchmarkConfidence(sig, hasBaseline5k || Boolean(input.five_k_time?.trim()));
+  const benchmark_confidence = benchmarkConfidence(
+    sig,
+    hasBaseline5k || Boolean(input.five_k_time?.trim()),
+    goal,
+    limiter_focus
+  );
 
   const engine_biases = engineBiases({
     limiter: limiter_focus,

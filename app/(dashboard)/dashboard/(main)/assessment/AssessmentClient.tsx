@@ -412,41 +412,51 @@ export default function AssessmentClient({
 
         {assessmentMarkedComplete && !hasGeneratedProgramme ? (
           <div className="px-4 md:px-8">
-            <section className="mb-6 rounded-2xl border border-primary/35 bg-gradient-to-br from-primary/[0.12] via-card to-card p-5 sm:p-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Next step</p>
-              <h2 className="mt-1 text-lg font-bold text-foreground sm:text-xl">Assessment complete</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                You can now generate your personalised 12-week Hybrid365 programme. Baseline tests are optional but useful
-                for tracking.
-              </p>
-              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <button
-                  type="button"
-                  disabled={generatingProgramme}
-                  onClick={handleGenerateProgramme}
-                  className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {generatingProgramme ? "Generating…" : "Generate programme"}
-                </button>
-                <Link
-                  href="/dashboard/testing"
-                  className="inline-flex items-center justify-center rounded-xl border border-border bg-secondary px-5 py-3 text-sm font-medium text-secondary-foreground transition hover:bg-secondary/80"
-                >
-                  Add baseline tests (optional)
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center justify-center rounded-xl border border-transparent px-5 py-3 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  Back to dashboard
-                </Link>
+            <section className="mb-6 overflow-hidden rounded-2xl border border-yellow-500/25 bg-gradient-to-br from-yellow-400/[0.1] via-zinc-950 to-zinc-950 p-6 shadow-lg shadow-black/30 sm:p-8">
+              <div className="flex items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 ring-1 ring-emerald-400/35">
+                  <Check className="h-6 w-6 text-emerald-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Assessment complete</p>
+                  <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
+                    Your programme can now be built
+                  </h2>
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                    Add baseline tests if you want stronger tracking, or generate your 12-week programme now. Set your
+                    baseline with bodyweight, a run marker, an engine test (Ski or Row), and at least one strength marker
+                    — recommended, not mandatory.
+                  </p>
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <button
+                      type="button"
+                      disabled={generatingProgramme}
+                      onClick={handleGenerateProgramme}
+                      className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-md shadow-yellow-400/20 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[200px]"
+                    >
+                      {generatingProgramme ? "Generating…" : "Generate programme"}
+                    </button>
+                    <Link
+                      href="/dashboard/testing"
+                      className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-zinc-600 bg-zinc-900/90 px-6 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-zinc-500 sm:flex-none sm:min-w-[200px]"
+                    >
+                      Add baseline tests
+                    </Link>
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex min-h-[48px] items-center justify-center rounded-xl px-4 py-3.5 text-sm font-medium text-zinc-400 underline-offset-4 transition hover:text-white hover:underline"
+                    >
+                      Back to dashboard
+                    </Link>
+                  </div>
+                  {generateError ? (
+                    <p className="mt-4 text-sm text-red-400">{generateError}</p>
+                  ) : null}
+                  {generateSuccess ? (
+                    <p className="mt-4 text-sm text-emerald-400">{generateSuccess}</p>
+                  ) : null}
+                </div>
               </div>
-              {generateError ? (
-                <p className="mt-3 text-sm text-destructive">{generateError}</p>
-              ) : null}
-              {generateSuccess ? (
-                <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{generateSuccess}</p>
-              ) : null}
             </section>
           </div>
         ) : null}

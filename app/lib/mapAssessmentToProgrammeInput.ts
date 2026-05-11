@@ -257,7 +257,11 @@ export function mapAssessmentToProgrammeInput(params: {
 
   const hasBaseline5k = Boolean(
     params.assessment.recent_5k_time?.trim() ||
-    fiveKTimeFromBenchmarks(params.benchmarkTests)
+    fiveKTimeFromBenchmarks(params.benchmarkTests) ||
+    params.benchmarkTests.some(
+      (t) =>
+        (t.test_type ?? "").trim() === "3km time trial" && Boolean((t.test_time ?? "").trim())
+    )
   );
   const hasBenchmarkTests = params.benchmarkTests.length > 0;
 

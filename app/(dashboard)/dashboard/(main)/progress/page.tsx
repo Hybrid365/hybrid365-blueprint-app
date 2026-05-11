@@ -11,6 +11,7 @@ import {
   deriveEffectiveCurrentWeek,
   getLatestCheckIn,
   groupBenchmarkTests,
+  strengthBenchmarksLogged,
   type BenchmarkTestLike,
   type ProgrammeWeekLike,
   type SessionLogLike,
@@ -133,6 +134,7 @@ export default async function ProgressPage() {
   const bodyweightTrend = calculateBodyweightTrend(checkIns);
   const avgRpe = calculateAverageRpe(sessionLogs);
   const groupedBenchmarks = groupBenchmarkTests(benchmarks);
+  const hasStrengthBenchmarks = strengthBenchmarksLogged(benchmarks);
   const recoveryTrends = buildRecoveryTrends(checkIns);
   const latestCheckIn = getLatestCheckIn(checkIns);
   const latestBodyweightKg =
@@ -155,6 +157,7 @@ export default async function ProgressPage() {
       bodyweightTrend={bodyweightTrend}
       avgRpe={avgRpe}
       groupedBenchmarks={groupedBenchmarks}
+      hasStrengthBenchmarks={hasStrengthBenchmarks}
       recoveryTrends={recoveryTrends}
       checkInsSubmitted={checkIns.length}
       latestBodyweightKg={latestBodyweightKg}

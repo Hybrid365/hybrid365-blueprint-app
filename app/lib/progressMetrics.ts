@@ -3,6 +3,10 @@
  */
 
 import {
+  STRENGTH_BENCHMARK_TEST_TYPES,
+  isStrengthBenchmarkType,
+} from "./benchmarkCoreAreas";
+import {
   buildSessionKey,
   extractScheduleFromPlanJson,
   normalizeMemberSchedule,
@@ -50,14 +54,21 @@ export type BenchmarkTestLike = {
   tested_at: string | null;
 };
 
-const CORE_BENCHMARK_TYPES = [
+/** Types we surface on /dashboard/progress (latest vs baseline + change). */
+export const TRACKED_DASHBOARD_BENCHMARK_TYPES = [
   "5km time trial",
+  "3km time trial",
   "1km SkiErg",
   "1km Row",
   "Bodyweight",
+  ...STRENGTH_BENCHMARK_TEST_TYPES,
+  "Wall ball test",
+  "Hyrox race",
+  "Challenge workout",
+  "Other",
 ] as const;
 
-export type CoreBenchmarkType = (typeof CORE_BENCHMARK_TYPES)[number];
+export type TrackedDashboardBenchmarkType = (typeof TRACKED_DASHBOARD_BENCHMARK_TYPES)[number];
 
 /** Scheduled main sessions (one row in plan_json.schedule = one loggable slot). */
 export function countScheduledSlotsForWeek(planJson: unknown): number {
@@ -292,7 +303,7 @@ export function calculateAverageRpe(logs: SessionLogLike[]): {
 }
 
 export type GroupedBenchmark = {
-  type: CoreBenchmarkType;
+  type: string;
   latestDisplay: string;
   baselineDisplay: string;
   /** Numeric delta for bodyweight; seconds delta for times when parseable; null if not comparable */
@@ -302,7 +313,20 @@ export type GroupedBenchmark = {
   entryCount: number;
 };
 
-function displayBenchmarkValue(row: BenchmarkTestLike, type: CoreBenchmarkType): string {
+/** Time-based markers where a lower duration is better (used for trend badges on progress). */
+export function isTimeLowerIsBetterBenchmark(type: string): boolean {
+  return (
+    type === "5km time trial" ||
+    type === "3km time trial" ||
+    type === "1km SkiErg" ||
+    type === "1km Row" ||
+    type === "Hyrox race" ||
+    type === "Farmer carry 40m" ||
+    type === "Challenge workout"
+  );
+}
+
+function displayBenchmarkValue(row: BenchmarkTestLike, type: string): string {
   if (type === "Bodyweight" && row.test_value != null && Number.isFinite(row.test_value)) {
     const u = row.test_unit?.trim();
     return u ? `${row.test_value} ${u}` : `${row.test_value} kg`;
@@ -321,17 +345,46 @@ export function compareTimeTrials(baselineSec: number | null, latestSec: number 
   return baselineSec - latestSec;
 }
 
+/** Shown on progress in this order. Always includes run/engine/body slots; other types appear once logged. */
+const PROGRESS_BENCHMARK_DISPLAY_ORDER = [
+  "5km time trial",
+  "3km time trial",
+  "1km SkiErg",
+  "1km Row",
+  "Bodyweight",
+  "Wall ball test",
+  "Hyrox race",
+  "Challenge workout",
+  ...STRENGTH_BENCHMARK_TEST_TYPES,
+  "Other",
+] as const;
+
 export function groupBenchmarkTests(tests: BenchmarkTestLike[]): GroupedBenchmark[] {
+  const tracked = new Set<string>(TRACKED_DASHBOARD_BENCHMARK_TYPES as unknown as string[]);
   const byType = new Map<string, BenchmarkTestLike[]>();
   for (const t of tests) {
     const ty = (t.test_type ?? "").trim();
-    if (!CORE_BENCHMARK_TYPES.includes(ty as CoreBenchmarkType)) continue;
+    if (!tracked.has(ty)) continue;
     const list = byType.get(ty) ?? [];
     list.push(t);
     byType.set(ty, list);
   }
 
-  return CORE_BENCHMARK_TYPES.map((type) => {
+  const include = new Set<string>([
+    "5km time trial",
+    "3km time trial",
+    "1km SkiErg",
+    "1km Row",
+    "Bodyweight",
+  ]);
+  for (const t of tests) {
+    const ty = (t.test_type ?? "").trim();
+    if (tracked.has(ty)) include.add(ty);
+  }
+
+  const ordered = PROGRESS_BENCHMARK_DISPLAY_ORDER.filter((t) => include.has(t));
+
+  return ordered.map((type) => {
     const rows = (byType.get(type) ?? []).sort((a, b) => {
       const da = a.tested_at ? Date.parse(a.tested_at) : 0;
       const db = b.tested_at ? Date.parse(b.tested_at) : 0;
@@ -356,14 +409,15 @@ export function groupBenchmarkTests(tests: BenchmarkTestLike[]): GroupedBenchmar
     let numericChange: number | null = null;
     let changeLabel = "—";
 
-    if (type === "Bodyweight") {
+    if (type === "Bodyweight" || isStrengthBenchmarkType(type) || type === "Wall ball test" || type === "Other") {
       const a = earliest.test_value;
       const b = latest.test_value;
-      if (a != null && b != null && Number.isFinite(a) && Number.isFinite(b)) {
+      if (a != null && b != null && Number.isFinite(a) && Number.isFinite(b) && rows.length >= 2) {
         numericChange = Math.round((b - a) * 10) / 10;
-        changeLabel = `${numericChange >= 0 ? "+" : ""}${numericChange} kg`;
+        const u = latest.test_unit?.trim() || (type === "Bodyweight" ? "kg" : "units");
+        changeLabel = `${numericChange >= 0 ? "+" : ""}${numericChange} ${u}`;
       }
-    } else {
+    } else if (isTimeLowerIsBetterBenchmark(type)) {
       const a = parseTimeToSeconds(earliest.test_time);
       const b = parseTimeToSeconds(latest.test_time);
       const delta = compareTimeTrials(a, b);
@@ -387,6 +441,11 @@ export function groupBenchmarkTests(tests: BenchmarkTestLike[]): GroupedBenchmar
       entryCount: rows.length,
     };
   });
+}
+
+/** Strength benchmark rows (for progress empty-state / optional grouping). */
+export function strengthBenchmarksLogged(tests: BenchmarkTestLike[]): boolean {
+  return tests.some((t) => isStrengthBenchmarkType(t.test_type));
 }
 
 export type RecoveryTrendRow = {

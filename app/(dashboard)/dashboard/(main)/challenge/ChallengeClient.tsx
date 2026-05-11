@@ -25,6 +25,7 @@ import {
 } from "@/app/lib/hybridChallengeConfig";
 import type {
   ChallengeSubmissionRow,
+  HybridBaselineChecklist,
   LeaderboardAggregate,
   WeeklyTrainingSnapshot,
 } from "@/app/lib/hybridChallengeMetrics";
@@ -48,7 +49,7 @@ type Provisional = {
   total: number;
 };
 
-type Baseline = { bodyweight: boolean; km5: boolean; ski1: boolean; row1: boolean };
+type Baseline = HybridBaselineChecklist;
 
 type Props = {
   userId: string;
@@ -222,9 +223,18 @@ export default function ChallengeClient({
         ) : null}
 
         {!programmeInstanceId ? (
-          <div className="mb-8 rounded-2xl border border-amber-500/25 bg-amber-950/20 p-5 text-sm text-amber-100">
-            No programme instance yet. You can still log habits and explore the challenge — generate your plan from the
-            dashboard when ready.
+          <div className="mb-8 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-400/[0.06] to-zinc-950 p-5 sm:p-6">
+            <p className="text-sm font-semibold text-yellow-200/95">Train. Track. Prove.</p>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+              Start by completing your programme setup on the dashboard — assessment, optional baselines, then generate
+              your 12-week plan. Earn the result with structure, not guesswork.
+            </p>
+            <Link
+              href="/dashboard"
+              className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
+            >
+              Go to dashboard
+            </Link>
           </div>
         ) : null}
 
@@ -332,13 +342,15 @@ export default function ChallengeClient({
 
         <section className="mb-10 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
           <h2 className="text-lg font-bold text-white">Baseline checklist</h2>
-          <p className="mt-1 text-sm text-zinc-500">Log benchmarks from testing — progress photos coming soon.</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Log benchmarks from Testing — body, run, engine, and strength. Progress photos coming soon.
+          </p>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
             {[
-              ["Bodyweight", baseline.bodyweight],
-              ["5 km time trial", baseline.km5],
-              ["1 km SkiErg", baseline.ski1],
-              ["1 km Row", baseline.row1],
+              ["Bodyweight", baseline.body],
+              ["Run marker (5 km or 3 km)", baseline.run],
+              ["Engine marker (Ski or Row)", baseline.engine],
+              ["Strength marker", baseline.strength],
             ].map(([label, ok]) => (
               <li
                 key={String(label)}

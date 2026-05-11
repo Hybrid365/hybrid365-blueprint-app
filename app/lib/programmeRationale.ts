@@ -157,15 +157,25 @@ function injurySentence(ctx: RationaleContext): string | null {
 function baselineSentence(ctx: RationaleContext): string {
   if (ctx.hasBenchmarkTests || ctx.hasBaseline5k) {
     const conf = ctx.intelligence?.benchmark_confidence;
+    const sig = ctx.benchmark_signals;
     if (conf === "high") {
-      return "Your baseline test data is embedded in the plan, giving you strong objective markers to measure progress against at Weeks 4, 8, and 12.";
+      return "Your baseline markers are embedded in the plan — bodyweight, run, engine, and strength where you logged them — giving strong objective anchors for retests at Weeks 4, 8, and 12.";
     }
     if (conf === "medium") {
-      return "Your baseline data anchors pace and engine context; filling any remaining core tests in the first weeks will sharpen tracking further.";
+      return "Your baseline data anchors pace and hybrid context; logging any missing core areas (bodyweight, a run trial, Ski or Row, and a strength marker) will sharpen tracking further.";
+    }
+    if (
+      sig &&
+      (ctx.intelligence?.primary_goal === "muscle" ||
+        ctx.intelligence?.limiter_focus === "body_composition" ||
+        ctx.intelligence?.limiter_focus === "strength") &&
+      !sig.has_strength_marker
+    ) {
+      return "Your baseline test data is embedded in the plan. Adding at least one strength marker (squat, bench, pull-ups, etc.) will make strength-focused progress much easier to measure at Weeks 4, 8, and 12.";
     }
     return "Your baseline test data is embedded in the plan, giving you objective markers to measure progress against at Weeks 4, 8, and 12.";
   }
-  return "You haven't completed baseline tests yet — the plan still starts immediately. Log your first tests anytime and they will anchor your progress tracking from that point.";
+  return "You haven't completed baseline tests yet — the plan still starts immediately. Set your baseline with bodyweight, a run marker, an engine test (Ski or Row), and at least one strength marker when you can.";
 }
 
 function doubleSessionSentence(ctx: RationaleContext): string | null {
@@ -212,7 +222,9 @@ function howToGetMost(ctx: RationaleContext): string[] {
   if (!ctx.hasBenchmarkTests && !ctx.hasBaseline5k) {
     tips.push("Log your first baseline tests in the Testing section — even Week 1 data is useful to track progress over time.");
   } else if (ctx.intelligence?.benchmark_confidence === "low") {
-    tips.push("Add the remaining core baseline tests when you can — more data tightens pacing and engine context without changing the weekly rhythm.");
+    tips.push(
+      "Complete your four core baseline areas when you can: bodyweight, a run marker (5 km or 3 km), one engine test (Ski or Row), and one strength marker — more data tightens tracking without changing the weekly rhythm."
+    );
   }
   return tips;
 }
@@ -225,6 +237,7 @@ function keyPrioritiesWithIntelligence(ctx: RationaleContext): string[] {
   const lim = intel.limiter_focus;
   const ev = intel.event_specificity;
   const general = intel.event_mode === "general";
+  const sig = ctx.benchmark_signals;
 
   if (g === "running" || ev === "running_race") {
     out.push("Running quality — pacing, economy, and progressive volume through the block");
@@ -243,6 +256,9 @@ function keyPrioritiesWithIntelligence(ctx: RationaleContext): string[] {
     if (lim === "body_composition") {
       out.push("Sustainable density — not chronic red-line weeks — so composition changes stick");
     }
+    if (!sig?.has_strength_marker) {
+      out.push("Measurable strength foundations — log rep-maxes or lift markers in Testing so progression stays objective");
+    }
   } else {
     out.push("Hybrid engine — threshold running, erg capacity, and compromised efforts across the programme");
     if (!general && ev !== "none") {
@@ -250,6 +266,16 @@ function keyPrioritiesWithIntelligence(ctx: RationaleContext): string[] {
     }
     if (general) {
       out.push("General performance: fitter, stronger, faster, leaner, and more capable without forcing a single race storyline");
+    }
+    if (
+      sig &&
+      (lim === "body_composition" || lim === "strength" || g === "hybrid") &&
+      !sig.has_strength_marker
+    ) {
+      out.push("Strength baseline — add at least one lift or rep-max marker so hybrid progress is not only run and erg driven");
+    }
+    if (sig?.engine_weaker_than_strength) {
+      out.push("Protect strength quality while engine markers catch up — aerobic work supports lifting rather than replacing it");
     }
     if (ev === "hyrox_pro") {
       out.push("Hyrox Pro: more race-style compromised running and station durability; pro-weight context where equipment allows");

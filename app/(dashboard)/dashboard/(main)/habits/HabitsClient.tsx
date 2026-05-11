@@ -270,6 +270,9 @@ export default function HabitsClient({ programmeInstanceId }: Props) {
           <p className="mt-2 max-w-xl text-sm text-zinc-400 md:text-base">
             Stack the small wins that support your programme.
           </p>
+          <p className="mt-3 max-w-xl text-sm font-medium leading-relaxed text-zinc-300 md:text-base">
+            Daily standards create long-term change. Track the work — consistency beats intensity spikes.
+          </p>
         </header>
 
         {loadError ? (

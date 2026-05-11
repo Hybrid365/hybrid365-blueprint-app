@@ -60,9 +60,12 @@ export async function POST(request: Request) {
 
   const timeBasedTypes = new Set([
     "5km time trial",
+    "3km time trial",
     "1km SkiErg",
     "1km Row",
     "Hyrox race",
+    "Challenge workout",
+    "Farmer carry 40m",
   ]);
   const isTimeBased = timeBasedTypes.has(payload.test_type);
 
