@@ -212,6 +212,17 @@ export type ExtractedWeekRationale = {
   coach_note: string;
 };
 
+export type ExtractedProgrammeIntelligence = {
+  primary_goal: string;
+  event_mode: string;
+  event_specificity: string;
+  limiter_focus: string;
+  impact_risk: string;
+  benchmark_confidence: string;
+  engine_biases: string[];
+  rationale_notes: string[];
+};
+
 export function extractProgrammeRationale(planJson: unknown): ExtractedProgrammeRationale | null {
   if (!planJson || typeof planJson !== "object") return null;
   const o = planJson as Record<string, unknown>;
@@ -228,6 +239,26 @@ export function extractProgrammeRationale(planJson: unknown): ExtractedProgramme
     how_to_get_the_most_from_it: Array.isArray(m.how_to_get_the_most_from_it)
       ? m.how_to_get_the_most_from_it.map(String)
       : [],
+  };
+}
+
+export function extractProgrammeIntelligence(planJson: unknown): ExtractedProgrammeIntelligence | null {
+  if (!planJson || typeof planJson !== "object") return null;
+  const o = planJson as Record<string, unknown>;
+  const p = o.programme_intelligence;
+  if (!p || typeof p !== "object") return null;
+  const m = p as Record<string, unknown>;
+  const primary_goal = typeof m.primary_goal === "string" ? m.primary_goal : null;
+  if (!primary_goal) return null;
+  return {
+    primary_goal,
+    event_mode: typeof m.event_mode === "string" ? m.event_mode : "general",
+    event_specificity: typeof m.event_specificity === "string" ? m.event_specificity : "none",
+    limiter_focus: typeof m.limiter_focus === "string" ? m.limiter_focus : "general",
+    impact_risk: typeof m.impact_risk === "string" ? m.impact_risk : "low",
+    benchmark_confidence: typeof m.benchmark_confidence === "string" ? m.benchmark_confidence : "low",
+    engine_biases: Array.isArray(m.engine_biases) ? m.engine_biases.map(String) : [],
+    rationale_notes: Array.isArray(m.rationale_notes) ? m.rationale_notes.map(String) : [],
   };
 }
 

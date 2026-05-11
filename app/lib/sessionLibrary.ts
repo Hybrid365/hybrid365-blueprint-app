@@ -199,6 +199,8 @@ export type PlanJson = {
   };
   /** Personalised programme-level rationale (paid 12-week only). */
   programme_rationale?: import("./programmeRationale").ProgrammeRationale;
+  /** Assessment-derived intelligence profile (paid 12-week only, week 1). */
+  programme_intelligence?: import("./paidProgrammeIntelligence").PaidProgrammeIntelligence;
   /** Week-level rationale (paid 12-week only). */
   week_rationale?: import("./programmeRationale").WeekRationale;
 };

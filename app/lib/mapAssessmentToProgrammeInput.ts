@@ -1,6 +1,7 @@
 import type { PaidProgrammeInput } from "./generate12WeekProgramme";
 import type { GoalFocus, WeeklyHoursBand } from "./sessionLibrary";
 import type { RationaleContext } from "./programmeRationale";
+import { buildBenchmarkSignals } from "./paidProgrammeIntelligence";
 
 const WEEKLY_HOURS_BANDS = new Set<string>(["2-3", "3-5", "5-7", "7-10", "10+"]);
 
@@ -271,10 +272,12 @@ export function mapAssessmentToProgrammeInput(params: {
       hyrox_pb: params.assessment.hyrox_pb,
       hyrox_experience: params.assessment.hyrox_experience,
       strength_experience: params.assessment.strength_experience,
+      goal_focus_raw: params.assessment.goal_focus,
     },
     hasBaseline5k,
     hasBenchmarkTests,
     double_session_days,
+    benchmark_signals: buildBenchmarkSignals(params.benchmarkTests),
   };
 
   return {

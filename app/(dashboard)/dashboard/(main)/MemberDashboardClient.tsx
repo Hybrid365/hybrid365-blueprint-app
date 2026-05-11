@@ -34,12 +34,14 @@ import { createClient } from "@/app/lib/supabase/client";
 import {
   buildSessionKey,
   extractPlanInsights,
+  extractProgrammeIntelligence,
   extractProgrammeRationale,
   extractWeekRationale,
   extractScheduleFromPlanJson,
   normalizeMemberSchedule,
   type MemberSessionDetail,
   type SessionCategoryLabel,
+  type ExtractedProgrammeIntelligence,
   type ExtractedProgrammeRationale,
   type ExtractedWeekRationale,
 } from "@/app/lib/memberDashboardSchedule";
@@ -366,6 +368,49 @@ export default function MemberDashboardClient({
     (): ExtractedProgrammeRationale | null => extractProgrammeRationale(week1PlanJson),
     [week1PlanJson]
   );
+
+  const programmeIntelligence = useMemo(
+    (): ExtractedProgrammeIntelligence | null => extractProgrammeIntelligence(week1PlanJson),
+    [week1PlanJson]
+  );
+
+  const programmeIntelligenceChips = useMemo(() => {
+    const k = programmeIntelligence;
+    if (!k) return [] as string[];
+    const limShort: Record<string, string> = {
+      running_endurance: "Engine / endurance",
+      running_speed: "Speed / economy",
+      strength: "Strength first",
+      hyrox_stations: "Stations",
+      body_composition: "Body composition",
+      recovery: "Low impact",
+      consistency: "Consistency",
+      general: "Balanced",
+    };
+    const goalShort =
+      k.primary_goal === "hybrid"
+        ? "Hybrid"
+        : k.primary_goal === "running"
+          ? "Running"
+          : "Strength";
+    const chips: string[] = [`${goalShort} goal`, limShort[k.limiter_focus] ?? "Balanced"];
+    if (k.event_mode === "event" && !["none", "other"].includes(k.event_specificity)) {
+      const evShort: Record<string, string> = {
+        hyrox_pro: "Hyrox Pro",
+        hyrox_open: "Hyrox Open",
+        hyrox_doubles: "Hyrox Doubles",
+        running_race: "Running race",
+        triathlon: "Triathlon",
+      };
+      const ev = evShort[k.event_specificity];
+      if (ev) chips.push(ev);
+    }
+    if (k.benchmark_confidence === "low") chips.push("Add baselines");
+    else if (k.benchmark_confidence === "medium") chips.push("Tracking: ok");
+    else chips.push("Tracking: strong");
+    if (k.impact_risk === "high") chips.push("Conservative load");
+    return chips.slice(0, 5);
+  }, [programmeIntelligence]);
 
   // Week-level rationale from selected week
   const weekRationale = useMemo(
@@ -924,6 +969,18 @@ export default function MemberDashboardClient({
                   </div>
                   <h3 className="text-lg font-bold text-white">Why this programme</h3>
                 </div>
+                {programmeIntelligenceChips.length > 0 ? (
+                  <div className="mb-4 flex flex-wrap gap-2" aria-label="Programme priorities">
+                    {programmeIntelligenceChips.map((chip) => (
+                      <span
+                        key={chip}
+                        className="rounded-full border border-zinc-700/90 bg-zinc-950/90 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400"
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 <p className="mb-4 text-xl font-bold text-white">{programmeRationale.headline}</p>
                 <ul className="space-y-2 text-sm leading-relaxed text-zinc-300">
                   {programmeRationale.summary.slice(0, 3).map((s) => (

@@ -10,6 +10,7 @@ import {
   type RationaleContext,
 } from "./programmeRationale";
 import { applyDoubleSessions } from "./doubleSessionPlanner";
+import { buildPaidProgrammeIntelligence, type BuildIntelligenceArgs } from "./paidProgrammeIntelligence";
 
 export type PaidProgrammeInput = BlueprintInput & {
   email?: string;
@@ -55,11 +56,17 @@ export function generate12WeekProgramme(
 ): GeneratedProgrammeWeek[] {
   const weeks: GeneratedProgrammeWeek[] = [];
 
+  const programme_intelligence = buildPaidProgrammeIntelligence({
+    ...input,
+    rationale_context: input.rationale_context,
+  } as BuildIntelligenceArgs);
+
   // Build programme-level rationale once
   const rationaleCtx: RationaleContext = {
     input,
     ...(input.rationale_context ?? {}),
     double_session_days: input.double_session_days ?? input.rationale_context?.double_session_days,
+    intelligence: programme_intelligence,
   };
   const programme_rationale = buildProgrammeRationale(rationaleCtx);
 
@@ -108,7 +115,7 @@ export function generate12WeekProgramme(
       stress_alignment: generated.stress_alignment ?? null,
       // Only attach programme_rationale to week 1 to avoid massive JSON repetition;
       // the dashboard reads it from the first week or the instance.
-      ...(weekNumber === 1 ? { programme_rationale } : {}),
+      ...(weekNumber === 1 ? { programme_rationale, programme_intelligence } : {}),
       week_rationale,
     };
 

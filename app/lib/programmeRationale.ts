@@ -6,6 +6,7 @@
 
 import type { PaidProgrammeInput } from "./generate12WeekProgramme";
 import type { GoalFocus, WeeklyHoursBand } from "./sessionLibrary";
+import type { PaidProgrammeIntelligence } from "./paidProgrammeIntelligence";
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -39,10 +40,15 @@ export type RationaleContext = {
     hyrox_pb?: string | null;
     hyrox_experience?: string | null;
     strength_experience?: string | null;
+    /** Original assessment goal label — used by intelligence limiter inference */
+    goal_focus_raw?: string | null;
   };
   hasBaseline5k?: boolean;
   hasBenchmarkTests?: boolean;
   double_session_days?: string[];
+  benchmark_signals?: import("./paidProgrammeIntelligence").BenchmarkSignals;
+  /** Set by generate12WeekProgramme after buildPaidProgrammeIntelligence */
+  intelligence?: PaidProgrammeIntelligence | null;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -51,16 +57,30 @@ function first_name(input: PaidProgrammeInput): string {
   return input.first_name?.trim() || "Athlete";
 }
 
-function goalHeadline(goal: GoalFocus, eventType?: string | null): string {
-  if (goal === "running") return "Run Faster & Build Your Engine";
+function goalHeadline(
+  goal: GoalFocus,
+  eventType: string | null | undefined,
+  intel?: PaidProgrammeIntelligence | null
+): string {
   if (goal === "muscle") return "Build Strength Without Losing Your Fitness";
+  if (goal === "running") return "Run Faster & Build Your Engine";
+  if (intel?.event_specificity === "hyrox_pro") return "12 Weeks Built for Hyrox Pro Readiness";
+  if (intel?.event_specificity === "hyrox_open") return "Hyrox Open — 12 Progressive Weeks to Race Readiness";
+  if (intel?.event_specificity === "hyrox_doubles") return "12 Weeks for Hyrox Doubles-Ready Fitness";
+  if (intel?.event_specificity === "running_race") return "Running Race — Pace, Volume & Durability";
+  if (intel?.event_mode === "general") return "A Personalised Hybrid Fitness Plan";
   if (eventType && !/no event/i.test(eventType)) {
     return `12 Weeks Built Around Your Hybrid Performance`;
   }
   return "A Personalised Hybrid Fitness Plan";
 }
 
-function goalSentence(goal: GoalFocus, days: number, band: WeeklyHoursBand): string {
+function goalSentence(
+  goal: GoalFocus,
+  days: number,
+  band: WeeklyHoursBand,
+  intel?: PaidProgrammeIntelligence | null
+): string {
   const timeStr = band === "2-3" ? "a tighter schedule"
     : band === "3-5" ? "3–5 hours per week"
     : band === "5-7" ? "5–7 hours per week"
@@ -73,11 +93,15 @@ function goalSentence(goal: GoalFocus, days: number, band: WeeklyHoursBand): str
   if (goal === "muscle") {
     return `This plan prioritises strength development across ${days} training days and ${timeStr}, with enough conditioning to keep you athletic and fit.`;
   }
+  if (intel?.event_mode === "general") {
+    return `This 12-week plan covers ${days} training days and ${timeStr}, mixing steady running, strength, and conditioning so you get fitter, stronger, and more capable without tying everything to a single race storyline.`;
+  }
   return `This 12-week plan covers ${days} training days and ${timeStr}, balancing threshold running, erg work, compromised efforts, and strength to develop complete hybrid performance.`;
 }
 
 function eventSentence(ctx: RationaleContext): string | null {
   const { assessment } = ctx;
+  if (ctx.intelligence?.event_mode === "general") return null;
   if (!assessment?.event_type) return null;
   if (/no event/i.test(assessment.event_type)) return null;
 
@@ -89,10 +113,31 @@ function eventSentence(ctx: RationaleContext): string | null {
   return `Your training is targeted at ${assessment.event_type}${datePart}${timePart}. The 12 weeks build progressively toward that performance window.`;
 }
 
+const LIMITER_LABEL: Record<PaidProgrammeIntelligence["limiter_focus"], string> = {
+  running_endurance: "running endurance and aerobic repeatability",
+  running_speed: "running speed, intervals, and pace control",
+  strength: "strength development and lift quality",
+  hyrox_stations: "Hyrox station durability under fatigue",
+  body_composition: "sustainable body-composition progress",
+  recovery: "low-impact options and conservative progression",
+  consistency: "repeatable weeks and clear session priorities",
+  general: "balanced hybrid development",
+};
+
 function limiterSentence(ctx: RationaleContext): string | null {
-  const limiter = ctx.assessment?.biggest_limiter?.trim();
-  if (!limiter) return null;
-  return `You identified your biggest limiter as "${limiter}" — this plan directly addresses that as a structured priority across all three blocks.`;
+  const limiterRaw = ctx.assessment?.biggest_limiter?.trim();
+  const intel = ctx.intelligence;
+
+  if (intel && intel.limiter_focus !== "general") {
+    const label = LIMITER_LABEL[intel.limiter_focus];
+    if (limiterRaw) {
+      return `You identified "${limiterRaw}" as your biggest limiter — this programme leans into ${label} so training stress matches what actually moves your performance.`;
+    }
+    return `Your answers point to ${label} as the main lever — priorities and coach copy reflect that while keeping the 12-week arc balanced.`;
+  }
+
+  if (!limiterRaw) return null;
+  return `You identified your biggest limiter as "${limiterRaw}" — this plan directly addresses that as a structured priority across all three blocks.`;
 }
 
 function injurySentence(ctx: RationaleContext): string | null {
@@ -102,11 +147,22 @@ function injurySentence(ctx: RationaleContext): string | null {
   const parts: string[] = [];
   if (flags?.length) parts.push(`injury/limitation notes (${flags.join(", ")})`);
   if (avoids?.length) parts.push(`movements to avoid (${avoids.join(", ")})`);
-  return `We have accounted for your ${parts.join(" and ")}. The plan uses conservative loading and smart substitutions throughout.`;
+  const base = `We have accounted for your ${parts.join(" and ")}. The plan uses conservative loading and smart substitutions throughout.`;
+  if (ctx.intelligence?.impact_risk === "high") {
+    return `${base} Progression stays deliberately cautious — if something aggravates symptoms, use the low-impact swap paths immediately.`;
+  }
+  return base;
 }
 
 function baselineSentence(ctx: RationaleContext): string {
   if (ctx.hasBenchmarkTests || ctx.hasBaseline5k) {
+    const conf = ctx.intelligence?.benchmark_confidence;
+    if (conf === "high") {
+      return "Your baseline test data is embedded in the plan, giving you strong objective markers to measure progress against at Weeks 4, 8, and 12.";
+    }
+    if (conf === "medium") {
+      return "Your baseline data anchors pace and engine context; filling any remaining core tests in the first weeks will sharpen tracking further.";
+    }
     return "Your baseline test data is embedded in the plan, giving you objective markers to measure progress against at Weeks 4, 8, and 12.";
   }
   return "You haven't completed baseline tests yet — the plan still starts immediately. Log your first tests anytime and they will anchor your progress tracking from that point.";
@@ -117,7 +173,10 @@ function doubleSessionSentence(ctx: RationaleContext): string | null {
   const days = ctx.double_session_days?.length
     ? `(${ctx.double_session_days.join(", ")})`
     : "";
-  return `Your double-session days ${days} are used selectively for low-cost aerobic or recovery support — not extra hard sessions. These optional PM sessions extend aerobic base without accumulating fatigue.`;
+  const tail = ctx.intelligence
+    ? " They are intentionally low-stress support: easy aerobic, flush, or mobility — never a second Priority 1."
+    : "";
+  return `Your double-session days ${days} are used selectively for low-cost aerobic or recovery support — not extra hard sessions. These optional PM sessions extend aerobic base without accumulating fatigue.${tail}`;
 }
 
 function levelSentence(input: PaidProgrammeInput): string {
@@ -150,10 +209,116 @@ function howToGetMost(ctx: RationaleContext): string[] {
   if (ctx.assessment?.injury_flags?.length) {
     tips.push("If pain or symptoms appear, swap to the low-impact alternative immediately and note it in your check-in.");
   }
-  if (!ctx.hasBenchmarkTests) {
+  if (!ctx.hasBenchmarkTests && !ctx.hasBaseline5k) {
     tips.push("Log your first baseline tests in the Testing section — even Week 1 data is useful to track progress over time.");
+  } else if (ctx.intelligence?.benchmark_confidence === "low") {
+    tips.push("Add the remaining core baseline tests when you can — more data tightens pacing and engine context without changing the weekly rhythm.");
   }
   return tips;
+}
+
+function keyPrioritiesWithIntelligence(ctx: RationaleContext): string[] {
+  const intel = ctx.intelligence;
+  if (!intel) return [];
+  const out: string[] = [];
+  const g = intel.primary_goal;
+  const lim = intel.limiter_focus;
+  const ev = intel.event_specificity;
+  const general = intel.event_mode === "general";
+
+  if (g === "running" || ev === "running_race") {
+    out.push("Running quality — pacing, economy, and progressive volume through the block");
+    if (lim === "running_speed") {
+      out.push("Intervals, strides, and pace-control sessions so speed work is not drowned by slow volume alone");
+    }
+    if (lim === "running_endurance") {
+      out.push("Repeatable aerobic base and threshold-supported endurance — building an engine you can use weekly");
+    }
+    if (lim === "strength") {
+      out.push("Strength retained in the week for durability without burying run development");
+    }
+  } else if (g === "muscle") {
+    out.push("Progressive strength work as the backbone of each week");
+    out.push("Conditioning that keeps you athletic without stealing recovery from the lifts");
+    if (lim === "body_composition") {
+      out.push("Sustainable density — not chronic red-line weeks — so composition changes stick");
+    }
+  } else {
+    out.push("Hybrid engine — threshold running, erg capacity, and compromised efforts across the programme");
+    if (!general && ev !== "none") {
+      out.push("Race-relevant specificity ramps into Block 3 so you peak into your performance window");
+    }
+    if (general) {
+      out.push("General performance: fitter, stronger, faster, leaner, and more capable without forcing a single race storyline");
+    }
+    if (ev === "hyrox_pro") {
+      out.push("Hyrox Pro: more race-style compromised running and station durability; pro-weight context where equipment allows");
+    }
+    if (ev === "hyrox_open") {
+      out.push("Hyrox Open: progressive station exposure — tolerance and skill before density spikes");
+    }
+    if (ev === "hyrox_doubles") {
+      out.push("Doubles-aware repeatability — pacing and fatigue control even though sessions are written individually");
+    }
+  }
+
+  switch (lim) {
+    case "running_endurance":
+      if (g !== "running") {
+        out.push("Enough aerobic base and long-run quality so conditioning supports hybrid work, not just short efforts");
+      }
+      break;
+    case "running_speed":
+      if (g !== "running") {
+        out.push("Intervals and economy touches so running speed does not flatline behind steady work only");
+      }
+      break;
+    case "strength":
+      if (g !== "muscle") {
+        out.push("Strength sessions protected — conditioning supports lifting rather than replacing it");
+      }
+      break;
+    case "hyrox_stations":
+      out.push("Wall ball, sled, carry, and compromised running exposure where kit allows — substitutions when gear is limited");
+      break;
+    case "body_composition":
+      if (g === "hybrid") {
+        out.push("Balance strength retention with steady aerobic volume and controlled intensity for sustainable output");
+      }
+      break;
+    case "recovery":
+      out.push("Low-impact bias and substitution-first notes wherever impact risk shows up");
+      break;
+    case "consistency":
+      out.push("Clear Priority 1 guidance and fewer brutal pairings so busy weeks stay executable");
+      break;
+    default:
+      break;
+  }
+
+  return [...new Set(out)].slice(0, 5);
+}
+
+function fallbackKeyPriorities(ctx: RationaleContext): string[] {
+  const { input, assessment } = ctx;
+  const key_priorities: string[] = [];
+  if (input.goal_focus === "running") {
+    key_priorities.push("Quality threshold and interval runs as Priority 1");
+    key_priorities.push("Aerobic base volume to extend endurance capacity");
+    key_priorities.push("Strength work to keep you injury-resistant and durable");
+  } else if (input.goal_focus === "muscle") {
+    key_priorities.push("Progressive strength sessions as Priority 1 throughout");
+    key_priorities.push("Conditioning to maintain fitness and athleticism");
+    key_priorities.push("Balanced load to avoid strength-only fatigue plateaus");
+  } else {
+    key_priorities.push("Threshold running and compromised efforts for hybrid performance");
+    key_priorities.push("Erg capacity (SkiErg / Row) to support race station transitions");
+    key_priorities.push("Strength work that complements, not competes with, aerobic training");
+    if (assessment?.event_type && !/no event/i.test(assessment.event_type)) {
+      key_priorities.push("Race-specific conditioning in Block 3 to peak for your event");
+    }
+  }
+  return key_priorities;
 }
 
 // ─── Programme-level rationale ────────────────────────────────────────────────
@@ -161,10 +326,10 @@ function howToGetMost(ctx: RationaleContext): string[] {
 export function buildProgrammeRationale(ctx: RationaleContext): ProgrammeRationale {
   const { input, assessment } = ctx;
   const name = first_name(input);
-  const headline = goalHeadline(input.goal_focus, assessment?.event_type);
+  const headline = goalHeadline(input.goal_focus, assessment?.event_type, ctx.intelligence);
 
   const summary: string[] = [
-    goalSentence(input.goal_focus, input.days_per_week, input.weekly_hours_band),
+    goalSentence(input.goal_focus, input.days_per_week, input.weekly_hours_band, ctx.intelligence),
     levelSentence(input),
     structureSentence(input),
   ];
@@ -183,32 +348,29 @@ export function buildProgrammeRationale(ctx: RationaleContext): ProgrammeRationa
   const doubles = doubleSessionSentence(ctx);
   if (doubles) summary.push(doubles);
 
-  // Key priorities — goal specific
-  const key_priorities: string[] = [];
-  if (input.goal_focus === "running") {
-    key_priorities.push("Quality threshold and interval runs as Priority 1");
-    key_priorities.push("Aerobic base volume to extend endurance capacity");
-    key_priorities.push("Strength work to keep you injury-resistant and durable");
-  } else if (input.goal_focus === "muscle") {
-    key_priorities.push("Progressive strength sessions as Priority 1 throughout");
-    key_priorities.push("Conditioning to maintain fitness and athleticism");
-    key_priorities.push("Balanced load to avoid strength-only fatigue plateaus");
-  } else {
-    key_priorities.push("Threshold running and compromised efforts for hybrid performance");
-    key_priorities.push("Erg capacity (SkiErg / Row) to support race station transitions");
-    key_priorities.push("Strength work that complements, not competes with, aerobic training");
-    if (assessment?.event_type && !/no event/i.test(assessment.event_type)) {
-      key_priorities.push("Race-specific conditioning in Block 3 to peak for your event");
-    }
-  }
+  const fromIntel = keyPrioritiesWithIntelligence(ctx);
+  const key_priorities = fromIntel.length > 0 ? fromIntel : fallbackKeyPriorities(ctx);
 
-  const why_this_structure =
+  let why_this_structure =
     `The three-block structure is designed for ${name}'s ${input.ability_level} level and ${input.weekly_hours_band.replace("-", "–")} hours per week. ` +
     `Block 1 builds consistent aerobic base. Block 2 sharpens engine quality with higher-intensity threshold work. Block 3 lifts specificity and performance density. ` +
     (input.double_sessions
       ? `Double sessions are layered in selectively to extend aerobic volume without overloading the hard sessions. `
       : "") +
     `Deload weeks at 4, 8, and 12 allow adaptation to consolidate before the next block.`;
+
+  if (ctx.intelligence?.event_specificity === "hyrox_pro") {
+    why_this_structure +=
+      " For Hyrox Pro, Block 3 leans further into race-style compromise and running-under-fatigue so station work stays honest at race loads.";
+  }
+  if (ctx.intelligence?.impact_risk === "high") {
+    why_this_structure +=
+      " Conservative progression is deliberate where injury or impact notes appear — the arc prioritises consistency over hero weeks.";
+  }
+  if (ctx.intelligence?.limiter_focus === "consistency" || ctx.intelligence?.limiter_focus === "recovery") {
+    why_this_structure +=
+      " Session pairings stay simpler where repeatability or recovery sensitivity matters.";
+  }
 
   const how_to_get_the_most_from_it = howToGetMost(ctx);
 
