@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
+import { hybridAthleteDisplayName } from "@/app/lib/displayName";
 import {
   buildRecoveryTrends,
   buildTwelveProgrammeWeeks,
@@ -66,6 +67,16 @@ export default async function ProgressPage() {
   if (!user) {
     redirect("/login?next=/dashboard/progress");
   }
+
+  const [{ data: profileRow }, { data: assessName }] = await Promise.all([
+    supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+    supabase.from("athlete_assessments").select("first_name").eq("user_id", user.id).maybeSingle(),
+  ]);
+  const viewerDisplayName = hybridAthleteDisplayName({
+    assessmentFirstName: (assessName as { first_name?: string | null } | null)?.first_name,
+    profileFullName: (profileRow as { full_name: string | null } | null)?.full_name,
+    email: user.email,
+  });
 
   const { data: instance } = await supabase
     .from("programme_instances")
@@ -150,6 +161,7 @@ export default async function ProgressPage() {
       programmeInstanceId={typedInstance?.id ?? null}
       programmeGenerated={programmeGenerated}
       programmeTitle={programmeTitle}
+      viewerDisplayName={viewerDisplayName}
       weeks={weeks12}
       effectiveWeek={effectiveWeek}
       adherence={adherence}

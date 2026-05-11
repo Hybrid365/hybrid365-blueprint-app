@@ -16,10 +16,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Nav } from "@/components/nav";
+import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 
 export type AssessmentRow = {
   id: string;
+  first_name?: string | null;
   goal_focus: string | null;
   event_type: string | null;
   event_date: string | null;
@@ -230,6 +232,7 @@ export default function AssessmentClient({
   const [formData, setFormData] = useState(() => {
     const doubleSessionDays = initialDoubleSessionDaysFromAssessment(initialAssessment);
     return {
+      firstName: initialAssessment?.first_name?.trim() ?? "",
       goal: initialAssessment?.goal_focus ?? "",
       eventStatus: initialAssessment?.event_type ?? "",
       eventDate: initialAssessment?.event_date ?? "",
@@ -268,6 +271,7 @@ export default function AssessmentClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           programme_instance_id: programmeInstanceId,
+          first_name: formData.firstName.trim() || null,
           goal_focus: formData.goal || initialAssessment?.goal_focus || null,
           event_type: formData.eventStatus || initialAssessment?.event_type || null,
           event_date: formData.eventDate.trim() || null,
@@ -397,7 +401,14 @@ export default function AssessmentClient({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-primary font-semibold text-sm tracking-wide">HYBRID365</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-4">Athlete Assessment</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Athlete Assessment</h1>
+          <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Structure beats motivation — honest answers here shape a programme you can execute. Refuse average: train
+            with intent, track the work, get stronger and fitter.
+          </p>
+          <div className="mb-6">
+            <DashboardSubnav variant="light" />
+          </div>
 
           <div className="bg-card rounded-2xl border border-border p-4">
             <div className="flex items-center justify-between mb-2">
@@ -431,6 +442,7 @@ export default function AssessmentClient({
                     <button
                       type="button"
                       disabled={generatingProgramme}
+                      aria-busy={generatingProgramme}
                       onClick={handleGenerateProgramme}
                       className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-md shadow-yellow-400/20 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[200px]"
                     >
@@ -470,6 +482,20 @@ export default function AssessmentClient({
             onToggle={() => setExpandedSection(expandedSection === "goal" ? null : "goal")}
           >
             <div className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Preferred first name (optional)</label>
+                <input
+                  type="text"
+                  autoComplete="given-name"
+                  placeholder="How we greet you on the dashboard"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="w-full max-w-md rounded-xl border border-border bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Shown instead of your email prefix when set. You can leave this blank.
+                </p>
+              </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">Primary Goal</label>
                 <PillSelector
@@ -695,7 +721,13 @@ export default function AssessmentClient({
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
           {success ? <p className="text-sm text-emerald-300">{success}</p> : null}
 
-          <button disabled={saving} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors mt-6" onClick={onSave}>
+          <button
+            type="button"
+            disabled={saving}
+            aria-busy={saving}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+            onClick={onSave}
+          >
             <Save className="w-5 h-5" />
             {saving ? "Saving..." : "Save Assessment"}
           </button>

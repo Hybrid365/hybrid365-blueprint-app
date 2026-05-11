@@ -3,6 +3,7 @@ import { createClient } from "@/app/lib/supabase/server";
 
 type AssessmentPayload = {
   programme_instance_id: string | null;
+  first_name: string | null;
   goal_focus: string | null;
   event_type: string | null;
   event_date: string | null;
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
   const upsertPayload = {
     user_id: user.id,
     programme_instance_id: programmeInstanceId,
+    first_name: payload.first_name?.trim() ? payload.first_name.trim().slice(0, 80) : null,
     goal_focus: payload.goal_focus?.trim() || null,
     event_type: payload.event_type?.trim() || null,
     event_date: payload.event_date ?? null,

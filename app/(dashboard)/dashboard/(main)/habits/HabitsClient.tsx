@@ -22,16 +22,7 @@ import {
   localDateKey,
   shiftLocalDateKey,
 } from "@/app/lib/dailyHabitLogs";
-
-const NAV = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/programme", label: "Programme" },
-  { href: "/dashboard/progress", label: "Progress" },
-  { href: "/dashboard/habits", label: "Habits" },
-  { href: "/dashboard/challenge", label: "Challenge" },
-  { href: "/dashboard/assessment", label: "Assessment" },
-  { href: "/dashboard/testing", label: "Testing" },
-];
+import { DashboardSubnav } from "@/components/DashboardSubnav";
 
 const HABIT_UI: {
   key: HabitFieldKey;
@@ -251,20 +242,8 @@ export default function HabitsClient({ programmeInstanceId }: Props) {
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-8 md:px-8 md:pt-10">
         <header className="mb-10 border-b border-zinc-800 pb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Hybrid365</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
-                  item.href === "/dashboard/habits"
-                    ? "border-yellow-400/40 bg-yellow-400/10 text-yellow-300"
-                    : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700/60 hover:text-white"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <div className="mt-3">
+            <DashboardSubnav variant="zinc" />
           </div>
           <h1 className="mt-6 text-3xl font-bold tracking-tight text-white md:text-4xl">Daily Habits</h1>
           <p className="mt-2 max-w-xl text-sm text-zinc-400 md:text-base">
@@ -274,6 +253,22 @@ export default function HabitsClient({ programmeInstanceId }: Props) {
             Daily standards create long-term change. Track the work — consistency beats intensity spikes.
           </p>
         </header>
+
+        {!programmeInstanceId ? (
+          <div className="mb-8 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-400/[0.06] to-zinc-950 p-5 sm:p-6">
+            <p className="text-sm font-semibold text-yellow-200/95">Habits follow your programme</p>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+              Generate your 12-week plan from the dashboard first — then daily habits anchor your non-negotiables.
+              Structure beats motivation; small wins compound.
+            </p>
+            <Link
+              href="/dashboard"
+              className="mt-4 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
+            >
+              Open dashboard
+            </Link>
+          </div>
+        ) : null}
 
         {loadError ? (
           <div className="mb-6 rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-200">
@@ -286,7 +281,7 @@ export default function HabitsClient({ programmeInstanceId }: Props) {
           </div>
         ) : null}
 
-        <section className="mb-10">
+        <section className="mb-10" aria-busy={saving || loading}>
           <h2 className="mb-4 text-lg font-bold text-white">Today&apos;s habits</h2>
           <div className="space-y-3">
             {HABIT_UI.map((habit) => {

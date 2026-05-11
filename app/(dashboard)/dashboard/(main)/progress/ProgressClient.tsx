@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Nav } from "@/components/nav";
+import { DashboardSubnav } from "@/components/DashboardSubnav";
 import type {
   BodyweightTrend,
   GroupedBenchmark,
@@ -60,6 +61,7 @@ type Props = {
   programmeInstanceId: string | null;
   programmeGenerated: boolean;
   programmeTitle: string;
+  viewerDisplayName: string;
   weeks: ProgrammeWeekLike[];
   effectiveWeek: number;
   adherence: AdherenceSnapshot;
@@ -204,6 +206,7 @@ export default function ProgressClient({
   programmeInstanceId,
   programmeGenerated,
   programmeTitle,
+  viewerDisplayName,
   weeks,
   effectiveWeek,
   adherence,
@@ -234,32 +237,17 @@ export default function ProgressClient({
             </span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Progress</h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            <span className="text-zinc-400">{viewerDisplayName}</span>
+            <span className="mx-2 text-zinc-700">·</span>
+            Track the work — consistency tells the truth.
+          </p>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400 md:text-base">
             Track your consistency, recovery and performance across the 12-week programme.
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              { href: "/dashboard", label: "Dashboard" },
-              { href: "/dashboard/programme", label: "Programme" },
-              { href: "/dashboard/progress", label: "Progress" },
-              { href: "/dashboard/habits", label: "Habits" },
-              { href: "/dashboard/challenge", label: "Challenge" },
-              { href: "/dashboard/assessment", label: "Assessment" },
-              { href: "/dashboard/testing", label: "Testing" },
-            ].map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
-                  item.href === "/dashboard/progress"
-                    ? "border-yellow-400/40 bg-yellow-400/10 text-yellow-300"
-                    : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700/60 hover:text-white"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <div className="mt-4">
+            <DashboardSubnav variant="zinc" />
           </div>
         </div>
 
@@ -271,20 +259,20 @@ export default function ProgressClient({
               </div>
               <h2 className="mt-4 text-xl font-bold text-white">Progress unlocks with your programme</h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-300">
-                Your progress graph builds as you complete sessions and check-ins. Finish your assessment, generate your
-                12-week plan, then this page becomes your training story.
+                Track the work: this view fills as you complete sessions and weekly check-ins. Finish your assessment,
+                generate your plan from the dashboard, then come back — the graph tells the truth week by week.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/dashboard/assessment"
-                  className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
+                  className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
                 >
-                  Go to assessment
+                  Start with assessment
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:border-zinc-600"
+                  className="inline-flex min-h-[48px] items-center rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:border-zinc-600"
                 >
                   Back to dashboard
                 </Link>

@@ -2,6 +2,7 @@
  * Hybrid Challenge — scoring & weekly snapshots (Milestone 14). Pure helpers, no I/O.
  */
 
+import { hybridAthleteDisplayName, HYBRID_ATHLETE_FALLBACK } from "./displayName";
 import { countHabitsHit, shiftLocalDateKey, type DailyHabitLogRow } from "./dailyHabitLogs";
 import { HYBRID_CHALLENGE_DURATION_WEEKS, HYBRID_CHALLENGE_POINTS } from "./hybridChallengeConfig";
 import {
@@ -217,11 +218,11 @@ export type LeaderboardAggregate = {
   entries: ChallengeSubmissionRow[];
 };
 
-/** Shown when no safe public name is available (never UUID fragments or full email). */
-export const HYBRID_LEADERBOARD_FALLBACK_DISPLAY = "Hybrid Athlete";
+/** @deprecated use HYBRID_ATHLETE_FALLBACK from `./displayName` */
+export const HYBRID_LEADERBOARD_FALLBACK_DISPLAY = HYBRID_ATHLETE_FALLBACK;
 
 /**
- * Local part of email only (never the domain). For use on the leaderboard for the signed-in viewer’s own row only.
+ * Local part of email only (never the domain). Prefer {@link hybridAthleteDisplayName} for UI.
  */
 export function leaderboardEmailLocalPart(email: string | null | undefined): string | null {
   if (!email || typeof email !== "string") return null;
@@ -233,8 +234,8 @@ export function leaderboardEmailLocalPart(email: string | null | undefined): str
 }
 
 /**
- * Public leaderboard label. Order: profiles.full_name → athlete_assessments.first_name →
- * email local-part for the viewer’s own row only → {@link HYBRID_LEADERBOARD_FALLBACK_DISPLAY}.
+ * Public leaderboard label: assessment first name → profile full name → email prefix (viewer row only) → Hybrid Athlete.
+ * Full emails are never shown.
  */
 export function leaderboardPublicDisplayName(params: {
   subjectUserId: string;
@@ -243,15 +244,11 @@ export function leaderboardPublicDisplayName(params: {
   assessmentFirstName: string | null | undefined;
   viewerEmail: string | null | undefined;
 }): string {
-  const full = params.profileFullName?.trim();
-  if (full) return full;
-  const first = params.assessmentFirstName?.trim();
-  if (first) return first;
-  if (params.subjectUserId === params.viewerUserId) {
-    const local = leaderboardEmailLocalPart(params.viewerEmail);
-    if (local) return local;
-  }
-  return HYBRID_LEADERBOARD_FALLBACK_DISPLAY;
+  return hybridAthleteDisplayName({
+    assessmentFirstName: params.assessmentFirstName,
+    profileFullName: params.profileFullName,
+    email: params.subjectUserId === params.viewerUserId ? params.viewerEmail : undefined,
+  });
 }
 
 export function buildLeaderboard(

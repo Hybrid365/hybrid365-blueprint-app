@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
+import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { coreBaselineAreaFlags, countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
 import { parseTimeToSeconds } from "@/app/lib/mapAssessmentToProgrammeInput";
 
@@ -314,6 +315,9 @@ export default function TestingClient({
             Hybrid baseline: bodyweight, a run marker, an engine test, and a strength marker — plus hybrid tests when
             you want deeper context.
           </p>
+          <div className="mt-4">
+            <DashboardSubnav variant="light" />
+          </div>
 
           <div className="mt-6 rounded-2xl border border-border bg-card p-4 md:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -362,6 +366,7 @@ export default function TestingClient({
                 <button
                   type="button"
                   disabled={generatingProgramme}
+                  aria-busy={generatingProgramme}
                   onClick={handleGenerateProgramme}
                   className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[200px]"
                 >
@@ -599,6 +604,7 @@ export default function TestingClient({
                 type="button"
                 className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!selectedPreset || !value.trim() || saving}
+                aria-busy={saving}
                 onClick={onSaveTest}
               >
                 {saving ? "Saving…" : "Save test result"}

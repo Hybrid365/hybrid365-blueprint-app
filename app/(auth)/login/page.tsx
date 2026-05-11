@@ -15,7 +15,9 @@ function LoginForm() {
     urlError ? "error" : "idle"
   );
   const [message, setMessage] = useState(
-    urlError === "auth" ? "Sign-in link expired or invalid. Try again." : ""
+    urlError === "auth"
+      ? "That sign-in link expired or was already used. Request a fresh link below."
+      : ""
   );
 
   async function onSubmit(e: React.FormEvent) {

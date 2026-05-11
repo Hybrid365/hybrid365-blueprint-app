@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import { countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
+import { hybridAthleteDisplayName } from "@/app/lib/displayName";
 import MemberDashboardClient, {
   type WeekPayload,
 } from "./MemberDashboardClient";
@@ -51,6 +52,7 @@ type WeeklyCheckInRow = {
 type AthleteAssessmentRow = {
   id: string;
   completed_at: string | null;
+  first_name?: string | null;
 };
 
 type BenchmarkTestRow = {
@@ -67,13 +69,17 @@ export default async function DashboardPage() {
     redirect("/login?next=/dashboard");
   }
 
-  const { data: assessGlobal } = await supabase
-    .from("athlete_assessments")
-    .select("id, completed_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: profileRow }, { data: assessGlobal }] = await Promise.all([
+    supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+    supabase.from("athlete_assessments").select("id, completed_at, first_name").eq("user_id", user.id).maybeSingle(),
+  ]);
   const typedAssessGlobal = assessGlobal as AthleteAssessmentRow | null;
   const assessmentCompleted = Boolean(typedAssessGlobal?.completed_at);
+  const viewerDisplayName = hybridAthleteDisplayName({
+    assessmentFirstName: typedAssessGlobal?.first_name,
+    profileFullName: (profileRow as { full_name: string | null } | null)?.full_name,
+    email: user.email,
+  });
 
   const { data: allCoreTests } = await supabase
     .from("benchmark_tests")
@@ -155,6 +161,7 @@ export default async function DashboardPage() {
   return (
     <MemberDashboardClient
       email={user.email ?? ""}
+      viewerDisplayName={viewerDisplayName}
       programmeTitle={programmeTitle}
       membershipExpiresAt={
         membership?.expires_at ? String(membership.expires_at) : null

@@ -39,7 +39,7 @@ export function SessionShareCardModal({ open, onClose, card }: Props) {
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 m-4 max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl sm:p-6">
+      <div className="relative z-10 m-4 max-h-[min(92vh,880px)] w-full max-w-md overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl sm:m-6 sm:max-h-[90vh] sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Share</p>
@@ -48,7 +48,7 @@ export function SessionShareCardModal({ open, onClose, card }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-zinc-800 bg-zinc-900 p-2 text-zinc-400 hover:text-white"
+            className="min-h-[44px] min-w-[44px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900 p-2.5 text-zinc-400 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
@@ -66,14 +66,14 @@ export function SessionShareCardModal({ open, onClose, card }: Props) {
           <button
             type="button"
             onClick={onCopy}
-            className="flex-1 rounded-xl border border-zinc-700 bg-zinc-900 py-3 text-sm font-semibold text-white transition hover:border-yellow-500/40 hover:bg-zinc-800"
+            className="min-h-[48px] flex-1 rounded-xl border border-zinc-700 bg-zinc-900 py-3 text-sm font-semibold text-white transition hover:border-yellow-500/40 hover:bg-zinc-800"
           >
             {copied ? "Copied!" : "Copy session text"}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 sm:px-8"
+            className="min-h-[48px] rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 sm:px-8"
           >
             Close
           </button>

@@ -53,6 +53,7 @@ import { DashboardChallengeTeaser } from "@/components/dashboard/DashboardChalle
 import { DashboardHabitsTeaser } from "@/components/dashboard/DashboardHabitsTeaser";
 import type { SessionShareCardProps } from "@/components/share/SessionShareCard";
 import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
+import { DashboardSubnav } from "@/components/DashboardSubnav";
 
 export type WeekPayload = {
   week_number: number;
@@ -63,6 +64,7 @@ export type WeekPayload = {
 
 export type MemberDashboardClientProps = {
   email: string;
+  viewerDisplayName: string;
   programmeTitle: string;
   membershipExpiresAt: string | null;
   instanceCurrentWeek: number | null;
@@ -281,6 +283,7 @@ function SessionRowCard({
 
 export default function MemberDashboardClient({
   email,
+  viewerDisplayName,
   programmeTitle,
   membershipExpiresAt,
   instanceCurrentWeek,
@@ -675,8 +678,6 @@ export default function MemberDashboardClient({
     }
   }
 
-  const displayName = email.includes("@") ? email.split("@")[0] : email || "Member";
-
   const blockPillLabel = `Block ${blockIdForWeek(effectiveCurrentWeek)} · ${currentBlockMeta.name}`;
   const selectedLog = selectedSession ? sessionLogs[selectedSession.sessionKey] : null;
 
@@ -800,7 +801,7 @@ export default function MemberDashboardClient({
             </div>
             <div className="flex flex-col gap-3 border-t border-zinc-800/80 pt-4 sm:flex-row sm:items-center sm:border-t-0 sm:pt-0 lg:flex-col lg:items-end lg:border-t-0">
               <div className="text-left sm:text-right">
-                <p className="text-sm font-semibold text-white">{displayName}</p>
+                <p className="text-sm font-semibold text-white">{viewerDisplayName}</p>
                 <p className="mt-0.5 truncate text-xs text-zinc-500 sm:max-w-[220px] lg:max-w-[280px]">{email}</p>
               </div>
               <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -817,24 +818,8 @@ export default function MemberDashboardClient({
               </div>
             </div>
           </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {[
-              { href: "/dashboard", label: "Dashboard" },
-              { href: "/dashboard/programme", label: "Programme" },
-              { href: "/dashboard/progress", label: "Progress" },
-              { href: "/dashboard/habits", label: "Habits" },
-              { href: "/dashboard/challenge", label: "Challenge" },
-              { href: "/dashboard/assessment", label: "Assessment" },
-              { href: "/dashboard/testing", label: "Testing" },
-            ].map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-300 transition hover:border-zinc-700/60 hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
+          <div className="mt-5">
+            <DashboardSubnav variant="zinc" />
           </div>
         </header>
 
@@ -1017,6 +1002,7 @@ export default function MemberDashboardClient({
                     <button
                       type="button"
                       disabled={!assessmentCompleted || generatingProgramme}
+                      aria-busy={generatingProgramme}
                       onClick={handleGenerateProgramme}
                       className="mt-4 inline-flex w-full min-h-[44px] items-center justify-center rounded-xl bg-yellow-400 px-4 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -1064,6 +1050,7 @@ export default function MemberDashboardClient({
                       <button
                         type="button"
                         disabled={generatingProgramme}
+                        aria-busy={generatingProgramme}
                         onClick={handleGenerateProgramme}
                         className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-lg shadow-yellow-400/20 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-8"
                       >
@@ -1896,6 +1883,7 @@ export default function MemberDashboardClient({
                   type="button"
                   onClick={saveWeeklyCheckIn}
                   disabled={checkInSaving || !programmeInstanceId}
+                  aria-busy={checkInSaving}
                   className="flex-1 rounded-xl bg-yellow-400 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {checkInSaving ? "Saving..." : "Save check-in"}
@@ -2067,6 +2055,7 @@ export default function MemberDashboardClient({
                   <button
                     type="button"
                     disabled={saving || !programmeInstanceId}
+                    aria-busy={saving}
                     onClick={() => saveSessionLog(true)}
                     className="flex-1 rounded-xl bg-yellow-400 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -2075,6 +2064,7 @@ export default function MemberDashboardClient({
                   <button
                     type="button"
                     disabled={saving || !programmeInstanceId}
+                    aria-busy={saving}
                     onClick={() => saveSessionLog(false)}
                     className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-zinc-700/60 disabled:cursor-not-allowed disabled:opacity-60"
                   >

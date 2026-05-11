@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { Nav } from "@/components/nav";
+import { DashboardSubnav } from "@/components/DashboardSubnav";
 import {
   extractWeekRationale,
   type ExtractedProgrammeIntelligence,
@@ -73,16 +74,6 @@ type Props = {
   programmeRationale: ExtractedProgrammeRationale | null;
   programmeIntelligence: ExtractedProgrammeIntelligence | null;
 };
-
-const NAV = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/programme", label: "Programme" },
-  { href: "/dashboard/progress", label: "Progress" },
-  { href: "/dashboard/habits", label: "Habits" },
-  { href: "/dashboard/challenge", label: "Challenge" },
-  { href: "/dashboard/assessment", label: "Assessment" },
-  { href: "/dashboard/testing", label: "Testing" },
-];
 
 function blockIdForWeek(week: number): 1 | 2 | 3 {
   if (week <= 4) return 1;
@@ -197,20 +188,8 @@ export default function ProgrammeClient({
             A structured progression built around your goal, availability and current performance.
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
-                  item.href === "/dashboard/programme"
-                    ? "border-yellow-400/40 bg-yellow-400/10 text-yellow-300"
-                    : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700/60 hover:text-white"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <div className="mt-4">
+            <DashboardSubnav variant="zinc" />
           </div>
         </div>
 
@@ -220,26 +199,36 @@ export default function ProgrammeClient({
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-400/15 ring-1 ring-yellow-400/25">
                 <LayoutGrid className="h-6 w-6 text-yellow-400" />
               </div>
-              <h2 className="mt-4 text-xl font-bold text-white">Generate your programme first</h2>
+              <h2 className="mt-4 text-xl font-bold text-white">Your programme unlocks here</h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-300">
-                Your full 12-week journey appears here once your plan is created from the dashboard.
+                Train with intent: finish your assessment on Hybrid365, generate your 12-week plan from the dashboard,
+                then open Programme to execute week by week. Optional baselines in Testing sharpen progress — they never
+                block you from starting.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
-                >
-                  Go to dashboard
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
                 {!assessmentCompleted ? (
                   <Link
                     href="/dashboard/assessment"
-                    className="inline-flex items-center rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:border-zinc-600"
+                    className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
                   >
                     Complete assessment
+                    <ChevronRight className="h-4 w-4" />
                   </Link>
-                ) : null}
+                ) : (
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
+                  >
+                    Open dashboard — generate programme
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                )}
+                <Link
+                  href="/dashboard/testing"
+                  className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:border-zinc-600"
+                >
+                  Log benchmarks (optional)
+                </Link>
               </div>
             </div>
           </div>
@@ -584,7 +573,7 @@ export default function ProgrammeClient({
               className="absolute inset-0 bg-black/75 backdrop-blur-sm"
               onClick={() => setDrawerSession(null)}
             />
-            <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-3xl border-t border-zinc-800 bg-zinc-950">
+            <div className="absolute bottom-0 left-0 right-0 max-h-[min(92vh,900px)] overflow-y-auto rounded-t-3xl border-t border-zinc-800 bg-zinc-950 sm:max-h-[90vh]">
               <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-zinc-600" />
               <div className="mx-auto max-w-3xl p-5 pb-12 sm:p-8">
                 <div className="flex items-start justify-between gap-4">
@@ -599,7 +588,7 @@ export default function ProgrammeClient({
                   <button
                     type="button"
                     onClick={() => setDrawerSession(null)}
-                    className="rounded-xl border border-zinc-800 bg-zinc-800 p-2 text-zinc-300"
+                    className="min-h-[44px] min-w-[44px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-800 p-2.5 text-zinc-300"
                   >
                     <X className="h-5 w-5" />
                   </button>

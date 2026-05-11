@@ -23,22 +23,13 @@ import {
   HYBRID_CHALLENGE_TAGLINE,
   getChallengeWeekSpec,
 } from "@/app/lib/hybridChallengeConfig";
+import { DashboardSubnav } from "@/components/DashboardSubnav";
 import type {
   ChallengeSubmissionRow,
   HybridBaselineChecklist,
   LeaderboardAggregate,
   WeeklyTrainingSnapshot,
 } from "@/app/lib/hybridChallengeMetrics";
-
-const NAV = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/programme", label: "Programme" },
-  { href: "/dashboard/progress", label: "Progress" },
-  { href: "/dashboard/habits", label: "Habits" },
-  { href: "/dashboard/challenge", label: "Challenge" },
-  { href: "/dashboard/assessment", label: "Assessment" },
-  { href: "/dashboard/testing", label: "Testing" },
-];
 
 type Provisional = {
   habitWindowPoints: number;
@@ -156,20 +147,8 @@ export default function ChallengeClient({
       <div className="mx-auto max-w-4xl px-4 pb-28 pt-8 md:px-8 md:pt-10">
         <header className="mb-10 border-b border-zinc-800 pb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Hybrid365</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
-                  item.href === "/dashboard/challenge"
-                    ? "border-yellow-400/40 bg-yellow-400/10 text-yellow-300"
-                    : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700/60 hover:text-white"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <div className="mt-3">
+            <DashboardSubnav variant="zinc" />
           </div>
 
           <div className="mt-8 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-400/[0.06] to-zinc-950 p-6 sm:p-8">
@@ -379,7 +358,7 @@ export default function ChallengeClient({
         </section>
 
         {weekSpec ? (
-          <section className="mb-10 rounded-2xl border border-yellow-500/20 bg-yellow-400/[0.04] p-5 sm:p-6">
+          <section id="weekly-challenge" className="mb-10 rounded-2xl border border-yellow-500/20 bg-yellow-400/[0.04] p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-yellow-400/90">This week</p>
@@ -447,9 +426,21 @@ export default function ChallengeClient({
             <h2 className="text-lg font-bold text-white">Leaderboard</h2>
           </div>
           {leaderboard.length === 0 ? (
-            <p className="text-sm text-zinc-400">
-              No leaderboard rows yet. Submit your weekly challenge — you appear as soon as your score is saved.
-            </p>
+            <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/50 p-4">
+              <p className="text-sm leading-relaxed text-zinc-300">
+                No leaderboard rows yet. Train with intent, submit your weekly score with proof — you appear as soon as
+                it&apos;s approved. Stronger, fitter, faster starts with showing up on the board.
+              </p>
+              {weekSpec ? (
+                <button
+                  type="button"
+                  onClick={openModal}
+                  className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
+                >
+                  Submit weekly score
+                </button>
+              ) : null}
+            </div>
           ) : !leaderboardHasPoints ? (
             <p className="text-sm text-zinc-400">
               Leaderboard lists athletes, but everyone is on 0 points right now. Scores may be adjusted if proof is
@@ -531,7 +522,7 @@ export default function ChallengeClient({
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             onClick={() => setModalOpen(false)}
           />
-          <div className="relative z-10 m-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl sm:p-6">
+          <div className="relative z-10 m-4 max-h-[min(90vh,800px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl sm:m-6 sm:p-6">
             <h3 className="text-lg font-bold text-white">Submit score / proof</h3>
             <p className="mt-1 text-sm text-zinc-500">{weekSpec.title}</p>
             <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 text-sm text-zinc-300">
@@ -602,14 +593,15 @@ export default function ChallengeClient({
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:opacity-50"
+                  aria-busy={saving}
+                  className="min-h-[48px] flex-1 rounded-xl bg-yellow-400 py-2.5 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:opacity-50"
                 >
-                  {saving ? "Saving…" : "Submit"}
+                  {saving ? "Submitting…" : "Submit"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300"
+                  className="min-h-[48px] rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300"
                 >
                   Cancel
                 </button>
