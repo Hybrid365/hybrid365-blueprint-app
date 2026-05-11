@@ -20,7 +20,12 @@ import { classifyRunner, type RunnerProfile } from "./classifyRunner";
 import { parseConstraints, type ModalityAvoids, type ParsedConstraints } from "./parseConstraints";
 import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
 import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
-import { getProgressionTarget, getStressAlignment } from "./progressionTargets";
+import {
+  getProgressionTarget,
+  getStressAlignment,
+  type ProgramType,
+  type ProgressionTarget,
+} from "./progressionTargets";
 import { computeSessionPriority, createFillerPriority } from "./sessionPriority";
 import { buildSubstitutionNotes } from "./substitutionGuidance";
 
@@ -35,6 +40,13 @@ export type BlueprintInput = {
   equipment?: string[];
   five_k_time?: string;
   notes?: string;
+};
+
+export type BuildWeekBlueprintOptions = {
+  program_type?: ProgramType;
+  week_number?: number | null;
+  block_number?: number | null;
+  progression_target?: ProgressionTarget | null;
 };
 
 function formatGoal(goal: GoalFocus) {
@@ -1767,7 +1779,10 @@ export function buildSafetyFlags({
   };
 }
 
-export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
+export function buildWeekBlueprint(
+  input: BlueprintInput,
+  options?: BuildWeekBlueprintOptions
+): PlanJson {
   const runnerProfile = classifyRunner(input.five_k_time);
   const paceGuidance =
     runnerProfile.seconds !== null
@@ -1830,7 +1845,18 @@ export function buildWeekBlueprint(input: BlueprintInput): PlanJson {
           notes: dedupeOrderedStrings([...weekly_stress.notes, ...safety_flags.notes]),
         }
       : weekly_stress;
-  const weekContext = getProgressionTarget("free_week", null, null, input.goal_focus);
+  const requestedProgramType = options?.program_type ?? "free_week";
+  const weekContext =
+    requestedProgramType === "community_12_week"
+      ? options?.progression_target ??
+        getProgressionTarget(
+          "community_12_week",
+          options?.block_number ?? null,
+          options?.week_number ?? null,
+          input.goal_focus
+        ) ??
+        getProgressionTarget("free_week", null, null, input.goal_focus)
+      : getProgressionTarget("free_week", null, null, input.goal_focus);
   const stressAlignment = getStressAlignment(weekly_stress.relative_load, weekContext);
 
   return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -122,6 +122,13 @@ function blockIdForWeek(week: number): 1 | 2 | 3 {
   if (week <= 4) return 1;
   if (week <= 8) return 2;
   return 3;
+}
+
+function getCheckInForWeek(
+  checkIns: Record<number, WeeklyCheckInRecord>,
+  weekNumber: number
+): WeeklyCheckInRecord | null {
+  return checkIns[weekNumber] ?? null;
 }
 
 function getCategoryStyle(category: SessionCategoryLabel): string {
@@ -288,6 +295,16 @@ export default function MemberDashboardClient({
 
   const selectedPayload =
     allWeeks.find((w) => w.week_number === selectedWeek) ?? allWeeks[effectiveCurrentWeek - 1];
+  const selectedWeekUnlocked = Boolean(selectedPayload?.is_unlocked);
+  const firstUnlockedWeek =
+    allWeeks.find((w) => Boolean(w.is_unlocked))?.week_number ?? effectiveCurrentWeek;
+
+  useEffect(() => {
+    if (!selectedWeekUnlocked) {
+      setSelectedWeek(firstUnlockedWeek);
+    }
+  }, [firstUnlockedWeek, selectedWeekUnlocked]);
+
   const currentProgrammeWeekPayload =
     allWeeks.find((w) => w.week_number === effectiveCurrentWeek) ?? allWeeks[0];
 
@@ -307,7 +324,7 @@ export default function MemberDashboardClient({
     }));
   }, [scheduleRaw, selectedWeek]);
   const hasPlanForSelectedWeek = Boolean(scheduleRaw && scheduleRaw.length > 0);
-  const weekUnlocked = Boolean(selectedPayload?.is_unlocked);
+  const weekUnlocked = selectedWeekUnlocked;
 
   const heroInsights = useMemo(
     () => extractPlanInsights(currentProgrammeWeekPayload?.plan_json),
@@ -335,9 +352,9 @@ export default function MemberDashboardClient({
   const allSessionsCompleted = sessions.length > 0 && completedCount === sessions.length;
   const adherencePercent =
     totalSessionsThisWeek > 0 ? Math.round((completedCount / totalSessionsThisWeek) * 100) : null;
-  const currentWeekCheckIn = weeklyCheckIns[effectiveCurrentWeek] ?? null;
-  const checkInDue = !currentWeekCheckIn;
-  const nextCheckInStatus = currentWeekCheckIn ? "Complete" : "Due Sunday";
+  const selectedWeekCheckIn = getCheckInForWeek(weeklyCheckIns, selectedWeek);
+  const checkInDue = !selectedWeekCheckIn;
+  const nextCheckInStatus = selectedWeekCheckIn ? "Complete" : "Due Sunday";
   const allCheckIns = Object.values(weeklyCheckIns).sort((a, b) => a.week_number - b.week_number);
   const weightSeries = allCheckIns.filter((c) => typeof c.bodyweight_kg === "number");
   const latestWeight = weightSeries.length > 0 ? weightSeries[weightSeries.length - 1].bodyweight_kg : null;
@@ -420,7 +437,8 @@ export default function MemberDashboardClient({
   }
 
   function openCheckInDrawer() {
-    const existing = weeklyCheckIns[effectiveCurrentWeek];
+    if (!weekUnlocked) return;
+    const existing = getCheckInForWeek(weeklyCheckIns, selectedWeek);
     setCheckInDraft({
       bodyweight_kg: existing?.bodyweight_kg != null ? String(existing.bodyweight_kg) : "",
       sleep_hours: existing?.sleep_hours != null ? String(existing.sleep_hours) : "",
@@ -465,13 +483,13 @@ export default function MemberDashboardClient({
   }
 
   async function saveWeeklyCheckIn() {
-    if (!programmeInstanceId) return;
+    if (!programmeInstanceId || !weekUnlocked) return;
     setCheckInSaving(true);
     setCheckInError(null);
-    const previous = weeklyCheckIns[effectiveCurrentWeek];
+    const previous = getCheckInForWeek(weeklyCheckIns, selectedWeek);
     const optimistic: WeeklyCheckInRecord = {
-      id: previous?.id ?? `optimistic-${effectiveCurrentWeek}`,
-      week_number: effectiveCurrentWeek,
+      id: previous?.id ?? `optimistic-${selectedWeek}`,
+      week_number: selectedWeek,
       bodyweight_kg: parseBodyweightKg(checkInDraft.bodyweight_kg),
       sleep_hours: asNumberOrNull(checkInDraft.sleep_hours),
       energy_score: asNumberOrNull(checkInDraft.energy_score),
@@ -485,14 +503,14 @@ export default function MemberDashboardClient({
       notes: checkInDraft.notes.trim() || null,
       submitted_at: new Date().toISOString(),
     };
-    setWeeklyCheckIns((prev) => ({ ...prev, [effectiveCurrentWeek]: optimistic }));
+    setWeeklyCheckIns((prev) => ({ ...prev, [selectedWeek]: optimistic }));
     try {
       const res = await fetch("/api/dashboard/weekly-check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           programme_instance_id: programmeInstanceId,
-          week_number: effectiveCurrentWeek,
+          week_number: selectedWeek,
           bodyweight_kg: optimistic.bodyweight_kg,
           sleep_hours: optimistic.sleep_hours,
           energy_score: optimistic.energy_score,
@@ -511,17 +529,17 @@ export default function MemberDashboardClient({
         throw new Error(userFriendlyCheckInError(payload.error));
       }
       const payload = (await res.json()) as { checkIn: WeeklyCheckInRecord };
-      setWeeklyCheckIns((prev) => ({ ...prev, [effectiveCurrentWeek]: payload.checkIn }));
+      setWeeklyCheckIns((prev) => ({ ...prev, [selectedWeek]: payload.checkIn }));
       setCheckInSuccess("Weekly check-in saved.");
       setCheckInOpen(false);
     } catch (err) {
       setWeeklyCheckIns((prev) => {
         if (!previous) {
           const copy = { ...prev };
-          delete copy[effectiveCurrentWeek];
+          delete copy[selectedWeek];
           return copy;
         }
-        return { ...prev, [effectiveCurrentWeek]: previous };
+        return { ...prev, [selectedWeek]: previous };
       });
       setCheckInError(
         err instanceof Error
@@ -607,7 +625,7 @@ export default function MemberDashboardClient({
       <Lock className="mx-auto mb-4 h-10 w-10 text-zinc-500" />
       <p className="text-base font-medium text-zinc-300">This week is locked</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-zinc-500">
-        Select an unlocked week in the strip above to preview sessions and load data.
+        This week unlocks with your next membership month.
       </p>
     </div>
   );
@@ -946,16 +964,22 @@ export default function MemberDashboardClient({
                 <h3 className="text-lg font-bold text-white">Weekly check-in</h3>
                 <span
                   className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
-                    currentWeekCheckIn
+                    selectedWeekCheckIn
                       ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
                       : "border-zinc-800 bg-zinc-800 text-zinc-400"
                   }`}
                 >
-                  {currentWeekCheckIn ? "Check-in complete" : "Check-in due"}
+                  {weekUnlocked
+                    ? selectedWeekCheckIn
+                      ? `Week ${selectedWeek} check-in complete`
+                      : `Week ${selectedWeek} check-in due`
+                    : `Week ${selectedWeek} locked`}
                 </span>
               </div>
               <p className="mb-5 text-sm leading-relaxed text-zinc-400">
-                Log recovery and bodyweight for Week {effectiveCurrentWeek}.
+                {weekUnlocked
+                  ? `Log recovery and bodyweight for Week ${selectedWeek}.`
+                  : "Check-ins unlock with this week in your membership cycle."}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -963,32 +987,32 @@ export default function MemberDashboardClient({
                     icon: TrendingUp,
                     label: "Bodyweight",
                     value:
-                      currentWeekCheckIn?.bodyweight_kg != null
-                        ? `${currentWeekCheckIn.bodyweight_kg} kg`
+                      selectedWeekCheckIn?.bodyweight_kg != null
+                        ? `${selectedWeekCheckIn.bodyweight_kg} kg`
                         : "—",
                   },
                   {
                     icon: Moon,
                     label: "Sleep",
                     value:
-                      currentWeekCheckIn?.sleep_hours != null
-                        ? `${currentWeekCheckIn.sleep_hours} h`
+                      selectedWeekCheckIn?.sleep_hours != null
+                        ? `${selectedWeekCheckIn.sleep_hours} h`
                         : "—",
                   },
                   {
                     icon: Zap,
                     label: "Energy",
                     value:
-                      currentWeekCheckIn?.energy_score != null
-                        ? `${currentWeekCheckIn.energy_score}/10`
+                      selectedWeekCheckIn?.energy_score != null
+                        ? `${selectedWeekCheckIn.energy_score}/10`
                         : "—",
                   },
                   {
                     icon: Battery,
                     label: "Recovery",
                     value:
-                      currentWeekCheckIn?.recovery_score != null
-                        ? `${currentWeekCheckIn.recovery_score}/10`
+                      selectedWeekCheckIn?.recovery_score != null
+                        ? `${selectedWeekCheckIn.recovery_score}/10`
                         : "—",
                   },
                 ].map((metric) => (
@@ -1006,9 +1030,14 @@ export default function MemberDashboardClient({
               <button
                 type="button"
                 onClick={openCheckInDrawer}
-                className="mt-5 w-full rounded-xl bg-yellow-400 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300"
+                disabled={!weekUnlocked}
+                className="mt-5 w-full rounded-xl bg-yellow-400 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {currentWeekCheckIn ? "Edit check-in" : "Complete check-in"}
+                {weekUnlocked
+                  ? selectedWeekCheckIn
+                    ? "Edit check-in"
+                    : "Complete check-in"
+                  : "Locked for this month"}
               </button>
             </div>
 
@@ -1176,7 +1205,7 @@ export default function MemberDashboardClient({
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-yellow-400">
-                    Week {effectiveCurrentWeek}
+                    Week {selectedWeek}
                   </p>
                   <h3 className="mt-2 text-2xl font-bold text-white sm:text-3xl">Weekly check-in</h3>
                 </div>
