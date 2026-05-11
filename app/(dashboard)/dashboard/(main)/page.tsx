@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/app/lib/supabase/server";
+import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import MemberDashboardClient, {
   type WeekPayload,
 } from "./MemberDashboardClient";
@@ -65,6 +66,31 @@ export default async function DashboardPage() {
     redirect("/login?next=/dashboard");
   }
 
+  const { data: assessGlobal } = await supabase
+    .from("athlete_assessments")
+    .select("id, completed_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const typedAssessGlobal = assessGlobal as AthleteAssessmentRow | null;
+  const assessmentCompleted = Boolean(typedAssessGlobal?.completed_at);
+
+  const { data: allCoreTests } = await supabase
+    .from("benchmark_tests")
+    .select("test_type")
+    .eq("user_id", user.id);
+  const typedAllTests = (allCoreTests ?? []) as BenchmarkTestRow[];
+  const coreTypes = new Set([
+    "5km time trial",
+    "1km SkiErg",
+    "1km Row",
+    "Bodyweight",
+  ]);
+  const coreTestsLogged = new Set(
+    typedAllTests
+      .map((t) => t.test_type)
+      .filter((v): v is string => typeof v === "string" && coreTypes.has(v))
+  ).size;
+
   const { data: instance } = await supabase
     .from("programme_instances")
     .select("id, title, current_week")
@@ -76,8 +102,7 @@ export default async function DashboardPage() {
   let weeks: ProgrammeWeekRow[] = [];
   let initialSessionLogs: SessionLogRow[] = [];
   let initialWeeklyCheckIns: WeeklyCheckInRow[] = [];
-  let assessmentCompleted = false;
-  let coreTestsLogged = 0;
+
   if (typedInstance?.id) {
     const { data: weekRows } = await supabase
       .from("programme_weeks")
@@ -109,26 +134,6 @@ export default async function DashboardPage() {
       .eq("programme_instance_id", typedInstance.id)
       .order("week_number", { ascending: true });
     initialWeeklyCheckIns = (checkIns ?? []) as WeeklyCheckInRow[];
-
-    const { data: assessment } = await supabase
-      .from("athlete_assessments")
-      .select("id, completed_at")
-      .eq("user_id", user.id)
-      .eq("programme_instance_id", typedInstance.id)
-      .maybeSingle();
-    const typedAssessment = assessment as AthleteAssessmentRow | null;
-    assessmentCompleted = Boolean(typedAssessment?.completed_at);
-
-    const { data: tests } = await supabase
-      .from("benchmark_tests")
-      .select("test_type")
-      .eq("user_id", user.id)
-      .eq("programme_instance_id", typedInstance.id);
-    const typedTests = (tests ?? []) as BenchmarkTestRow[];
-    const coreTypes = new Set(["5km time trial", "1km SkiErg", "1km Row", "Bodyweight"]);
-    coreTestsLogged = new Set(
-      typedTests.map((t) => t.test_type).filter((v): v is string => typeof v === "string" && coreTypes.has(v))
-    ).size;
   }
 
   const { data: membership } = await supabase
@@ -152,6 +157,10 @@ export default async function DashboardPage() {
       ? typedInstance.current_week
       : null;
 
+  const programmeGenerated =
+    Boolean(typedInstance?.id) &&
+    weeks.some((w) => hasMeaningfulPlanJson(w.plan_json));
+
   return (
     <MemberDashboardClient
       email={user.email ?? ""}
@@ -166,6 +175,7 @@ export default async function DashboardPage() {
       initialWeeklyCheckIns={initialWeeklyCheckIns}
       assessmentCompleted={assessmentCompleted}
       coreTestsLogged={coreTestsLogged}
+      programmeGenerated={programmeGenerated}
     />
   );
 }

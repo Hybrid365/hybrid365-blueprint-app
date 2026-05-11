@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Nav } from "@/components/nav";
 import {
@@ -17,6 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 
 export type BenchmarkTestRow = {
   id: string;
@@ -35,6 +37,20 @@ export type BenchmarkTestRow = {
 type Props = {
   programmeInstanceId: string | null;
   initialTests: BenchmarkTestRow[];
+  assessmentCompleted: boolean;
+  programmeGenerated: boolean;
+};
+
+type BenchmarkView = {
+  id: string;
+  title: string;
+  icon: ReactNode;
+  current: string;
+  previous: string;
+  change: number;
+  unit: string;
+  lastTested: string;
+  history: { date: string; value: string }[];
 };
 
 function toNumberOrNull(v: string) {
@@ -44,14 +60,21 @@ function toNumberOrNull(v: string) {
   return Number.isFinite(n) ? n : null;
 }
 
-export default function TestingClient({ programmeInstanceId, initialTests }: Props) {
+export default function TestingClient({
+  programmeInstanceId,
+  initialTests,
+  assessmentCompleted,
+  programmeGenerated,
+}: Props) {
   const router = useRouter();
   const [tests, setTests] = useState(initialTests);
   const [showAddTest, setShowAddTest] = useState(false);
-  const [selectedBenchmark, setSelectedBenchmark] = useState<Benchmark | null>(null);
+  const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkView | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [generatingProgramme, setGeneratingProgramme] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [selectedTest, setSelectedTest] = useState("");
   const [value, setValue] = useState("");
 
@@ -129,19 +152,21 @@ export default function TestingClient({ programmeInstanceId, initialTests }: Pro
     }
   }
 
-  type Benchmark = {
-    id: string;
-    title: string;
-    icon: ReactNode;
-    current: string;
-    previous: string;
-    change: number;
-    unit: string;
-    lastTested: string;
-    history: { date: string; value: string }[];
-  };
+  async function handleGenerateProgramme() {
+    setGeneratingProgramme(true);
+    setGenerateError(null);
+    const result = await postDashboardGenerateProgramme();
+    if (!result.ok) {
+      setGenerateError(result.error);
+      setGeneratingProgramme(false);
+      return;
+    }
+    setGeneratingProgramme(false);
+    router.push("/dashboard");
+    router.refresh();
+  }
 
-  const benchmarks: Benchmark[] = [
+  const benchmarks: BenchmarkView[] = [
     "5km time trial",
     "1km SkiErg",
     "1km Row",
@@ -225,6 +250,35 @@ export default function TestingClient({ programmeInstanceId, initialTests }: Pro
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Testing & Benchmarks</h1>
           <p className="text-muted-foreground text-sm">Track your progress with regular testing</p>
+
+          {assessmentCompleted && !programmeGenerated ? (
+            <div className="mt-6 rounded-2xl border border-border bg-muted/40 p-4 sm:p-5">
+              <p className="text-sm font-semibold text-foreground">Baseline testing is optional</p>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                Logging benchmarks improves tracking later, but you can generate your personalised 12-week programme
+                anytime once your assessment is complete.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  disabled={generatingProgramme}
+                  onClick={handleGenerateProgramme}
+                  className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {generatingProgramme ? "Generating…" : "Generate programme"}
+                </button>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex justify-center text-sm font-medium text-primary underline-offset-4 hover:underline sm:px-2"
+                >
+                  Back to dashboard
+                </Link>
+              </div>
+              {generateError ? (
+                <p className="mt-3 text-sm text-destructive">{generateError}</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="px-4 md:px-8 mb-6">

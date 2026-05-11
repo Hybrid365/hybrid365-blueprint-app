@@ -37,6 +37,7 @@ import {
   type MemberSessionDetail,
   type SessionCategoryLabel,
 } from "@/app/lib/memberDashboardSchedule";
+import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 
 export type WeekPayload = {
   week_number: number;
@@ -56,6 +57,7 @@ export type MemberDashboardClientProps = {
   initialWeeklyCheckIns: WeeklyCheckInRecord[];
   assessmentCompleted: boolean;
   coreTestsLogged: number;
+  programmeGenerated: boolean;
 };
 
 type SessionLogRecord = {
@@ -256,8 +258,12 @@ export default function MemberDashboardClient({
   initialWeeklyCheckIns,
   assessmentCompleted,
   coreTestsLogged,
+  programmeGenerated,
 }: MemberDashboardClientProps) {
   const router = useRouter();
+  const [generatingProgramme, setGeneratingProgramme] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateSuccess, setGenerateSuccess] = useState<string | null>(null);
   const allWeeks = useMemo(() => buildTwelveWeeks(weeksFromDb), [weeksFromDb]);
 
   const derivedFromFlags =
@@ -370,6 +376,21 @@ export default function MemberDashboardClient({
     .filter((log) => log.week_number === selectedWeek && typeof log.rpe === "number")
     .map((log) => Number(log.rpe));
   const averageRpe = rpeValues.length ? (rpeValues.reduce((a, b) => a + b, 0) / rpeValues.length).toFixed(1) : null;
+
+  async function handleGenerateProgramme() {
+    setGeneratingProgramme(true);
+    setGenerateError(null);
+    setGenerateSuccess(null);
+    const result = await postDashboardGenerateProgramme();
+    if (!result.ok) {
+      setGenerateError(result.error);
+      setGeneratingProgramme(false);
+      return;
+    }
+    setGenerateSuccess(result.message ?? "Programme ready.");
+    setGeneratingProgramme(false);
+    router.refresh();
+  }
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -715,6 +736,72 @@ export default function MemberDashboardClient({
           </div>
         </header>
 
+        {!programmeGenerated ? (
+          <section className="mb-10 rounded-2xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/[0.08] to-zinc-900/90 p-6 sm:p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Setup pathway</p>
+            <h2 className="mt-2 text-xl font-bold text-white sm:text-2xl">Finish onboarding to unlock your plan</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-300">
+              Complete your assessment first, optionally log baseline tests, then generate your personalised 12-week
+              programme.
+            </p>
+
+            <div className="mt-6 space-y-3">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 1 · Required</p>
+                <p className="mt-1 text-sm font-semibold text-white">Complete athlete assessment</p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className={assessmentCompleted ? "text-emerald-300 text-sm" : "text-zinc-400 text-sm"}>
+                    {assessmentCompleted ? "Completed" : "In progress"}
+                  </span>
+                  <Link
+                    href="/dashboard/assessment"
+                    className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:border-zinc-600 hover:text-white"
+                  >
+                    Open assessment
+                  </Link>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 2 · Optional</p>
+                <p className="mt-1 text-sm font-semibold text-white">Add baseline testing</p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-sm text-zinc-400">Baseline testing: {coreTestsLogged}/4 logged</span>
+                  <Link
+                    href="/dashboard/testing"
+                    className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:border-zinc-600 hover:text-white"
+                  >
+                    Open testing
+                  </Link>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 3</p>
+                <p className="mt-1 text-sm font-semibold text-white">Generate programme</p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-sm text-zinc-400">
+                    {assessmentCompleted
+                      ? "Ready now (tests optional)"
+                      : "Available after completing assessment"}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!assessmentCompleted || generatingProgramme}
+                    onClick={handleGenerateProgramme}
+                    className="rounded-lg bg-yellow-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {generatingProgramme ? "Generating…" : "Generate programme"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {generateError ? <p className="mt-4 text-sm text-red-300">{generateError}</p> : null}
+            {generateSuccess ? <p className="mt-4 text-sm text-emerald-300">{generateSuccess}</p> : null}
+          </section>
+        ) : null}
+
         <div className="grid gap-10 lg:grid-cols-[1fr_min(380px,34%)] xl:grid-cols-[1fr_420px] xl:gap-12">
           {/* ——— Main column ——— */}
           <div className="min-w-0 space-y-10">
@@ -816,7 +903,9 @@ export default function MemberDashboardClient({
               </div>
               <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Baseline testing</p>
-                <p className="mt-2 text-lg font-semibold text-white">{coreTestsLogged} / 4 core tests logged</p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  Baseline testing: {coreTestsLogged}/4 logged
+                </p>
                 <Link
                   href="/dashboard/testing"
                   className="mt-4 inline-flex rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-sm font-medium text-zinc-300 transition hover:border-zinc-700/60 hover:text-white"

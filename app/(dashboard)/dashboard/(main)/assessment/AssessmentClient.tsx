@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Target,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Nav } from "@/components/nav";
+import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 
 export type AssessmentRow = {
   id: string;
@@ -46,6 +48,29 @@ export type AssessmentRow = {
 type Props = {
   programmeInstanceId: string | null;
   initialAssessment: AssessmentRow | null;
+  hasGeneratedProgramme: boolean;
+};
+
+type SectionDef = {
+  id: string;
+  title: string;
+  icon: ReactNode;
+  isComplete: boolean;
+};
+
+/** Match mapper SESSION_LENGTH_TO_BAND — store canonical band in weekly_hours_band. */
+const SESSION_LENGTH_PILL_TO_BAND: Record<string, string> = {
+  "30-45 min": "3-5",
+  "45-60 min": "5-7",
+  "60-90 min": "7-10",
+  "90+ min": "10+",
+};
+
+const BAND_TO_SESSION_PILL: Record<string, string> = {
+  "3-5": "30-45 min",
+  "5-7": "45-60 min",
+  "7-10": "60-90 min",
+  "10+": "90+ min",
 };
 
 function toggleArray(value: string, arr: string[]) {
@@ -59,27 +84,137 @@ function toNumberOrNull(v: string) {
   return Number.isFinite(n) ? n : null;
 }
 
-export default function AssessmentClient({ programmeInstanceId, initialAssessment }: Props) {
+function experiencePillFromDb(raw: string | null | undefined): string {
+  if (!raw?.trim()) return "";
+  const t = raw.trim().toLowerCase();
+  if (t === "elite") return "Elite";
+  if (t === "advanced") return "Advanced";
+  if (t === "intermediate") return "Intermediate";
+  if (t === "beginner") return "Beginner";
+  return raw.trim();
+}
+
+function SectionCard({
+  title,
+  icon,
+  isComplete,
+  children,
+  expanded,
+  onToggle,
+}: {
+  title: string;
+  icon: ReactNode;
+  isComplete: boolean;
+  children: ReactNode;
+  expanded?: boolean;
+  onToggle?: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center",
+              isComplete ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {icon}
+          </div>
+          <span className="font-medium text-foreground">{title}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {isComplete ? (
+            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+              <Check className="w-3 h-3 text-primary-foreground" />
+            </div>
+          ) : null}
+          <ChevronRight
+            className={cn(
+              "w-5 h-5 text-muted-foreground transition-transform",
+              expanded && "rotate-90"
+            )}
+          />
+        </div>
+      </button>
+      {expanded ? <div className="px-4 pb-4 pt-2 border-t border-border">{children}</div> : null}
+    </div>
+  );
+}
+
+function PillSelector({
+  options,
+  selected,
+  onChange,
+  multi = false,
+}: {
+  options: string[];
+  selected: string | string[];
+  onChange: (value: string) => void;
+  multi?: boolean;
+}) {
+  const isSelected = (opt: string) =>
+    multi ? (selected as string[]).includes(opt) : selected === opt;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          className={cn(
+            "px-4 py-2 rounded-full text-sm font-medium transition-all",
+            isSelected(option)
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+          )}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function AssessmentClient({
+  programmeInstanceId,
+  initialAssessment,
+  hasGeneratedProgramme,
+}: Props) {
   const router = useRouter();
   const [expandedSection, setExpandedSection] = useState<string | null>("goal");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [generatingProgramme, setGeneratingProgramme] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateSuccess, setGenerateSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     goal: initialAssessment?.goal_focus ?? "",
-    event: initialAssessment?.event_type ?? "",
+    eventStatus: initialAssessment?.event_type ?? "",
+    eventDate: initialAssessment?.event_date ?? "",
+    targetTime: initialAssessment?.target_time ?? "",
     daysPerWeek:
       initialAssessment?.training_days_per_week != null
         ? `${initialAssessment.training_days_per_week} days`
         : "",
-    sessionLength: initialAssessment?.weekly_hours_band ?? "",
+    sessionLength: (() => {
+      const b = initialAssessment?.weekly_hours_band?.trim();
+      if (!b) return "";
+      return BAND_TO_SESSION_PILL[b] ?? b;
+    })(),
     fiveKm: initialAssessment?.recent_5k_time ?? "",
     rowing: "",
     skiErg: "",
     weight:
       initialAssessment?.bodyweight_kg != null ? String(initialAssessment.bodyweight_kg) : "",
     height: "",
-    experience: initialAssessment?.strength_experience ?? "",
+    experience: experiencePillFromDb(initialAssessment?.strength_experience),
     equipment: initialAssessment?.equipment ?? [],
     limitations: initialAssessment?.notes ?? "",
     priorities: initialAssessment?.injury_flags ?? [],
@@ -96,14 +231,21 @@ export default function AssessmentClient({ programmeInstanceId, initialAssessmen
         body: JSON.stringify({
           programme_instance_id: programmeInstanceId,
           goal_focus: formData.goal || initialAssessment?.goal_focus || null,
-          event_type: formData.event || initialAssessment?.event_type || null,
-          event_date: initialAssessment?.event_date ?? null,
-          target_time: initialAssessment?.target_time ?? null,
+          event_type: formData.eventStatus || initialAssessment?.event_type || null,
+          event_date: formData.eventDate.trim() || null,
+          target_time: formData.targetTime.trim() || null,
           training_days_per_week:
             toNumberOrNull(formData.daysPerWeek.replace(/[^\d.]/g, "")) ??
             initialAssessment?.training_days_per_week ??
             null,
-          weekly_hours_band: formData.sessionLength || initialAssessment?.weekly_hours_band || null,
+          weekly_hours_band: (() => {
+            const mapped = SESSION_LENGTH_PILL_TO_BAND[formData.sessionLength];
+            if (mapped) return mapped;
+            const trimmed = formData.sessionLength?.trim();
+            if (trimmed) return trimmed;
+            const fallback = initialAssessment?.weekly_hours_band?.trim();
+            return fallback || null;
+          })(),
           preferred_training_days: initialAssessment?.preferred_training_days ?? null,
           double_session_days: initialAssessment?.double_session_days ?? null,
           current_running_volume_km: initialAssessment?.current_running_volume_km ?? null,
@@ -115,7 +257,9 @@ export default function AssessmentClient({ programmeInstanceId, initialAssessmen
             toNumberOrNull(formData.weight) ?? initialAssessment?.bodyweight_kg ?? null,
           target_bodyweight_kg: initialAssessment?.target_bodyweight_kg ?? null,
           strength_experience:
-            formData.experience || initialAssessment?.strength_experience || null,
+            formData.experience.trim()
+              ? formData.experience.trim().toLowerCase()
+              : initialAssessment?.strength_experience || null,
           hyrox_experience: initialAssessment?.hyrox_experience ?? null,
           equipment: formData.equipment.length > 0 ? formData.equipment : null,
           injury_flags: formData.priorities.length > 0 ? formData.priorities : null,
@@ -140,102 +284,68 @@ export default function AssessmentClient({ programmeInstanceId, initialAssessmen
     }
   }
 
-  const sections = [
-    { id: "goal", title: "Goal & Event", icon: <Target className="w-5 h-5" />, isComplete: !!formData.goal && !!formData.event },
-    { id: "availability", title: "Training Availability", icon: <Calendar className="w-5 h-5" />, isComplete: !!formData.daysPerWeek && !!formData.sessionLength },
-    { id: "performance", title: "Current Performance", icon: <Activity className="w-5 h-5" />, isComplete: !!formData.fiveKm },
-    { id: "body", title: "Body & Experience", icon: <User className="w-5 h-5" />, isComplete: !!formData.weight && !!formData.experience },
-    { id: "equipment", title: "Equipment Access", icon: <Dumbbell className="w-5 h-5" />, isComplete: formData.equipment.length > 0 },
-    { id: "limitations", title: "Limitations & Priorities", icon: <AlertCircle className="w-5 h-5" />, isComplete: formData.priorities.length > 0 },
+  const eventBooked =
+    !!formData.eventStatus.trim() &&
+    formData.eventStatus.trim().toLowerCase() !== "no event booked";
+  const assessmentMarkedComplete = Boolean(initialAssessment?.completed_at || success);
+
+  async function handleGenerateProgramme() {
+    setGeneratingProgramme(true);
+    setGenerateError(null);
+    setGenerateSuccess(null);
+    const result = await postDashboardGenerateProgramme();
+    if (!result.ok) {
+      setGenerateError(result.error);
+      setGeneratingProgramme(false);
+      return;
+    }
+    setGenerateSuccess(result.message ?? "Programme ready.");
+    setGeneratingProgramme(false);
+    router.push("/dashboard");
+    router.refresh();
+  }
+
+  const sections: SectionDef[] = [
+    {
+      id: "goal",
+      title: "Goal & Event",
+      icon: <Target className="w-5 h-5" />,
+      isComplete: !!formData.goal && !!formData.eventStatus,
+    },
+    {
+      id: "availability",
+      title: "Training Availability",
+      icon: <Calendar className="w-5 h-5" />,
+      isComplete: !!formData.daysPerWeek && !!formData.sessionLength,
+    },
+    {
+      id: "performance",
+      title: "Current Performance",
+      icon: <Activity className="w-5 h-5" />,
+      isComplete: !!formData.fiveKm,
+    },
+    {
+      id: "body",
+      title: "Body & Experience",
+      icon: <User className="w-5 h-5" />,
+      isComplete: !!formData.weight && !!formData.experience,
+    },
+    {
+      id: "equipment",
+      title: "Equipment Access",
+      icon: <Dumbbell className="w-5 h-5" />,
+      isComplete: formData.equipment.length > 0,
+    },
+    {
+      id: "limitations",
+      title: "Limitations & Priorities",
+      icon: <AlertCircle className="w-5 h-5" />,
+      isComplete: formData.priorities.length > 0,
+    },
   ];
 
   const completedSections = sections.filter((s) => s.isComplete).length;
   const progressPercent = (completedSections / sections.length) * 100;
-
-  function SectionCard({
-    title,
-    icon,
-    isComplete,
-    children,
-    expanded,
-    onToggle,
-  }: {
-    title: string;
-    icon: React.ReactNode;
-    isComplete: boolean;
-    children: React.ReactNode;
-    expanded?: boolean;
-    onToggle?: () => void;
-  }) {
-    return (
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <button
-          onClick={onToggle}
-          className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center",
-              isComplete ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
-            )}>
-              {icon}
-            </div>
-            <span className="font-medium text-foreground">{title}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {isComplete && (
-              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                <Check className="w-3 h-3 text-primary-foreground" />
-              </div>
-            )}
-            <ChevronRight className={cn(
-              "w-5 h-5 text-muted-foreground transition-transform",
-              expanded && "rotate-90"
-            )} />
-          </div>
-        </button>
-        {expanded && (
-          <div className="px-4 pb-4 pt-2 border-t border-border">
-            {children}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function PillSelector({
-    options,
-    selected,
-    onChange,
-    multi = false
-  }: {
-    options: string[];
-    selected: string | string[];
-    onChange: (value: string) => void;
-    multi?: boolean;
-  }) {
-    const isSelected = (opt: string) =>
-      multi ? (selected as string[]).includes(opt) : selected === opt;
-
-    return (
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => (
-          <button
-            key={option}
-            onClick={() => onChange(option)}
-            className={cn(
-              "px-4 py-2 rounded-full text-sm font-medium transition-all",
-              isSelected(option)
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-            )}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -258,16 +368,120 @@ export default function AssessmentClient({ programmeInstanceId, initialAssessmen
           </div>
         </div>
 
+        {assessmentMarkedComplete && !hasGeneratedProgramme ? (
+          <div className="px-4 md:px-8">
+            <section className="mb-6 rounded-2xl border border-primary/35 bg-gradient-to-br from-primary/[0.12] via-card to-card p-5 sm:p-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Next step</p>
+              <h2 className="mt-1 text-lg font-bold text-foreground sm:text-xl">Assessment complete</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                You can now generate your personalised 12-week Hybrid365 programme. Baseline tests are optional but useful
+                for tracking.
+              </p>
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <button
+                  type="button"
+                  disabled={generatingProgramme}
+                  onClick={handleGenerateProgramme}
+                  className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {generatingProgramme ? "Generating…" : "Generate programme"}
+                </button>
+                <Link
+                  href="/dashboard/testing"
+                  className="inline-flex items-center justify-center rounded-xl border border-border bg-secondary px-5 py-3 text-sm font-medium text-secondary-foreground transition hover:bg-secondary/80"
+                >
+                  Add baseline tests (optional)
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center rounded-xl border border-transparent px-5 py-3 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  Back to dashboard
+                </Link>
+              </div>
+              {generateError ? (
+                <p className="mt-3 text-sm text-destructive">{generateError}</p>
+              ) : null}
+              {generateSuccess ? (
+                <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{generateSuccess}</p>
+              ) : null}
+            </section>
+          </div>
+        ) : null}
+
         <div className="px-4 md:px-8 space-y-3 pb-8">
-          <SectionCard title="Goal & Event" icon={<Target className="w-5 h-5" />} isComplete={!!formData.goal && !!formData.event} expanded={expandedSection === "goal"} onToggle={() => setExpandedSection(expandedSection === "goal" ? null : "goal")}>
+          <SectionCard
+            title="Goal & Event"
+            icon={<Target className="w-5 h-5" />}
+            isComplete={!!formData.goal && !!formData.eventStatus}
+            expanded={expandedSection === "goal"}
+            onToggle={() => setExpandedSection(expandedSection === "goal" ? null : "goal")}
+          >
             <div className="space-y-4">
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">Primary Goal</label>
-                <PillSelector options={["Complete First Hyrox", "Podium Finish", "Personal Best", "General Fitness"]} selected={formData.goal} onChange={(v) => setFormData({ ...formData, goal: v })} />
+                <PillSelector
+                  options={[
+                    "Improve Hybrid / Hyrox Performance",
+                    "Run Faster / Improve Engine",
+                    "Build Strength Without Losing Fitness",
+                    "Lose Body Fat & Improve Fitness",
+                    "General Hybrid Fitness",
+                    "Prepare for a Specific Event",
+                  ]}
+                  selected={formData.goal}
+                  onChange={(v) => setFormData({ ...formData, goal: v })}
+                />
               </div>
               <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Target Event</label>
-                <PillSelector options={["Hyrox Open", "Hyrox Pro", "Hyrox Doubles", "Hybrid Training Only"]} selected={formData.event} onChange={(v) => setFormData({ ...formData, event: v })} />
+                <label className="text-sm text-muted-foreground mb-2 block">Event Status / Target</label>
+                <PillSelector
+                  options={[
+                    "No event booked",
+                    "Hyrox Open",
+                    "Hyrox Pro",
+                    "Hyrox Doubles",
+                    "Running race",
+                    "Triathlon",
+                    "Other event",
+                  ]}
+                  selected={formData.eventStatus}
+                  onChange={(v) => setFormData({ ...formData, eventStatus: v })}
+                />
+              </div>
+              <div className={cn("grid gap-3 sm:grid-cols-2", !eventBooked && "opacity-75")}>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">
+                    Event date {eventBooked ? "(recommended)" : "(optional)"}
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.eventDate}
+                    onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">
+                    Target time {eventBooked ? "(recommended)" : "(optional)"}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., 1:24:00"
+                    value={formData.targetTime}
+                    onChange={(e) => setFormData({ ...formData, targetTime: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setExpandedSection("availability")}
+                  className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-secondary/80"
+                >
+                  Continue
+                </button>
               </div>
             </div>
           </SectionCard>
@@ -282,6 +496,15 @@ export default function AssessmentClient({ programmeInstanceId, initialAssessmen
                 <label className="text-sm text-muted-foreground mb-2 block">Session Length</label>
                 <PillSelector options={["30-45 min", "45-60 min", "60-90 min", "90+ min"]} selected={formData.sessionLength} onChange={(v) => setFormData({ ...formData, sessionLength: v })} />
               </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setExpandedSection("performance")}
+                className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-secondary/80"
+              >
+                Continue
+              </button>
             </div>
           </SectionCard>
 
@@ -302,6 +525,15 @@ export default function AssessmentClient({ programmeInstanceId, initialAssessmen
                 </div>
               </div>
             </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setExpandedSection("body")}
+                className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-secondary/80"
+              >
+                Continue
+              </button>
+            </div>
           </SectionCard>
 
           <SectionCard title="Body & Experience" icon={<User className="w-5 h-5" />} isComplete={!!formData.weight && !!formData.experience} expanded={expandedSection === "body"} onToggle={() => setExpandedSection(expandedSection === "body" ? null : "body")}>
@@ -321,6 +553,15 @@ export default function AssessmentClient({ programmeInstanceId, initialAssessmen
                 <PillSelector options={["Beginner", "Intermediate", "Advanced", "Elite"]} selected={formData.experience} onChange={(v) => setFormData({ ...formData, experience: v })} />
               </div>
             </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setExpandedSection("equipment")}
+                className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-secondary/80"
+              >
+                Continue
+              </button>
+            </div>
           </SectionCard>
 
           <SectionCard title="Equipment Access" icon={<Dumbbell className="w-5 h-5" />} isComplete={formData.equipment.length > 0} expanded={expandedSection === "equipment"} onToggle={() => setExpandedSection(expandedSection === "equipment" ? null : "equipment")}>
@@ -330,6 +571,15 @@ export default function AssessmentClient({ programmeInstanceId, initialAssessmen
                 const newEquipment = formData.equipment.includes(v) ? formData.equipment.filter((e) => e !== v) : [...formData.equipment, v];
                 setFormData({ ...formData, equipment: newEquipment });
               }} />
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setExpandedSection("limitations")}
+                className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-secondary/80"
+              >
+                Continue
+              </button>
             </div>
           </SectionCard>
 
