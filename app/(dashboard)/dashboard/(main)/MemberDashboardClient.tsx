@@ -49,6 +49,7 @@ import {
 } from "@/app/lib/memberDashboardSchedule";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 import { shareCardInputFromMemberSession } from "@/app/lib/sessionShareCardText";
+import { DashboardChallengeTeaser } from "@/components/dashboard/DashboardChallengeTeaser";
 import { DashboardHabitsTeaser } from "@/components/dashboard/DashboardHabitsTeaser";
 import type { SessionShareCardProps } from "@/components/share/SessionShareCard";
 import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
@@ -822,6 +823,7 @@ export default function MemberDashboardClient({
               { href: "/dashboard/programme", label: "Programme" },
               { href: "/dashboard/progress", label: "Progress" },
               { href: "/dashboard/habits", label: "Habits" },
+              { href: "/dashboard/challenge", label: "Challenge" },
               { href: "/dashboard/assessment", label: "Assessment" },
               { href: "/dashboard/testing", label: "Testing" },
             ].map((item) => (
@@ -1265,6 +1267,8 @@ export default function MemberDashboardClient({
             </Link>
 
             <DashboardHabitsTeaser />
+
+            <DashboardChallengeTeaser />
 
             <div>
               <h3 className="mb-4 text-lg font-bold text-white sm:text-xl">Next session</h3>
