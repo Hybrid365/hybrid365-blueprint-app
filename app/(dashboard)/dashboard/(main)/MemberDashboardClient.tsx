@@ -54,6 +54,7 @@ import { DashboardHabitsTeaser } from "@/components/dashboard/DashboardHabitsTea
 import type { SessionShareCardProps } from "@/components/share/SessionShareCard";
 import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
+import { AddToHomeScreenBanner } from "@/components/dashboard/AddToHomeScreenBanner";
 
 export type WeekPayload = {
   week_number: number;
@@ -822,6 +823,8 @@ export default function MemberDashboardClient({
             <DashboardSubnav variant="zinc" />
           </div>
         </header>
+
+        <AddToHomeScreenBanner />
 
         {!programmeGenerated ? (
           <section className="mb-10">
