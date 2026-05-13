@@ -20,6 +20,10 @@ export default async function NoAccessPage() {
           Paid members get the full 12-week dashboard, week-by-week guidance,
           and soon — session completion, RPE, and weekly check-ins.
         </p>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-500">
+          If you&apos;ve just joined through Whop, log in with the same email you used at checkout.
+          If access doesn&apos;t appear within a minute, refresh or contact support.
+        </p>
         {user?.email ? (
           <p className="mt-3 text-xs text-zinc-500">
             Signed in as {user.email}
