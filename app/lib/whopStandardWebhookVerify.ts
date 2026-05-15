@@ -2,6 +2,11 @@ import crypto from "node:crypto";
 
 const WEBHOOK_TOLERANCE_SEC = 300;
 
+export type SecretDecodingCandidateLabel =
+  | "whsec_base64_candidate"
+  | "utf8_candidate"
+  | "plain_base64_candidate";
+
 export type WhopWebhookSafeVerifyDebug = {
   webhookSecretExists: boolean;
   webhookIdHeaderExists: boolean;
@@ -10,6 +15,10 @@ export type WhopWebhookSafeVerifyDebug = {
   detectedSignatureFormat: string | null;
   timestampSkewSeconds: number | null;
   verificationFailureReason: WebhookVerifyFailureReason | null;
+  secretDecodingCandidateUsed: SecretDecodingCandidateLabel | null;
+  secretDecodingCandidatesTried: SecretDecodingCandidateLabel[];
+  expectedSignatureLength: number | null;
+  providedSignatureLength: number | null;
 };
 
 export type WebhookVerifyFailureReason =
@@ -19,7 +28,7 @@ export type WebhookVerifyFailureReason =
   | "bad_signature";
 
 export type WebhookVerifyResult =
-  | { ok: true }
+  | { ok: true; debug: WhopWebhookSafeVerifyDebug }
   | {
       ok: false;
       reason: WebhookVerifyFailureReason;
@@ -60,10 +69,7 @@ function tryBase64DecodeSecret(remainder: string): Buffer | null {
 }
 
 /**
- * Decode Standard Webhooks symmetric signing secret.
- * 1. `whsec_` / `ws_` prefix: strip and base64-decode remainder; on failure use UTF-8 of remainder.
- * 2. Otherwise: try base64-decode whole secret; on failure use UTF-8 of full trimmed secret.
- *
+ * Standard Webhooks symmetric secret: strip `whsec_` / `ws_`, then base64-decode.
  * @see https://github.com/standard-webhooks/standard-webhooks
  */
 export function decodeStandardWebhookSecret(raw: string): Buffer {
@@ -72,33 +78,56 @@ export function decodeStandardWebhookSecret(raw: string): Buffer {
   for (const prefix of ["whsec_", "ws_"] as const) {
     if (trimmed.startsWith(prefix)) {
       const remainder = trimmed.slice(prefix.length);
-      return tryBase64DecodeSecret(remainder) ?? Buffer.from(remainder, "utf8");
+      const decoded = tryBase64DecodeSecret(remainder);
+      if (!decoded) {
+        throw new Error("Invalid whsec secret: base64 decode failed");
+      }
+      return decoded;
     }
   }
 
-  return tryBase64DecodeSecret(trimmed) ?? Buffer.from(trimmed, "utf8");
+  const decoded = tryBase64DecodeSecret(trimmed);
+  if (!decoded) {
+    throw new Error("Invalid webhook secret: base64 decode failed");
+  }
+  return decoded;
 }
 
-/** Key material candidates for secrets stored in different dashboard formats. */
-export function getWebhookSecretKeyCandidates(raw: string): Buffer[] {
+export type SecretKeyCandidate = {
+  label: SecretDecodingCandidateLabel;
+  key: Buffer;
+};
+
+/**
+ * Key candidates aligned with Standard Webhooks:
+ * - `whsec_` / `ws_`: base64-decode after prefix only (no UTF-8 fallback).
+ * - No prefix: base64-decode whole secret; if that fails, UTF-8 (Whop SDK btoa(env) path).
+ */
+export function getWebhookSecretKeyCandidates(raw: string): SecretKeyCandidate[] {
   const trimmed = raw.trim();
   if (!trimmed) return [];
 
-  const keys: Buffer[] = [];
-  const add = (buf: Buffer) => {
-    if (buf.length === 0) return;
-    if (!keys.some((k) => k.equals(buf))) keys.push(buf);
+  const candidates: SecretKeyCandidate[] = [];
+  const add = (label: SecretDecodingCandidateLabel, key: Buffer) => {
+    if (key.length === 0) return;
+    if (!candidates.some((c) => c.label === label && c.key.equals(key))) {
+      candidates.push({ label, key });
+    }
   };
 
-  add(decodeStandardWebhookSecret(trimmed));
-
-  if (!trimmed.startsWith("whsec_") && !trimmed.startsWith("ws_")) {
-    add(Buffer.from(trimmed, "utf8"));
-    const b64 = tryBase64DecodeSecret(trimmed);
-    if (b64) add(b64);
+  if (trimmed.startsWith("whsec_") || trimmed.startsWith("ws_")) {
+    const prefix = trimmed.startsWith("whsec_") ? "whsec_" : "ws_";
+    const remainder = trimmed.slice(prefix.length);
+    const decoded = tryBase64DecodeSecret(remainder);
+    if (decoded) add("whsec_base64_candidate", decoded);
+    return candidates;
   }
 
-  return keys;
+  const decoded = tryBase64DecodeSecret(trimmed);
+  if (decoded) add("plain_base64_candidate", decoded);
+  add("utf8_candidate", Buffer.from(trimmed, "utf8"));
+
+  return candidates;
 }
 
 function padBase64UrlSafe(s: string): string {
@@ -181,12 +210,39 @@ export function detectSignatureFormat(sigHeader: string | null): string | null {
   return versions.join("+");
 }
 
+function firstV1SignaturePayload(signatures: ParsedWebhookSignature[]): string | null {
+  return signatures.find((s) => s.version === "v1")?.payload ?? null;
+}
+
+function computeSignatureLengthDebug(
+  signedVariants: string[],
+  key: Buffer,
+  providedPayload: string | null
+): Pick<WhopWebhookSafeVerifyDebug, "expectedSignatureLength" | "providedSignatureLength"> {
+  let expectedSignatureLength: number | null = null;
+  if (signedVariants.length > 0) {
+    const expectedB64 = crypto
+      .createHmac("sha256", key)
+      .update(signedVariants[0]!, "utf8")
+      .digest("base64");
+    expectedSignatureLength = expectedB64.length;
+  }
+
+  const providedSignatureLength = providedPayload ? providedPayload.length : null;
+
+  return { expectedSignatureLength, providedSignatureLength };
+}
+
 export function buildWebhookVerifyDebug(params: {
   secret: string;
   headers: WhopWebhookHeaders;
   reason?: WebhookVerifyFailureReason | null;
   signatureFormat?: string | null;
   timestampSkewSeconds?: number | null;
+  secretDecodingCandidateUsed?: SecretDecodingCandidateLabel | null;
+  secretDecodingCandidatesTried?: SecretDecodingCandidateLabel[];
+  expectedSignatureLength?: number | null;
+  providedSignatureLength?: number | null;
 }): WhopWebhookSafeVerifyDebug {
   const { secret, headers, reason = null } = params;
   return {
@@ -198,37 +254,36 @@ export function buildWebhookVerifyDebug(params: {
       params.signatureFormat ?? detectSignatureFormat(headers.webhookSignature),
     timestampSkewSeconds: params.timestampSkewSeconds ?? null,
     verificationFailureReason: reason,
+    secretDecodingCandidateUsed: params.secretDecodingCandidateUsed ?? null,
+    secretDecodingCandidatesTried: params.secretDecodingCandidatesTried ?? [],
+    expectedSignatureLength: params.expectedSignatureLength ?? null,
+    providedSignatureLength: params.providedSignatureLength ?? null,
   };
 }
 
 function verifyWithKey(
   key: Buffer,
   signedVariants: string[],
-  signatures: ParsedWebhookSignature[],
-  debug: WhopWebhookSafeVerifyDebug
+  signatures: ParsedWebhookSignature[]
 ): boolean {
   for (const signedContent of signedVariants) {
     const expectedDigest = crypto.createHmac("sha256", key).update(signedContent, "utf8").digest();
     const expectedB64 = expectedDigest.toString("base64");
 
     for (const { version, payload: sigPayload } of signatures) {
-      if (version === "v1") {
-        debug.detectedSignatureFormat = "v1";
+      if (version !== "v1") continue;
 
-        if (timingSafeEqualUtf8Strings(expectedB64, sigPayload)) {
-          return true;
-        }
+      if (timingSafeEqualUtf8Strings(expectedB64, sigPayload)) {
+        return true;
+      }
 
-        const theirBuf = tryDecodeSignatureB64(sigPayload);
-        if (
-          theirBuf &&
-          theirBuf.length === expectedDigest.length &&
-          crypto.timingSafeEqual(expectedDigest, theirBuf)
-        ) {
-          return true;
-        }
-      } else if (!debug.detectedSignatureFormat || debug.detectedSignatureFormat === "unrecognized") {
-        debug.detectedSignatureFormat = version;
+      const theirBuf = tryDecodeSignatureB64(sigPayload);
+      if (
+        theirBuf &&
+        theirBuf.length === expectedDigest.length &&
+        crypto.timingSafeEqual(expectedDigest, theirBuf)
+      ) {
+        return true;
       }
     }
   }
@@ -284,15 +339,48 @@ export function verifyStandardWebhookV1(params: {
 
   const signatures = parseWebhookSignatureHeader(sigHeader);
   debug.detectedSignatureFormat = detectSignatureFormat(sigHeader);
+  const providedPayload = firstV1SignaturePayload(signatures);
 
   const keyCandidates = getWebhookSecretKeyCandidates(trimmedSecret);
-  for (const key of keyCandidates) {
-    if (verifyWithKey(key, signedVariants, signatures, debug)) {
-      return { ok: true };
+  const candidatesTried: SecretDecodingCandidateLabel[] =
+    keyCandidates.length > 0
+      ? keyCandidates.map((c) => c.label)
+      : trimmedSecret.startsWith("whsec_") || trimmedSecret.startsWith("ws_")
+        ? ["whsec_base64_candidate"]
+        : ["plain_base64_candidate", "utf8_candidate"];
+
+  if (keyCandidates.length === 0) {
+    debug = {
+      ...debug,
+      verificationFailureReason: "bad_signature",
+      secretDecodingCandidatesTried: candidatesTried,
+      providedSignatureLength: providedPayload?.length ?? null,
+    };
+    return { ok: false, reason: "bad_signature", debug };
+  }
+
+  for (const { label, key } of keyCandidates) {
+    if (verifyWithKey(key, signedVariants, signatures)) {
+      debug = {
+        ...debug,
+        secretDecodingCandidateUsed: label,
+        secretDecodingCandidatesTried: candidatesTried,
+        ...computeSignatureLengthDebug(signedVariants, key, providedPayload),
+        verificationFailureReason: null,
+      };
+      return { ok: true, debug };
     }
   }
 
-  debug = { ...debug, verificationFailureReason: "bad_signature" };
+  const primary = keyCandidates[0]!;
+  const lengthDebug = computeSignatureLengthDebug(signedVariants, primary.key, providedPayload);
+
+  debug = {
+    ...debug,
+    verificationFailureReason: "bad_signature",
+    secretDecodingCandidatesTried: candidatesTried,
+    ...lengthDebug,
+  };
   return { ok: false, reason: "bad_signature", debug };
 }
 

@@ -67,10 +67,7 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
-    logWhopWebhookVerifySafe("verification succeeded", {
-      ...buildWebhookVerifyDebug({ secret, headers: whHeaders }),
-      verificationFailureReason: null,
-    });
+    logWhopWebhookVerifySafe("verification succeeded", verifyResult.debug);
   } else {
     console.warn(
       "[whop webhook] WHOP_WEBHOOK_SECRET not set — signature NOT verified (non-production only). TODO: set secret before production traffic."
