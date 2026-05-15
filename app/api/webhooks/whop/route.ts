@@ -14,6 +14,8 @@ import {
 import { findAuthUserIdByEmail } from "@/app/lib/whopMembershipSync";
 import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
 import {
+  buildWebhookVerifyDebug,
+  logWhopWebhookVerifySafe,
   readStandardWebhookHeaders,
   verifyStandardWebhookV1,
 } from "@/app/lib/whopStandardWebhookVerify";
@@ -43,6 +45,9 @@ export async function POST(request: Request) {
   const whHeaders = readStandardWebhookHeaders(request);
   const webhookIdHeader = whHeaders.webhookId;
   const secret = process.env.WHOP_WEBHOOK_SECRET?.trim() ?? "";
+  const preVerifyDebug = buildWebhookVerifyDebug({ secret, headers: whHeaders });
+
+  logWhopWebhookVerifySafe("incoming request", preVerifyDebug);
 
   if (isProduction() && !secret) {
     console.error("[whop webhook] WHOP_WEBHOOK_SECRET missing in production — refusing webhook");
@@ -53,15 +58,19 @@ export async function POST(request: Request) {
   }
 
   if (secret) {
-    const ok = verifyStandardWebhookV1({ rawBody, headers: whHeaders, secret });
-    if (!ok) {
-      console.error("[whop webhook] Signature verification failed or stale timestamp", {
-        hasId: Boolean(webhookIdHeader),
-        hasTs: Boolean(whHeaders.webhookTimestamp),
-        hasSig: Boolean(whHeaders.webhookSignature),
-      });
-      return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
+    const verifyResult = verifyStandardWebhookV1({ rawBody, headers: whHeaders, secret });
+    if (!verifyResult.ok) {
+      logWhopWebhookVerifySafe("verification failed", verifyResult.debug);
+      console.error("[whop webhook] Signature verification failed", verifyResult.debug);
+      return NextResponse.json(
+        { error: "invalid_signature", reason: verifyResult.reason },
+        { status: 401 }
+      );
     }
+    logWhopWebhookVerifySafe("verification succeeded", {
+      ...buildWebhookVerifyDebug({ secret, headers: whHeaders }),
+      verificationFailureReason: null,
+    });
   } else {
     console.warn(
       "[whop webhook] WHOP_WEBHOOK_SECRET not set — signature NOT verified (non-production only). TODO: set secret before production traffic."
