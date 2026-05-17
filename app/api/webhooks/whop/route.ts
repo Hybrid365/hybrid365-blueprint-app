@@ -14,10 +14,10 @@ import {
 import { findAuthUserIdByEmail } from "@/app/lib/whopMembershipSync";
 import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
 import {
-  buildWebhookVerifyDebug,
+  buildWhopWebhookSafeVerifyLog,
   logWhopWebhookVerifySafe,
   readStandardWebhookHeaders,
-  verifyStandardWebhookV1,
+  verifyWhopWebhookWithStandardWebhooks,
 } from "@/app/lib/whopStandardWebhookVerify";
 
 export const runtime = "nodejs";
@@ -45,9 +45,11 @@ export async function POST(request: Request) {
   const whHeaders = readStandardWebhookHeaders(request);
   const webhookIdHeader = whHeaders.webhookId;
   const secret = process.env.WHOP_WEBHOOK_SECRET?.trim() ?? "";
-  const preVerifyDebug = buildWebhookVerifyDebug({ secret, headers: whHeaders });
 
-  logWhopWebhookVerifySafe("incoming request", preVerifyDebug);
+  logWhopWebhookVerifySafe(
+    "incoming request",
+    buildWhopWebhookSafeVerifyLog({ secret, headers: whHeaders })
+  );
 
   if (isProduction() && !secret) {
     console.error("[whop webhook] WHOP_WEBHOOK_SECRET missing in production — refusing webhook");
@@ -58,16 +60,20 @@ export async function POST(request: Request) {
   }
 
   if (secret) {
-    const verifyResult = verifyStandardWebhookV1({ rawBody, headers: whHeaders, secret });
+    const verifyResult = verifyWhopWebhookWithStandardWebhooks({
+      rawBody,
+      headers: whHeaders,
+      secret,
+    });
     if (!verifyResult.ok) {
-      logWhopWebhookVerifySafe("verification failed", verifyResult.debug);
-      console.error("[whop webhook] Signature verification failed", verifyResult.debug);
+      logWhopWebhookVerifySafe("verification failed", verifyResult.log);
+      console.error("[whop webhook] Signature verification failed", verifyResult.log);
       return NextResponse.json(
         { error: "invalid_signature", reason: verifyResult.reason },
         { status: 401 }
       );
     }
-    logWhopWebhookVerifySafe("verification succeeded", verifyResult.debug);
+    logWhopWebhookVerifySafe("verification succeeded", verifyResult.log);
   } else {
     console.warn(
       "[whop webhook] WHOP_WEBHOOK_SECRET not set — signature NOT verified (non-production only). TODO: set secret before production traffic."
