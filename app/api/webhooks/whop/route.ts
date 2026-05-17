@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import {
-  extractMembershipExpiresAt,
   extractWhopEmail,
   extractWhopEventId,
   extractWhopEventType,
   extractWhopMembershipId,
-  extractWhopPlanId,
-  extractWhopProductId,
-  extractWhopUserId,
   mapWhopEventToMembershipStatus,
   type WhopWebhookPayload,
 } from "@/app/lib/whopWebhook";
-import { findAuthUserIdByEmail } from "@/app/lib/whopMembershipSync";
+import {
+  buildWhopMembershipFields,
+  findAuthUserIdByEmail,
+  isWhopWebhookEventProcessed,
+  upsertPendingWhopMembership,
+} from "@/app/lib/whopMembershipSync";
 import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
 import {
   buildWhopWebhookSafeVerifyLog,
@@ -119,17 +120,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server misconfiguration" }, { status: 503 });
   }
 
-  if (webhookId) {
-    const { data: dup } = await admin
-      .from("memberships")
-      .select("user_id")
-      .eq("last_whop_event_id", webhookId)
-      .maybeSingle();
-    if (dup?.user_id) {
-      logWhopSafe("duplicate delivery (idempotent skip)", { webhookId });
-      return NextResponse.json({ ok: true, skipped: "duplicate_event" }, { status: 200 });
-    }
+  if (webhookId && (await isWhopWebhookEventProcessed(admin, webhookId))) {
+    logWhopSafe("duplicate delivery (idempotent skip)", { webhookId });
+    return NextResponse.json({ ok: true, skipped: "duplicate_event" }, { status: 200 });
   }
+
+  const whopFields = buildWhopMembershipFields({
+    payload,
+    email,
+    status,
+    webhookId,
+    eventType,
+  });
 
   const authLookup = await findAuthUserIdByEmail(admin, email);
   if (!authLookup.ok && authLookup.listError) {
@@ -138,35 +140,32 @@ export async function POST(request: Request) {
   }
 
   if (!authLookup.ok || !authLookup.userId) {
-    console.warn(
-      "[whop webhook] Whop member email not found in auth.users yet. User must sign in once with the same email, or run a backfill/sync.",
-      { emailHint: `${email.slice(0, 2)}…@${email.split("@")[1] ?? "?"}` }
-    );
-    return NextResponse.json({ ok: true, skipped: "auth_user_not_found" }, { status: 200 });
+    const pendingResult = await upsertPendingWhopMembership(admin, {
+      email: whopFields.whop_email,
+      ...whopFields,
+    });
+
+    if (!pendingResult.ok) {
+      console.error("[whop webhook] pending_whop_memberships upsert failed", {
+        message: pendingResult.message,
+      });
+      return NextResponse.json({ error: "Pending membership update failed" }, { status: 500 });
+    }
+
+    logWhopSafe("stored pending Whop membership (auth user not found yet)", {
+      status,
+      eventType: eventType ?? "(none)",
+      webhookId: webhookId ?? "(none)",
+    });
+    return NextResponse.json({ ok: true, pending: true, status }, { status: 200 });
   }
 
   const userId = authLookup.userId;
 
-  const expiresAt = extractMembershipExpiresAt(payload);
-  const nowIso = new Date().toISOString();
-
-  const row: Record<string, unknown> = {
-    user_id: userId,
-    status,
-    source: "whop",
-    expires_at: expiresAt,
-    whop_membership_id: membershipId,
-    whop_user_id: extractWhopUserId(payload),
-    whop_email: email,
-    whop_plan_id: extractWhopPlanId(payload),
-    whop_product_id: extractWhopProductId(payload),
-    last_whop_event_id: webhookId,
-    last_whop_event_type: eventType,
-    last_whop_event_at: nowIso,
-    updated_at: nowIso,
-  };
-
-  const { error: upsertError } = await admin.from("memberships").upsert(row, { onConflict: "user_id" });
+  const { error: upsertError } = await admin.from("memberships").upsert(
+    { user_id: userId, ...whopFields },
+    { onConflict: "user_id" }
+  );
 
   if (upsertError) {
     console.error("[whop webhook] memberships upsert failed", {

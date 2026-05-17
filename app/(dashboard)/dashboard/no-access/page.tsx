@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { claimPendingWhopMembershipForUser } from "@/app/lib/whopMembershipSync";
+import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
 import { createClient } from "@/app/lib/supabase/server";
 
 export default async function NoAccessPage() {
@@ -6,6 +9,18 @@ export default async function NoAccessPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user?.email) {
+    try {
+      const admin = createServiceRoleClient();
+      const claim = await claimPendingWhopMembershipForUser(admin, user.id, user.email);
+      if (claim.activated) {
+        redirect("/dashboard");
+      }
+    } catch {
+      /* claim optional; show no-access */
+    }
+  }
 
   return (
     <div className="mx-auto max-w-lg space-y-6 text-center">
@@ -21,8 +36,9 @@ export default async function NoAccessPage() {
           and soon — session completion, RPE, and weekly check-ins.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-          If you&apos;ve just joined through Whop, log in with the same email you used at checkout.
-          If access doesn&apos;t appear within a minute, refresh or contact support.
+          If you&apos;ve just joined through Whop, sign in with the same email you used at checkout —
+          your access is linked automatically on first login. Refresh this page if it doesn&apos;t
+          update right away, or contact support.
         </p>
         {user?.email ? (
           <p className="mt-3 text-xs text-zinc-500">

@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { claimPendingWhopMembershipForUser } from "@/app/lib/whopMembershipSync";
+import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
 import { createClient } from "@/app/lib/supabase/server";
 
 export default async function DashboardMemberLayout({
@@ -13,6 +15,21 @@ export default async function DashboardMemberLayout({
 
   if (!user) {
     redirect("/login?next=/dashboard");
+  }
+
+  if (user.email) {
+    try {
+      const admin = createServiceRoleClient();
+      const claim = await claimPendingWhopMembershipForUser(admin, user.id, user.email);
+      if (claim.claimed) {
+        console.log("[dashboard] claimed pending Whop membership", {
+          userId: user.id,
+          activated: claim.activated,
+        });
+      }
+    } catch (e) {
+      console.warn("[dashboard] pending Whop claim skipped", e);
+    }
   }
 
   const { data: membership } = await supabase
