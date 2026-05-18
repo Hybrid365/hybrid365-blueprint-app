@@ -217,6 +217,12 @@ export type PlanJson = {
   programme_intelligence?: import("./paidProgrammeIntelligence").PaidProgrammeIntelligence;
   /** Week-level rationale (paid 12-week only). */
   week_rationale?: import("./programmeRationale").WeekRationale;
+  /** Structure role per calendar day (generation / repair). */
+  structure_roles_by_day?: Partial<Record<DayKey, StructureRole>>;
+  /** Post-repair fixes applied this week (paid 12-week). */
+  schedule_repairs?: string[];
+  /** Constraint issues that could not be fully repaired (paid 12-week). */
+  schedule_remaining_issues?: string[];
 };
 
 function allEquipment(...items: UserEquipment[]) {

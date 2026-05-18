@@ -17,6 +17,7 @@ import {
   isRunThresholdAnchorDay,
   summariseThresholdVolume,
 } from "../app/lib/thresholdVolumeTracking";
+import { countRunExposuresInSchedule } from "../app/lib/runVolumePlanner";
 import type { DayPlan } from "../app/lib/sessionLibrary";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -310,6 +311,103 @@ function testCaseC() {
   console.log("✓ Case C: limited equipment — substitutions + specificity note");
 }
 
+/** Matches internal preview preset A: 7 days, doubles, 16:30 5k, 50–70km. */
+function testAdvancedHyroxPro7Day() {
+  const input = mapAssessmentToProgrammeInput({
+    assessment: {
+      goal_focus: "Improve Hybrid / Hyrox Performance",
+      event_type: "Hyrox Pro",
+      event_date: "2026-09-15",
+      target_time: "1:05:00",
+      training_days_per_week: 7,
+      weekly_hours_band: "10+",
+      preferred_training_days: null,
+      double_session_days: ["Tue", "Thu", "Sat"],
+      recent_5k_time: "16:30",
+      max_heart_rate: 192,
+      strength_experience: "advanced",
+      hyrox_experience: "competitive",
+      equipment: ["Full gym"],
+      injury_flags: null,
+      movements_to_avoid: null,
+      biggest_limiter: "Running under fatigue after stations",
+      notes: null,
+      hyrox_pb: "1:08:00",
+      current_run_volume_band: "50-70km/week",
+    },
+    benchmarkTests: [],
+    email: "qa-hyrox-pro-7d@hybrid365.local",
+    profile: null,
+  });
+
+  assert(input.hyrox_track?.active, "7d Pro: hyrox track active");
+  assert(input.ability_level === "advanced", "7d Pro: advanced ability");
+  assert(input.days_per_week === 7, "7d Pro: seven training days");
+
+  const weeks = generate12WeekProgramme(input);
+  const buildWeeks = [1, 2, 3, 5, 6, 7];
+
+  for (const wn of buildWeeks) {
+    const schedule = weeks[wn - 1]!.plan_json.schedule as DayPlan[];
+    const sun = schedule.find((d) => d.day === "Sun");
+    const mon = schedule.find((d) => d.day === "Mon");
+    if (sun && mon) {
+      const sunLong =
+        sun.tags?.[0] === "long_run" ||
+        /long run|long zone|long aerobic|long endurance/i.test(sun.title);
+      if (sunLong) {
+        assert(
+          classifyDayPlan(mon).session_stress !== "high",
+          `Week ${wn}: Monday must not be hard after Sunday long`
+        );
+      }
+    }
+
+    const runs = countRunExposuresInSchedule(schedule);
+    if (wn <= 2) {
+      assert(runs >= 4, `Week ${wn}: need ≥4 run exposures (got ${runs})`);
+    }
+
+    assert(hasRunThresholdAnchor(schedule), `Week ${wn}: run threshold anchor required`);
+
+    const thr = summariseThresholdVolume(schedule);
+    assert(
+      thr.erg_threshold_minutes > 0 || schedule.some((d) => d.double_session?.threshold_support),
+      `Week ${wn}: erg threshold support required in build weeks`
+    );
+
+    const rhythm = analyzeWeeklyRhythm(schedule);
+    assert(rhythm.max_consecutive_hard < 3, `Week ${wn}: no 3 consecutive hard days`);
+
+    if (rhythm.hard_day_count > 4) {
+      assert(
+        schedule.some((d) => d.double_session?.threshold_support),
+        `Week ${wn}: >4 hard days only allowed with low-impact erg threshold support`
+      );
+    }
+  }
+
+  const w1Thr = summariseThresholdVolume(weeks[0]!.plan_json.schedule as DayPlan[]);
+  const w3Thr = summariseThresholdVolume(weeks[2]!.plan_json.schedule as DayPlan[]);
+  assert(
+    w3Thr.total_threshold_minutes >= w1Thr.total_threshold_minutes - 2,
+    "7d Pro: threshold minutes should progress week 1 → 3"
+  );
+
+  const analysis = analyseProgrammePreview(weeks, input);
+  const rhythmWarnings = analysis.warnings.filter((w) =>
+    /Monday is hard after Sunday|only 3 run exposure|no erg threshold minutes detected|3 consecutive hard days/i.test(
+      w
+    )
+  );
+  assert(
+    rhythmWarnings.length === 0,
+    `7d Pro: preview should not report fixable rhythm issues (got: ${rhythmWarnings.join("; ")})`
+  );
+
+  console.log("✓ Advanced HYROX Pro 7-day — rhythm, runs, threshold, erg constraints");
+}
+
 function testCaseD() {
   const input = mapAssessmentToProgrammeInput({
     assessment: {
@@ -356,6 +454,7 @@ function testCaseD() {
 
 function main() {
   testCaseA();
+  testAdvancedHyroxPro7Day();
   testCaseB();
   testCaseC();
   testCaseD();

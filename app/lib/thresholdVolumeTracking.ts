@@ -136,14 +136,19 @@ export function shouldAddErgThresholdSupport(
     double_sessions?: boolean;
     weekly_hours_band?: string;
   },
-  weekNumber: number
+  weekNumber: number,
+  weekFocus?: string | null
 ): boolean {
   if (input.ability_level === "beginner") return false;
+  const bw = ((weekNumber - 1) % 4) + 1;
+  const isDeload = weekFocus?.includes("deload") || bw === 4;
+  if (isDeload) return false;
+
   const band = (input.weekly_hours_band ?? "").toLowerCase();
   const highAvailability = band === "7-10" || band === "10+";
   const hyrox = Boolean(input.hyrox_track?.active);
 
-  if (hyrox && highAvailability) return true;
+  if (hyrox && input.ability_level === "advanced" && highAvailability) return true;
   if (hyrox && input.double_sessions) return true;
 
   if (input.has_injury) return true;
@@ -151,9 +156,6 @@ export function shouldAddErgThresholdSupport(
   const runBand = (input.hyrox_track?.current_run_volume_band ?? "").toLowerCase();
   if (/low|under|20|25|30/.test(runBand) && !/70|50-70|high/.test(runBand)) return true;
   if (input.hyrox_track?.impact_risk === "high") return true;
-
-  const bw = ((weekNumber - 1) % 4) + 1;
-  if (hyrox && bw === 2 && highAvailability) return true;
 
   return false;
 }

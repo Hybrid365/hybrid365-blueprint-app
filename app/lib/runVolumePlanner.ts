@@ -122,7 +122,7 @@ export function planWeeklyRunVolume(
   } else if (input.ability_level === "intermediate") {
     minRuns = injury ? 2 : 3;
     preferredRuns = injury ? 2 : 4;
-  } else if (advanced) {
+  } else   if (advanced) {
     minRuns = injury ? 2 : 4;
     preferredRuns = injury ? 3 : 5;
     if (days >= 6 && highHours && !injury) preferredRuns = 5;
@@ -134,6 +134,10 @@ export function planWeeklyRunVolume(
       (band === "50-70km/week" || band === "70km+/week")
     ) {
       preferredRuns = 6;
+    }
+    if (input.hyrox_track?.active && !injury) {
+      minRuns = Math.max(minRuns, days >= 7 ? 5 : 4);
+      preferredRuns = Math.max(preferredRuns, days >= 7 ? 5 : 4);
     }
   }
 
@@ -332,16 +336,30 @@ export function applyRunVolumeToStructureRoles(
   let runs = runRoleCount(out);
   const target = Math.min(plan.preferredRunSessionsPerWeek, input.days_per_week);
 
-  if (runs < plan.minRunSessionsPerWeek) {
+  while (runs < plan.minRunSessionsPerWeek) {
     const replaceIdx = out.findIndex((r) => r === "aerobic_support" || r === "hybrid_density");
-    if (replaceIdx >= 0 && !out.includes("run_aerobic")) {
+    if (replaceIdx < 0) break;
+    out[replaceIdx] = "run_aerobic";
+    runs += 1;
+  }
+
+  while (runs < target) {
+    const replaceIdx = out.findIndex((r) => r === "aerobic_support");
+    if (replaceIdx < 0) break;
+    out[replaceIdx] = "run_aerobic";
+    runs += 1;
+  }
+
+  if (input.hyrox_track?.active && input.ability_level === "advanced" && runs < target) {
+    const replaceIdx = out.findIndex((r) => r === "recovery");
+    if (replaceIdx >= 0) {
       out[replaceIdx] = "run_aerobic";
       runs += 1;
     }
   }
 
-  if (runs < target) {
-    const replaceIdx = out.findIndex((r) => r === "aerobic_support");
+  if (input.hyrox_track?.active && input.ability_level === "advanced" && runs < target) {
+    const replaceIdx = out.findIndex((r) => r === "upper_primary" || r === "upper_full");
     if (replaceIdx >= 0) {
       out[replaceIdx] = "run_aerobic";
       runs += 1;
@@ -369,13 +387,20 @@ export function countRunExposuresInSchedule(
 ): number {
   return schedule.filter((d) => {
     const t0 = d.tags?.[0] ?? "";
-    return (
+    const title = d.title.toLowerCase();
+    if (
       t0 === "threshold_run" ||
       t0 === "interval_run" ||
       t0 === "long_run" ||
       t0 === "aerobic_run" ||
-      t0 === "tempo_run" ||
-      /run/i.test(d.title)
-    );
+      t0 === "tempo_run"
+    ) {
+      return true;
+    }
+    if (t0 === "hybrid_compromised" || /compromised run|race.?density/i.test(title)) {
+      return true;
+    }
+    if (/easy run|long run|threshold run|aerobic run/i.test(title)) return true;
+    return false;
   }).length;
 }

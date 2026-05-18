@@ -67,11 +67,26 @@ function isHardRole(role: StructureRole): boolean {
   );
 }
 
-function hyroxOpenScheduling(input: BlueprintInput): boolean {
-  const ctx = input.hyrox_track;
-  if (!ctx?.active) return false;
-  return ctx.hyrox_event_type === "open" || ctx.hyrox_event_type === "unknown";
+function hyroxRhythmScheduling(input: BlueprintInput): boolean {
+  return Boolean(input.hyrox_track?.active);
 }
+
+const MONDAY_EASY_ROLES = new Set<StructureRole>([
+  "run_aerobic",
+  "upper_primary",
+  "upper_full",
+  "recovery",
+]);
+
+const MONDAY_BLOCKED_HARD_ROLES = new Set<StructureRole>([
+  "run_quality",
+  "run_quality_beginner",
+  "hybrid_primary",
+  "hybrid_density",
+  "lower_primary",
+  "lower_full",
+  "full_body_strength",
+]);
 
 /**
  * Pick calendar day for a structure role — Sunday long / Monday easier for HYROX Open.
@@ -90,15 +105,17 @@ export function pickDayForRole(args: {
 
   let candidates = [...(ROLE_DAY_PREFERENCE[role] ?? ALL_DAYS)];
 
-  if (hyroxOpenScheduling(input)) {
-    if (role === "run_long") candidates = ["Sun", "Sat", ...candidates.filter((d) => d !== "Sun")];
-    if (role === "run_aerobic" || role === "upper_primary" || role === "upper_full") {
-      candidates = ["Mon", "Wed", ...candidates.filter((d) => d !== "Mon")];
+  if (hyroxRhythmScheduling(input)) {
+    if (role === "run_long") {
+      candidates = ["Sun", "Sat", "Fri", ...candidates.filter((d) => d !== "Sun")];
     }
-    if (role === "run_quality" && !userKeyDays?.has("Mon")) {
+    if (MONDAY_EASY_ROLES.has(role)) {
+      candidates = ["Mon", "Wed", "Thu", ...candidates.filter((d) => d !== "Mon")];
+    }
+    if (MONDAY_BLOCKED_HARD_ROLES.has(role) && !userKeyDays?.has("Mon")) {
       candidates = candidates.filter((d) => d !== "Mon");
     }
-    if (isHardRole(role) && !userKeyDays?.has("Mon")) {
+    if (role === "run_quality" && !userKeyDays?.has("Mon")) {
       candidates = candidates.filter((d) => d !== "Mon");
     }
   }

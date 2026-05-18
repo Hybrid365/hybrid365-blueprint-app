@@ -160,6 +160,9 @@ export function analyseProgrammePreview(
   const weekMetrics: WeekPreviewMetrics[] = [];
   const hyrox_track = Boolean(input.hyrox_track?.active);
   const isAdvanced = input.ability_level === "advanced";
+  const usesRepairDiagnostics = weeks.some(
+    (w) => w.plan_json.schedule_remaining_issues !== undefined
+  );
 
   for (const week of weeks) {
     const schedule = week.plan_json.schedule;
@@ -196,8 +199,15 @@ export function analyseProgrammePreview(
       erg_support_present: hasErgThresholdSupport(schedule),
     });
 
+    const remaining = week.plan_json.schedule_remaining_issues ?? [];
+    if (usesRepairDiagnostics && remaining.length > 0) {
+      for (const issue of remaining) {
+        warnings.push(`Week ${week.week_number}: ${issue}`);
+      }
+    }
+
     if (hyrox_track && isAdvanced && !isDeloadWeekNumber(week.week_number, week.plan_json.week_context?.week_focus)) {
-      if (!hasRunThresholdAnchor(schedule)) {
+      if (!usesRepairDiagnostics && !hasRunThresholdAnchor(schedule)) {
         warnings.push(
           `Week ${week.week_number}: HYROX advanced profile missing weekly run threshold anchor.`
         );
@@ -222,21 +232,23 @@ export function analyseProgrammePreview(
       }
     }
 
-    const sun = schedule.find((d) => d.day === "Sun");
-    const mon = schedule.find((d) => d.day === "Mon");
-    if (
-      sun &&
-      (sun.tags?.[0] === "long_run" || /long run|long zone/i.test(sun.title)) &&
-      mon &&
-      classifyDayPlan(mon).session_stress === "high"
-    ) {
-      warnings.push(
-        `Week ${week.week_number}: Monday is hard after Sunday long/hard — prefer recovery/easier Monday.`
-      );
-    }
+    if (!usesRepairDiagnostics) {
+      const sun = schedule.find((d) => d.day === "Sun");
+      const mon = schedule.find((d) => d.day === "Mon");
+      if (
+        sun &&
+        (sun.tags?.[0] === "long_run" || /long run|long zone/i.test(sun.title)) &&
+        mon &&
+        classifyDayPlan(mon).session_stress === "high"
+      ) {
+        warnings.push(
+          `Week ${week.week_number}: Monday is hard after Sunday long/hard — prefer recovery/easier Monday.`
+        );
+      }
 
-    for (const w of rhythm.warnings) {
-      warnings.push(`Week ${week.week_number}: ${w}`);
+      for (const w of rhythm.warnings) {
+        warnings.push(`Week ${week.week_number}: ${w}`);
+      }
     }
 
     for (const day of schedule) {
@@ -258,23 +270,26 @@ export function analyseProgrammePreview(
     input.goal_focus === "hybrid" ||
     hyrox_track;
 
+  const minRunExposuresAdvanced =
+    hyrox_track && input.days_per_week >= 7 && isAdvanced ? 5 : 4;
+
   for (const w of weekMetrics) {
-    if (isAdvanced && w.run_exposures < 4) {
+    if (!usesRepairDiagnostics && isAdvanced && w.run_exposures < minRunExposuresAdvanced) {
       warnings.push(
-        `Week ${w.week_number}: advanced profile has only ${w.run_exposures} run exposures (expected ≥4).`
+        `Week ${w.week_number}: advanced profile has only ${w.run_exposures} run exposures (expected ≥${minRunExposuresAdvanced}).`
       );
     }
     if (wantsRunHybrid && !w.long_run_present && w.week_number <= 8) {
       warnings.push(`Week ${w.week_number}: no long run scheduled (running/hybrid profile).`);
     }
-    if (hyrox_track && w.week_number <= 8) {
+    if (!usesRepairDiagnostics && hyrox_track && w.week_number <= 8) {
       const sun = weeks
         .find((wk) => wk.week_number === w.week_number)
         ?.plan_json.schedule.find((d) => d.day === "Sun");
       const mon = weeks
         .find((wk) => wk.week_number === w.week_number)
         ?.plan_json.schedule.find((d) => d.day === "Mon");
-      if (sun && classifyDayPlan(sun).session_stress === "high" && sun.tags?.[0] !== "run_long") {
+      if (sun && classifyDayPlan(sun).session_stress === "high" && sun.tags?.[0] !== "long_run") {
         warnings.push(`Week ${w.week_number}: Sunday is high stress but not a long aerobic anchor.`);
       }
       if (mon && classifyDayPlan(mon).session_stress === "high" && input.hyrox_track?.hyrox_event_type === "open") {
@@ -295,7 +310,11 @@ export function analyseProgrammePreview(
         `Threshold volume may regress: week 1 ${w1Thr} min vs week 3 ${w3Thr} min total — check progression.`
       );
     }
-    if (weekMetrics.every((w) => w.erg_threshold_minutes === 0) && isAdvanced) {
+    if (
+      !usesRepairDiagnostics &&
+      weekMetrics.every((w) => w.erg_threshold_minutes === 0) &&
+      isAdvanced
+    ) {
       warnings.push("HYROX advanced: no erg threshold minutes detected — consider ski/row/bike engine support.");
     }
   }

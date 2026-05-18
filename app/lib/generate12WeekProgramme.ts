@@ -12,6 +12,11 @@ import {
 import { applyDoubleSessions } from "./doubleSessionPlanner";
 import { applyErgThresholdSupportDoubles } from "./ergThresholdSupport";
 import { buildPaidProgrammeIntelligence, type BuildIntelligenceArgs } from "./paidProgrammeIntelligence";
+import {
+  buildRoleByDayFromSchedule,
+  repairWeekSchedule,
+} from "./weekScheduleRepair";
+import type { DayKey, StructureRole } from "./sessionLibrary";
 import { extractWeekRunSnapshots } from "./runSessionProgression";
 import { planWeeklyRunVolume } from "./runVolumePlanner";
 import { buildEnhancedWeekRationale } from "./weekCoachingNotes";
@@ -129,6 +134,25 @@ export function generate12WeekProgramme(
       weekFocus: progressionTarget.week_focus,
     });
 
+    const structureRoles = generated.structure_roles_by_day;
+    const roleByDay = buildRoleByDayFromSchedule(
+      scheduleWithDoubles,
+      structureRoles
+        ? new Map(
+            Object.entries(structureRoles) as [DayKey, StructureRole][]
+          )
+        : undefined
+    );
+
+    const repairResult = repairWeekSchedule(scheduleWithDoubles, {
+      input,
+      weekNumber,
+      weekFocus: progressionTarget.week_focus,
+      roleByDay,
+      runVolumePlan: run_volume_plan,
+    });
+    scheduleWithDoubles = repairResult.schedule;
+
     const week_rationale = buildEnhancedWeekRationale({
       base: buildWeekRationale(
         progressionTarget.week_focus as Parameters<typeof buildWeekRationale>[0],
@@ -148,6 +172,8 @@ export function generate12WeekProgramme(
     const plan_json: PlanJson = {
       ...generated,
       schedule: scheduleWithDoubles,
+      schedule_repairs: repairResult.repairsApplied,
+      schedule_remaining_issues: repairResult.remainingIssues,
       week_context: progressionTarget,
       stress_alignment: generated.stress_alignment ?? null,
       // Only attach programme_rationale to week 1 to avoid massive JSON repetition;

@@ -89,7 +89,7 @@ export function applyErgThresholdSupportDoubles(args: {
   weekFocus?: string | null;
 }): DayPlanWithDouble[] {
   const { input, weekNumber, weekFocus } = args;
-  if (!shouldAddErgThresholdSupport(input, weekNumber)) return args.schedule;
+  if (!shouldAddErgThresholdSupport(input, weekNumber, weekFocus)) return args.schedule;
   if (!hasRunThresholdAnchor(args.schedule)) return args.schedule;
 
   const alreadyHasErgSupport = args.schedule.some(
@@ -108,6 +108,11 @@ export function applyErgThresholdSupportDoubles(args: {
   const runThrDay = args.schedule.find(isRunThresholdAnchorDay)?.day;
   const result = args.schedule.map((d) => ({ ...d }));
 
+  const attachErg = (idx: number) => {
+    const day = result[idx]!;
+    result[idx] = { ...day, double_session: buildErgSupportDouble(applied) };
+  };
+
   for (const dayKey of ERG_SUPPORT_DAY_ORDER) {
     const idx = result.findIndex((d) => d.day === dayKey);
     if (idx < 0) continue;
@@ -115,11 +120,23 @@ export function applyErgThresholdSupportDoubles(args: {
     if (day.day === runThrDay) continue;
     if (isRecoveryLikeDay(day) || isLongRunDay(day)) continue;
     if (day.double_session?.enabled) continue;
+    attachErg(idx);
+    return result;
+  }
 
-    result[idx] = {
-      ...day,
-      double_session: buildErgSupportDouble(applied),
-    };
+  if (runThrDay) {
+    const thrIdx = result.findIndex((d) => d.day === runThrDay);
+    if (thrIdx >= 0 && !result[thrIdx]!.double_session?.enabled) {
+      attachErg(thrIdx);
+      return result;
+    }
+  }
+
+  for (let i = 0; i < result.length; i++) {
+    const day = result[i]!;
+    if (isRecoveryLikeDay(day) || isLongRunDay(day)) continue;
+    if (day.double_session?.enabled) continue;
+    attachErg(i);
     return result;
   }
 

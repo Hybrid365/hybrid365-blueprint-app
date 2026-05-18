@@ -216,8 +216,10 @@ export type WeeklyRhythmAnalysis = {
 
 export function analyzeWeeklyRhythm(
   schedule: DayPlan[],
-  roleByDay?: Map<DayKey, StructureRole>
+  roleByDay?: Map<DayKey, StructureRole>,
+  options?: { hard_day_cap?: number }
 ): WeeklyRhythmAnalysis {
+  const hardDayCap = options?.hard_day_cap ?? 3;
   const byDay = new Map<DayKey, ClassifiedSession & { title: string }>();
   for (const d of schedule) {
     byDay.set(d.day, {
@@ -257,7 +259,7 @@ export function analyzeWeeklyRhythm(
       "Assess how the body feels. If fatigue is high, keep optional support aerobic only or remove it."
     );
   }
-  if (hardCount >= 4) {
+  if (hardCount > hardDayCap) {
     warnings.push(`${hardCount} hard days this week — high cumulative stress for the profile.`);
   }
   if (sun === "high" && mon === "high") {

@@ -2088,7 +2088,11 @@ export function buildWeekBlueprint(
   appendRhythmCoachingNotes(schedule, rhythm);
 
   if (
-    shouldAddErgThresholdSupport(input, options?.week_number ?? 1) &&
+    shouldAddErgThresholdSupport(
+      input,
+      options?.week_number ?? 1,
+      options?.progression_target?.week_focus
+    ) &&
     hasRunThresholdAnchor(schedule)
   ) {
     const anchorDay = schedule.find(
@@ -2179,6 +2183,9 @@ export function buildWeekBlueprint(
     },
     intro: buildIntro(input, structure.label, runnerProfile, parsedConstraints),
     schedule,
+    structure_roles_by_day: Object.fromEntries(dayRoleByAssignedDay) as Partial<
+      Record<import("./sessionLibrary").DayKey, import("./sessionLibrary").StructureRole>
+    >,
     cta: {
   headline: "What happens next?",
   body: "This week is built using Hybrid365 principles. If you want to understand how to get the most from it — and how we build real progression — start here.",
