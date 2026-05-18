@@ -7,6 +7,14 @@
  */
 
 import type { ProgressionMarker } from "./progressionFamilies";
+import type { SessionStressLevel } from "./sessionStressClassification";
+
+export type HyroxDoubleSessionIntent =
+  | "aerobic_support"
+  | "threshold_plus_aerobic"
+  | "double_threshold"
+  | "strength_endurance_addon"
+  | "recovery_support";
 import type { DayPlan, GoalFocus, WeeklyHoursBand } from "./sessionLibrary";
 import type { AbilityLevel } from "./sessionLibrary";
 
@@ -17,6 +25,12 @@ export type DoubleSessionCategory = "aerobic" | "recovery" | "strength" | "hybri
 export type DoubleSessionDetail = {
   enabled: boolean;
   label: "AM/PM" | "Optional Support";
+  /** HYROX Pro ladder intent (when applied via hyroxDoubleSessionProgression). */
+  double_session_intent?: HyroxDoubleSessionIntent;
+  session_stress?: SessionStressLevel;
+  modality?: "run" | "ski" | "row" | "bike" | "strength" | "recovery";
+  threshold_minutes?: number;
+  is_optional?: boolean;
   /** Erg threshold support — tracked separately from run threshold anchor. */
   threshold_support?: {
     progression_family: string;

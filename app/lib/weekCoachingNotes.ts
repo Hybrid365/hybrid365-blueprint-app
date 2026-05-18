@@ -8,6 +8,10 @@ import {
 import type { WeekRationale } from "./programmeRationale";
 import type { RunVolumePlan } from "./runVolumePlanner";
 import { buildHyroxWeekCoachingParagraph } from "./hyroxTrackContext";
+import {
+  resolveHyroxDoubleWeekPlan,
+  shouldUseHyroxProDoubleProgression,
+} from "./hyroxDoubleSessionProgression";
 
 export type EnhancedWeekRationale = WeekRationale & {
   progression_focus: string;
@@ -167,7 +171,14 @@ export function buildEnhancedWeekRationale(args: {
       weekFocus,
       schedule,
     });
-    coach_note = `${hyroxParagraph} ${coach_note}`.trim();
+    let doubleNote = "";
+    if (shouldUseHyroxProDoubleProgression(input)) {
+      const doublePlan = resolveHyroxDoubleWeekPlan({ input, weekNumber, weekFocus });
+      if (doublePlan?.week_coaching_note) {
+        doubleNote = doublePlan.week_coaching_note;
+      }
+    }
+    coach_note = [hyroxParagraph, doubleNote, coach_note].filter(Boolean).join(" ").trim();
     if (input.hyrox_track.hyrox_timeline === "race_specific" || weekNumber >= 9) {
       progression_focus = `${input.hyrox_track.phase_emphasis} ${progression_focus}`;
     }

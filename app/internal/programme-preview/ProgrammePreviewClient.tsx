@@ -106,6 +106,14 @@ function SessionCard({ day }: { day: DayPlan }) {
       {ds?.enabled && ds.secondary ? (
         <div className="mt-3 border-t border-zinc-800 pt-3">
           <p className="text-xs font-semibold text-blue-400">{ds.label ?? "Double session"}</p>
+          {ds.double_session_intent ? (
+            <p className="text-xs text-zinc-500">
+              {ds.double_session_intent.replace(/_/g, " ")}
+              {ds.modality ? ` · ${ds.modality}` : ""}
+              {ds.threshold_minutes ? ` · ${ds.threshold_minutes} min thr` : ""}
+              {ds.is_optional ? " · optional" : ""}
+            </p>
+          ) : null}
           <p className="text-sm text-white">{ds.secondary.title}</p>
         </div>
       ) : null}
@@ -121,6 +129,11 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
           <tr>
             <th className="px-3 py-2">Wk</th>
             <th className="px-3 py-2">Focus</th>
+            <th className="px-3 py-2">Dbl phase</th>
+            <th className="px-3 py-2">Dbls</th>
+            <th className="px-3 py-2">Aer+</th>
+            <th className="px-3 py-2">Thr+Z2</th>
+            <th className="px-3 py-2">Dbl thr</th>
             <th className="px-3 py-2">Runs</th>
             <th className="px-3 py-2">Run thr</th>
             <th className="px-3 py-2">Erg</th>
@@ -136,6 +149,17 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
             <tr key={w.week_number} className="bg-zinc-950/50">
               <td className="px-3 py-2 font-medium text-white">{w.week_number}</td>
               <td className="px-3 py-2 text-zinc-400">{w.week_focus.replace(/_/g, " ")}</td>
+              <td className="px-3 py-2 text-zinc-500" title={w.selected_double_days.join(", ")}>
+                {w.double_session_phase?.replace(/_/g, " ") ?? "—"}
+              </td>
+              <td className="px-3 py-2">{w.double_count || "—"}</td>
+              <td className="px-3 py-2">{w.aerobic_double_count || "—"}</td>
+              <td className="px-3 py-2">{w.threshold_plus_aerobic_count || "—"}</td>
+              <td
+                className={`px-3 py-2 ${w.double_threshold_count > 1 ? "text-amber-400" : ""}`}
+              >
+                {w.double_threshold_count || "—"}
+              </td>
               <td className="px-3 py-2">{w.run_exposures}</td>
               <td
                 className={`px-3 py-2 ${!w.run_anchor_present && analysis.hyrox_track ? "text-amber-400" : ""}`}
@@ -478,6 +502,14 @@ export default function ProgrammePreviewClient({ userEmail, adminListConfigured 
                 <span className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5">
                   Locked weeks: <strong className="text-zinc-500">N/A (preview)</strong>
                 </span>
+                {result.analysis.athlete_double_days.length > 0 ? (
+                  <span className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5">
+                    Double days:{" "}
+                    <strong className="text-white">
+                      {result.analysis.athlete_double_days.join(", ")}
+                    </strong>
+                  </span>
+                ) : null}
               </div>
               <QaSummaryTable analysis={result.analysis} />
               {result.analysis.warnings.length > 0 ? (

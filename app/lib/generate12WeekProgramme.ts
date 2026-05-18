@@ -9,8 +9,13 @@ import {
   buildWeekRationale,
   type RationaleContext,
 } from "./programmeRationale";
-import { applyDoubleSessions } from "./doubleSessionPlanner";
+import { applyDoubleSessions, type DayPlanWithDouble } from "./doubleSessionPlanner";
+import type { DoubleSessionWeekSummary } from "./hyroxDoubleSessionProgression";
 import { applyErgThresholdSupportDoubles } from "./ergThresholdSupport";
+import {
+  applyHyroxProDoubleSessions,
+  shouldUseHyroxProDoubleProgression,
+} from "./hyroxDoubleSessionProgression";
 import { buildPaidProgrammeIntelligence, type BuildIntelligenceArgs } from "./paidProgrammeIntelligence";
 import {
   buildRoleByDayFromSchedule,
@@ -114,25 +119,40 @@ export function generate12WeekProgramme(
 
     previousWeekRunSnapshots = extractWeekRunSnapshots(generated.schedule);
 
-    // Apply double-session layer additively
-    let scheduleWithDoubles = applyDoubleSessions({
-      schedule: generated.schedule,
-      goal_focus: input.goal_focus,
-      ability_level: input.ability_level,
-      weekly_hours_band: input.weekly_hours_band,
-      double_sessions: Boolean(input.double_sessions),
-      double_session_days: input.double_session_days,
-      has_injury: Boolean(input.has_injury),
-      week_number: weekNumber,
-      hyrox_track_active: Boolean(input.hyrox_track?.active),
-    });
+    let scheduleWithDoubles: DayPlanWithDouble[];
+    let doubleSessionSummary: DoubleSessionWeekSummary | null = null;
 
-    scheduleWithDoubles = applyErgThresholdSupportDoubles({
-      schedule: scheduleWithDoubles,
-      input,
-      weekNumber,
-      weekFocus: progressionTarget.week_focus,
-    });
+    if (shouldUseHyroxProDoubleProgression(input)) {
+      const hyroxDoubles = applyHyroxProDoubleSessions({
+        schedule: generated.schedule,
+        input,
+        weekNumber,
+        weekFocus: progressionTarget.week_focus,
+      });
+      scheduleWithDoubles = hyroxDoubles.schedule;
+      doubleSessionSummary = hyroxDoubles.summary;
+    } else {
+      scheduleWithDoubles = applyDoubleSessions({
+        schedule: generated.schedule,
+        goal_focus: input.goal_focus,
+        ability_level: input.ability_level,
+        weekly_hours_band: input.weekly_hours_band,
+        double_sessions: Boolean(input.double_sessions),
+        double_session_days: input.double_session_days,
+        has_injury: Boolean(input.has_injury),
+        week_number: weekNumber,
+        hyrox_track_active: Boolean(input.hyrox_track?.active),
+      });
+    }
+
+    if (!shouldUseHyroxProDoubleProgression(input)) {
+      scheduleWithDoubles = applyErgThresholdSupportDoubles({
+        schedule: scheduleWithDoubles,
+        input,
+        weekNumber,
+        weekFocus: progressionTarget.week_focus,
+      });
+    }
 
     const structureRoles = generated.structure_roles_by_day;
     const roleByDay = buildRoleByDayFromSchedule(
@@ -172,6 +192,7 @@ export function generate12WeekProgramme(
     const plan_json: PlanJson = {
       ...generated,
       schedule: scheduleWithDoubles,
+      double_session_summary: doubleSessionSummary ?? undefined,
       schedule_repairs: repairResult.repairsApplied,
       schedule_remaining_issues: repairResult.remainingIssues,
       week_context: progressionTarget,

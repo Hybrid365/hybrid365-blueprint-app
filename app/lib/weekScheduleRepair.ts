@@ -20,6 +20,10 @@ import {
 } from "./thresholdVolumeTracking";
 import type { DayKey, DayPlan, StructureRole } from "./sessionLibrary";
 import { balanceScheduleHardEasy } from "./weeklyRhythmPlanner";
+import {
+  scheduleHasHyroxManagedErgSupport,
+  shouldUseHyroxProDoubleProgression,
+} from "./hyroxDoubleSessionProgression";
 
 const DAY_ORDER: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -289,6 +293,8 @@ function repairErgThresholdSupport(
   schedule: DayPlanWithDouble[],
   ctx: WeekRepairContext
 ): string | null {
+  if (shouldUseHyroxProDoubleProgression(ctx.input)) return null;
+  if (scheduleHasHyroxManagedErgSupport(schedule)) return null;
   if (isDeloadWeek(ctx.weekNumber, ctx.weekFocus)) return null;
   if (!shouldAddErgThresholdSupport(ctx.input, ctx.weekNumber, ctx.weekFocus)) return null;
   if (!hasRunThresholdAnchor(schedule)) return null;

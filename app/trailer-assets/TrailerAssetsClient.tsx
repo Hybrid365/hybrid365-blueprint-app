@@ -29,6 +29,7 @@ import {
 import { DashCard, ProgressBar, SectionHeading, StatTile } from "@/components/hyrox-team/HyroxDashboardUi";
 import { RunVolumeChart, ThresholdPaceChart } from "./TrailerCharts";
 import { TrailerSection } from "./TrailerSection";
+import TrailerTeamLaunchPack from "./TrailerTeamLaunchPack";
 
 const SECTION_NAV = [
   { id: "hyrox-hero", label: "1. Hyrox Hero" },
@@ -44,6 +45,7 @@ const SECTION_NAV = [
   { id: "one-to-one", label: "11. 1-1" },
   { id: "community", label: "12. Community" },
   { id: "reel-cards", label: "13. Reels" },
+  { id: "team-launch-pack", label: "Team Launch" },
 ];
 
 function statusIcon(status: "complete" | "upcoming") {
@@ -598,6 +600,8 @@ export default function TrailerAssetsClient({ userEmail }: Props) {
           ))}
         </div>
       </TrailerSection>
+
+      <TrailerTeamLaunchPack />
 
       <footer className="border-t border-zinc-800 py-12 text-center text-xs text-zinc-600">
         <Link href="/internal/programme-preview" className="text-[#F4D23C] hover:underline">

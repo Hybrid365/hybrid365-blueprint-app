@@ -223,6 +223,8 @@ export type PlanJson = {
   schedule_repairs?: string[];
   /** Constraint issues that could not be fully repaired (paid 12-week). */
   schedule_remaining_issues?: string[];
+  /** HYROX Pro double-session ladder summary (paid 12-week). */
+  double_session_summary?: import("./hyroxDoubleSessionProgression").DoubleSessionWeekSummary;
 };
 
 function allEquipment(...items: UserEquipment[]) {

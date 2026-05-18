@@ -18,6 +18,13 @@ import {
   isRunThresholdAnchorDay,
   summariseThresholdVolume,
 } from "./thresholdVolumeTracking";
+import {
+  resolveHyroxDoublePhase,
+  resolveHyroxDoubleWeekPlan,
+  shouldUseHyroxProDoubleProgression,
+  summariseDoubleSessionsFromSchedule,
+} from "./hyroxDoubleSessionProgression";
+import type { HyroxDoublePhase } from "./hyroxDoubleSessionProgression";
 
 export type WeekPreviewMetrics = {
   week_number: number;
@@ -42,6 +49,12 @@ export type WeekPreviewMetrics = {
   run_anchor_present: boolean;
   run_anchor_title: string | null;
   erg_support_present: boolean;
+  double_session_phase: HyroxDoublePhase | null;
+  selected_double_days: string[];
+  double_count: number;
+  aerobic_double_count: number;
+  threshold_plus_aerobic_count: number;
+  double_threshold_count: number;
 };
 
 function isDeloadWeekNumber(weekNumber: number, weekFocus?: string): boolean {
@@ -87,6 +100,7 @@ export type ProgrammePreviewAnalysis = {
   hyrox_track: boolean;
   ability_level: string;
   goal_focus: string;
+  athlete_double_days: string[];
   weeks: WeekPreviewMetrics[];
   warnings: string[];
 };
@@ -174,6 +188,17 @@ export function analyseProgrammePreview(
       marker.estimated_run_volume_km ??
       (runPlan ? Math.round((runPlan.targetKmMin + runPlan.targetKmMax) / 2) : null);
 
+    const doublePlan = shouldUseHyroxProDoubleProgression(input)
+      ? resolveHyroxDoubleWeekPlan({
+          input,
+          weekNumber: week.week_number,
+          weekFocus: week.plan_json.week_context?.week_focus,
+        })
+      : null;
+    const doubleSummary =
+      week.plan_json.double_session_summary ??
+      (doublePlan ? summariseDoubleSessionsFromSchedule(schedule, doublePlan) : null);
+
     weekMetrics.push({
       week_number: week.week_number,
       block_number: week.block_number,
@@ -197,6 +222,12 @@ export function analyseProgrammePreview(
       run_anchor_present: hasRunThresholdAnchor(schedule),
       run_anchor_title: runAnchorTitle(schedule),
       erg_support_present: hasErgThresholdSupport(schedule),
+      double_session_phase: doubleSummary?.phase ?? null,
+      selected_double_days: doubleSummary?.selected_double_days ?? input.double_session_days ?? [],
+      double_count: doubleSummary?.double_count ?? 0,
+      aerobic_double_count: doubleSummary?.aerobic_double_count ?? 0,
+      threshold_plus_aerobic_count: doubleSummary?.threshold_plus_aerobic_count ?? 0,
+      double_threshold_count: doubleSummary?.double_threshold_count ?? 0,
     });
 
     const remaining = week.plan_json.schedule_remaining_issues ?? [];
@@ -416,6 +447,81 @@ export function analyseProgrammePreview(
     }
   }
 
+  if (shouldUseHyroxProDoubleProgression(input) && input.hyrox_track?.hyrox_event_type === "pro") {
+    const preferred = (input.double_session_days ?? []).map((d) => d.trim()).filter(Boolean);
+
+    for (const w of weekMetrics) {
+      const schedule = weeks.find((wk) => wk.week_number === w.week_number)?.plan_json.schedule ?? [];
+      const phase = resolveHyroxDoublePhase(
+        w.week_number,
+        w.week_focus,
+        input.hyrox_track!.hyrox_event_type
+      );
+
+      if (w.week_number <= 3 && w.double_threshold_count > 0) {
+        warnings.push(
+          `Week ${w.week_number}: double-threshold appears too early for HYROX Pro (weeks 1–3 should be aerobic doubles only).`
+        );
+      }
+      if (w.week_number >= 9 && w.week_number <= 11 && w.double_threshold_count === 0 && phase === "late_double_threshold") {
+        warnings.push(
+          `Week ${w.week_number}: expected a controlled double-threshold day in the performance block.`
+        );
+      }
+      if (w.double_threshold_count > 1) {
+        warnings.push(
+          `Week ${w.week_number}: ${w.double_threshold_count} double-threshold days — keep to one per week.`
+        );
+      }
+
+      if (ergThresholdReplacedRunAnchor(schedule)) {
+        warnings.push(
+          `Week ${w.week_number}: double-threshold or erg support may be replacing the run anchor instead of supporting it.`
+        );
+      }
+
+      const sun = schedule.find((d) => d.day === "Sun");
+      const mon = schedule.find((d) => d.day === "Mon");
+      if (
+        sun &&
+        (sun.tags?.[0] === "long_run" || /long run/i.test(sun.title)) &&
+        mon?.double_session?.enabled &&
+        (mon.double_session?.double_session_intent === "double_threshold" ||
+          mon.double_session?.session_stress === "high")
+      ) {
+        warnings.push(
+          `Week ${w.week_number}: Monday double/hard work after Sunday long — not allowed for HYROX Pro.`
+        );
+      }
+
+      if (preferred.length > 0 && w.double_count > 0) {
+        const usedDays = schedule
+          .filter((d) => d.double_session?.enabled)
+          .map((d) => d.day);
+        const ignored = preferred.filter(
+          (p) => !usedDays.some((u) => u.toLowerCase().startsWith(p.toLowerCase().slice(0, 3)))
+        );
+        if (ignored.length === preferred.length && w.double_count > 0) {
+          warnings.push(
+            `Week ${w.week_number}: athlete-selected double days (${preferred.join(", ")}) were not used for doubles.`
+          );
+        }
+      }
+    }
+
+    if (
+      (input.has_injury || input.hyrox_track.impact_risk === "high") &&
+      input.double_sessions
+    ) {
+      const aggressiveDoubles = weekMetrics.some((w) => w.double_threshold_count > 0);
+      if (aggressiveDoubles) {
+        warnings.push(
+          "Injury/low-impact profile: double-threshold days present — should use conservative aerobic doubles only."
+        );
+      }
+    }
+  }
+
   const dupTitles = new Map<string, number>();
   for (const week of weeks) {
     for (const day of week.plan_json.schedule) {
@@ -435,6 +541,7 @@ export function analyseProgrammePreview(
     hyrox_track,
     ability_level: input.ability_level,
     goal_focus: input.goal_focus,
+    athlete_double_days: input.double_session_days ?? [],
     weeks: weekMetrics,
     warnings: [...new Set(warnings)],
   };

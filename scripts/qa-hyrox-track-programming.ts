@@ -7,6 +7,7 @@ import { generate12WeekProgramme } from "../app/lib/generate12WeekProgramme";
 import { mapAssessmentToProgrammeInput } from "../app/lib/mapAssessmentToProgrammeInput";
 import { detectHyroxTrack } from "../app/lib/hyroxTrackContext";
 import { analyseProgrammePreview } from "../app/lib/internalProgrammePreviewAnalysis";
+import { ergThresholdReplacedRunAnchor } from "../app/lib/ergThresholdSupport";
 import {
   analyzeWeeklyRhythm,
   classifyDayPlan,
@@ -345,8 +346,79 @@ function testAdvancedHyroxPro7Day() {
   assert(input.days_per_week === 7, "7d Pro: seven training days");
 
   const weeks = generate12WeekProgramme(input);
-  const buildWeeks = [1, 2, 3, 5, 6, 7];
+  function doubleIntentCounts(schedule: DayPlan[]) {
+    let aerobic = 0;
+    let thrPlusAerobic = 0;
+    let doubleThr = 0;
+    for (const d of schedule) {
+      const intent = d.double_session?.double_session_intent;
+      if (intent === "aerobic_support") aerobic += 1;
+      if (intent === "threshold_plus_aerobic") thrPlusAerobic += 1;
+      if (intent === "double_threshold") doubleThr += 1;
+    }
+    return { aerobic, thrPlusAerobic, doubleThr };
+  }
 
+  for (const wn of [1, 2, 3]) {
+    const schedule = weeks[wn - 1]!.plan_json.schedule as DayPlan[];
+    const summary = weeks[wn - 1]!.plan_json.double_session_summary;
+    assert(summary?.phase === "early_aerobic", `Week ${wn}: expected early_aerobic double phase`);
+    const counts = doubleIntentCounts(schedule);
+    assert(counts.doubleThr === 0, `Week ${wn}: no double-threshold in weeks 1–3`);
+    assert(
+      counts.aerobic + (summary?.strength_endurance_addon_count ?? 0) >= 1,
+      `Week ${wn}: expected aerobic doubles in early block`
+    );
+    assert(hasRunThresholdAnchor(schedule), `Week ${wn}: run threshold anchor required`);
+    const mon = schedule.find((d) => d.day === "Mon");
+    assert(
+      !mon?.double_session?.enabled ||
+        mon.double_session?.double_session_intent !== "double_threshold",
+      `Week ${wn}: Monday must not be double-threshold`
+    );
+  }
+
+  for (const wn of [5, 6, 7]) {
+    const schedule = weeks[wn - 1]!.plan_json.schedule as DayPlan[];
+    const summary = weeks[wn - 1]!.plan_json.double_session_summary;
+    assert(
+      summary?.phase === "threshold_plus_aerobic",
+      `Week ${wn}: expected threshold_plus_aerobic double phase`
+    );
+    const counts = doubleIntentCounts(schedule);
+    assert(
+      counts.thrPlusAerobic >= 1,
+      `Week ${wn}: run threshold + easy aerobic support double expected`
+    );
+    assert(hasRunThresholdAnchor(schedule), `Week ${wn}: run threshold anchor required`);
+  }
+
+  let doubleThrWeeks = 0;
+  for (const wn of [9, 10, 11]) {
+    const schedule = weeks[wn - 1]!.plan_json.schedule as DayPlan[];
+    const summary = weeks[wn - 1]!.plan_json.double_session_summary;
+    assert(
+      summary?.phase === "late_double_threshold",
+      `Week ${wn}: expected late_double_threshold phase`
+    );
+    const counts = doubleIntentCounts(schedule);
+    if (counts.doubleThr >= 1) doubleThrWeeks += 1;
+    assert(hasRunThresholdAnchor(schedule), `Week ${wn}: run threshold anchor still required`);
+    assert(
+      !ergThresholdReplacedRunAnchor(schedule),
+      `Week ${wn}: erg must support run anchor, not replace it`
+    );
+  }
+  assert(doubleThrWeeks >= 1, "Weeks 9–11: at least one double-threshold week expected");
+
+  const w12Thr = summariseThresholdVolume(weeks[11]!.plan_json.schedule as DayPlan[]);
+  const w11Thr = summariseThresholdVolume(weeks[10]!.plan_json.schedule as DayPlan[]);
+  assert(
+    w12Thr.total_threshold_minutes <= w11Thr.total_threshold_minutes + 5,
+    "Week 12: threshold volume should taper vs week 11"
+  );
+
+  const buildWeeks = [1, 2, 3, 5, 6, 7, 9, 10, 11];
   for (const wn of buildWeeks) {
     const schedule = weeks[wn - 1]!.plan_json.schedule as DayPlan[];
     const sun = schedule.find((d) => d.day === "Sun");
@@ -368,24 +440,16 @@ function testAdvancedHyroxPro7Day() {
       assert(runs >= 4, `Week ${wn}: need ≥4 run exposures (got ${runs})`);
     }
 
-    assert(hasRunThresholdAnchor(schedule), `Week ${wn}: run threshold anchor required`);
-
-    const thr = summariseThresholdVolume(schedule);
-    assert(
-      thr.erg_threshold_minutes > 0 || schedule.some((d) => d.double_session?.threshold_support),
-      `Week ${wn}: erg threshold support required in build weeks`
-    );
-
     const rhythm = analyzeWeeklyRhythm(schedule);
     assert(rhythm.max_consecutive_hard < 3, `Week ${wn}: no 3 consecutive hard days`);
-
-    if (rhythm.hard_day_count > 4) {
-      assert(
-        schedule.some((d) => d.double_session?.threshold_support),
-        `Week ${wn}: >4 hard days only allowed with low-impact erg threshold support`
-      );
-    }
   }
+
+  const preferredUsed = weeks.some((w) =>
+    (w.plan_json.double_session_summary?.selected_double_days ?? []).some((d) =>
+      /tue|thu|sat/i.test(d)
+    )
+  );
+  assert(preferredUsed, "7d Pro: athlete-selected double days (Tue/Thu/Sat) should be used");
 
   const w1Thr = summariseThresholdVolume(weeks[0]!.plan_json.schedule as DayPlan[]);
   const w3Thr = summariseThresholdVolume(weeks[2]!.plan_json.schedule as DayPlan[]);
