@@ -15,7 +15,17 @@ export default async function NoAccessPage() {
       const admin = createServiceRoleClient();
       const claim = await claimPendingWhopMembershipForUser(admin, user.id, user.email);
       if (claim.activated) {
-        redirect("/dashboard");
+        const { data: membership } = await supabase
+          .from("memberships")
+          .select("status, expires_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const expiresAt = membership?.expires_at ? new Date(String(membership.expires_at)) : null;
+        const notExpired =
+          expiresAt === null || Number.isNaN(expiresAt.getTime()) || expiresAt > new Date();
+        if (membership?.status === "active" && notExpired) {
+          redirect("/dashboard");
+        }
       }
     } catch {
       /* claim optional; show no-access */

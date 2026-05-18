@@ -4,6 +4,7 @@
 create table if not exists public.pending_whop_memberships (
   id uuid primary key default gen_random_uuid(),
   email text not null,
+  whop_email text,
   status text not null check (status in ('active', 'inactive')),
   expires_at timestamptz,
   whop_membership_id text,

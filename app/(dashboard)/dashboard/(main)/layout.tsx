@@ -20,13 +20,7 @@ export default async function DashboardMemberLayout({
   if (user.email) {
     try {
       const admin = createServiceRoleClient();
-      const claim = await claimPendingWhopMembershipForUser(admin, user.id, user.email);
-      if (claim.claimed) {
-        console.log("[dashboard] claimed pending Whop membership", {
-          userId: user.id,
-          activated: claim.activated,
-        });
-      }
+      await claimPendingWhopMembershipForUser(admin, user.id, user.email);
     } catch (e) {
       console.warn("[dashboard] pending Whop claim skipped", e);
     }
