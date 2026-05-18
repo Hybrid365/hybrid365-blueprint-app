@@ -19,6 +19,7 @@ import { mapGoalToBias, pickWeeklyStructure } from "./weeklyStructures";
 import { classifyRunner, type RunnerProfile } from "./classifyRunner";
 import { parseConstraints, type ModalityAvoids, type ParsedConstraints } from "./parseConstraints";
 import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
+import { buildRunPrescription } from "./runPrescription";
 import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import {
   getProgressionTarget,
@@ -60,6 +61,8 @@ export type BlueprintInput = {
   preferred_days?: string[];
   equipment?: string[];
   five_k_time?: string;
+  /** Optional max HR (bpm) from paid assessment — enables HR zone guidance on run sessions. */
+  max_heart_rate?: number | null;
   notes?: string;
   /** Optional raw flags passed through for rationale generation */
   has_injury?: boolean;
@@ -338,6 +341,16 @@ function buildDayPlanAndStressFromTemplate(args: {
   const displayMain =
     appliedProgression?.variant.main?.length ? appliedProgression.variant.main : picked.prescription.main;
 
+  const run_prescription =
+    picked.category === "run"
+      ? buildRunPrescription({
+          sessionType: picked.type,
+          paceGuidance,
+          maxHeartRate: input.max_heart_rate ?? null,
+          goalFocus: input.goal_focus,
+        })
+      : undefined;
+
   const dayPlan: DayPlan = {
     template_id: picked.id,
     day: assignedDay,
@@ -358,6 +371,7 @@ function buildDayPlanAndStressFromTemplate(args: {
           progression_marker: appliedProgression.variant.marker,
         }
       : {}),
+    ...(run_prescription ? { run_prescription } : {}),
     priority: computeSessionPriority({
       goalFocus: input.goal_focus,
       role,

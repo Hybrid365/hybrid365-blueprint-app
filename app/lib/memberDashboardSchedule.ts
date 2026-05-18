@@ -3,6 +3,8 @@
  * Keeps parity with AthleteDashboardClient session mapping without modifying /athlete routes.
  */
 
+import type { RunPrescription } from "./runPrescription";
+
 export type DoubleSessionSummary = {
   label: string;
   title: string;
@@ -36,6 +38,8 @@ export type MemberSessionDetail = {
   priorityReason: string;
   /** Optional PM / support session from double-session planner */
   doubleSession?: DoubleSessionSummary;
+  /** Run-only: individualised pace / HR / RPE from programme generation */
+  runPrescription?: RunPrescription;
 };
 
 function slugify(value: string): string {
@@ -92,6 +96,28 @@ function mapCategory(title: string, tags: string[]): SessionCategoryLabel {
   return "Hybrid";
 }
 
+function parseRunPrescription(raw: unknown): RunPrescription | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const p = raw as Record<string, unknown>;
+  const rpe = typeof p.rpe === "string" && p.rpe.trim() ? p.rpe.trim() : null;
+  const coach_note =
+    typeof p.coach_note === "string" && p.coach_note.trim() ? p.coach_note.trim() : null;
+  const effort_description =
+    typeof p.effort_description === "string" && p.effort_description.trim()
+      ? p.effort_description.trim()
+      : null;
+  if (!rpe && !coach_note && !effort_description) return undefined;
+  return {
+    pace_range:
+      typeof p.pace_range === "string" && p.pace_range.trim() ? p.pace_range.trim() : null,
+    hr_range:
+      typeof p.hr_range === "string" && p.hr_range.trim() ? p.hr_range.trim() : null,
+    rpe: rpe ?? "Use session guidance",
+    effort_description: effort_description ?? "",
+    coach_note: coach_note ?? "",
+  };
+}
+
 function parseSessionPriority(raw: unknown): Pick<
   MemberSessionDetail,
   "priorityRank" | "priorityDisplayLabel" | "priorityCategoryLabel" | "priorityReason"
@@ -146,6 +172,8 @@ export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetai
     const tagArr = asArray(row?.tags);
     const category = mapCategory(title, tagArr);
     const priority = parseSessionPriority(row?.priority);
+    const runPrescription =
+      category === "Run" ? parseRunPrescription(row?.run_prescription) : undefined;
 
     // Parse double_session if present
     let doubleSession: DoubleSessionSummary | undefined;
@@ -181,12 +209,15 @@ export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetai
       coolDown: asArray(session?.cool_down),
       finisher: asArray(session?.finish),
       coachingNotes: notes.length > 0 ? notes.join(" ") : "Use session guidance.",
-      rpeGuide: "Use session guidance",
-      effortDescription: String(
-        row?.intent || "Respect the purpose of the session and keep the effort controlled."
-      ),
+      rpeGuide: runPrescription?.rpe ?? "Use session guidance",
+      effortDescription:
+        runPrescription?.effort_description ||
+        String(
+          row?.intent || "Respect the purpose of the session and keep the effort controlled."
+        ),
       ...priority,
       ...(doubleSession ? { doubleSession } : {}),
+      ...(runPrescription ? { runPrescription } : {}),
     };
   });
 }

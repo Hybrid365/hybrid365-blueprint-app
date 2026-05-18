@@ -16,6 +16,7 @@ type AssessmentPayload = {
   current_running_volume_km: number | null;
   longest_recent_run_km: number | null;
   recent_5k_time: string | null;
+  max_heart_rate: number | null;
   recent_10k_time: string | null;
   hyrox_pb: string | null;
   bodyweight_kg: number | null;
@@ -67,6 +68,15 @@ export async function POST(request: Request) {
 
   const toNumOrNull = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) ? v : null;
+
+  const toMaxHrOrNull = (v: unknown): number | null => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = typeof v === "number" ? v : Number(String(v).trim());
+    if (!Number.isFinite(n)) return null;
+    const rounded = Math.round(n);
+    if (rounded < 100 || rounded > 230) return null;
+    return rounded;
+  };
   const toArrayOrNull = (v: unknown): string[] | null =>
     Array.isArray(v) ? v.map((x) => String(x)) : null;
 
@@ -86,6 +96,7 @@ export async function POST(request: Request) {
     current_running_volume_km: toNumOrNull(payload.current_running_volume_km),
     longest_recent_run_km: toNumOrNull(payload.longest_recent_run_km),
     recent_5k_time: payload.recent_5k_time?.trim() || null,
+    max_heart_rate: toMaxHrOrNull(payload.max_heart_rate),
     recent_10k_time: payload.recent_10k_time?.trim() || null,
     hyrox_pb: payload.hyrox_pb?.trim() || null,
     bodyweight_kg: toNumOrNull(payload.bodyweight_kg),

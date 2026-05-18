@@ -2096,6 +2096,61 @@ export default function MemberDashboardClient({
                 </div>
               </div>
 
+              {selectedSession.category === "Run" && selectedSession.runPrescription ? (
+                <div className="mt-6 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-zinc-900/80 p-5 sm:p-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-yellow-400/90">
+                    Your intensity guide
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                    {selectedSession.runPrescription.effort_description}
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {selectedSession.runPrescription.pace_range ? (
+                      <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          Target pace
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-white">
+                          {selectedSession.runPrescription.pace_range}
+                        </p>
+                      </div>
+                    ) : null}
+                    {selectedSession.runPrescription.hr_range ? (
+                      <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
+                        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          <Heart className="h-3.5 w-3.5" />
+                          HR guide
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-white">
+                          {selectedSession.runPrescription.hr_range}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div
+                      className={`rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3${
+                        !selectedSession.runPrescription.pace_range &&
+                        !selectedSession.runPrescription.hr_range
+                          ? " sm:col-span-2"
+                          : ""
+                      }`}
+                    >
+                      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        <Gauge className="h-3.5 w-3.5" />
+                        RPE
+                      </p>
+                      <p className="mt-1 text-base font-semibold text-white">
+                        {selectedSession.runPrescription.rpe}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedSession.runPrescription.coach_note ? (
+                    <p className="mt-4 border-t border-zinc-800/80 pt-4 text-sm leading-relaxed text-zinc-300">
+                      {selectedSession.runPrescription.coach_note}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
               {[
                 ["Warm-up", selectedSession.warmUp],
                 ["Main work", selectedSession.mainWork],

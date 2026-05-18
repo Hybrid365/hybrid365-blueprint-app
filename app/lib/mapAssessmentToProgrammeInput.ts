@@ -41,6 +41,7 @@ export type AthleteAssessmentRowForProgramme = {
   preferred_training_days: string[] | null;
   double_session_days: string[] | null;
   recent_5k_time: string | null;
+  max_heart_rate?: number | null;
   strength_experience: string | null;
   hyrox_experience: string | null;
   equipment: string[] | null;
@@ -298,6 +299,11 @@ export function mapAssessmentToProgrammeInput(params: {
     double_session_days,
     equipment: normalizeEquipment(params.assessment.equipment ?? undefined),
     five_k_time,
+    max_heart_rate:
+      typeof params.assessment.max_heart_rate === "number" &&
+      Number.isFinite(params.assessment.max_heart_rate)
+        ? Math.round(params.assessment.max_heart_rate)
+        : null,
     notes: buildNotes({ assessment: params.assessment, tests: params.benchmarkTests }),
     has_injury,
     current_run_volume_band: params.assessment.current_run_volume_band?.trim() || null,

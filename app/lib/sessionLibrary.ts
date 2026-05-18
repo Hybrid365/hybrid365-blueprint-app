@@ -112,6 +112,8 @@ export type DayPlan = {
   progression_marker?: SessionProgressionMarker;
   /** True when this session intentionally repeats last week (benchmark / retest). */
   intentional_repeat?: boolean;
+  /** Individualised pace / HR / RPE guidance for run sessions (paid programme). */
+  run_prescription?: import("./runPrescription").RunPrescription;
 };
 
 export type WeeklyStressLabel = "low" | "balanced" | "high" | "very_high";

@@ -34,6 +34,7 @@ export type AssessmentRow = {
   current_running_volume_km: number | null;
   longest_recent_run_km: number | null;
   recent_5k_time: string | null;
+  max_heart_rate: number | null;
   recent_10k_time: string | null;
   hyrox_pb: string | null;
   bodyweight_kg: number | null;
@@ -249,6 +250,10 @@ export default function AssessmentClient({
         return BAND_TO_SESSION_PILL[b] ?? b;
       })(),
       fiveKm: initialAssessment?.recent_5k_time ?? "",
+      maxHeartRate:
+        initialAssessment?.max_heart_rate != null
+          ? String(initialAssessment.max_heart_rate)
+          : "",
       currentRunVolumeBand: initialAssessment?.current_run_volume_band ?? "",
       rowing: "",
       skiErg: "",
@@ -301,6 +306,15 @@ export default function AssessmentClient({
           current_running_volume_km: initialAssessment?.current_running_volume_km ?? null,
           longest_recent_run_km: initialAssessment?.longest_recent_run_km ?? null,
           recent_5k_time: formData.fiveKm || initialAssessment?.recent_5k_time || null,
+          max_heart_rate: (() => {
+            const t = formData.maxHeartRate.trim();
+            if (!t) return null;
+            const n = Number(t);
+            if (!Number.isFinite(n)) return initialAssessment?.max_heart_rate ?? null;
+            const rounded = Math.round(n);
+            if (rounded < 100 || rounded > 230) return initialAssessment?.max_heart_rate ?? null;
+            return rounded;
+          })(),
           recent_10k_time: initialAssessment?.recent_10k_time ?? null,
           hyrox_pb: initialAssessment?.hyrox_pb ?? null,
           bodyweight_kg:
@@ -641,6 +655,22 @@ export default function AssessmentClient({
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">5km Run Time</label>
                 <input type="text" placeholder="e.g., 25:00" value={formData.fiveKm} onChange={(e) => setFormData({ ...formData, fiveKm: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">
+                  Max heart rate, if known
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="e.g., 190"
+                  value={formData.maxHeartRate}
+                  onChange={(e) => setFormData({ ...formData, maxHeartRate: e.target.value })}
+                  className="w-full max-w-xs px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                  Leave blank if unsure. We&apos;ll still prescribe sessions using pace and RPE.
+                </p>
               </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">Current weekly running volume</label>

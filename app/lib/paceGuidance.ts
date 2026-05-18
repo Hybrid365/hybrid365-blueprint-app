@@ -13,6 +13,8 @@ export type PaceGuidance = {
     tempo: string;
     threshold: string;
     interval: string;
+    /** Hyrox-style race running between stations (when 5km anchor exists). */
+    hyrox_race?: string;
   };
   note: string;
 };
@@ -67,6 +69,7 @@ export function computePaceGuidanceFromFiveKSeconds(seconds: number): PaceGuidan
       tempo: zoneRangeSecPerKm(baseSecPerKm, 1.06, 1.12),
       threshold: zoneRangeSecPerKm(baseSecPerKm, 1.02, 1.08),
       interval: zoneRangeSecPerKm(baseSecPerKm, 0.97, 1.02),
+      hyrox_race: zoneRangeSecPerKm(baseSecPerKm, 1.06, 1.12),
     },
     note: GUIDANCE_NOTE,
   };
