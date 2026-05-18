@@ -186,8 +186,7 @@ export async function claimPendingWhopMembershipForUser(
   const nowIso = new Date().toISOString();
   const whopEmail = normalizeWhopEmail(pending.whop_email ?? pending.email);
 
-  const membershipRow = {
-    user_id: userId,
+  const membershipUpdate = {
     status: "active" as const,
     source: "whop" as const,
     expires_at: pending.expires_at,
@@ -202,21 +201,73 @@ export async function claimPendingWhopMembershipForUser(
     updated_at: nowIso,
   };
 
-  const { error: upsertError } = await admin
-    .from("memberships")
-    .upsert(membershipRow, { onConflict: "user_id" });
+  const membershipInsert = {
+    user_id: userId,
+    ...membershipUpdate,
+  };
 
-  if (upsertError) {
+  const { data: updatedRows, error: updateError } = await admin
+    .from("memberships")
+    .update(membershipUpdate)
+    .eq("user_id", userId)
+    .select("user_id");
+
+  if (updateError) {
     console.error("[whop claim] membership update failed", {
-      code: upsertError.code,
-      message: upsertError.message,
-      details: upsertError.details,
-      hint: upsertError.hint,
+      code: updateError.code,
+      message: updateError.message,
+      details: updateError.details,
+      hint: updateError.hint,
     });
     return { claimed: false, activated: false };
   }
 
-  console.log("[whop claim] membership update success", { userId });
+  if (!updatedRows?.length) {
+    const { error: insertError } = await admin.from("memberships").insert(membershipInsert);
+
+    if (insertError) {
+      console.error("[whop claim] insert fallback failure", {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+      });
+      return { claimed: false, activated: false };
+    }
+
+    console.log("[whop claim] insert fallback success", { userId });
+  } else {
+    console.log("[whop claim] membership update success", { userId });
+  }
+
+  const { data: membershipAfter, error: verifyError } = await admin
+    .from("memberships")
+    .select("status, expires_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (verifyError) {
+    console.error("[whop claim] membership verify failed", {
+      code: verifyError.code,
+      message: verifyError.message,
+      details: verifyError.details,
+      hint: verifyError.hint,
+    });
+    return { claimed: false, activated: false };
+  }
+
+  const activated = isMembershipCurrentlyActive({
+    status: String(membershipAfter?.status ?? ""),
+    expires_at: membershipAfter?.expires_at ? String(membershipAfter.expires_at) : null,
+  });
+
+  if (!activated) {
+    console.error("[whop claim] membership verify failed", {
+      reason: "membership_not_active_after_claim",
+      status: membershipAfter?.status ?? null,
+    });
+    return { claimed: false, activated: false };
+  }
 
   const { error: claimError } = await admin
     .from("pending_whop_memberships")
@@ -239,7 +290,7 @@ export async function claimPendingWhopMembershipForUser(
     console.log("[whop claim] pending row marked claimed", { pendingId: pending.id });
   }
 
-  return { claimed: true, activated: true };
+  return { claimed: true, activated };
 }
 
 /**
