@@ -59,40 +59,67 @@ const PENDING_SELECT =
 
 const PENDING_FETCH_LIMIT = 50;
 
+export const WHOP_CLAIM_VERSION = "claim-fix-2026-05-18b";
+
+export function normalizeEmail(v: unknown): string {
+  return String(v ?? "").trim().toLowerCase();
+}
+
+/**
+ * Canonical key for claim matching. Auth/session may deliver '+' as space in the local part;
+ * DB/Whop store '+'. Collapse local-part whitespace to '+' before compare.
+ */
+export function emailMatchKey(v: unknown): string {
+  const n = normalizeEmail(v);
+  const at = n.indexOf("@");
+  if (at <= 0) return n;
+  const local = n.slice(0, at).replace(/\s+/g, "+");
+  const domain = n.slice(at + 1);
+  return `${local}@${domain}`;
+}
+
+/** @deprecated Use normalizeEmail */
 export function normalizeWhopEmail(email: string): string {
-  return email.trim().toLowerCase();
+  return normalizeEmail(email);
 }
 
 function maskEmailForLog(email: string): string {
-  const normalized = normalizeWhopEmail(email);
+  const normalized = normalizeEmail(email);
   const at = normalized.indexOf("@");
   if (at <= 0) return "***";
   const local = normalized.slice(0, at);
   const domain = normalized.slice(at + 1);
-  const prefix = local.slice(0, Math.min(2, local.length));
-  return `${prefix}…@${domain}`;
+  const plusIdx = local.indexOf("+");
+  if (plusIdx >= 0) {
+    const afterPlus = local.slice(plusIdx + 1, plusIdx + 5);
+    return `${local.slice(0, 2)}+${afterPlus}…@${domain}`;
+  }
+  const spaceIdx = local.indexOf(" ");
+  if (spaceIdx >= 0) {
+    return `${local.slice(0, 2)}_${local.slice(spaceIdx + 1, spaceIdx + 5)}…@${domain}`;
+  }
+  return `${local.slice(0, Math.min(2, local.length))}…@${domain}`;
 }
 
-function pendingRowMatchesEmail(pending: PendingWhopRow, normalizedEmail: string): boolean {
-  const rowEmail = pending.email ? normalizeWhopEmail(pending.email) : "";
-  const rowWhopEmail = pending.whop_email ? normalizeWhopEmail(pending.whop_email) : "";
-  return rowEmail === normalizedEmail || rowWhopEmail === normalizedEmail;
+function emailDebugAlias(email: string) {
+  const normalized = normalizeEmail(email);
+  const at = normalized.indexOf("@");
+  const local = at > 0 ? normalized.slice(0, at) : normalized;
+  return {
+    masked: maskEmailForLog(normalized),
+    length: normalized.length,
+    localLength: local.length,
+    hasPlus: local.includes("+"),
+    hasSpace: local.includes(" "),
+  };
 }
 
 /**
- * Fetch unclaimed active pending rows and match email in JS (avoids PostgREST `+` / ilike issues).
+ * Fetch unclaimed active pending rows (match email in JS — avoids PostgREST `+` / ilike issues).
  */
-export async function findActivePendingWhopMembership(
-  admin: SupabaseClient,
-  userEmail: string
-): Promise<{
-  row: PendingWhopRow | null;
-  candidates: PendingWhopRow[];
-  lookupError?: string;
-}> {
-  const normalizedEmail = userEmail.trim().toLowerCase();
-  if (!normalizedEmail) return { row: null, candidates: [] };
-
+export async function fetchUnclaimedActivePendingRows(
+  admin: SupabaseClient
+): Promise<{ candidates: PendingWhopRow[]; lookupError?: string }> {
   const { data, error } = await admin
     .from("pending_whop_memberships")
     .select(PENDING_SELECT)
@@ -102,41 +129,21 @@ export async function findActivePendingWhopMembership(
     .limit(PENDING_FETCH_LIMIT);
 
   if (error) {
-    return { row: null, candidates: [], lookupError: error.message };
+    return { candidates: [], lookupError: error.message };
   }
 
-  const candidates = (data ?? []) as PendingWhopRow[];
-  const row = candidates.find((pending) => pendingRowMatchesEmail(pending, normalizedEmail)) ?? null;
-
-  return { row, candidates };
+  return { candidates: (data ?? []) as PendingWhopRow[] };
 }
 
 function logNoPendingRowFound(
-  userEmail: string,
+  normalizedSignedInEmail: string,
   candidates: PendingWhopRow[],
   unclaimedActiveCount: number
 ): void {
-  const normalizedEmail = normalizeWhopEmail(userEmail);
-  const localPart = normalizedEmail.split("@")[0] ?? "";
-
-  const similarEmailMatchCount =
-    localPart.length >= 3
-      ? candidates.filter((row) => {
-          const emails = [row.email, row.whop_email].filter(Boolean) as string[];
-          return emails.some((e) => normalizeWhopEmail(e).includes(localPart));
-        }).length
-      : 0;
-
-  const candidateEmailsMasked = candidates.slice(0, 10).map((row) => ({
-    email: maskEmailForLog(row.email),
-    whopEmail: row.whop_email ? maskEmailForLog(row.whop_email) : null,
-  }));
-
   console.log("[whop claim] no pending row found for email", {
     unclaimedActiveCount,
     candidateCount: candidates.length,
-    candidateEmailsMasked,
-    similarEmailMatchCount,
+    signedInEmail: emailDebugAlias(normalizedSignedInEmail),
   });
 }
 
@@ -148,20 +155,54 @@ export async function claimPendingWhopMembershipForUser(
   userId: string,
   email: string
 ): Promise<ClaimPendingWhopResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+  console.log(`[whop claim] version = "${WHOP_CLAIM_VERSION}"`);
+
+  const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return { claimed: false, activated: false };
 
-  console.log("[whop claim] called for email", { hasEmail: true });
+  console.log("[whop claim] called for email", {
+    signedInEmail: emailDebugAlias(normalizedEmail),
+  });
 
-  const { row: pending, candidates, lookupError } = await findActivePendingWhopMembership(
-    admin,
-    email
-  );
+  const { candidates, lookupError } = await fetchUnclaimedActivePendingRows(admin);
 
   if (lookupError) {
     console.error("[whop claim] pending lookup failed", { message: lookupError });
     return { claimed: false, activated: false };
   }
+
+  const signedInKey = emailMatchKey(normalizedEmail);
+
+  for (const row of candidates) {
+    const candidateEmail = normalizeEmail(row.email);
+    const candidateWhopEmail = normalizeEmail(row.whop_email);
+    const candidateEmailKey = emailMatchKey(row.email);
+    const candidateWhopEmailKey = emailMatchKey(row.whop_email);
+    const exactEmailMatch = candidateEmail === normalizedEmail;
+    const exactWhopEmailMatch =
+      candidateWhopEmail.length > 0 && candidateWhopEmail === normalizedEmail;
+    const emailMatch = candidateEmailKey === signedInKey;
+    const whopEmailMatch =
+      candidateWhopEmailKey.length > 0 && candidateWhopEmailKey === signedInKey;
+
+    console.log("[whop claim] candidate compare", {
+      pendingId: row.id,
+      signedInEmail: emailDebugAlias(normalizedEmail),
+      candidateEmail: emailDebugAlias(candidateEmail),
+      candidateWhopEmail: row.whop_email ? emailDebugAlias(candidateWhopEmail) : null,
+      exactEmailMatch,
+      exactWhopEmailMatch,
+      emailMatch,
+      whopEmailMatch,
+    });
+  }
+
+  const pending =
+    candidates.find(
+      (row) =>
+        emailMatchKey(row.email) === signedInKey ||
+        emailMatchKey(row.whop_email) === signedInKey
+    ) ?? null;
 
   if (!pending) {
     const { count: unclaimedActiveCount } = await admin
@@ -171,7 +212,7 @@ export async function claimPendingWhopMembershipForUser(
       .is("claimed_at", null)
       .is("claimed_user_id", null);
 
-    logNoPendingRowFound(email, candidates, unclaimedActiveCount ?? 0);
+    logNoPendingRowFound(normalizedEmail, candidates, unclaimedActiveCount ?? 0);
     return { claimed: false, activated: false };
   }
 
@@ -186,7 +227,7 @@ export async function claimPendingWhopMembershipForUser(
   console.log("[whop claim] pending row found", { pendingId: pending.id });
 
   const nowIso = new Date().toISOString();
-  const whopEmail = normalizeWhopEmail(pending.whop_email ?? pending.email);
+  const whopEmail = normalizeEmail(pending.whop_email || pending.email);
 
   const membershipUpdate = {
     status: "active" as const,
