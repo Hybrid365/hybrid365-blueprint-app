@@ -14,9 +14,45 @@ import {
   mapSignInOtpThrownError,
   OTP_ERROR_HEADLINE_DEFAULT,
 } from "@/app/lib/authLoginErrors";
+import { getWhopJoinUrl } from "@/app/lib/hybrid365PublicLinks";
 import { createClient } from "@/app/lib/supabase/client";
 
 const OTP_TIMEOUT_MS = 30_000;
+
+const WHOP_JOIN_URL = getWhopJoinUrl();
+
+function LoginMembershipGuidance() {
+  return (
+    <div className="mt-3 space-y-3 rounded-xl border border-zinc-800/90 bg-zinc-950/60 p-3.5">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#F4D23C]/90">
+          Existing Hybrid365 members
+        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-zinc-300">
+          Log in using the exact same email you used to join Whop to access your Athlete
+          Dashboard.
+        </p>
+      </div>
+      <div className="border-t border-zinc-800/80 pt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          New here / not a member yet
+        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+          You can verify your email, but the Athlete Dashboard only unlocks for active
+          Hybrid365 members. Join through Whop first, then return here with the same email.
+        </p>
+        <a
+          href={WHOP_JOIN_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-zinc-600 bg-zinc-800/80 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-zinc-500 hover:bg-zinc-800"
+        >
+          Join Hybrid365
+        </a>
+      </div>
+    </div>
+  );
+}
 
 type LoginMode = "magic_link" | "email_code";
 type LoginBanner =
@@ -268,12 +304,7 @@ function LoginForm() {
               placeholder="you@example.com"
               disabled={submitting}
             />
-            <div className="mt-2.5 rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-3 py-2.5">
-              <p className="text-xs leading-relaxed text-zinc-400">
-                <span className="font-medium text-zinc-300">Paid member?</span> Use the exact same
-                email you used to join Whop so your dashboard access unlocks automatically.
-              </p>
-            </div>
+            <LoginMembershipGuidance />
             {mode === "email_code" ? (
               <p className="mt-2 text-xs leading-relaxed text-zinc-500">
                 We&apos;ll email a one-time code. Email scanners can&apos;t consume codes the way
