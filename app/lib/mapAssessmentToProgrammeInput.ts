@@ -2,6 +2,8 @@ import type { PaidProgrammeInput } from "./generate12WeekProgramme";
 import type { GoalFocus, WeeklyHoursBand } from "./sessionLibrary";
 import type { RationaleContext } from "./programmeRationale";
 import { buildBenchmarkSignals } from "./paidProgrammeIntelligence";
+import { buildHyroxTrackContext } from "./hyroxTrackContext";
+import { parseConstraints } from "./parseConstraints";
 
 const WEEKLY_HOURS_BANDS = new Set<string>(["2-3", "3-5", "5-7", "7-10", "10+"]);
 
@@ -267,6 +269,33 @@ export function mapAssessmentToProgrammeInput(params: {
   );
   const hasBenchmarkTests = params.benchmarkTests.length > 0;
 
+  const benchmark_signals = buildBenchmarkSignals(params.benchmarkTests);
+  const parsedForHyrox = parseConstraints(
+    buildNotes({ assessment: params.assessment, tests: params.benchmarkTests })
+  );
+
+  const hyrox_track = buildHyroxTrackContext({
+    assessment: {
+      goal_focus: params.assessment.goal_focus,
+      event_type: params.assessment.event_type,
+      event_date: params.assessment.event_date,
+      biggest_limiter: params.assessment.biggest_limiter,
+      injury_flags: params.assessment.injury_flags,
+      movements_to_avoid: params.assessment.movements_to_avoid,
+      notes: params.assessment.notes,
+      equipment: params.assessment.equipment ?? undefined,
+      recent_5k_time: five_k_time || null,
+      current_run_volume_band: params.assessment.current_run_volume_band ?? null,
+      max_heart_rate: params.assessment.max_heart_rate ?? null,
+    },
+    benchmark_signals,
+    has_injury: Boolean(
+      params.assessment.injury_flags?.length || params.assessment.movements_to_avoid?.length
+    ),
+    parsed_flags: parsedForHyrox.flags,
+    modality_avoids: parsedForHyrox.modality_avoids,
+  });
+
   const rationale_context: Omit<RationaleContext, "input"> = {
     assessment: {
       event_type: params.assessment.event_type,
@@ -284,7 +313,8 @@ export function mapAssessmentToProgrammeInput(params: {
     hasBaseline5k,
     hasBenchmarkTests,
     double_session_days,
-    benchmark_signals: buildBenchmarkSignals(params.benchmarkTests),
+    benchmark_signals,
+    hyrox_track,
   };
 
   return {
@@ -308,5 +338,6 @@ export function mapAssessmentToProgrammeInput(params: {
     has_injury,
     current_run_volume_band: params.assessment.current_run_volume_band?.trim() || null,
     rationale_context,
+    hyrox_track,
   };
 }

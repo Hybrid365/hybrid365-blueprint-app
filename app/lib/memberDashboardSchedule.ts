@@ -172,8 +172,9 @@ export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetai
     const tagArr = asArray(row?.tags);
     const category = mapCategory(title, tagArr);
     const priority = parseSessionPriority(row?.priority);
-    const runPrescription =
-      category === "Run" ? parseRunPrescription(row?.run_prescription) : undefined;
+    const runPrescription = parseRunPrescription(row?.run_prescription);
+    const showRunPrescription =
+      runPrescription && (category === "Run" || category === "Hybrid");
 
     // Parse double_session if present
     let doubleSession: DoubleSessionSummary | undefined;
@@ -209,15 +210,15 @@ export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetai
       coolDown: asArray(session?.cool_down),
       finisher: asArray(session?.finish),
       coachingNotes: notes.length > 0 ? notes.join(" ") : "Use session guidance.",
-      rpeGuide: runPrescription?.rpe ?? "Use session guidance",
-      effortDescription:
-        runPrescription?.effort_description ||
-        String(
-          row?.intent || "Respect the purpose of the session and keep the effort controlled."
-        ),
+      rpeGuide: showRunPrescription ? runPrescription!.rpe : "Use session guidance",
+      effortDescription: showRunPrescription
+        ? runPrescription!.effort_description
+        : String(
+            row?.intent || "Respect the purpose of the session and keep the effort controlled."
+          ),
       ...priority,
       ...(doubleSession ? { doubleSession } : {}),
-      ...(runPrescription ? { runPrescription } : {}),
+      ...(showRunPrescription ? { runPrescription } : {}),
     };
   });
 }

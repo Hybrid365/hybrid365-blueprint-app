@@ -2,6 +2,7 @@
 
 import type { AbilityLevel, GoalFocus, StructureRole, WeeklyHoursBand } from "./sessionLibrary";
 import type { RunVolumePlan } from "./runVolumePlanner";
+import { hyroxWeeklyStructureBoost } from "./hyroxTrackContext";
 
 export type WeeklyStructure = {
   id: string;
@@ -279,6 +280,7 @@ export function pickWeeklyStructure(input: {
   double_sessions?: boolean;
   weekly_hours_band: WeeklyHoursBand;
   run_volume_plan?: RunVolumePlan | null;
+  hyrox_track?: import("./hyroxTrackContext").HyroxTrackContext | null;
 }) {
   const bias = mapGoalToBias(input.goal_focus);
 
@@ -305,7 +307,9 @@ export function pickWeeklyStructure(input: {
       .map((structure, index) => ({
         structure,
         index,
-        score: scoreStructureForHours(structure, input.weekly_hours_band),
+        score:
+          scoreStructureForHours(structure, input.weekly_hours_band) +
+          (input.hyrox_track?.active ? hyroxWeeklyStructureBoost(structure.label) : 0),
       }))
       .sort((a, b) => b.score - a.score || a.index - b.index);
 

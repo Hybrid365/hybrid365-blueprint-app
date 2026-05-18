@@ -148,13 +148,22 @@ function hrRangeForIntensity(maxHr: number, key: IntensityKey): string | null {
 /**
  * Build structured intensity guidance for a run session in the programme plan.
  */
+const COMPROMISED_COACH =
+  "Controlled compromise — run segments are firm but repeatable. Recover on stations; do not sprint the first run.";
+
 export function buildRunPrescription(args: {
   sessionType: string;
   paceGuidance: PaceGuidance | null;
   maxHeartRate: number | null;
   goalFocus?: GoalFocus;
+  hyroxTrack?: boolean;
 }): RunPrescription {
-  const key = intensityKeyForSessionType(args.sessionType, args.goalFocus);
+  const key =
+    args.hyroxTrack && args.sessionType === "hybrid_compromised"
+      ? "hyrox_race"
+      : args.hyroxTrack && args.sessionType === "hybrid_density"
+        ? "steady"
+        : intensityKeyForSessionType(args.sessionType, args.goalFocus);
   const pace =
     args.paceGuidance != null ? paceRangeForIntensity(args.paceGuidance, key) : null;
   const hr =
@@ -173,11 +182,16 @@ export function buildRunPrescription(args: {
     effort_description = `${fallback.effort} Use HR as your primary guide.`;
   }
 
+  const coach_note =
+    args.hyroxTrack && args.sessionType === "hybrid_compromised"
+      ? COMPROMISED_COACH
+      : COACH_NOTES[key];
+
   return {
     pace_range: pace,
     hr_range: hr,
     rpe: pace ? RPE_BY_INTENSITY[key] : fallback.rpe,
     effort_description,
-    coach_note: COACH_NOTES[key],
+    coach_note,
   };
 }

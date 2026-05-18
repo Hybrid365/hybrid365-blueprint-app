@@ -4,6 +4,7 @@
  */
 
 import type { BlueprintInput } from "./buildWeekBlueprint";
+import { resolveHyroxProgressionFamilyId } from "./hyroxTrackContext";
 import type { AbilityLevel, GoalFocus } from "./sessionLibrary";
 import type { RunProgressionSlot } from "./runSessionProgression";
 
@@ -612,8 +613,23 @@ export function resolveRunProgressionFamily(
 
 export function resolveStrengthFamilyForRole(
   role: string,
-  input: BlueprintInput
+  input: BlueprintInput,
+  opts?: {
+    hyrox?: import("./hyroxTrackContext").HyroxTrackContext | null;
+    weekNumber?: number;
+    weekFocus?: string | null;
+  }
 ): ProgressionFamily | null {
+  if (opts?.hyrox?.active) {
+    const familyId = resolveHyroxProgressionFamilyId(
+      role,
+      opts.hyrox,
+      opts.weekNumber ?? 1,
+      opts.weekFocus
+    );
+    if (familyId) return FAMILY_BY_ID.get(familyId) ?? null;
+  }
+
   if (role === "lower_primary" || role === "lower_full") {
     return FAMILY_BY_ID.get("lower_strength_foundation_a") ?? null;
   }

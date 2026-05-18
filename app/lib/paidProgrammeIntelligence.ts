@@ -23,6 +23,7 @@ import {
 } from "./benchmarkCoreAreas";
 import { parseConstraints } from "./parseConstraints";
 import { planWeeklyRunVolume } from "./runVolumePlanner";
+import { hyroxTrackSummaryForRationale } from "./hyroxTrackContext";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -468,13 +469,27 @@ export function buildPaidProgrammeIntelligence(input: BuildIntelligenceArgs): Pa
     limiter_focus
   );
 
-  const engine_biases = engineBiases({
+  let engine_biases = engineBiases({
     limiter: limiter_focus,
     eventSpec,
     goal,
     parsed,
     equipment: input.equipment ?? [],
   });
+
+  if (input.hyrox_track?.active) {
+    engine_biases = [
+      ...new Set([
+        ...engine_biases,
+        "hyrox_track",
+        "threshold_progression",
+        "compromised_running",
+        "station_density",
+        ...(input.hyrox_track.hyrox_event_type === "pro" ? ["pro_weight_readiness"] : []),
+        ...(input.hyrox_track.equipment_limited ? ["equipment_substitution"] : []),
+      ]),
+    ];
+  }
 
   const base: Omit<PaidProgrammeIntelligence, "rationale_notes" | "engine_biases"> = {
     primary_goal: goal,
@@ -501,6 +516,12 @@ export function buildPaidProgrammeIntelligence(input: BuildIntelligenceArgs): Pa
     !rationale_notes.some((n) => n.includes(runPlan.runStructureSummary.slice(0, 24)))
   ) {
     rationale_notes.unshift(runPlan.runStructureSummary);
+  }
+
+  if (input.hyrox_track?.active) {
+    for (const line of hyroxTrackSummaryForRationale(input.hyrox_track).reverse()) {
+      if (!rationale_notes.includes(line)) rationale_notes.unshift(line);
+    }
   }
 
   return {

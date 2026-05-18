@@ -71,6 +71,7 @@ export function generate12WeekProgramme(
     ...(input.rationale_context ?? {}),
     double_session_days: input.double_session_days ?? input.rationale_context?.double_session_days,
     intelligence: programme_intelligence,
+    hyrox_track: input.hyrox_track ?? input.rationale_context?.hyrox_track ?? null,
   };
   const programme_rationale = buildProgrammeRationale(rationaleCtx);
 

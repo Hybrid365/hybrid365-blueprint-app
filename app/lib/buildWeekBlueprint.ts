@@ -20,6 +20,7 @@ import { classifyRunner, type RunnerProfile } from "./classifyRunner";
 import { parseConstraints, type ModalityAvoids, type ParsedConstraints } from "./parseConstraints";
 import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
 import { buildRunPrescription } from "./runPrescription";
+import { hyroxSessionWeightDelta, hyroxWeeklyStructureBoost } from "./hyroxTrackContext";
 import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import {
   getProgressionTarget,
@@ -66,6 +67,8 @@ export type BlueprintInput = {
   notes?: string;
   /** Optional raw flags passed through for rationale generation */
   has_injury?: boolean;
+  /** HYROX goal/event track — biases session selection and coaching when active */
+  hyrox_track?: import("./hyroxTrackContext").HyroxTrackContext | null;
   /** Athlete-reported weekly run volume band (paid assessment). */
   current_run_volume_band?: string | null;
 };
@@ -318,10 +321,15 @@ function buildDayPlanAndStressFromTemplate(args: {
   const libraryNotes = [...(picked.prescription.notes || [])];
   const paceNote =
     paceGuidance && picked.category === "run" ? runSessionPaceNote(picked.type, paceGuidance) : null;
+  const hyroxEquipmentNote =
+    input.hyrox_track?.active && input.hyrox_track.equipment_note
+      ? [input.hyrox_track.equipment_note]
+      : [];
 
   const sessionNotes = [
     ...coachingPrefix,
     ...(paceNote ? [paceNote] : []),
+    ...hyroxEquipmentNote,
     ...substitutionNotes,
     ...libraryNotes,
     ...(extraSessionNotes ?? []),
@@ -342,12 +350,15 @@ function buildDayPlanAndStressFromTemplate(args: {
     appliedProgression?.variant.main?.length ? appliedProgression.variant.main : picked.prescription.main;
 
   const run_prescription =
-    picked.category === "run"
+    picked.category === "run" ||
+    (input.hyrox_track?.active &&
+      (picked.type === "hybrid_compromised" || picked.type === "hybrid_density"))
       ? buildRunPrescription({
           sessionType: picked.type,
           paceGuidance,
           maxHeartRate: input.max_heart_rate ?? null,
           goalFocus: input.goal_focus,
+          hyroxTrack: input.hyrox_track?.active ?? false,
         })
       : undefined;
 
@@ -762,6 +773,8 @@ type SessionPickContext = {
   runningIntervalSessionCount: number;
   /** variation_group keys for quality run picks only (duplicate quality vg bias) */
   runningQualityVariationGroups: Set<string>;
+  weekNumber: number;
+  weekFocus: string | null;
 };
 
 /** Harder run sessions that stack fatigue when duplicated in one week. */
@@ -1021,6 +1034,19 @@ function pickWeightedSession(
     if (input.goal_focus === "hybrid") {
       if (s.category === "hybrid") weight += 2;
       if (s.name.toLowerCase().includes("hyrox")) weight += 1;
+    }
+
+    if (input.hyrox_track?.active) {
+      weight += hyroxSessionWeightDelta(
+        input.hyrox_track,
+        pickContext.weekNumber,
+        s,
+        role
+      );
+    } else if (input.goal_focus === "hybrid") {
+      if (/\brace\s*sim\b|full race simulation/i.test(blob) && pickContext.weekNumber <= 3) {
+        weight -= 6;
+      }
     }
 
     if (input.ability_level === "beginner" && s.intensity === "high") weight -= 1;
@@ -1635,6 +1661,7 @@ function buildActivePlanDays(
         ability_level: input.ability_level,
         double_sessions: input.double_sessions,
         weekly_hours_band: input.weekly_hours_band,
+        hyrox_track: input.hyrox_track,
       });
 
   const structure = {
@@ -1644,6 +1671,9 @@ function buildActivePlanDays(
       : baseStructure.roles,
   };
 
+  const weekNumber = options?.week_number ?? 1;
+  const weekFocus = options?.progression_target?.week_focus ?? null;
+
   const pickContext: SessionPickContext = {
     usedIds: new Set<string>(),
     usedVariationGroups: new Set<string>(),
@@ -1652,6 +1682,8 @@ function buildActivePlanDays(
     runningThresholdSessionCount: 0,
     runningIntervalSessionCount: 0,
     runningQualityVariationGroups: new Set<string>(),
+    weekNumber,
+    weekFocus,
   };
   const activeDays: DayPlan[] = [];
   const assignedDays = new Set<DayKey>();
@@ -1659,8 +1691,6 @@ function buildActivePlanDays(
   let previousFatigueTag = "";
   let runQualityPickIndex = 0;
   const sameWeekRunSnapshots: WeekRunSnapshot[] = [];
-  const weekNumber = options?.week_number ?? 1;
-  const weekFocus = options?.progression_target?.week_focus ?? null;
 
   const dayOrder = getPreferredDayOrder(input.preferred_days);
 
@@ -1717,7 +1747,11 @@ function buildActivePlanDays(
       picked = progressed.session;
       appliedProgression = progressed.applied;
     } else {
-      const strengthFamily = resolveStrengthFamilyForRole(role, input);
+      const strengthFamily = resolveStrengthFamilyForRole(role, input, {
+        hyrox: input.hyrox_track,
+        weekNumber,
+        weekFocus,
+      });
       if (
         strengthFamily &&
         (picked.category === "strength" || picked.category === "hybrid")

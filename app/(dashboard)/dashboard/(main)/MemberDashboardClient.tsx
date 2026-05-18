@@ -2096,7 +2096,8 @@ export default function MemberDashboardClient({
                 </div>
               </div>
 
-              {selectedSession.category === "Run" && selectedSession.runPrescription ? (
+              {(selectedSession.category === "Run" || selectedSession.category === "Hybrid") &&
+              selectedSession.runPrescription ? (
                 <div className="mt-6 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-zinc-900/80 p-5 sm:p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-yellow-400/90">
                     Your intensity guide

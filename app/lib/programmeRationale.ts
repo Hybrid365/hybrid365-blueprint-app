@@ -7,6 +7,7 @@
 import type { PaidProgrammeInput } from "./generate12WeekProgramme";
 import type { GoalFocus, WeeklyHoursBand } from "./sessionLibrary";
 import type { PaidProgrammeIntelligence } from "./paidProgrammeIntelligence";
+import { hyroxTrackSummaryForRationale } from "./hyroxTrackContext";
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -56,6 +57,8 @@ export type RationaleContext = {
   benchmark_signals?: import("./paidProgrammeIntelligence").BenchmarkSignals;
   /** Set by generate12WeekProgramme after buildPaidProgrammeIntelligence */
   intelligence?: PaidProgrammeIntelligence | null;
+  /** HYROX track context when athlete selected HYROX goal/event */
+  hyrox_track?: import("./hyroxTrackContext").HyroxTrackContext | null;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -397,6 +400,10 @@ export function buildProgrammeRationale(ctx: RationaleContext): ProgrammeRationa
   if (injury) summary.push(injury);
 
   summary.push(baselineSentence(ctx));
+
+  if (ctx.hyrox_track?.active) {
+    summary.push(...hyroxTrackSummaryForRationale(ctx.hyrox_track));
+  }
 
   const doubles = doubleSessionSentence(ctx);
   if (doubles) summary.push(doubles);

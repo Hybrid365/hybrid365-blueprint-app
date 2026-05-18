@@ -7,6 +7,7 @@ import {
 } from "./progressionFamilies";
 import type { WeekRationale } from "./programmeRationale";
 import type { RunVolumePlan } from "./runVolumePlanner";
+import { buildHyroxWeekCoachingParagraph } from "./hyroxTrackContext";
 
 export type EnhancedWeekRationale = WeekRationale & {
   progression_focus: string;
@@ -142,15 +143,30 @@ export function buildEnhancedWeekRationale(args: {
     })
     .filter(Boolean);
 
-  const progression_focus =
+  let progression_focus =
     goalScaledFocus(input, weekNumber, weekFocus) +
     (familySnippets[0] ? ` ${String(familySnippets[0]).replace(/^Week focus:\s*/i, "")}` : "");
+
+  let coach_note = base.coach_note;
+
+  if (input.hyrox_track?.active) {
+    const hyroxParagraph = buildHyroxWeekCoachingParagraph({
+      ctx: input.hyrox_track,
+      weekNumber,
+      weekFocus,
+      schedule,
+    });
+    coach_note = `${hyroxParagraph} ${coach_note}`.trim();
+    if (input.hyrox_track.hyrox_timeline === "race_specific" || weekNumber >= 9) {
+      progression_focus = `${input.hyrox_track.phase_emphasis} ${progression_focus}`;
+    }
+  }
 
   return {
     ...base,
     progression_focus,
     what_progressed_from_last_week: whatProgressedLine(currentMarker, previousMarker, schedule),
     key_marker_this_week: formatMarkerLine(currentMarker, input),
-    coach_note: base.coach_note,
+    coach_note,
   };
 }
