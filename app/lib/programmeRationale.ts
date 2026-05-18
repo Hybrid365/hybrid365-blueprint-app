@@ -23,6 +23,12 @@ export type WeekRationale = {
   why_this_week_matters: string;
   key_sessions_to_prioritise: string[];
   coach_note: string;
+  /** This week's progression emphasis (paid programmes). */
+  progression_focus?: string;
+  /** What changed vs the prior week. */
+  what_progressed_from_last_week?: string;
+  /** Primary measurable marker for the week. */
+  key_marker_this_week?: string;
 };
 
 // ─── Assessment context (subset of what the API has) ─────────────────────────
@@ -42,6 +48,7 @@ export type RationaleContext = {
     strength_experience?: string | null;
     /** Original assessment goal label — used by intelligence limiter inference */
     goal_focus_raw?: string | null;
+    current_run_volume_band?: string | null;
   };
   hasBaseline5k?: boolean;
   hasBenchmarkTests?: boolean;
@@ -176,6 +183,26 @@ function baselineSentence(ctx: RationaleContext): string {
     return "Your baseline test data is embedded in the plan, giving you objective markers to measure progress against at Weeks 4, 8, and 12.";
   }
   return "You haven't completed baseline tests yet — the plan still starts immediately. Set your baseline with bodyweight, a run marker, an engine test (Ski or Row), and at least one strength marker when you can.";
+}
+
+function runVolumeSentence(ctx: RationaleContext): string | null {
+  const band = ctx.assessment?.current_run_volume_band?.trim();
+  const goal = ctx.input.goal_focus;
+  if (goal === "muscle" && !band) return null;
+
+  const intel = ctx.intelligence;
+  const fromIntel = intel?.rationale_notes?.find((n) =>
+    /running (volume|load|exposures)/i.test(n)
+  );
+  if (fromIntel) return fromIntel;
+
+  if (band) {
+    return `Your reported baseline is ${band}. Running progresses from that band so mileage does not jump ahead of recovery.`;
+  }
+  if (ctx.input.ability_level === "advanced" && ctx.input.days_per_week >= 6) {
+    return "Your plan includes multiple weekly run exposures — threshold, speed or compromised work, a long run, and supporting aerobic mileage around hybrid sessions.";
+  }
+  return null;
 }
 
 function doubleSessionSentence(ctx: RationaleContext): string | null {
@@ -373,6 +400,9 @@ export function buildProgrammeRationale(ctx: RationaleContext): ProgrammeRationa
 
   const doubles = doubleSessionSentence(ctx);
   if (doubles) summary.push(doubles);
+
+  const runVol = runVolumeSentence(ctx);
+  if (runVol) summary.push(runVol);
 
   const fromIntel = keyPrioritiesWithIntelligence(ctx);
   const key_priorities = fromIntel.length > 0 ? fromIntel : fallbackKeyPriorities(ctx);

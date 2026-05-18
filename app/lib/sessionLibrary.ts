@@ -92,6 +92,8 @@ export type SessionTemplate = {
   prescription: SessionBlock;
 };
 
+export type SessionProgressionMarker = import("./progressionFamilies").ProgressionMarker;
+
 export type DayPlan = {
   day: DayKey;
   title: string;
@@ -104,6 +106,12 @@ export type DayPlan = {
   template_id?: string;
   /** Optional secondary (PM / support) session added by the double-session planner. */
   double_session?: import("./doubleSessionPlanner").DoubleSessionDetail;
+  /** Paid programme: progression family id when a coached variant was applied. */
+  progression_family?: string;
+  /** Measurable markers for dashboard / rationale (optional). */
+  progression_marker?: SessionProgressionMarker;
+  /** True when this session intentionally repeats last week (benchmark / retest). */
+  intentional_repeat?: boolean;
 };
 
 export type WeeklyStressLabel = "low" | "balanced" | "high" | "very_high";

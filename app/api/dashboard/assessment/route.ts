@@ -12,6 +12,7 @@ type AssessmentPayload = {
   weekly_hours_band: string | null;
   preferred_training_days: string[] | null;
   double_session_days: string[] | null;
+  current_run_volume_band: string | null;
   current_running_volume_km: number | null;
   longest_recent_run_km: number | null;
   recent_5k_time: string | null;
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
     weekly_hours_band: payload.weekly_hours_band?.trim() || null,
     preferred_training_days: toArrayOrNull(payload.preferred_training_days),
     double_session_days: toArrayOrNull(payload.double_session_days),
+    current_run_volume_band: payload.current_run_volume_band?.trim() || null,
     current_running_volume_km: toNumOrNull(payload.current_running_volume_km),
     longest_recent_run_km: toNumOrNull(payload.longest_recent_run_km),
     recent_5k_time: payload.recent_5k_time?.trim() || null,

@@ -49,6 +49,7 @@ export type AthleteAssessmentRowForProgramme = {
   biggest_limiter: string | null;
   notes: string | null;
   hyrox_pb: string | null;
+  current_run_volume_band?: string | null;
   completed_at?: string | null;
 };
 
@@ -277,6 +278,7 @@ export function mapAssessmentToProgrammeInput(params: {
       hyrox_experience: params.assessment.hyrox_experience,
       strength_experience: params.assessment.strength_experience,
       goal_focus_raw: params.assessment.goal_focus,
+      current_run_volume_band: params.assessment.current_run_volume_band ?? null,
     },
     hasBaseline5k,
     hasBenchmarkTests,
@@ -298,6 +300,7 @@ export function mapAssessmentToProgrammeInput(params: {
     five_k_time,
     notes: buildNotes({ assessment: params.assessment, tests: params.benchmarkTests }),
     has_injury,
+    current_run_volume_band: params.assessment.current_run_volume_band?.trim() || null,
     rationale_context,
   };
 }

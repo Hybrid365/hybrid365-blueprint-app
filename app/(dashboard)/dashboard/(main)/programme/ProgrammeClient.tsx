@@ -440,7 +440,39 @@ export default function ProgrammeClient({
                           ))}
                         </ul>
                       ) : null}
-                      <p className="mt-4 text-xs italic text-zinc-500">Coach: {weekRationale.coach_note}</p>
+                      {weekRationale.progression_focus ? (
+                        <div className="mt-4 space-y-3 border-t border-zinc-800 pt-4">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                              This week&apos;s progression
+                            </p>
+                            <p className="mt-1 text-sm leading-relaxed text-zinc-300">
+                              {weekRationale.progression_focus}
+                            </p>
+                          </div>
+                          {weekRationale.key_marker_this_week ? (
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                                Key marker
+                              </p>
+                              <p className="mt-1 text-sm text-zinc-400">{weekRationale.key_marker_this_week}</p>
+                            </div>
+                          ) : null}
+                          {weekRationale.what_progressed_from_last_week ? (
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                                vs last week
+                              </p>
+                              <p className="mt-1 text-sm text-zinc-400">
+                                {weekRationale.what_progressed_from_last_week}
+                              </p>
+                            </div>
+                          ) : null}
+                          <p className="text-xs italic text-zinc-500">Coach: {weekRationale.coach_note}</p>
+                        </div>
+                      ) : (
+                        <p className="mt-4 text-xs italic text-zinc-500">Coach: {weekRationale.coach_note}</p>
+                      )}
                     </div>
                   ) : null}
 

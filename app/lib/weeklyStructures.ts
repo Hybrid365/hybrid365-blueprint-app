@@ -1,6 +1,7 @@
 // app/lib/weeklyStructures.ts
 
 import type { AbilityLevel, GoalFocus, StructureRole, WeeklyHoursBand } from "./sessionLibrary";
+import type { RunVolumePlan } from "./runVolumePlanner";
 
 export type WeeklyStructure = {
   id: string;
@@ -187,6 +188,23 @@ export const WEEKLY_STRUCTURES: WeeklyStructure[] = [
     primary_bias: "hybrid",
     roles: ["lower_primary", "run_quality", "upper_primary", "hybrid_density", "hybrid_primary", "run_long", "recovery"],
   },
+  {
+    id: "7D-D",
+    days_per_week: 7,
+    label: "7-Day Advanced Hybrid — Run Volume",
+    primary_bias: "hybrid",
+    minimum_level: "advanced",
+    double_session_friendly: true,
+    roles: [
+      "run_quality",
+      "lower_primary",
+      "run_aerobic",
+      "upper_primary",
+      "run_quality",
+      "hybrid_primary",
+      "run_long",
+    ],
+  },
 ];
 
 export function mapGoalToBias(goal: GoalFocus): "hybrid" | "running" | "strength" {
@@ -260,8 +278,19 @@ export function pickWeeklyStructure(input: {
   ability_level: AbilityLevel;
   double_sessions?: boolean;
   weekly_hours_band: WeeklyHoursBand;
+  run_volume_plan?: RunVolumePlan | null;
 }) {
   const bias = mapGoalToBias(input.goal_focus);
+
+  if (input.run_volume_plan?.structureIdHint) {
+    const hinted = WEEKLY_STRUCTURES.find(
+      (s) =>
+        s.id === input.run_volume_plan!.structureIdHint &&
+        s.days_per_week === input.days_per_week &&
+        s.primary_bias === bias
+    );
+    if (hinted) return hinted;
+  }
 
   const candidates = WEEKLY_STRUCTURES.filter(
     (s) =>

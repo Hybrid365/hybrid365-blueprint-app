@@ -22,6 +22,7 @@ import {
   isStrengthBenchmarkType,
 } from "./benchmarkCoreAreas";
 import { parseConstraints } from "./parseConstraints";
+import { planWeeklyRunVolume } from "./runVolumePlanner";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -490,6 +491,17 @@ export function buildPaidProgrammeIntelligence(input: BuildIntelligenceArgs): Pa
     hasBenchmarkTests,
     assessment: a,
   });
+
+  const runPlan = planWeeklyRunVolume(input, 1);
+  if (runPlan.rationaleLine && !rationale_notes.includes(runPlan.rationaleLine)) {
+    rationale_notes.unshift(runPlan.rationaleLine);
+  }
+  if (
+    runPlan.runStructureSummary &&
+    !rationale_notes.some((n) => n.includes(runPlan.runStructureSummary.slice(0, 24)))
+  ) {
+    rationale_notes.unshift(runPlan.runStructureSummary);
+  }
 
   return {
     ...base,

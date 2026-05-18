@@ -11,6 +11,10 @@ import {
 } from "./programmeRationale";
 import { applyDoubleSessions } from "./doubleSessionPlanner";
 import { buildPaidProgrammeIntelligence, type BuildIntelligenceArgs } from "./paidProgrammeIntelligence";
+import { extractWeekRunSnapshots } from "./runSessionProgression";
+import { planWeeklyRunVolume } from "./runVolumePlanner";
+import { buildEnhancedWeekRationale } from "./weekCoachingNotes";
+import type { DayPlan } from "./sessionLibrary";
 
 export type PaidProgrammeInput = BlueprintInput & {
   email?: string;
@@ -70,6 +74,9 @@ export function generate12WeekProgramme(
   };
   const programme_rationale = buildProgrammeRationale(rationaleCtx);
 
+  let previousWeekRunSnapshots = extractWeekRunSnapshots([]);
+  let previousWeekSchedule: DayPlan[] = [];
+
   for (let weekNumber = 1; weekNumber <= 12; weekNumber += 1) {
     const blockNumber = blockForWeek(weekNumber);
     const progressionTarget = getProgressionTarget(
@@ -83,12 +90,22 @@ export function generate12WeekProgramme(
       throw new Error(`Missing progression target for week ${weekNumber}`);
     }
 
+    const run_volume_plan = planWeeklyRunVolume(
+      input,
+      weekNumber,
+      progressionTarget.week_focus
+    );
+
     const generated = buildWeekBlueprint(input, {
       program_type: "community_12_week",
       week_number: weekNumber,
       block_number: blockNumber,
       progression_target: progressionTarget,
+      run_volume_plan,
+      previous_week_run_snapshots: previousWeekRunSnapshots,
     });
+
+    previousWeekRunSnapshots = extractWeekRunSnapshots(generated.schedule);
 
     // Apply double-session layer additively
     const scheduleWithDoubles = applyDoubleSessions({
@@ -101,12 +118,21 @@ export function generate12WeekProgramme(
       has_injury: Boolean(input.has_injury),
     });
 
-    // Week-level rationale
-    const week_rationale = buildWeekRationale(
-      progressionTarget.week_focus as Parameters<typeof buildWeekRationale>[0],
+    const week_rationale = buildEnhancedWeekRationale({
+      base: buildWeekRationale(
+        progressionTarget.week_focus as Parameters<typeof buildWeekRationale>[0],
+        weekNumber,
+        input.goal_focus
+      ),
       weekNumber,
-      input.goal_focus
-    );
+      weekFocus: progressionTarget.week_focus,
+      input,
+      schedule: scheduleWithDoubles,
+      previousSchedule: previousWeekSchedule,
+      runVolumePlan: run_volume_plan,
+    });
+
+    previousWeekSchedule = scheduleWithDoubles;
 
     const plan_json: PlanJson = {
       ...generated,

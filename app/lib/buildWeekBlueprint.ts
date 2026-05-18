@@ -28,6 +28,25 @@ import {
 } from "./progressionTargets";
 import { computeSessionPriority, createFillerPriority } from "./sessionPriority";
 import { buildSubstitutionNotes } from "./substitutionGuidance";
+import {
+  applyProgressionFamily,
+  resolveStrengthFamilyForRole,
+  type AppliedProgression,
+} from "./progressionFamilies";
+import {
+  applyRunProgressionPrescription,
+  isBannedRunPick,
+  preferredTemplateIdForRunSlot,
+  resolveRunAppliedProgression,
+  runSlotForRole,
+  type RunProgressionContext,
+  type WeekRunSnapshot,
+} from "./runSessionProgression";
+import {
+  applyRunVolumeToStructureRoles,
+  pickStructureWithRunVolume,
+  type RunVolumePlan,
+} from "./runVolumePlanner";
 
 export type BlueprintInput = {
   first_name?: string;
@@ -44,6 +63,8 @@ export type BlueprintInput = {
   notes?: string;
   /** Optional raw flags passed through for rationale generation */
   has_injury?: boolean;
+  /** Athlete-reported weekly run volume band (paid assessment). */
+  current_run_volume_band?: string | null;
 };
 
 export type BuildWeekBlueprintOptions = {
@@ -51,6 +72,8 @@ export type BuildWeekBlueprintOptions = {
   week_number?: number | null;
   block_number?: number | null;
   progression_target?: ProgressionTarget | null;
+  run_volume_plan?: RunVolumePlan | null;
+  previous_week_run_snapshots?: WeekRunSnapshot[];
 };
 
 function formatGoal(goal: GoalFocus) {
@@ -264,8 +287,18 @@ function buildDayPlanAndStressFromTemplate(args: {
   parsedConstraints: ParsedConstraints;
   paceGuidance: PaceGuidance | null;
   extraSessionNotes?: string[];
+  appliedProgression?: AppliedProgression | null;
 }): { dayPlan: DayPlan; stress: SessionStressInput } {
-  const { picked, assignedDay, role, input, parsedConstraints, paceGuidance, extraSessionNotes } = args;
+  const {
+    picked,
+    assignedDay,
+    role,
+    input,
+    parsedConstraints,
+    paceGuidance,
+    extraSessionNotes,
+    appliedProgression,
+  } = args;
   const equipmentResolved = defaultEquipment(input.equipment);
   const substitutionNotes = buildSubstitutionNotes({
     parsedConstraints,
@@ -301,20 +334,30 @@ function buildDayPlanAndStressFromTemplate(args: {
     duration: picked.duration,
   };
 
+  const displayTitle = appliedProgression?.variant.title ?? picked.name;
+  const displayMain =
+    appliedProgression?.variant.main?.length ? appliedProgression.variant.main : picked.prescription.main;
+
   const dayPlan: DayPlan = {
     template_id: picked.id,
     day: assignedDay,
-    title: picked.name,
+    title: displayTitle,
     intent: structureIntent(role, input.goal_focus),
     session: {
       warm_up: picked.prescription.warm_up,
-      main: picked.prescription.main,
+      main: displayMain,
       cool_down: picked.prescription.cool_down,
       finish: picked.prescription.finish,
       notes: sessionNotes,
     },
     time_cap_minutes: picked.duration,
     tags: [picked.type, picked.category, picked.variation_group],
+    ...(appliedProgression
+      ? {
+          progression_family: appliedProgression.family_id,
+          progression_marker: appliedProgression.variant.marker,
+        }
+      : {}),
     priority: computeSessionPriority({
       goalFocus: input.goal_focus,
       role,
@@ -851,7 +894,10 @@ function pickWeightedSession(
   input: BlueprintInput,
   pickContext: SessionPickContext,
   parsedConstraints: ParsedConstraints,
-  previousTag?: string
+  previousTag?: string,
+  runProgression?: RunProgressionContext | null,
+  runVolumePlan?: RunVolumePlan | null,
+  blueprintInput?: BlueprintInput
 ): SessionTemplate {
   const equipment = defaultEquipment(input.equipment);
 
@@ -917,6 +963,15 @@ function pickWeightedSession(
       runner.label === "beginner" ||
       runner.label === "developing");
 
+  const highRunVolume =
+    Boolean(runVolumePlan?.highVolumeAdvanced) ||
+    (runVolumePlan?.preferredRunSessionsPerWeek ?? 0) >= 4;
+
+  const preferredTemplateId =
+    runProgression && blueprintInput
+      ? preferredTemplateIdForRunSlot(runProgression, blueprintInput)
+      : null;
+
   const weighted = optionsPool.map((s) => {
     let weight = 1;
     const hasFlag = (flag: string) => parsedConstraints.flags.includes(flag);
@@ -928,6 +983,14 @@ function pickWeightedSession(
 
     if (!couldAvoidUsedId && pickContext.usedIds.has(s.id)) weight -= 22;
     if (!couldAvoidDupName && pickContext.usedSessionNames.has(nameLc)) weight -= 18;
+
+    if (runProgression) {
+      if (preferredTemplateId && s.id === preferredTemplateId) weight += 48;
+      if (isBannedRunPick(s, runProgression)) weight -= 120;
+    }
+
+    if (highRunVolume && s.category === "run" && isRunRole) weight += 6;
+    if (runVolumePlan?.conservative && s.category === "run" && s.intensity === "high") weight -= 3;
 
     if (pickContext.usedVariationGroups.has(s.variation_group)) weight -= 5;
 
@@ -1284,7 +1347,27 @@ function pickWeightedSession(
     return { item: s, weight: Math.max(MIN_SESSION_WEIGHT, weight) };
   });
 
-  const pick = weightedPick(weighted);
+  if (preferredTemplateId) {
+    const forced = optionsPool.find((s) => s.id === preferredTemplateId);
+    if (forced && (!runProgression || !isBannedRunPick(forced, runProgression))) {
+      pickContext.usedIds.add(forced.id);
+      pickContext.usedVariationGroups.add(forced.variation_group);
+      pickContext.usedSessionNames.add(forced.name.trim().toLowerCase());
+      return forced;
+    }
+  }
+
+  let pick = weightedPick(weighted);
+  if (runProgression && isBannedRunPick(pick, runProgression) && optionsPool.length > 1) {
+    const fallback = optionsPool.filter((s) => !isBannedRunPick(s, runProgression));
+    if (fallback.length > 0) {
+      const fbWeighted = fallback.map((s) => {
+        const existing = weighted.find((w) => w.item.id === s.id);
+        return { item: s, weight: Math.max(MIN_SESSION_WEIGHT, existing?.weight ?? 1) };
+      });
+      pick = weightedPick(fbWeighted);
+    }
+  }
   pickContext.usedIds.add(pick.id);
   pickContext.usedVariationGroups.add(pick.variation_group);
   pickContext.usedSessionNames.add(pick.name.trim().toLowerCase());
@@ -1525,15 +1608,27 @@ function getPreferredDayOrder(preferred?: string[]): DayKey[] {
 function buildActivePlanDays(
   input: BlueprintInput,
   parsedConstraints: ParsedConstraints,
-  paceGuidance: PaceGuidance | null
+  paceGuidance: PaceGuidance | null,
+  options?: BuildWeekBlueprintOptions
 ) {
-  const structure = pickWeeklyStructure({
-    days_per_week: input.days_per_week,
-    goal_focus: input.goal_focus,
-    ability_level: input.ability_level,
-    double_sessions: input.double_sessions,
-    weekly_hours_band: input.weekly_hours_band,
-  });
+  const runPlan = options?.run_volume_plan ?? null;
+
+  const baseStructure = runPlan
+    ? pickStructureWithRunVolume(input, runPlan)
+    : pickWeeklyStructure({
+        days_per_week: input.days_per_week,
+        goal_focus: input.goal_focus,
+        ability_level: input.ability_level,
+        double_sessions: input.double_sessions,
+        weekly_hours_band: input.weekly_hours_band,
+      });
+
+  const structure = {
+    ...baseStructure,
+    roles: runPlan
+      ? applyRunVolumeToStructureRoles(baseStructure.roles, runPlan, input)
+      : baseStructure.roles,
+  };
 
   const pickContext: SessionPickContext = {
     usedIds: new Set<string>(),
@@ -1548,6 +1643,10 @@ function buildActivePlanDays(
   const assignedDays = new Set<DayKey>();
 
   let previousFatigueTag = "";
+  let runQualityPickIndex = 0;
+  const sameWeekRunSnapshots: WeekRunSnapshot[] = [];
+  const weekNumber = options?.week_number ?? 1;
+  const weekFocus = options?.progression_target?.week_focus ?? null;
 
   const dayOrder = getPreferredDayOrder(input.preferred_days);
 
@@ -1558,14 +1657,84 @@ function buildActivePlanDays(
     parsedConstraints.flags.includes("time_limit") || input.weekly_hours_band === "2-3";
 
   structure.roles.forEach((role, idx) => {
-    const picked = addVolumeOverlay(
-      pickWeightedSession(role, input, pickContext, parsedConstraints, previousFatigueTag),
+    const runSlot = runSlotForRole(role, runQualityPickIndex);
+    if (role === "run_quality" || role === "run_quality_beginner") {
+      runQualityPickIndex += 1;
+    }
+
+    let assignedDay = dayOrder[idx];
+
+    let runProgression: RunProgressionContext | null = null;
+    if (runSlot) {
+      runProgression = {
+        slot: runSlot,
+        weekNumber,
+        weekFocus,
+        abilityLevel: input.ability_level,
+        assignedDay,
+        lowImpact:
+          Boolean(input.has_injury) ||
+          parsedConstraints.flags.includes("injury_flags") ||
+          parsedConstraints.flags.includes("low_impact_preference"),
+        previousWeekSnapshots: options?.previous_week_run_snapshots,
+        sameWeekSnapshots: sameWeekRunSnapshots,
+      };
+    }
+
+    let picked = addVolumeOverlay(
+      pickWeightedSession(
+        role,
+        input,
+        pickContext,
+        parsedConstraints,
+        previousFatigueTag,
+        runProgression,
+        runPlan,
+        input
+      ),
       input.weekly_hours_band,
       input.double_sessions,
       suppressStrengthRunExtras
     );
 
-    if (input.goal_focus === "running") {
+    let appliedProgression: AppliedProgression | null = null;
+    if (runSlot && runProgression) {
+      const progressed = applyRunProgressionPrescription(picked, runProgression, input);
+      picked = progressed.session;
+      appliedProgression = progressed.applied;
+    } else {
+      const strengthFamily = resolveStrengthFamilyForRole(role, input);
+      if (
+        strengthFamily &&
+        (picked.category === "strength" || picked.category === "hybrid")
+      ) {
+        appliedProgression = applyProgressionFamily(strengthFamily, weekNumber, weekFocus);
+        picked = {
+          ...picked,
+          name: appliedProgression.variant.title,
+          prescription: {
+            ...picked.prescription,
+            notes: [
+              ...(picked.prescription.notes ?? []),
+              ...appliedProgression.variant.main.map((line) => `Progression: ${line}`),
+              appliedProgression.variant.coach_snippet,
+            ],
+          },
+        };
+      }
+    }
+
+    if (runSlot) {
+      sameWeekRunSnapshots.push({
+        slot: runSlot,
+        sessionId: picked.id,
+        sessionName: picked.name,
+        fingerprint: `${picked.name.trim().toLowerCase()}::${(picked.prescription.main ?? []).join("|")}`,
+        day: assignedDay,
+      });
+    }
+
+    if (input.goal_focus === "running" || (runPlan?.preferredRunSessionsPerWeek ?? 0) >= 4) {
       registerRunningQualityPick(pickContext, picked);
     }
 
@@ -1575,8 +1744,6 @@ function buildActivePlanDays(
         : picked.type === "hybrid_compromised" && picked.fatigue === "high"
         ? "hybrid_high_fatigue"
         : picked.type;
-
-    let assignedDay = dayOrder[idx];
 
     // Conservative day-placement preference: avoid blocked run days where possible, but never drop sessions.
     if (picked.category === "run" && parsedConstraints.no_running_days.includes(assignedDay)) {
@@ -1596,6 +1763,7 @@ function buildActivePlanDays(
       input,
       parsedConstraints,
       paceGuidance,
+      appliedProgression,
     });
 
     stressByDay.set(assignedDay, stress);
@@ -1799,7 +1967,8 @@ export function buildWeekBlueprint(
   const { structure, activeDays, stressByDay, dayRoleByAssignedDay } = buildActivePlanDays(
     input,
     parsedConstraints,
-    paceGuidance
+    paceGuidance,
+    options
   );
   const { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay, {
     compressOffSessions,

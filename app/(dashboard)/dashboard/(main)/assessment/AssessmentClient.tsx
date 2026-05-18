@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { Nav } from "@/components/nav";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
+import { RUN_VOLUME_BAND_OPTIONS } from "@/app/lib/runVolumePlanner";
 
 export type AssessmentRow = {
   id: string;
@@ -44,6 +45,7 @@ export type AssessmentRow = {
   movements_to_avoid: string[] | null;
   biggest_limiter: string | null;
   notes: string | null;
+  current_run_volume_band: string | null;
   completed_at: string | null;
 };
 
@@ -247,6 +249,7 @@ export default function AssessmentClient({
         return BAND_TO_SESSION_PILL[b] ?? b;
       })(),
       fiveKm: initialAssessment?.recent_5k_time ?? "",
+      currentRunVolumeBand: initialAssessment?.current_run_volume_band ?? "",
       rowing: "",
       skiErg: "",
       weight:
@@ -294,6 +297,7 @@ export default function AssessmentClient({
             if (!formData.doubleSessionDays.length) return null;
             return formData.doubleSessionDays;
           })(),
+          current_run_volume_band: formData.currentRunVolumeBand.trim() || null,
           current_running_volume_km: initialAssessment?.current_running_volume_km ?? null,
           longest_recent_run_km: initialAssessment?.longest_recent_run_km ?? null,
           recent_5k_time: formData.fiveKm || initialAssessment?.recent_5k_time || null,
@@ -632,6 +636,18 @@ export default function AssessmentClient({
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">5km Run Time</label>
                 <input type="text" placeholder="e.g., 25:00" value={formData.fiveKm} onChange={(e) => setFormData({ ...formData, fiveKm: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Current weekly running volume</label>
+                <PillSelector
+                  options={[...RUN_VOLUME_BAND_OPTIONS]}
+                  selected={formData.currentRunVolumeBand}
+                  onChange={(v) => setFormData({ ...formData, currentRunVolumeBand: v })}
+                />
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                  Approximate kilometres per week you have been running recently. This shapes how aggressively
+                  your plan progresses run mileage.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

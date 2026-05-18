@@ -210,6 +210,9 @@ export type ExtractedWeekRationale = {
   why_this_week_matters: string;
   key_sessions_to_prioritise: string[];
   coach_note: string;
+  progression_focus?: string;
+  what_progressed_from_last_week?: string;
+  key_marker_this_week?: string;
 };
 
 export type ExtractedProgrammeIntelligence = {
@@ -277,6 +280,14 @@ export function extractWeekRationale(planJson: unknown): ExtractedWeekRationale 
       ? m.key_sessions_to_prioritise.map(String)
       : [],
     coach_note: typeof m.coach_note === "string" ? m.coach_note : "",
+    progression_focus:
+      typeof m.progression_focus === "string" ? m.progression_focus : undefined,
+    what_progressed_from_last_week:
+      typeof m.what_progressed_from_last_week === "string"
+        ? m.what_progressed_from_last_week
+        : undefined,
+    key_marker_this_week:
+      typeof m.key_marker_this_week === "string" ? m.key_marker_this_week : undefined,
   };
 }
 
