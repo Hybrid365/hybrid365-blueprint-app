@@ -61,6 +61,9 @@ export function AddToHomeScreenBanner() {
             <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">
               Open your programme, habits, challenge and progress in one tap.
             </p>
+            <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
+              Access is linked to your Whop email — keep using the same email for login.
+            </p>
             <p className="mt-2.5 text-[10px] leading-relaxed text-zinc-500">
               <span className="font-semibold text-zinc-400">iPhone Safari:</span> Tap Share → Add to Home Screen.
             </p>

@@ -122,6 +122,10 @@ function LoginForm() {
               placeholder="you@example.com"
               disabled={submitting}
             />
+            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+              Paid member? Use the exact same email you used to join Whop so your dashboard access
+              unlocks automatically.
+            </p>
           </div>
 
           {banner ? (

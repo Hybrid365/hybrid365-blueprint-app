@@ -39,16 +39,14 @@ export default async function NoAccessPage() {
           —
         </div>
         <h1 className="text-xl font-semibold text-white">
-          Your Hybrid365 app access isn&apos;t active yet.
+          Your Hybrid365 app access is not active for this email yet.
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Paid members get the full 12-week dashboard, week-by-week guidance,
-          and soon — session completion, RPE, and weekly check-ins.
+          Make sure you&apos;re signed in with the exact same email you used to join Whop.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-          If you&apos;ve just joined through Whop, sign in with the same email you used at checkout —
-          your access is linked automatically on first login. Refresh this page if it doesn&apos;t
-          update right away, or contact support.
+          If you&apos;ve just joined through Whop, refresh once after logging in. If it still
+          doesn&apos;t unlock, message Kieran with your Whop email.
         </p>
         {user?.email ? (
           <p className="mt-3 text-xs text-zinc-500">

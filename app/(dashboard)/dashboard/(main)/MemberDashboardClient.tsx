@@ -842,6 +842,9 @@ export default function MemberDashboardClient({
                   Before your programme is built, we need to understand your goal, training availability, current fitness
                   and what you&apos;re working around. Your answers shape the 12-week plan.
                 </p>
+                <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+                  Access is linked to your Whop email — keep using the same email for login.
+                </p>
 
                 <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                   {(() => {
