@@ -1,4 +1,11 @@
 import { NextResponse } from "next/server";
+import {
+  getUnlockedWeekCount,
+  getUnlockedWeeksForMembership,
+  isMembershipActive,
+  MEMBERSHIP_ACCESS_SELECT,
+  type MembershipForAccess,
+} from "@/app/lib/membershipAccess";
 import { createClient } from "@/app/lib/supabase/server";
 import { generate12WeekProgramme } from "@/app/lib/generate12WeekProgramme";
 import {
@@ -24,19 +31,16 @@ export async function POST() {
 
   const { data: membership } = await supabase
     .from("memberships")
-    .select("status, expires_at")
+    .select(MEMBERSHIP_ACCESS_SELECT)
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const active = membership?.status === "active";
-  let notExpired = true;
-  if (membership?.expires_at) {
-    const expires = new Date(String(membership.expires_at));
-    notExpired = !Number.isNaN(expires.getTime()) && expires > new Date();
-  }
-  if (!active || !notExpired) {
+  const membershipRow = membership as MembershipForAccess | null;
+  if (!isMembershipActive(membershipRow)) {
     return NextResponse.json({ error: "Active membership required" }, { status: 403 });
   }
+
+  const unlockedWeekCount = getUnlockedWeekCount(membershipRow);
 
   const { data: assessment, error: assessErr } = await supabase
     .from("athlete_assessments")
@@ -185,7 +189,7 @@ export async function POST() {
     week_number: week.week_number,
     title: week.title,
     plan_json: week.plan_json as unknown as Record<string, unknown>,
-    is_unlocked: week.week_number <= 4,
+    is_unlocked: week.week_number <= unlockedWeekCount,
   }));
 
   const { error: upsertErr } = await supabase.from("programme_weeks").upsert(weekRows, {
@@ -225,7 +229,7 @@ export async function POST() {
     ok: true,
     programmeInstanceId,
     weeksGenerated: 12,
-    unlockedWeeks: [1, 2, 3, 4],
+    unlockedWeeks: getUnlockedWeeksForMembership(membershipRow),
     message,
   });
 }

@@ -1,4 +1,8 @@
 import { redirect } from "next/navigation";
+import {
+  assertMembershipAllowsDashboard,
+  fetchMembershipForAccess,
+} from "@/app/lib/membershipGate";
 import { claimPendingWhopMembershipForUser } from "@/app/lib/whopMembershipSync";
 import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
 import { createClient } from "@/app/lib/supabase/server";
@@ -26,20 +30,9 @@ export default async function DashboardMemberLayout({
     }
   }
 
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("status, expires_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const isActive = membership?.status === "active";
-  const expiresAt = membership?.expires_at
-    ? new Date(membership.expires_at)
-    : null;
-  const notExpired =
-    expiresAt === null || Number.isNaN(expiresAt.getTime()) || expiresAt > new Date();
-
-  if (!isActive || !notExpired) {
+  const membership = await fetchMembershipForAccess(supabase, user.id);
+  const gate = assertMembershipAllowsDashboard({ membership, userId: user.id });
+  if (!gate.allowed) {
     redirect("/dashboard/no-access");
   }
 

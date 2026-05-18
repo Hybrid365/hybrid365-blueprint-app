@@ -7,6 +7,7 @@ import {
   mapWhopEventToMembershipStatus,
   type WhopWebhookPayload,
 } from "@/app/lib/whopWebhook";
+import { accessStartedAtForActivation } from "@/app/lib/membershipAccess";
 import {
   buildWhopMembershipFields,
   findAuthUserIdByEmail,
@@ -162,10 +163,37 @@ export async function POST(request: Request) {
 
   const userId = authLookup.userId;
 
-  const { error: upsertError } = await admin.from("memberships").upsert(
-    { user_id: userId, ...whopFields },
-    { onConflict: "user_id" }
-  );
+  if (status === "inactive") {
+    logWhopSafe("membership deactivated", {
+      userId,
+      eventType: eventType ?? "(none)",
+      webhookId: webhookId ?? "(none)",
+    });
+  }
+
+  const membershipRow: Record<string, unknown> = {
+    user_id: userId,
+    ...whopFields,
+  };
+
+  if (status === "active") {
+    const { data: existing } = await admin
+      .from("memberships")
+      .select("access_started_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const started = accessStartedAtForActivation(
+      existing as { access_started_at?: string | null } | null,
+      whopFields.last_whop_event_at
+    );
+    if (started) {
+      membershipRow.access_started_at = started;
+    }
+  }
+
+  const { error: upsertError } = await admin.from("memberships").upsert(membershipRow, {
+    onConflict: "user_id",
+  });
 
   if (upsertError) {
     console.error("[whop webhook] memberships upsert failed", {

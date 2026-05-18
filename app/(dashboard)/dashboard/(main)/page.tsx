@@ -1,4 +1,9 @@
 import { redirect } from "next/navigation";
+import {
+  applyMembershipEntitlementToWeeks,
+  MEMBERSHIP_ACCESS_SELECT,
+  type MembershipForAccess,
+} from "@/app/lib/membershipAccess";
 import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import { countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
@@ -135,17 +140,20 @@ export default async function DashboardPage() {
 
   const { data: membership } = await supabase
     .from("memberships")
-    .select("status, expires_at")
+    .select(MEMBERSHIP_ACCESS_SELECT)
     .eq("user_id", user.id)
     .maybeSingle();
+
+  const membershipRow = membership as MembershipForAccess | null;
+  const entitledWeeks = applyMembershipEntitlementToWeeks(weeks, membershipRow);
 
   const programmeTitle =
     typedInstance?.title?.trim() || "Your Hybrid365 programme";
 
-  const weeksFromDb: WeekPayload[] = weeks.map((w) => ({
+  const weeksFromDb: WeekPayload[] = entitledWeeks.map((w) => ({
     week_number: w.week_number,
-    title: w.title,
-    is_unlocked: w.is_unlocked,
+    title: w.title ?? null,
+    is_unlocked: w.is_unlocked ?? false,
     plan_json: w.plan_json,
   }));
 

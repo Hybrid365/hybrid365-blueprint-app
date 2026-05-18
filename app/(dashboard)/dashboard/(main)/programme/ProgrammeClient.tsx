@@ -348,7 +348,8 @@ export default function ProgrammeClient({
                   </div>
                   <h3 className="mt-4 text-xl font-bold text-white">Week {selectedWeek} is locked</h3>
                   <p className="mt-2 max-w-md text-sm text-zinc-400">
-                    Unlocks with your next membership month. Session details stay hidden until this week opens.
+                    Unlocks with your next membership month. Continue your membership to unlock this block.
+                    Session details stay hidden until this week opens.
                   </p>
                 </div>
               ) : (

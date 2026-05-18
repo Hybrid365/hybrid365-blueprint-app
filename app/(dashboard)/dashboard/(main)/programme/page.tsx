@@ -1,4 +1,9 @@
 import { redirect } from "next/navigation";
+import {
+  applyMembershipEntitlementToWeeks,
+  MEMBERSHIP_ACCESS_SELECT,
+  type MembershipForAccess,
+} from "@/app/lib/membershipAccess";
 import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import {
@@ -106,7 +111,15 @@ export default async function ProgrammePage() {
     }
   }
 
-  const weeks12: ProgrammeWeekLike[] = buildTwelveProgrammeWeeks(weeksRaw);
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select(MEMBERSHIP_ACCESS_SELECT)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const membershipRow = membership as MembershipForAccess | null;
+  const entitledWeeksRaw = applyMembershipEntitlementToWeeks(weeksRaw, membershipRow);
+  const weeks12: ProgrammeWeekLike[] = buildTwelveProgrammeWeeks(entitledWeeksRaw);
 
   const programmeGenerated =
     Boolean(typedInstance?.id) &&
@@ -120,7 +133,7 @@ export default async function ProgrammePage() {
   const programmeRationale = extractProgrammeRationale(week1Plan);
   const programmeIntelligence = extractProgrammeIntelligence(week1Plan);
 
-  const rawByWeek = new Map(weeksRaw.map((r) => [r.week_number, r]));
+  const rawByWeek = new Map(entitledWeeksRaw.map((r) => [r.week_number, r]));
   const weeksPayload = weeks12.map((w) => {
     const r = rawByWeek.get(w.week_number);
     return {

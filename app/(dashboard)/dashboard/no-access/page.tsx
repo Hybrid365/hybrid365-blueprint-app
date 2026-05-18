@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  isMembershipActive,
+  MEMBERSHIP_ACCESS_SELECT,
+  type MembershipForAccess,
+} from "@/app/lib/membershipAccess";
 import { claimPendingWhopMembershipForUser } from "@/app/lib/whopMembershipSync";
 import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
 import { createClient } from "@/app/lib/supabase/server";
@@ -17,13 +22,10 @@ export default async function NoAccessPage() {
       if (claim.activated) {
         const { data: membership } = await supabase
           .from("memberships")
-          .select("status, expires_at")
+          .select(MEMBERSHIP_ACCESS_SELECT)
           .eq("user_id", user.id)
           .maybeSingle();
-        const expiresAt = membership?.expires_at ? new Date(String(membership.expires_at)) : null;
-        const notExpired =
-          expiresAt === null || Number.isNaN(expiresAt.getTime()) || expiresAt > new Date();
-        if (membership?.status === "active" && notExpired) {
+        if (isMembershipActive(membership as MembershipForAccess | null)) {
           redirect("/dashboard");
         }
       }
@@ -39,15 +41,19 @@ export default async function NoAccessPage() {
           —
         </div>
         <h1 className="text-xl font-semibold text-white">
-          Your Hybrid365 app access is not active for this email yet.
+          Hybrid365 access is not active for this email
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Already joined through Whop? Make sure you&apos;re signed in with the exact same email you used at
-          checkout.
+          Sign in with the same email you used at Whop checkout. If you use a different inbox here, we
+          cannot match your membership.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-          If you&apos;ve just joined, refresh once after logging in. If it still does not unlock, message Kieran
-          with your Whop email.
+          Cancelled on Whop or your membership period has ended? Rejoin through Whop with that email, then
+          sign in here again.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-500">
+          Just joined? Use your Whop email, sign in, and refresh this page once. If it still does not unlock,
+          message Kieran with your Whop email.
         </p>
         {user?.email ? (
           <p className="mt-3 text-xs text-zinc-500">

@@ -1,4 +1,9 @@
 import { redirect } from "next/navigation";
+import {
+  applyMembershipEntitlementToWeeks,
+  MEMBERSHIP_ACCESS_SELECT,
+  type MembershipForAccess,
+} from "@/app/lib/membershipAccess";
 import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import { hybridAthleteDisplayName } from "@/app/lib/displayName";
@@ -132,7 +137,15 @@ export default async function ProgressPage() {
     benchmarks = (bench ?? []) as BenchmarkTestRow[];
   }
 
-  const weeks12: ProgrammeWeekLike[] = buildTwelveProgrammeWeeks(weeksRaw);
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select(MEMBERSHIP_ACCESS_SELECT)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const membershipRow = membership as MembershipForAccess | null;
+  const entitledWeeksRaw = applyMembershipEntitlementToWeeks(weeksRaw, membershipRow);
+  const weeks12: ProgrammeWeekLike[] = buildTwelveProgrammeWeeks(entitledWeeksRaw);
 
   const programmeGenerated =
     Boolean(typedInstance?.id) &&

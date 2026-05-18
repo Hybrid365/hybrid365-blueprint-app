@@ -756,7 +756,7 @@ export default function MemberDashboardClient({
       <Lock className="mx-auto mb-4 h-10 w-10 text-zinc-500" />
       <p className="text-base font-medium text-zinc-300">This week is locked</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-zinc-500">
-        This week unlocks with your next membership month.
+        Unlocks with your next membership month. Continue your membership to unlock this block.
       </p>
     </div>
   );

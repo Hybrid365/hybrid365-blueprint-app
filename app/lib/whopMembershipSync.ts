@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { accessStartedAtForActivation } from "@/app/lib/membershipAccess";
 import {
   extractMembershipExpiresAt,
   extractWhopMembershipId,
@@ -229,6 +230,17 @@ export async function claimPendingWhopMembershipForUser(
   const nowIso = new Date().toISOString();
   const whopEmail = normalizeEmail(pending.whop_email || pending.email);
 
+  const { data: existingMembership } = await admin
+    .from("memberships")
+    .select("access_started_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const accessStarted = accessStartedAtForActivation(
+    existingMembership as { access_started_at?: string | null } | null,
+    nowIso
+  );
+
   const membershipUpdate = {
     status: "active" as const,
     source: "whop" as const,
@@ -242,6 +254,7 @@ export async function claimPendingWhopMembershipForUser(
     last_whop_event_type: pending.last_whop_event_type,
     last_whop_event_at: pending.last_whop_event_at ?? nowIso,
     updated_at: nowIso,
+    ...(accessStarted ? { access_started_at: accessStarted } : {}),
   };
 
   const membershipInsert = {
