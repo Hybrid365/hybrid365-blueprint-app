@@ -57,93 +57,85 @@ type PendingWhopRow = {
 const PENDING_SELECT =
   "id, email, whop_email, status, expires_at, whop_membership_id, whop_user_id, whop_plan_id, whop_product_id, last_whop_event_id, last_whop_event_type, last_whop_event_at";
 
+const PENDING_FETCH_LIMIT = 50;
+
 export function normalizeWhopEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function pendingEmailMatchesUser(pending: PendingWhopRow, userEmail: string): boolean {
-  const target = normalizeWhopEmail(userEmail);
-  const keys = [pending.email, pending.whop_email].filter(Boolean) as string[];
-  return keys.some((e) => normalizeWhopEmail(e) === target);
+function maskEmailForLog(email: string): string {
+  const normalized = normalizeWhopEmail(email);
+  const at = normalized.indexOf("@");
+  if (at <= 0) return "***";
+  const local = normalized.slice(0, at);
+  const domain = normalized.slice(at + 1);
+  const prefix = local.slice(0, Math.min(2, local.length));
+  return `${prefix}…@${domain}`;
+}
+
+function pendingRowMatchesEmail(pending: PendingWhopRow, normalizedEmail: string): boolean {
+  const rowEmail = pending.email ? normalizeWhopEmail(pending.email) : "";
+  const rowWhopEmail = pending.whop_email ? normalizeWhopEmail(pending.whop_email) : "";
+  return rowEmail === normalizedEmail || rowWhopEmail === normalizedEmail;
 }
 
 /**
- * Find unclaimed active pending row by normalized email or whop_email.
+ * Fetch unclaimed active pending rows and match email in JS (avoids PostgREST `+` / ilike issues).
  */
 export async function findActivePendingWhopMembership(
   admin: SupabaseClient,
   userEmail: string
-): Promise<{ row: PendingWhopRow | null; lookupError?: string }> {
-  const normalized = normalizeWhopEmail(userEmail);
-  if (!normalized) return { row: null };
+): Promise<{
+  row: PendingWhopRow | null;
+  candidates: PendingWhopRow[];
+  lookupError?: string;
+}> {
+  const normalizedEmail = userEmail.trim().toLowerCase();
+  if (!normalizedEmail) return { row: null, candidates: [] };
 
-  const base = () =>
-    admin
-      .from("pending_whop_memberships")
-      .select(PENDING_SELECT)
-      .is("claimed_at", null)
-      .eq("status", "active");
+  const { data, error } = await admin
+    .from("pending_whop_memberships")
+    .select(PENDING_SELECT)
+    .eq("status", "active")
+    .is("claimed_at", null)
+    .is("claimed_user_id", null)
+    .limit(PENDING_FETCH_LIMIT);
 
-  const { data: byEmail, error: emailError } = await base().ilike("email", normalized);
-  if (emailError) {
-    return { row: null, lookupError: emailError.message };
+  if (error) {
+    return { row: null, candidates: [], lookupError: error.message };
   }
 
-  let candidates = (byEmail ?? []) as PendingWhopRow[];
+  const candidates = (data ?? []) as PendingWhopRow[];
+  const row = candidates.find((pending) => pendingRowMatchesEmail(pending, normalizedEmail)) ?? null;
 
-  const { data: byWhopEmail, error: whopEmailError } = await base().ilike("whop_email", normalized);
-  if (whopEmailError) {
-    const missingColumn =
-      whopEmailError.message.includes("whop_email") &&
-      whopEmailError.message.toLowerCase().includes("does not exist");
-    if (!missingColumn) {
-      return { row: null, lookupError: whopEmailError.message };
-    }
-  } else if (byWhopEmail?.length) {
-    const seen = new Set(candidates.map((r) => r.id));
-    for (const row of byWhopEmail as PendingWhopRow[]) {
-      if (!seen.has(row.id)) candidates.push(row);
-    }
-  }
-
-  const exact = candidates.find((row) => pendingEmailMatchesUser(row, normalized));
-  if (exact) return { row: exact };
-
-  return { row: null };
+  return { row, candidates };
 }
 
-async function logNoPendingRowFound(admin: SupabaseClient, userEmail: string): Promise<void> {
-  const normalized = normalizeWhopEmail(userEmail);
-  const localPart = normalized.split("@")[0] ?? "";
+function logNoPendingRowFound(
+  userEmail: string,
+  candidates: PendingWhopRow[],
+  unclaimedActiveCount: number
+): void {
+  const normalizedEmail = normalizeWhopEmail(userEmail);
+  const localPart = normalizedEmail.split("@")[0] ?? "";
 
-  const { count: unclaimedActiveCount } = await admin
-    .from("pending_whop_memberships")
-    .select("id", { count: "exact", head: true })
-    .is("claimed_at", null)
-    .eq("status", "active");
+  const similarEmailMatchCount =
+    localPart.length >= 3
+      ? candidates.filter((row) => {
+          const emails = [row.email, row.whop_email].filter(Boolean) as string[];
+          return emails.some((e) => normalizeWhopEmail(e).includes(localPart));
+        }).length
+      : 0;
 
-  let similarEmailMatchCount = 0;
-  if (localPart.length >= 3) {
-    const { count: emailCount } = await admin
-      .from("pending_whop_memberships")
-      .select("id", { count: "exact", head: true })
-      .is("claimed_at", null)
-      .eq("status", "active")
-      .ilike("email", `%${localPart}%`);
-    similarEmailMatchCount = emailCount ?? 0;
-    if (similarEmailMatchCount === 0) {
-      const { count: whopCount } = await admin
-        .from("pending_whop_memberships")
-        .select("id", { count: "exact", head: true })
-        .is("claimed_at", null)
-        .eq("status", "active")
-        .ilike("whop_email", `%${localPart}%`);
-      similarEmailMatchCount = whopCount ?? 0;
-    }
-  }
+  const candidateEmailsMasked = candidates.slice(0, 10).map((row) => ({
+    email: maskEmailForLog(row.email),
+    whopEmail: row.whop_email ? maskEmailForLog(row.whop_email) : null,
+  }));
 
   console.log("[whop claim] no pending row found for email", {
-    unclaimedActiveCount: unclaimedActiveCount ?? 0,
+    unclaimedActiveCount,
+    candidateCount: candidates.length,
+    candidateEmailsMasked,
     similarEmailMatchCount,
   });
 }
@@ -156,12 +148,15 @@ export async function claimPendingWhopMembershipForUser(
   userId: string,
   email: string
 ): Promise<ClaimPendingWhopResult> {
-  const normalized = normalizeWhopEmail(email);
-  if (!normalized) return { claimed: false, activated: false };
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return { claimed: false, activated: false };
 
   console.log("[whop claim] called for email", { hasEmail: true });
 
-  const { row: pending, lookupError } = await findActivePendingWhopMembership(admin, email);
+  const { row: pending, candidates, lookupError } = await findActivePendingWhopMembership(
+    admin,
+    email
+  );
 
   if (lookupError) {
     console.error("[whop claim] pending lookup failed", { message: lookupError });
@@ -169,7 +164,14 @@ export async function claimPendingWhopMembershipForUser(
   }
 
   if (!pending) {
-    await logNoPendingRowFound(admin, email);
+    const { count: unclaimedActiveCount } = await admin
+      .from("pending_whop_memberships")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active")
+      .is("claimed_at", null)
+      .is("claimed_user_id", null);
+
+    logNoPendingRowFound(email, candidates, unclaimedActiveCount ?? 0);
     return { claimed: false, activated: false };
   }
 
