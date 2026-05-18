@@ -53,8 +53,19 @@ function goalScaledFocus(input: BlueprintInput, weekNumber: number, weekFocus?: 
 
 function formatMarkerLine(marker: ProgressionMarker, input: BlueprintInput): string {
   const parts: string[] = [];
-  if (marker.threshold_total_minutes) {
-    parts.push(`${marker.threshold_total_minutes} min total threshold volume`);
+  if (marker.total_threshold_minutes || marker.threshold_total_minutes) {
+    const total = marker.total_threshold_minutes ?? marker.threshold_total_minutes!;
+    const b = marker.threshold_modality_breakdown;
+    if (b && (b.ski || b.row || b.bike)) {
+      const mods: string[] = [];
+      if (b.run) mods.push(`run ${b.run}`);
+      if (b.ski) mods.push(`ski ${b.ski}`);
+      if (b.row) mods.push(`row ${b.row}`);
+      if (b.bike) mods.push(`bike ${b.bike}`);
+      parts.push(`${total} min threshold (${mods.join(", ")})`);
+    } else {
+      parts.push(`${total} min total threshold volume`);
+    }
   }
   if (marker.long_run_minutes) {
     parts.push(`${marker.long_run_minutes} min long-run target`);

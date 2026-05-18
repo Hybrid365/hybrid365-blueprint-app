@@ -23,6 +23,18 @@ import { buildRunPrescription } from "./runPrescription";
 import { hyroxSessionWeightDelta, hyroxWeeklyStructureBoost } from "./hyroxTrackContext";
 import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import {
+  analyzeWeeklyRhythm,
+  classifyDayPlan,
+  classifySessionFromTemplate,
+  stressInputFromClassification,
+} from "./sessionStressClassification";
+import {
+  appendRhythmCoachingNotes,
+  balanceScheduleHardEasy,
+  pickDayForRole,
+} from "./weeklyRhythmPlanner";
+import { ERG_ENGINE_COACHING_NOTE, shouldBlendErgThreshold } from "./thresholdVolumeTracking";
+import {
   getProgressionTarget,
   getStressAlignment,
   type ProgramType,
@@ -335,15 +347,30 @@ function buildDayPlanAndStressFromTemplate(args: {
     ...(extraSessionNotes ?? []),
   ].filter((line) => typeof line === "string" && line.trim().length > 0);
 
-  const stress: SessionStressInput = {
-    day: assignedDay,
-    title: picked.name,
-    category: picked.category,
+  const classified = classifySessionFromTemplate({
     type: picked.type,
+    category: picked.category,
     intensity: picked.intensity,
     fatigue: picked.fatigue,
-    duration: picked.duration,
-  };
+    title: appliedProgression?.variant.title ?? picked.name,
+    mainLines: appliedProgression?.variant.main?.length
+      ? appliedProgression.variant.main
+      : picked.prescription.main,
+    structureRole: role,
+  });
+
+  const stress: SessionStressInput = stressInputFromClassification(
+    {
+      day: assignedDay,
+      title: picked.name,
+      category: picked.category,
+      type: picked.type,
+      intensity: picked.intensity,
+      fatigue: picked.fatigue,
+      duration: picked.duration,
+    },
+    classified
+  );
 
   const displayTitle = appliedProgression?.variant.title ?? picked.name;
   const displayMain =
@@ -383,6 +410,8 @@ function buildDayPlanAndStressFromTemplate(args: {
         }
       : {}),
     ...(run_prescription ? { run_prescription } : {}),
+    session_stress: classified.session_stress,
+    session_role: classified.session_role,
     priority: computeSessionPriority({
       goalFocus: input.goal_focus,
       role,
@@ -1706,7 +1735,18 @@ function buildActivePlanDays(
       runQualityPickIndex += 1;
     }
 
-    let assignedDay = dayOrder[idx];
+    let assignedDay = pickDayForRole({
+      role,
+      fallbackDay: dayOrder[idx]!,
+      assignedDays,
+      parsedConstraints,
+      input,
+      isRunSession:
+        role === "run_quality" ||
+        role === "run_quality_beginner" ||
+        role === "run_long" ||
+        role === "run_aerobic",
+    });
 
     let runProgression: RunProgressionContext | null = null;
     if (runSlot) {
@@ -2018,9 +2058,45 @@ export function buildWeekBlueprint(
     paceGuidance,
     options
   );
-  const { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay, {
+  let { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay, {
     compressOffSessions,
   });
+
+  schedule = balanceScheduleHardEasy(schedule, dayRoleByAssignedDay);
+  orderedStressInputs = schedule.map((d) => {
+    const role = dayRoleByAssignedDay.get(d.day);
+    const classified = classifyDayPlan(d, role);
+    return stressInputFromClassification(
+      {
+        day: d.day,
+        title: d.title,
+        category: (d.tags?.[1] as import("./sessionLibrary").SessionCategory) ?? "aerobic",
+        type: d.tags?.[0] ?? "aerobic_support",
+        intensity: "medium",
+        fatigue: "medium",
+        duration: d.time_cap_minutes ?? 30,
+      },
+      classified
+    );
+  });
+
+  const rhythm = analyzeWeeklyRhythm(schedule, dayRoleByAssignedDay);
+  appendRhythmCoachingNotes(schedule, rhythm);
+
+  if (
+    shouldBlendErgThreshold({
+      hyrox_track: input.hyrox_track,
+      has_injury: input.has_injury,
+      goal_focus: input.goal_focus,
+      ability_level: input.ability_level,
+    })
+  ) {
+    const ergDay = schedule.find((d) => d.progression_family?.startsWith("erg_threshold_"));
+    if (ergDay?.session.notes && !ergDay.session.notes.some((n) => n.includes("without unnecessary impact"))) {
+      ergDay.session.notes.push(ERG_ENGINE_COACHING_NOTE);
+    }
+  }
+
   let plannedMinutes = schedule.reduce((sum, day) => {
     if (typeof day.time_cap_minutes !== "number") return sum;
     return sum + day.time_cap_minutes;

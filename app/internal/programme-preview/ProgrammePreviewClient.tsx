@@ -116,13 +116,15 @@ function SessionCard({ day }: { day: DayPlan }) {
 function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-zinc-800">
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <table className="w-full min-w-[960px] text-left text-sm">
         <thead className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-500">
           <tr>
             <th className="px-3 py-2">Wk</th>
             <th className="px-3 py-2">Focus</th>
             <th className="px-3 py-2">Runs</th>
-            <th className="px-3 py-2">Thr</th>
+            <th className="px-3 py-2">Thr min</th>
+            <th className="px-3 py-2">Erg</th>
+            <th className="px-3 py-2">Hard</th>
             <th className="px-3 py-2">Long</th>
             <th className="px-3 py-2">~km</th>
             <th className="px-3 py-2">HYROX</th>
@@ -134,8 +136,20 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
               <td className="px-3 py-2 font-medium text-white">{w.week_number}</td>
               <td className="px-3 py-2 text-zinc-400">{w.week_focus.replace(/_/g, " ")}</td>
               <td className="px-3 py-2">{w.run_exposures}</td>
-              <td className="px-3 py-2">{w.threshold_sessions}</td>
-              <td className="px-3 py-2">{w.long_run_present ? "Yes" : "—"}</td>
+              <td className="px-3 py-2" title={JSON.stringify(w.threshold_modality_breakdown)}>
+                {w.total_threshold_minutes > 0 ? w.total_threshold_minutes : "—"}
+              </td>
+              <td className="px-3 py-2">{w.erg_threshold_minutes > 0 ? w.erg_threshold_minutes : "—"}</td>
+              <td
+                className={`px-3 py-2 ${w.max_consecutive_hard >= 3 ? "text-amber-400" : ""}`}
+                title={w.hard_days.join(", ")}
+              >
+                {w.hard_day_count}
+                {w.max_consecutive_hard >= 3 ? ` (${w.max_consecutive_hard}↯)` : ""}
+              </td>
+              <td className="px-3 py-2">
+                {w.long_run_present ? (w.long_run_minutes ? `${w.long_run_minutes}m` : "Yes") : "—"}
+              </td>
               <td className="px-3 py-2">{w.estimated_run_km ?? "—"}</td>
               <td className="px-3 py-2 text-zinc-400">
                 {w.compromised_sessions > 0 ? w.compromised_sessions : "—"}

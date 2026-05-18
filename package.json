@@ -12,7 +12,8 @@
     "qa:programme-run-progression": "npx --yes tsx scripts/qa-programme-run-progression.ts",
     "qa:programme-progression-families": "npx --yes tsx scripts/qa-programme-progression-families.ts",
     "qa:run-prescriptions": "npx --yes tsx scripts/qa-run-prescriptions.ts",
-    "qa:hyrox-track-programming": "npx --yes tsx scripts/qa-hyrox-track-programming.ts"
+    "qa:hyrox-track-programming": "npx --yes tsx scripts/qa-hyrox-track-programming.ts",
+    "qa:programme-coaching-methodology": "npx --yes tsx scripts/qa-programme-coaching-methodology.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

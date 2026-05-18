@@ -6,17 +6,28 @@
 import { generate12WeekProgramme } from "../app/lib/generate12WeekProgramme";
 import { mapAssessmentToProgrammeInput } from "../app/lib/mapAssessmentToProgrammeInput";
 import { detectHyroxTrack } from "../app/lib/hyroxTrackContext";
+import { analyseProgrammePreview } from "../app/lib/internalProgrammePreviewAnalysis";
+import {
+  analyzeWeeklyRhythm,
+  classifyDayPlan,
+  hasVagueStrengthPrescription,
+} from "../app/lib/sessionStressClassification";
+import { summariseThresholdVolume } from "../app/lib/thresholdVolumeTracking";
+import type { DayPlan } from "../app/lib/sessionLibrary";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
 type ScheduleDay = {
+  day: string;
   title: string;
   tags?: string[];
   template_id?: string;
+  progression_family?: string;
+  progression_marker?: { threshold_total_minutes?: number; erg_threshold_minutes?: number };
   run_prescription?: { pace_range?: string | null; coach_note?: string };
-  session?: { notes?: string[] };
+  session?: { main?: string[]; notes?: string[] };
 };
 
 function thresholdSessions(schedule: ScheduleDay[]) {
@@ -74,8 +85,8 @@ function testCaseA() {
   assert(input.hyrox_track?.hyrox_event_type === "pro", "Case A: expect pro event type");
 
   const weeks = generate12WeekProgramme(input);
-  const w1 = weeks[0]!.plan_json.schedule as ScheduleDay[];
-  const w2 = weeks[1]!.plan_json.schedule as ScheduleDay[];
+  const w1 = weeks[0]!.plan_json.schedule as DayPlan[];
+  const w2 = weeks[1]!.plan_json.schedule as DayPlan[];
 
   assert(thresholdSessions(w1).length >= 1, "Case A: week 1 needs threshold");
   assert(compromisedSessions(w1).length >= 1, "Case A: week 1 needs compromised/hyrox hybrid");
@@ -98,7 +109,53 @@ function testCaseA() {
     "Case A: programme rationale mentions HYROX priorities"
   );
 
-  console.log("✓ Case A: HYROX Pro — threshold, compromised, Pro rationale, week 1/2 threshold differ");
+  const analysis = analyseProgrammePreview(weeks, input);
+  const w2Rhythm = analyzeWeeklyRhythm(w2);
+  assert(
+    w2Rhythm.max_consecutive_hard < 3 ||
+      w2.some((d) =>
+        (d.session?.notes ?? []).some((n) => /optional support aerobic|fatigue is high/i.test(n))
+      ),
+    "Case A: 3+ consecutive hard days must include fatigue monitoring note"
+  );
+
+  const w2ThrVol = summariseThresholdVolume(w2);
+  assert(
+    w2ThrVol.erg_threshold_minutes > 0 || w2ThrVol.run_threshold_minutes > 0,
+    "Case A: week 2 needs threshold volume (run or erg)"
+  );
+
+  const w3ThrVol = summariseThresholdVolume(weeks[2]!.plan_json.schedule as DayPlan[]);
+  assert(
+    w3ThrVol.total_threshold_minutes >= w2ThrVol.total_threshold_minutes - 5,
+    "Case A: threshold volume should progress or hold into week 3"
+  );
+
+  const lowerDay = w1.find(
+    (d) =>
+      (d.tags?.[0] ?? "") === "strength_lower" ||
+      /hyrox lower|lower strength/i.test(d.title)
+  );
+  if (lowerDay) {
+    const main = (lowerDay.session?.main ?? []).join(" ");
+    assert(
+      !hasVagueStrengthPrescription(lowerDay) &&
+        /squat|lunge|wall sit|sled/i.test(main),
+      "Case A: HYROX lower strength should use specific movements"
+    );
+  }
+
+  const longRun = w1.find((d) => (d.tags?.[0] ?? "") === "long_run");
+  if (longRun?.run_prescription) {
+    assert(
+      /conversational|aerobic|easy/i.test(longRun.run_prescription.coach_note ?? ""),
+      "Case A: long run prescription should be easy/conservative"
+    );
+  }
+
+  assert(analysis.warnings.length < 30, "Case A: preview warnings should be bounded");
+
+  console.log("✓ Case A: HYROX Pro — threshold, compromised, rhythm, erg, specific strength");
 }
 
 function testCaseB() {
@@ -136,7 +193,7 @@ function testCaseB() {
   );
 
   const weeks = generate12WeekProgramme(input);
-  const schedule = weeks[2]!.plan_json.schedule as ScheduleDay[];
+  const schedule = weeks[2]!.plan_json.schedule as DayPlan[];
 
   assert(thresholdSessions(schedule).length >= 1, "Case B: running still scheduled");
   const wb = wallBallSignals(schedule);
@@ -147,7 +204,23 @@ function testCaseB() {
   );
   assert(maxThresholdReps.length <= 1, "Case B: not overly advanced threshold titling in week 3");
 
-  console.log("✓ Case B: HYROX Open + wall balls — durability bias, running present, not elite threshold");
+  const sun = schedule.find((d) => d.day === "Sun");
+  const mon = schedule.find((d) => d.day === "Mon");
+  if (sun) {
+    const c = classifyDayPlan(sun);
+    assert(
+      c.session_stress !== "high" || (sun.tags?.[0] ?? "") === "long_run" || /long/i.test(sun.title ?? ""),
+      "Case B: Sunday should anchor longer aerobic, not arbitrary high stress"
+    );
+  }
+  if (mon) {
+    assert(
+      classifyDayPlan(mon).session_stress !== "high",
+      "Case B: Monday should be recovery/easier for HYROX Open"
+    );
+  }
+
+  console.log("✓ Case B: HYROX Open + wall balls — Sunday/Monday rhythm, durability bias");
 }
 
 function testCaseC() {
@@ -182,7 +255,7 @@ function testCaseC() {
   assert(input.hyrox_track?.equipment_limited, "Case C: equipment limited flag");
 
   const weeks = generate12WeekProgramme(input);
-  const schedule = weeks[0]!.plan_json.schedule as ScheduleDay[];
+  const schedule = weeks[0]!.plan_json.schedule as DayPlan[];
   const notesBlob = schedule.flatMap((d) => d.session?.notes ?? []).join(" ");
 
   assert(
@@ -193,7 +266,12 @@ function testCaseC() {
 
   const sledOnly = schedule.filter((d) => {
     const main = (d as ScheduleDay & { session?: { main?: string[] } }).session?.main?.join(" ") ?? "";
-    return /sled push/i.test(main) && !/substitut|bike|row|bodyweight/i.test(main.toLowerCase());
+    return (
+      /sled push/i.test(main) &&
+      !/substitut|alternative|or heavy marching|backward drag|leg press|if sled|no sled/i.test(
+        main.toLowerCase()
+      )
+    );
   });
   assert(sledOnly.length === 0, "Case C: should not prescribe raw sled-only main work without substitutes");
 

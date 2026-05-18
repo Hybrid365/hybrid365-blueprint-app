@@ -144,6 +144,24 @@ const SECONDARY_SESSIONS: SecondaryTemplate[] = [
     minHoursBand: "5-7",
   },
   {
+    title: "Upper EMOM — Support (Optional)",
+    intent: "Optional upper pump + trunk durability — low stress support, not another key session.",
+    time_cap_minutes: 20,
+    category: "strength",
+    session: {
+      main: [
+        "20 min EMOM (rotate each minute): 6 pull-ups or rows, 8 push-ups or incline DB press, 30s farmer hold, 8 dead bug",
+        "Finisher: 2×30s grip hang — easy effort",
+      ],
+      notes: [
+        "Optional support only — skip if fatigue is high from the AM session.",
+        "Assess how the body feels. If fatigue is high, keep optional support aerobic only or remove it.",
+      ],
+    },
+    suits: ["hybrid", "muscle"],
+    minHoursBand: "7-10",
+  },
+  {
     title: "Easy SkiErg or Rower Easy",
     intent: "Low-cost aerobic session using erg modality to build capacity without impact.",
     time_cap_minutes: 25,

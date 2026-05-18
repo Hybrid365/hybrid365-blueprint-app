@@ -114,6 +114,10 @@ export type DayPlan = {
   intentional_repeat?: boolean;
   /** Individualised pace / HR / RPE guidance for run sessions (paid programme). */
   run_prescription?: import("./runPrescription").RunPrescription;
+  /** Actual training stress (not title alone). */
+  session_stress?: import("./sessionStressClassification").SessionStressLevel;
+  /** Session priority role in the weekly plan. */
+  session_role?: import("./sessionStressClassification").SessionRoleType;
 };
 
 export type WeeklyStressLabel = "low" | "balanced" | "high" | "very_high";

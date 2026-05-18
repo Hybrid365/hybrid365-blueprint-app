@@ -415,13 +415,20 @@ export function resolveHyroxProgressionFamilyId(
 
   if (role === "hybrid_primary") return "compromised_run_a";
 
+  if (role === "lower_primary" || role === "lower_full") {
+    if (ctxW.equipment_limited && !ctxW.equipment.hasSled) {
+      return "lower_strength_foundation_a";
+    }
+    return "lower_strength_hyrox_endurance_a";
+  }
+
   if (role === "hybrid_density") {
     if (focus === "wall_balls" || focus === "wall_ball") return "wall_ball_durability_a";
     if (focus === "burpees" || focus === "lunges" || focus === "running_under_fatigue") {
       return "compromised_run_a";
     }
     if (focus === "sled" || focus === "sled_push_pull") {
-      return ctxW.equipment.hasSled ? "lower_strength_foundation_a" : "compromised_run_a";
+      return ctxW.equipment.hasSled ? "lower_strength_hyrox_endurance_a" : "compromised_run_a";
     }
     return "wall_ball_durability_a";
   }
@@ -462,7 +469,10 @@ export function buildHyroxWeekCoachingParagraph(args: {
 
   if (hasThreshold) {
     parts.push(
-      "Threshold running develops control you can repeat after stations — not a one-off sprint."
+      "Threshold work (run and/or ergs) develops control you can repeat after stations — not a one-off sprint."
+    );
+    parts.push(
+      "Threshold volume is built through running and ergs this week so your engine progresses without unnecessary impact load."
     );
   }
   if (hasCompromised) {

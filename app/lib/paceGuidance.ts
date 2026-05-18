@@ -64,7 +64,7 @@ export function computePaceGuidanceFromFiveKSeconds(seconds: number): PaceGuidan
     units: "min/km",
     five_k_pace: formatPacePerKm(baseSecPerKm),
     zones: {
-      easy: zoneRangeSecPerKm(baseSecPerKm, 1.25, 1.4),
+      easy: zoneRangeSecPerKm(baseSecPerKm, 1.3, 1.5),
       steady: zoneRangeSecPerKm(baseSecPerKm, 1.12, 1.22),
       tempo: zoneRangeSecPerKm(baseSecPerKm, 1.06, 1.12),
       threshold: zoneRangeSecPerKm(baseSecPerKm, 1.02, 1.08),
@@ -84,7 +84,7 @@ export function runSessionPaceNote(sessionType: string, g: PaceGuidance): string
     case "aerobic_run":
       return `Pace guide: based on your submitted 5km, easy aerobic work sits around ${g.zones.easy}. Use RPE and control first.`;
     case "long_run":
-      return `Pace guide: based on your submitted 5km, this longer aerobic day fits your steady range (${g.zones.steady}). Use RPE and control first.`;
+      return `Pace guide: based on your submitted 5km, keep this long run genuinely easy (${g.zones.easy}). Conversational effort — if tired, run slower than the range.`;
     case "tempo_run":
       return `Pace guide: based on your submitted 5km, this session should sit around your tempo range of ${g.zones.tempo}. Use RPE and control first.`;
     case "threshold_run":

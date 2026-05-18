@@ -18,7 +18,7 @@ type IntensityKey = "easy" | "steady" | "tempo" | "threshold" | "interval" | "hy
 
 const COACH_NOTES: Record<IntensityKey, string> = {
   easy:
-    "Keep this genuinely easy. You should be able to talk in full sentences.",
+    "Keep this genuinely easy — conversational (RPE 3–4/10). If tired, run slower than the pace range rather than forcing it.",
   steady:
     "Comfortable aerobic. Do not turn this into a race.",
   tempo:
@@ -99,7 +99,7 @@ function intensityKeyForSessionType(sessionType: string, goalFocus?: GoalFocus):
     case "aerobic_run":
       return "easy";
     case "long_run":
-      return "steady";
+      return "easy";
     case "tempo_run":
       return "tempo";
     case "threshold_run":
@@ -182,10 +182,14 @@ export function buildRunPrescription(args: {
     effort_description = `${fallback.effort} Use HR as your primary guide.`;
   }
 
-  const coach_note =
+  let coach_note =
     args.hyroxTrack && args.sessionType === "hybrid_compromised"
       ? COMPROMISED_COACH
       : COACH_NOTES[key];
+  if (args.sessionType === "long_run") {
+    coach_note =
+      "Long run should feel genuinely aerobic — conversational throughout. Prioritise RPE and talk test over hitting a pace.";
+  }
 
   return {
     pace_range: pace,
