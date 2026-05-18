@@ -39,26 +39,63 @@ function minutesFromMarker(day: DayPlan): number {
   return 0;
 }
 
+export function isRunThresholdAnchorDay(day: DayPlan): boolean {
+  const fam = day.progression_family ?? "";
+  if (fam === "threshold_volume_a" || fam === "threshold_volume_beginner_a") return true;
+  const t0 = day.tags?.[0] ?? "";
+  if (t0 !== "threshold_run") return false;
+  if (fam.startsWith("erg_threshold_")) return false;
+  return !/skierg|row\s*erg|bike/i.test(day.title);
+}
+
+export function hasRunThresholdAnchor(schedule: DayPlan[]): boolean {
+  return schedule.some(isRunThresholdAnchorDay);
+}
+
+function addMarkerMinutes(
+  breakdown: ThresholdModalityBreakdown,
+  m: import("./progressionFamilies").ProgressionMarker,
+  isRunAnchor: boolean
+): number {
+  const mins = m.threshold_total_minutes ?? m.erg_threshold_minutes ?? 0;
+  if (mins <= 0) return 0;
+  const mod = m.threshold_modality ?? (isRunAnchor ? "run" : "ski");
+  if (mod === "run") breakdown.run += mins;
+  else if (mod === "bike") breakdown.bike += mins;
+  else if (mod === "row") breakdown.row += mins;
+  else breakdown.ski += mins;
+  return mins;
+}
+
 export function summariseThresholdVolume(schedule: DayPlan[]): ThresholdVolumeSummary {
   const breakdown: ThresholdModalityBreakdown = { run: 0, ski: 0, row: 0, bike: 0 };
 
   for (const day of schedule) {
-    const mins = minutesFromMarker(day);
-    if (mins <= 0) continue;
-    const mod =
-      day.progression_marker?.threshold_modality ??
-      detectModalityFromDay(day) ??
-      "run";
-    breakdown[mod] += mins;
+    if (isRunThresholdAnchorDay(day) && day.progression_marker) {
+      addMarkerMinutes(breakdown, day.progression_marker, true);
+    } else if (day.progression_family?.startsWith("erg_threshold_") && day.progression_marker) {
+      addMarkerMinutes(breakdown, day.progression_marker, false);
+    } else {
+      const mins = minutesFromMarker(day);
+      if (mins <= 0) continue;
+      const mod =
+        day.progression_marker?.threshold_modality ??
+        detectModalityFromDay(day) ??
+        "run";
+      breakdown[mod] += mins;
+    }
+
+    const ts = (
+      day.double_session as { threshold_support?: { progression_marker?: import("./progressionFamilies").ProgressionMarker } } | undefined
+    )?.threshold_support?.progression_marker;
+    if (ts) addMarkerMinutes(breakdown, ts, false);
   }
 
   const erg = breakdown.ski + breakdown.row + breakdown.bike;
-  const run = breakdown.run;
-
   return {
-    run_threshold_minutes: run,
+    run_threshold_minutes: breakdown.run,
     erg_threshold_minutes: erg,
-    total_threshold_minutes: run + erg,
+    total_threshold_minutes: breakdown.run + erg,
     threshold_modality_breakdown: breakdown,
   };
 }
@@ -89,19 +126,59 @@ export function formatThresholdVolumeLine(summary: ThresholdVolumeSummary): stri
   return parts.join(" ");
 }
 
+/** True when erg threshold support may be added (not replace run anchor). */
+export function shouldAddErgThresholdSupport(
+  input: {
+    hyrox_track?: { active: boolean; current_run_volume_band: string | null; impact_risk: string } | null;
+    has_injury?: boolean;
+    goal_focus: string;
+    ability_level: string;
+    double_sessions?: boolean;
+    weekly_hours_band?: string;
+  },
+  weekNumber: number
+): boolean {
+  if (input.ability_level === "beginner") return false;
+  const band = (input.weekly_hours_band ?? "").toLowerCase();
+  const highAvailability = band === "7-10" || band === "10+";
+  const hyrox = Boolean(input.hyrox_track?.active);
+
+  if (hyrox && highAvailability) return true;
+  if (hyrox && input.double_sessions) return true;
+
+  if (input.has_injury) return true;
+
+  const runBand = (input.hyrox_track?.current_run_volume_band ?? "").toLowerCase();
+  if (/low|under|20|25|30/.test(runBand) && !/70|50-70|high/.test(runBand)) return true;
+  if (input.hyrox_track?.impact_risk === "high") return true;
+
+  const bw = ((weekNumber - 1) % 4) + 1;
+  if (hyrox && bw === 2 && highAvailability) return true;
+
+  return false;
+}
+
+/** @deprecated use shouldAddErgThresholdSupport */
 export function shouldBlendErgThreshold(input: {
   hyrox_track?: { active: boolean; current_run_volume_band: string | null; impact_risk: string } | null;
   has_injury?: boolean;
   goal_focus: string;
   ability_level: string;
 }): boolean {
-  if (input.has_injury) return true;
-  const band = (input.hyrox_track?.current_run_volume_band ?? "").toLowerCase();
-  if (/low|under|20|25|30|moderate/.test(band) && !/70|high|50/.test(band)) return true;
+  return shouldAddErgThresholdSupport({ ...input, double_sessions: true, weekly_hours_band: "10+" }, 2);
+}
+
+/** Only replace run threshold with erg when athlete cannot tolerate run threshold work. */
+export function shouldReplaceRunThresholdWithErg(
+  input: {
+    has_injury?: boolean;
+    hyrox_track?: { impact_risk: string } | null;
+  },
+  lowImpact: boolean
+): boolean {
+  if (!lowImpact && !input.has_injury) return false;
   if (input.hyrox_track?.impact_risk === "high") return true;
-  if (input.hyrox_track?.active && input.ability_level !== "beginner") return true;
-  if (input.goal_focus === "hybrid" && /injury|impact|knee|calf/.test(band)) return true;
-  return false;
+  return Boolean(input.has_injury && lowImpact);
 }
 
 export function ergThresholdModalityForWeek(weekNumber: number): "ski" | "row" | "bike" {
@@ -113,4 +190,4 @@ export function ergThresholdModalityForWeek(weekNumber: number): "ski" | "row" |
 }
 
 export const ERG_ENGINE_COACHING_NOTE =
-  "Threshold volume is built through running and ergs this week so your engine progresses without unnecessary impact load.";
+  "Run threshold remains the anchor. Extra threshold volume is added through ergs/bike to build the engine without unnecessary impact.";

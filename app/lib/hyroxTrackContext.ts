@@ -472,7 +472,7 @@ export function buildHyroxWeekCoachingParagraph(args: {
       "Threshold work (run and/or ergs) develops control you can repeat after stations — not a one-off sprint."
     );
     parts.push(
-      "Threshold volume is built through running and ergs this week so your engine progresses without unnecessary impact load."
+      "Run threshold remains the anchor. Extra threshold volume is added through ergs/bike to build the engine without unnecessary impact."
     );
   }
   if (hasCompromised) {

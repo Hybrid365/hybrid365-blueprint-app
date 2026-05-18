@@ -122,8 +122,9 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
             <th className="px-3 py-2">Wk</th>
             <th className="px-3 py-2">Focus</th>
             <th className="px-3 py-2">Runs</th>
-            <th className="px-3 py-2">Thr min</th>
+            <th className="px-3 py-2">Run thr</th>
             <th className="px-3 py-2">Erg</th>
+            <th className="px-3 py-2">Total</th>
             <th className="px-3 py-2">Hard</th>
             <th className="px-3 py-2">Long</th>
             <th className="px-3 py-2">~km</th>
@@ -136,10 +137,16 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
               <td className="px-3 py-2 font-medium text-white">{w.week_number}</td>
               <td className="px-3 py-2 text-zinc-400">{w.week_focus.replace(/_/g, " ")}</td>
               <td className="px-3 py-2">{w.run_exposures}</td>
-              <td className="px-3 py-2" title={JSON.stringify(w.threshold_modality_breakdown)}>
-                {w.total_threshold_minutes > 0 ? w.total_threshold_minutes : "—"}
+              <td
+                className={`px-3 py-2 ${!w.run_anchor_present && analysis.hyrox_track ? "text-amber-400" : ""}`}
+                title={w.run_anchor_title ?? "no run anchor"}
+              >
+                {w.run_threshold_minutes > 0 ? w.run_threshold_minutes : "—"}
               </td>
-              <td className="px-3 py-2">{w.erg_threshold_minutes > 0 ? w.erg_threshold_minutes : "—"}</td>
+              <td className="px-3 py-2" title={w.erg_support_present ? "erg support" : ""}>
+                {w.erg_threshold_minutes > 0 ? w.erg_threshold_minutes : "—"}
+              </td>
+              <td className="px-3 py-2">{w.total_threshold_minutes > 0 ? w.total_threshold_minutes : "—"}</td>
               <td
                 className={`px-3 py-2 ${w.max_consecutive_hard >= 3 ? "text-amber-400" : ""}`}
                 title={w.hard_days.join(", ")}

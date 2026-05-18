@@ -5,10 +5,7 @@
 
 import type { BlueprintInput } from "./buildWeekBlueprint";
 import { resolveHyroxProgressionFamilyId } from "./hyroxTrackContext";
-import {
-  ergThresholdModalityForWeek,
-  shouldBlendErgThreshold,
-} from "./thresholdVolumeTracking";
+import { shouldReplaceRunThresholdWithErg } from "./thresholdVolumeTracking";
 import type { AbilityLevel, GoalFocus } from "./sessionLibrary";
 import type { RunProgressionSlot } from "./runSessionProgression";
 
@@ -657,13 +654,14 @@ export const PROGRESSION_FAMILIES: ProgressionFamily[] = [
         main: [
           "Tempo hack squat or goblet squat 3×8 @ 3-1-2 tempo (3s down, 1s pause, 2s up)",
           "Walking lunges 3×12/leg — controlled steps, breathe through each rep",
-          "Wall sit 3×45s + calf raise 3×15",
+          "Wall sit 3×45s + standing calf iso hold 2×45s/side",
+          "Bent-knee soleus iso hold 2×40s/side",
           "Optional: sled push 4×20m @ race pace if sled available",
         ],
         marker: { strength_main_lift_sets: 3, total_work_sets: 12 },
         progression_focus: "Local muscular endurance for late-race legs — not max strength.",
         coach_snippet:
-          "Breathe through the movement. This is not just max strength — it is local muscular endurance for late-race legs.",
+          "Breathe through the movement. Calf isometrics support lower-leg durability for running, sleds and lunges.",
       },
       {
         block_week: 2,
@@ -672,6 +670,7 @@ export const PROGRESSION_FAMILIES: ProgressionFamily[] = [
           "Tempo front squat or goblet squat 4×8 @ 3-1-2 tempo",
           "Split squat 3×10/leg — 60s rest",
           "Cyclist squat or wall sit 3×50s",
+          "Loaded calf iso hold 2×50s/side + wall-lean calf iso 2×40s",
           "Sled push 5×25m @ race weight OR heavy marching 5×30m if no sled",
         ],
         marker: {
@@ -689,7 +688,7 @@ export const PROGRESSION_FAMILIES: ProgressionFamily[] = [
           "Hack squat 4×10 @ RPE 7–8 — 45s rest",
           "Walking lunges 4×12/leg",
           "Sled pull 4×25m + sled push 4×25m (race weight) OR leg press 3×15 if no sled",
-          "Calf raise 3×20 slow eccentric",
+          "Standing calf iso hold 3×50s/side + calf raise 2×20 slow eccentric",
         ],
         marker: { strength_main_lift_sets: 4, previous_week_comparison: "Higher rep density + sled mechanics" },
         progression_focus: "Race-weight tolerance and sled mechanics paired with leg endurance.",
@@ -702,7 +701,7 @@ export const PROGRESSION_FAMILIES: ProgressionFamily[] = [
         main: [
           "Goblet squat 3×8 @ RPE 6",
           "Split squat 2×8/leg",
-          "Wall sit 2×40s",
+          "Wall sit 2×40s + bent-knee soleus iso 2×30s/side",
           "Light sled push 3×15m technique only OR backward drag 3×20m",
         ],
         marker: { previous_week_comparison: "Deload — reduced leg density" },
@@ -792,7 +791,12 @@ export const PROGRESSION_FAMILIES: ProgressionFamily[] = [
       {
         block_week: 3,
         title: "Upper Strength — Load / Density",
-        main: ["Push 4×6–8 (heavier)", "Pull 4×6–8", "Accessory 3×10–12"],
+        main: [
+          "Incline DB press 4×6–8",
+          "Weighted pull-up or lat pulldown 4×6–8",
+          "Seated row 3×10 + strict press 3×8",
+          "Farmer hold 2×40s",
+        ],
         marker: { previous_week_comparison: "Heavier rep range" },
         progression_focus: "Slightly heavier loads or shorter rest on accessories.",
         coach_snippet: "Hypertrophy responds to quality volume — not grinding every set.",
@@ -800,7 +804,11 @@ export const PROGRESSION_FAMILIES: ProgressionFamily[] = [
       {
         block_week: 4,
         title: "Upper Strength — Deload Volume",
-        main: ["Push 2×8 @ RPE 6", "Pull 2×8 @ RPE 6", "Light accessory 2×15"],
+        main: [
+          "Incline DB press 2×8 @ RPE 6",
+          "Lat pulldown 2×8 @ RPE 6",
+          "Light seated row 2×12",
+        ],
         marker: { previous_week_comparison: "Deload upper" },
         progression_focus: "Deload upper volume.",
         coach_snippet: "Keep sessions short — you're backing off so lower-body and runs recover.",
@@ -949,19 +957,14 @@ export function resolveRunProgressionFamily(
   const beginner = input.ability_level === "beginner";
 
   if (slot === "threshold") {
-    const bw = blockWeekIndex(weekNumber);
     if (
       !beginner &&
-      shouldBlendErgThreshold({
-        hyrox_track: input.hyrox_track,
-        has_injury: input.has_injury,
-        goal_focus: input.goal_focus,
-        ability_level: input.ability_level,
-      }) &&
-      bw === 2 &&
-      !lowImpact
+      shouldReplaceRunThresholdWithErg(
+        { has_injury: input.has_injury, hyrox_track: input.hyrox_track },
+        Boolean(lowImpact)
+      )
     ) {
-      const mod = ergThresholdModalityForWeek(weekNumber);
+      const mod = ((weekNumber - 1) % 4) + 1 === 2 ? "ski" : ((weekNumber - 1) % 4) + 1 === 3 ? "row" : "bike";
       const ergFamily = FAMILY_BY_ID.get(`erg_threshold_${mod}_a`);
       if (ergFamily) return ergFamily;
     }

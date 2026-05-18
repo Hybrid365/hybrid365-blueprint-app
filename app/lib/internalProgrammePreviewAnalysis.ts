@@ -12,7 +12,12 @@ import {
   classifyDayPlan,
   hasVagueStrengthPrescription,
 } from "./sessionStressClassification";
-import { summariseThresholdVolume } from "./thresholdVolumeTracking";
+import { ergThresholdReplacedRunAnchor } from "./ergThresholdSupport";
+import {
+  hasRunThresholdAnchor,
+  isRunThresholdAnchorDay,
+  summariseThresholdVolume,
+} from "./thresholdVolumeTracking";
 
 export type WeekPreviewMetrics = {
   week_number: number;
@@ -34,7 +39,48 @@ export type WeekPreviewMetrics = {
   compromised_sessions: number;
   hyrox_titles: string[];
   station_focus_hint: string | null;
+  run_anchor_present: boolean;
+  run_anchor_title: string | null;
+  erg_support_present: boolean;
 };
+
+function isDeloadWeekNumber(weekNumber: number, weekFocus?: string): boolean {
+  if (weekFocus?.includes("deload")) return true;
+  return weekNumber % 4 === 0;
+}
+
+function runAnchorTitle(schedule: DayPlan[]): string | null {
+  const day = schedule.find(isRunThresholdAnchorDay);
+  return day?.title ?? null;
+}
+
+function hasErgThresholdSupport(schedule: DayPlan[]): boolean {
+  return schedule.some(
+    (d) =>
+      d.double_session?.threshold_support ||
+      (d.progression_family?.startsWith("erg_threshold_") && !isRunThresholdAnchorDay(d))
+  );
+}
+
+function hasCalfIsoAccessory(schedule: DayPlan[]): boolean {
+  for (const day of schedule) {
+    const blob = [
+      day.title,
+      ...(day.session?.main ?? []),
+      ...(day.session?.notes ?? []),
+      day.progression_family ?? "",
+    ]
+      .join(" ")
+      .toLowerCase();
+    if (
+      /lower_strength_hyrox|hyrox lower/i.test(blob) &&
+      /calf iso|soleus iso|wall-lean calf|standing calf iso/i.test(blob)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export type ProgrammePreviewAnalysis = {
   preview_mode: true;
@@ -112,6 +158,8 @@ export function analyseProgrammePreview(
 ): ProgrammePreviewAnalysis {
   const warnings: string[] = [];
   const weekMetrics: WeekPreviewMetrics[] = [];
+  const hyrox_track = Boolean(input.hyrox_track?.active);
+  const isAdvanced = input.ability_level === "advanced";
 
   for (const week of weeks) {
     const schedule = week.plan_json.schedule;
@@ -143,7 +191,49 @@ export function analyseProgrammePreview(
       compromised_sessions: compromisedSessions(schedule).length,
       hyrox_titles: compromisedSessions(schedule).map((d) => d.title),
       station_focus_hint: input.hyrox_track?.station_focus_this_week?.[0] ?? null,
+      run_anchor_present: hasRunThresholdAnchor(schedule),
+      run_anchor_title: runAnchorTitle(schedule),
+      erg_support_present: hasErgThresholdSupport(schedule),
     });
+
+    if (hyrox_track && isAdvanced && !isDeloadWeekNumber(week.week_number, week.plan_json.week_context?.week_focus)) {
+      if (!hasRunThresholdAnchor(schedule)) {
+        warnings.push(
+          `Week ${week.week_number}: HYROX advanced profile missing weekly run threshold anchor.`
+        );
+      }
+      if (ergThresholdReplacedRunAnchor(schedule)) {
+        warnings.push(
+          `Week ${week.week_number}: run threshold was replaced by erg threshold — run anchor should remain weekly.`
+        );
+      }
+    }
+
+    if (hyrox_track && !hasCalfIsoAccessory(schedule)) {
+      const hasHyroxLower = schedule.some((d) =>
+        /hyrox lower|lower_strength_hyrox/i.test(
+          `${d.progression_family ?? ""} ${d.title}`.toLowerCase()
+        )
+      );
+      if (hasHyroxLower) {
+        warnings.push(
+          `Week ${week.week_number}: HYROX lower strength missing calf isometric/durability accessory.`
+        );
+      }
+    }
+
+    const sun = schedule.find((d) => d.day === "Sun");
+    const mon = schedule.find((d) => d.day === "Mon");
+    if (
+      sun &&
+      (sun.tags?.[0] === "long_run" || /long run|long zone/i.test(sun.title)) &&
+      mon &&
+      classifyDayPlan(mon).session_stress === "high"
+    ) {
+      warnings.push(
+        `Week ${week.week_number}: Monday is hard after Sunday long/hard — prefer recovery/easier Monday.`
+      );
+    }
 
     for (const w of rhythm.warnings) {
       warnings.push(`Week ${week.week_number}: ${w}`);
@@ -163,8 +253,6 @@ export function analyseProgrammePreview(
     }
   }
 
-  const hyrox_track = Boolean(input.hyrox_track?.active);
-  const isAdvanced = input.ability_level === "advanced";
   const wantsRunHybrid =
     input.goal_focus === "running" ||
     input.goal_focus === "hybrid" ||
@@ -212,14 +300,44 @@ export function analyseProgrammePreview(
     }
   }
 
-  const w1Thr = thresholdSessions(weeks[0]?.plan_json.schedule ?? [])[0];
-  const w2Thr = thresholdSessions(weeks[1]?.plan_json.schedule ?? [])[0];
-  if (w1Thr && w2Thr) {
-    const fp1 = `${w1Thr.template_id ?? ""}::${w1Thr.title}`;
-    const fp2 = `${w2Thr.template_id ?? ""}::${w2Thr.title}`;
-    if (fp1 === fp2) {
+  const w1Sched = weeks[0]?.plan_json.schedule ?? [];
+  const w2Sched = weeks[1]?.plan_json.schedule ?? [];
+  const w1Anchor = runAnchorTitle(w1Sched);
+  const w2Anchor = runAnchorTitle(w2Sched);
+  if (hyrox_track && isAdvanced) {
+    if (!w1Anchor) {
+      warnings.push("Week 1: no run threshold anchor detected for HYROX advanced profile.");
+    }
+    if (w1Anchor && !w2Anchor) {
       warnings.push(
-        `Week 1 and Week 2 threshold sessions appear identical (${w1Thr.title}).`
+        `Week 2: run threshold anchor missing (week 1 had "${w1Anchor}") — likely replaced by erg; should progress run anchor instead.`
+      );
+    }
+    if (w1Anchor && w2Anchor && w1Anchor === w2Anchor) {
+      const w1m = weeks[0]!.plan_json.schedule.find(isRunThresholdAnchorDay)?.progression_marker
+        ?.threshold_total_minutes;
+      const w2m = weeks[1]!.plan_json.schedule.find(isRunThresholdAnchorDay)?.progression_marker
+        ?.threshold_total_minutes;
+      if (w1m && w2m && w2m <= w1m) {
+        warnings.push(
+          `Week 2 run threshold minutes (${w2m}) did not progress vs week 1 (${w1m}).`
+        );
+      }
+    }
+  }
+
+  const buildWeeks = weekMetrics.filter((w) => !isDeloadWeekNumber(w.week_number));
+  for (let i = 1; i < buildWeeks.length; i++) {
+    const prev = buildWeeks[i - 1]!;
+    const cur = buildWeeks[i]!;
+    if (
+      prev.block_number === cur.block_number &&
+      prev.total_threshold_minutes > 0 &&
+      cur.total_threshold_minutes > 0 &&
+      cur.total_threshold_minutes < prev.total_threshold_minutes - 2
+    ) {
+      warnings.push(
+        `Week ${cur.week_number}: total threshold minutes dropped vs week ${prev.week_number} without clear deload/taper reason.`
       );
     }
   }

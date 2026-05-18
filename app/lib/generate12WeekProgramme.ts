@@ -10,6 +10,7 @@ import {
   type RationaleContext,
 } from "./programmeRationale";
 import { applyDoubleSessions } from "./doubleSessionPlanner";
+import { applyErgThresholdSupportDoubles } from "./ergThresholdSupport";
 import { buildPaidProgrammeIntelligence, type BuildIntelligenceArgs } from "./paidProgrammeIntelligence";
 import { extractWeekRunSnapshots } from "./runSessionProgression";
 import { planWeeklyRunVolume } from "./runVolumePlanner";
@@ -109,7 +110,7 @@ export function generate12WeekProgramme(
     previousWeekRunSnapshots = extractWeekRunSnapshots(generated.schedule);
 
     // Apply double-session layer additively
-    const scheduleWithDoubles = applyDoubleSessions({
+    let scheduleWithDoubles = applyDoubleSessions({
       schedule: generated.schedule,
       goal_focus: input.goal_focus,
       ability_level: input.ability_level,
@@ -117,6 +118,15 @@ export function generate12WeekProgramme(
       double_sessions: Boolean(input.double_sessions),
       double_session_days: input.double_session_days,
       has_injury: Boolean(input.has_injury),
+      week_number: weekNumber,
+      hyrox_track_active: Boolean(input.hyrox_track?.active),
+    });
+
+    scheduleWithDoubles = applyErgThresholdSupportDoubles({
+      schedule: scheduleWithDoubles,
+      input,
+      weekNumber,
+      weekFocus: progressionTarget.week_focus,
     });
 
     const week_rationale = buildEnhancedWeekRationale({

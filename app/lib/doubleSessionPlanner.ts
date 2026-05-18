@@ -6,6 +6,7 @@
  * added. Existing fields are untouched.
  */
 
+import type { ProgressionMarker } from "./progressionFamilies";
 import type { DayPlan, GoalFocus, WeeklyHoursBand } from "./sessionLibrary";
 import type { AbilityLevel } from "./sessionLibrary";
 
@@ -16,6 +17,11 @@ export type DoubleSessionCategory = "aerobic" | "recovery" | "strength" | "hybri
 export type DoubleSessionDetail = {
   enabled: boolean;
   label: "AM/PM" | "Optional Support";
+  /** Erg threshold support — tracked separately from run threshold anchor. */
+  threshold_support?: {
+    progression_family: string;
+    progression_marker: ProgressionMarker;
+  };
   secondary: {
     title: string;
     intent: string;
@@ -177,6 +183,26 @@ const SECONDARY_SESSIONS: SecondaryTemplate[] = [
     minHoursBand: "5-7",
   },
   {
+    title: "HYROX Strength Endurance — PM (Optional)",
+    intent: "Low-impact strength endurance after long aerobic — station durability without extra run stress.",
+    time_cap_minutes: 35,
+    category: "strength",
+    session: {
+      main: [
+        "Goblet squat 3×10 @ controlled tempo",
+        "Walking lunges 2×12/leg",
+        "Wall sit 2×45s + standing calf iso hold 2×45s/side",
+        "Optional: sled push 3×20m technique @ submax",
+      ],
+      notes: [
+        "PM optional after long run — skip if legs are trashed.",
+        "Calf isometrics support lower-leg durability for running, sleds and lunges.",
+      ],
+    },
+    suits: ["hybrid"],
+    minHoursBand: "7-10",
+  },
+  {
     title: "Recovery Walk or Easy Jog",
     intent: "Active recovery to promote circulation and prepare for the next quality session.",
     time_cap_minutes: 20,
@@ -247,6 +273,8 @@ export type DoublePlannerInput = {
   double_sessions: boolean;
   double_session_days?: string[]; // preferred days from assessment
   has_injury?: boolean;
+  week_number?: number;
+  hyrox_track_active?: boolean;
 };
 
 export function applyDoubleSessions(
@@ -270,27 +298,46 @@ export function applyDoubleSessions(
   const usedSecondaryTitles = new Set<string>();
   let doublesApplied = 0;
 
+  const isLongRunTitle = (title: string) =>
+    /long run|long zone|long aerobic|long endurance/i.test(title.toLowerCase());
+
   for (let i = 0; i < result.length && doublesApplied < maxDoubles; i++) {
     const day = result[i];
 
     // Skip rest / recovery days — no secondary
     if (isAlreadyRecovery(day)) continue;
 
-    // Check day matches preferred days (if provided)
     const dayKey = (day.day ?? "").toLowerCase().trim().slice(0, 3);
-    if (preferredDays.length > 0 && !preferredDays.includes(dayKey)) continue;
+
+    /** Sunday long + HYROX advanced: optional PM strength endurance (Monday stays easy). */
+    const sundayStrengthPm =
+      input.hyrox_track_active &&
+      input.ability_level === "advanced" &&
+      dayKey === "sun" &&
+      (day.tags?.[0] === "long_run" || isLongRunTitle(day.title));
+
+    // Check day matches preferred days (if provided) — Sunday HYROX PM bypasses this
+    if (preferredDays.length > 0 && !preferredDays.includes(dayKey) && !sundayStrengthPm) continue;
 
     /** Hard AM sessions: intermediate/advanced get recovery/mobility PM only (not Z2 / strength add-ons). */
     const forceRecoveryOnly =
-      input.ability_level !== "beginner" && isHighFatigueTitle(day.title);
+      !sundayStrengthPm &&
+      input.ability_level !== "beginner" &&
+      isHighFatigueTitle(day.title);
 
-    const secondary = pickSecondaryTemplate(
-      input.goal_focus,
-      input.weekly_hours_band,
-      Boolean(input.has_injury),
-      usedSecondaryTitles,
-      forceRecoveryOnly
-    );
+    let secondary = sundayStrengthPm
+      ? SECONDARY_SESSIONS.find(
+          (s) =>
+            s.title === "HYROX Strength Endurance — PM (Optional)" &&
+            !usedSecondaryTitles.has(s.title)
+        ) ?? null
+      : pickSecondaryTemplate(
+          input.goal_focus,
+          input.weekly_hours_band,
+          Boolean(input.has_injury),
+          usedSecondaryTitles,
+          forceRecoveryOnly
+        );
     if (!secondary) continue;
 
     usedSecondaryTitles.add(secondary.title);

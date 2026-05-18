@@ -12,7 +12,11 @@ import {
   classifyDayPlan,
   hasVagueStrengthPrescription,
 } from "../app/lib/sessionStressClassification";
-import { summariseThresholdVolume } from "../app/lib/thresholdVolumeTracking";
+import {
+  hasRunThresholdAnchor,
+  isRunThresholdAnchorDay,
+  summariseThresholdVolume,
+} from "../app/lib/thresholdVolumeTracking";
 import type { DayPlan } from "../app/lib/sessionLibrary";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -119,17 +123,45 @@ function testCaseA() {
     "Case A: 3+ consecutive hard days must include fatigue monitoring note"
   );
 
-  const w2ThrVol = summariseThresholdVolume(w2);
+  assert(hasRunThresholdAnchor(w1), "Case A: week 1 must have run threshold anchor");
+  assert(hasRunThresholdAnchor(w2), "Case A: week 2 must keep run threshold anchor (not replaced by erg)");
+  const w1RunThr = w1.find(isRunThresholdAnchorDay)!;
+  const w2RunThr = w2.find(isRunThresholdAnchorDay)!;
   assert(
-    w2ThrVol.erg_threshold_minutes > 0 || w2ThrVol.run_threshold_minutes > 0,
-    "Case A: week 2 needs threshold volume (run or erg)"
+    !w2RunThr.progression_family?.startsWith("erg_threshold_"),
+    "Case A: week 2 primary threshold must not be erg-only"
+  );
+  assert(
+    w1RunThr.title !== w2RunThr.title ||
+      (w2RunThr.progression_marker?.threshold_total_minutes ?? 0) >=
+        (w1RunThr.progression_marker?.threshold_total_minutes ?? 0),
+    "Case A: week 2 run threshold should progress vs week 1"
   );
 
+  const w2ThrVol = summariseThresholdVolume(w2);
   const w3ThrVol = summariseThresholdVolume(weeks[2]!.plan_json.schedule as DayPlan[]);
+  assert(w2ThrVol.run_threshold_minutes > 0, "Case A: week 2 run threshold minutes required");
   assert(
     w3ThrVol.total_threshold_minutes >= w2ThrVol.total_threshold_minutes - 5,
     "Case A: threshold volume should progress or hold into week 3"
   );
+
+  const sun = w2.find((d) => d.day === "Sun");
+  const mon = w2.find((d) => d.day === "Mon");
+  if (sun && mon) {
+    assert(
+      classifyDayPlan(mon).session_stress !== "high",
+      "Case A: Monday should be easy/recovery after Sunday"
+    );
+  }
+
+  const lowerHyrox = w1.find((d) =>
+    /hyrox lower|lower_strength_hyrox/i.test(`${d.progression_family ?? ""} ${d.title}`)
+  );
+  if (lowerHyrox) {
+    const blob = (lowerHyrox.session?.main ?? []).join(" ").toLowerCase();
+    assert(/calf iso|soleus iso/i.test(blob), "Case A: HYROX lower should include calf isometrics");
+  }
 
   const lowerDay = w1.find(
     (d) =>

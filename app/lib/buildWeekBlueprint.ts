@@ -33,7 +33,11 @@ import {
   balanceScheduleHardEasy,
   pickDayForRole,
 } from "./weeklyRhythmPlanner";
-import { ERG_ENGINE_COACHING_NOTE, shouldBlendErgThreshold } from "./thresholdVolumeTracking";
+import {
+  ERG_ENGINE_COACHING_NOTE,
+  hasRunThresholdAnchor,
+  shouldAddErgThresholdSupport,
+} from "./thresholdVolumeTracking";
 import {
   getProgressionTarget,
   getStressAlignment,
@@ -2084,16 +2088,16 @@ export function buildWeekBlueprint(
   appendRhythmCoachingNotes(schedule, rhythm);
 
   if (
-    shouldBlendErgThreshold({
-      hyrox_track: input.hyrox_track,
-      has_injury: input.has_injury,
-      goal_focus: input.goal_focus,
-      ability_level: input.ability_level,
-    })
+    shouldAddErgThresholdSupport(input, options?.week_number ?? 1) &&
+    hasRunThresholdAnchor(schedule)
   ) {
-    const ergDay = schedule.find((d) => d.progression_family?.startsWith("erg_threshold_"));
-    if (ergDay?.session.notes && !ergDay.session.notes.some((n) => n.includes("without unnecessary impact"))) {
-      ergDay.session.notes.push(ERG_ENGINE_COACHING_NOTE);
+    const anchorDay = schedule.find(
+      (d) =>
+        d.progression_family === "threshold_volume_a" ||
+        d.progression_family === "threshold_volume_beginner_a"
+    );
+    if (anchorDay?.session.notes && !anchorDay.session.notes.some((n) => n.includes("remains the anchor"))) {
+      anchorDay.session.notes.push(ERG_ENGINE_COACHING_NOTE);
     }
   }
 
