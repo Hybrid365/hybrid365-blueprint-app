@@ -36,6 +36,9 @@ import {
 import { shareCardInputFromMemberSession } from "@/app/lib/sessionShareCardText";
 import type { SessionShareCardProps } from "@/components/share/SessionShareCard";
 import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
+import { DashboardSupportCard } from "@/components/dashboard/DashboardSupportCard";
+import { MissedSessionGuidanceNote } from "@/components/dashboard/MissedSessionGuidanceNote";
+import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
 
 export type WeekPayload = {
   week_number: number;
@@ -231,9 +234,11 @@ export default function ProgrammeClient({
                 </Link>
               </div>
             </div>
+            <DashboardSupportCard className="mt-6" />
           </div>
         ) : (
           <div className="mx-auto mt-8 max-w-6xl space-y-10 px-4 pb-20 md:px-8">
+            {effectiveWeek === 1 ? <WeekOneGuidanceCard /> : null}
             {/* A — Hero */}
             <section className="rounded-2xl border border-zinc-800/90 bg-zinc-900/70 p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-6">
@@ -477,6 +482,7 @@ export default function ProgrammeClient({
                   ) : null}
 
                   <div className="mt-8">
+                    <MissedSessionGuidanceNote className="mb-4" />
                     <h4 className="mb-4 flex items-center gap-2 text-base font-bold text-white">
                       <Dumbbell className="h-4 w-4 text-yellow-400" />
                       Sessions
@@ -595,6 +601,8 @@ export default function ProgrammeClient({
                 ) : null}
               </section>
             ) : null}
+
+            <DashboardSupportCard />
           </div>
         )}
 

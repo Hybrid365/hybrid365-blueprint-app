@@ -19,11 +19,13 @@ import {
   HYBRID_CHALLENGE_DURATION_WEEKS,
   HYBRID_CHALLENGE_NAME,
   HYBRID_CHALLENGE_POINTS,
+  HYBRID_CHALLENGE_LAUNCH_LINES,
   HYBRID_CHALLENGE_RULES,
   HYBRID_CHALLENGE_TAGLINE,
   getChallengeWeekSpec,
 } from "@/app/lib/hybridChallengeConfig";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
+import { DashboardSupportCard } from "@/components/dashboard/DashboardSupportCard";
 import type {
   ChallengeSubmissionRow,
   HybridBaselineChecklist,
@@ -156,9 +158,16 @@ export default function ChallengeClient({
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">{HYBRID_CHALLENGE_NAME}</h1>
                 <p className="mt-2 text-lg text-yellow-200/90">{HYBRID_CHALLENGE_TAGLINE}</p>
-                <p className="mt-4 max-w-2xl border-l-2 border-yellow-400/40 pl-5 text-base font-medium leading-relaxed tracking-tight text-zinc-200 sm:text-lg">
-                  Train hard, stay disciplined, track your progress and earn rewards for consistency.
-                </p>
+                <div className="mt-4 max-w-2xl space-y-2 border-l-2 border-yellow-400/40 pl-5">
+                  {HYBRID_CHALLENGE_LAUNCH_LINES.map((line) => (
+                    <p
+                      key={line}
+                      className="text-base font-medium leading-relaxed tracking-tight text-zinc-200 sm:text-lg"
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
                 <p className="mt-4 text-sm text-zinc-400">
                   {HYBRID_CHALLENGE_DURATION_WEEKS}-week accountability layer · {dayLabel}
                 </p>
@@ -502,6 +511,8 @@ export default function ChallengeClient({
             ))}
           </ul>
         </section>
+
+        <DashboardSupportCard className="mb-8" />
 
         <div className="flex justify-center pb-8">
           <Link

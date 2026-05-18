@@ -5,6 +5,12 @@
 
 export const HYBRID_CHALLENGE_NAME = "Hybrid Challenge";
 export const HYBRID_CHALLENGE_TAGLINE = "Train. Track. Prove.";
+
+/** Launch copy — consistency & proof (UI only; scoring unchanged). */
+export const HYBRID_CHALLENGE_LAUNCH_LINES = [
+  "Performance matters, but consistency wins the leaderboard.",
+  "Complete the work, log the proof, post in the group and tag @kieranhiggsfit or @hybrid.365 when sharing publicly.",
+] as const;
 export const HYBRID_CHALLENGE_DURATION_WEEKS = 6;
 
 export const HYBRID_CHALLENGE_RULES: string[] = [

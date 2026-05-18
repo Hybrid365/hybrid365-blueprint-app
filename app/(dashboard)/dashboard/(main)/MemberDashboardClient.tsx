@@ -51,7 +51,11 @@ import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateP
 import { shareCardInputFromMemberSession } from "@/app/lib/sessionShareCardText";
 import { DashboardChallengeTeaser } from "@/components/dashboard/DashboardChallengeTeaser";
 import { DashboardHabitsTeaser } from "@/components/dashboard/DashboardHabitsTeaser";
+import { DashboardSupportCard } from "@/components/dashboard/DashboardSupportCard";
+import { MissedSessionGuidanceNote } from "@/components/dashboard/MissedSessionGuidanceNote";
+import { ProgrammeReadyBanner } from "@/components/dashboard/ProgrammeReadyBanner";
 import { ThisWeekTrackingCard } from "@/components/dashboard/ThisWeekTrackingCard";
+import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
 import {
   buildDashboardWeekTrackingSummary,
   type ChallengeTrackingSummary,
@@ -321,7 +325,20 @@ export default function MemberDashboardClient({
   const [generatingProgramme, setGeneratingProgramme] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateSuccess, setGenerateSuccess] = useState<string | null>(null);
+  const [showProgrammeReadyBanner, setShowProgrammeReadyBanner] = useState(false);
   const allWeeks = useMemo(() => buildTwelveWeeks(weeksFromDb), [weeksFromDb]);
+
+  useEffect(() => {
+    if (!programmeGenerated) return;
+    try {
+      if (sessionStorage.getItem("hybrid365-programme-ready") === "1") {
+        setShowProgrammeReadyBanner(true);
+        sessionStorage.removeItem("hybrid365-programme-ready");
+      }
+    } catch {
+      /* sessionStorage unavailable */
+    }
+  }, [programmeGenerated]);
 
   const derivedFromFlags =
     allWeeks.find((w) => w.is_unlocked)?.week_number ??
@@ -549,7 +566,13 @@ export default function MemberDashboardClient({
       setGeneratingProgramme(false);
       return;
     }
+    try {
+      sessionStorage.setItem("hybrid365-programme-ready", "1");
+    } catch {
+      /* ignore */
+    }
     setGenerateSuccess(result.message ?? "Programme ready.");
+    setShowProgrammeReadyBanner(true);
     setGeneratingProgramme(false);
     router.refresh();
   }
@@ -1135,7 +1158,12 @@ export default function MemberDashboardClient({
                 </div>
 
                 {generateError ? <p className="mt-4 text-sm text-red-300">{generateError}</p> : null}
-                {generateSuccess ? <p className="mt-4 text-sm text-emerald-300">{generateSuccess}</p> : null}
+                {generateSuccess ? (
+                  <div className="mt-6">
+                    <ProgrammeReadyBanner />
+                  </div>
+                ) : null}
+                <DashboardSupportCard className="mt-8" />
               </div>
             </div>
           </section>
@@ -1166,6 +1194,7 @@ export default function MemberDashboardClient({
                 Challenge
               </Link>
             </div>
+            <DashboardSupportCard className="mt-6" />
           </section>
         )}
 
@@ -1177,6 +1206,14 @@ export default function MemberDashboardClient({
                 summary={weekTrackingSummary}
                 onCompleteCheckIn={() => openCheckInDrawer(effectiveCurrentWeek)}
               />
+            ) : null}
+
+            {programmeGenerated && showProgrammeReadyBanner ? (
+              <ProgrammeReadyBanner onDismiss={() => setShowProgrammeReadyBanner(false)} />
+            ) : null}
+
+            {programmeGenerated && effectiveCurrentWeek === 1 ? (
+              <WeekOneGuidanceCard />
             ) : null}
 
             {/* Week hero */}
@@ -1501,6 +1538,7 @@ export default function MemberDashboardClient({
 
             {/* Sessions */}
             <section>
+              <MissedSessionGuidanceNote className="mb-4" />
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <h3 className="text-xl font-bold text-white sm:text-2xl">This week&apos;s sessions</h3>
                 {weekUnlocked && hasPlanForSelectedWeek ? (
@@ -1571,6 +1609,8 @@ export default function MemberDashboardClient({
             <DashboardHabitsTeaser />
 
             <DashboardChallengeTeaser />
+
+            <DashboardSupportCard />
 
             <div>
               <h3 className="mb-4 text-lg font-bold text-white sm:text-xl">Next session</h3>

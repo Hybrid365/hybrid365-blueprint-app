@@ -349,6 +349,11 @@ export default function AssessmentClient({
       setGeneratingProgramme(false);
       return;
     }
+    try {
+      sessionStorage.setItem("hybrid365-programme-ready", "1");
+    } catch {
+      /* ignore */
+    }
     setGenerateSuccess(result.message ?? "Programme ready.");
     setGeneratingProgramme(false);
     router.push("/dashboard");
