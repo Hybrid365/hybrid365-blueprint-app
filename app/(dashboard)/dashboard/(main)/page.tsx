@@ -7,7 +7,18 @@ import {
 import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import { countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
+import {
+  buildChallengeTrackingSummary,
+  buildDashboardWeekTrackingSummary,
+} from "@/app/lib/dashboardWeekTracking";
+import { localDateKey, shiftLocalDateKey, type DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
 import { hybridAthleteDisplayName } from "@/app/lib/displayName";
+import type { ChallengeSubmissionRow } from "@/app/lib/hybridChallengeMetrics";
+import {
+  buildTwelveProgrammeWeeks,
+  deriveEffectiveCurrentWeek,
+  type BenchmarkTestLike,
+} from "@/app/lib/progressMetrics";
 import MemberDashboardClient, {
   type WeekPayload,
 } from "./MemberDashboardClient";
@@ -60,8 +71,8 @@ type AthleteAssessmentRow = {
   first_name?: string | null;
 };
 
-type BenchmarkTestRow = {
-  test_type: string | null;
+type BenchmarkTestRow = BenchmarkTestLike & {
+  id: string;
 };
 
 export default async function DashboardPage() {
@@ -104,6 +115,12 @@ export default async function DashboardPage() {
   let weeks: ProgrammeWeekRow[] = [];
   let initialSessionLogs: SessionLogRow[] = [];
   let initialWeeklyCheckIns: WeeklyCheckInRow[] = [];
+  let habitLogs: DailyHabitLogRow[] = [];
+  let benchmarkTests: BenchmarkTestRow[] = [];
+  let challengeSubmissions: ChallengeSubmissionRow[] = [];
+
+  const todayYmd = localDateKey(new Date());
+  const habitFromYmd = shiftLocalDateKey(todayYmd, -6);
 
   if (typedInstance?.id) {
     const { data: weekRows } = await supabase
@@ -136,6 +153,33 @@ export default async function DashboardPage() {
       .eq("programme_instance_id", typedInstance.id)
       .order("week_number", { ascending: true });
     initialWeeklyCheckIns = (checkIns ?? []) as WeeklyCheckInRow[];
+
+    const [{ data: habitRows }, { data: benchRows }, { data: subRows }] = await Promise.all([
+      supabase
+        .from("daily_habit_logs")
+        .select(
+          "id, user_id, programme_instance_id, log_date, water_hit, protein_hit, steps_hit, sleep_hit, mobility_hit, proof_posted, notes, created_at, updated_at"
+        )
+        .eq("user_id", user.id)
+        .gte("log_date", habitFromYmd)
+        .lte("log_date", todayYmd)
+        .order("log_date", { ascending: true }),
+      supabase
+        .from("benchmark_tests")
+        .select("id, test_type, test_time, test_value, test_unit, tested_at")
+        .eq("user_id", user.id)
+        .order("tested_at", { ascending: false }),
+      supabase
+        .from("challenge_submissions")
+        .select(
+          "id, user_id, programme_instance_id, challenge_key, challenge_week, challenge_title, score_value, score_unit, score_time, proof_url, proof_note, status, points_awarded, admin_notes, submitted_at, reviewed_at"
+        )
+        .eq("user_id", user.id),
+    ]);
+
+    habitLogs = (habitRows ?? []) as DailyHabitLogRow[];
+    benchmarkTests = (benchRows ?? []) as BenchmarkTestRow[];
+    challengeSubmissions = (subRows ?? []) as ChallengeSubmissionRow[];
   }
 
   const { data: membership } = await supabase
@@ -166,6 +210,36 @@ export default async function DashboardPage() {
     Boolean(typedInstance?.id) &&
     weeks.some((w) => hasMeaningfulPlanJson(w.plan_json));
 
+  const weeks12 = buildTwelveProgrammeWeeks(
+    entitledWeeks.map((w) => ({
+      week_number: w.week_number,
+      is_unlocked: w.is_unlocked ?? false,
+      plan_json: w.plan_json,
+    }))
+  );
+  const effectiveWeek = deriveEffectiveCurrentWeek(instanceCurrentWeek, weeks12);
+  const challengeTracking =
+    programmeGenerated && typedInstance?.id
+      ? buildChallengeTrackingSummary({
+          habitLogs,
+          todayYmd,
+          weeklyCheckIns: initialWeeklyCheckIns,
+          sessionLogs: initialSessionLogs,
+          submissions: challengeSubmissions,
+        })
+      : null;
+  const weekTrackingSummary = programmeGenerated
+    ? buildDashboardWeekTrackingSummary({
+        weeks: weeks12,
+        sessionLogs: initialSessionLogs,
+        weeklyCheckIns: initialWeeklyCheckIns,
+        effectiveWeek,
+        habitLogs,
+        challenge: challengeTracking,
+        benchmarkTests,
+      })
+    : null;
+
   return (
     <MemberDashboardClient
       email={user.email ?? ""}
@@ -182,6 +256,10 @@ export default async function DashboardPage() {
       assessmentCompleted={assessmentCompleted}
       coreTestsLogged={coreTestsLogged}
       programmeGenerated={programmeGenerated}
+      weekTrackingSummary={weekTrackingSummary}
+      habitLogs={habitLogs}
+      benchmarkTests={benchmarkTests}
+      challengeTracking={challengeTracking}
     />
   );
 }

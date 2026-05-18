@@ -7,6 +7,7 @@ import {
 import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import { hybridAthleteDisplayName } from "@/app/lib/displayName";
+import { buildBenchmarkSnapshot } from "@/app/lib/dashboardWeekTracking";
 import {
   buildRecoveryTrends,
   buildTwelveProgrammeWeeks,
@@ -167,6 +168,7 @@ export default async function ProgressPage() {
       : bodyweightTrend.latestKg;
 
   const programmeTitle = typedInstance?.title?.trim() || "Your Hybrid365 programme";
+  const benchmarkSnapshot = buildBenchmarkSnapshot(benchmarks);
 
   return (
     <ProgressClient
@@ -186,6 +188,7 @@ export default async function ProgressPage() {
       recoveryTrends={recoveryTrends}
       checkInsSubmitted={checkIns.length}
       latestBodyweightKg={latestBodyweightKg}
+      benchmarkSnapshot={benchmarkSnapshot}
     />
   );
 }

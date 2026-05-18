@@ -33,6 +33,8 @@ import type {
 } from "@/app/lib/progressMetrics";
 import { isTimeLowerIsBetterBenchmark } from "@/app/lib/progressMetrics";
 import { isStrengthBenchmarkType } from "@/app/lib/benchmarkCoreAreas";
+import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
+import { BenchmarkSnapshotStrip } from "@/components/dashboard/BenchmarkSnapshotStrip";
 
 type AdherenceSnapshot = {
   completedUnlocked: number;
@@ -73,6 +75,7 @@ type Props = {
   recoveryTrends: RecoveryTrendRow[];
   checkInsSubmitted: number;
   latestBodyweightKg: number | null;
+  benchmarkSnapshot: BenchmarkSnapshotItem[];
 };
 
 function TrendGlyph({ trend, label }: { trend: "up" | "down" | "flat" | "none"; label: string }) {
@@ -218,6 +221,7 @@ export default function ProgressClient({
   recoveryTrends,
   checkInsSubmitted,
   latestBodyweightKg,
+  benchmarkSnapshot,
 }: Props) {
   void _email;
   const hasProgramme = Boolean(programmeInstanceId) && programmeGenerated;
@@ -286,6 +290,10 @@ export default function ProgressClient({
               <span className="mx-2 text-zinc-700">·</span>
               Current week <span className="font-semibold text-white">{effectiveWeek}</span>
             </p>
+
+            <section className="rounded-2xl border border-zinc-800/90 bg-zinc-900/60 p-5 sm:p-6">
+              <BenchmarkSnapshotStrip items={benchmarkSnapshot} />
+            </section>
 
             {/* A — Hero summary */}
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

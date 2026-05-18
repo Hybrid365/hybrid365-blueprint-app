@@ -51,6 +51,15 @@ import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateP
 import { shareCardInputFromMemberSession } from "@/app/lib/sessionShareCardText";
 import { DashboardChallengeTeaser } from "@/components/dashboard/DashboardChallengeTeaser";
 import { DashboardHabitsTeaser } from "@/components/dashboard/DashboardHabitsTeaser";
+import { ThisWeekTrackingCard } from "@/components/dashboard/ThisWeekTrackingCard";
+import {
+  buildDashboardWeekTrackingSummary,
+  type ChallengeTrackingSummary,
+  type DashboardWeekTrackingSummary,
+} from "@/app/lib/dashboardWeekTracking";
+import type { DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
+import type { BenchmarkTestLike } from "@/app/lib/progressMetrics";
+import { buildTwelveProgrammeWeeks } from "@/app/lib/progressMetrics";
 import type { SessionShareCardProps } from "@/components/share/SessionShareCard";
 import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
@@ -81,6 +90,10 @@ export type MemberDashboardClientProps = {
   assessmentCompleted: boolean;
   coreTestsLogged: number;
   programmeGenerated: boolean;
+  weekTrackingSummary: DashboardWeekTrackingSummary | null;
+  habitLogs: DailyHabitLogRow[];
+  benchmarkTests: BenchmarkTestLike[];
+  challengeTracking: ChallengeTrackingSummary | null;
 };
 
 type SessionLogRecord = {
@@ -300,6 +313,9 @@ export default function MemberDashboardClient({
   assessmentCompleted,
   coreTestsLogged,
   programmeGenerated,
+  habitLogs,
+  benchmarkTests,
+  challengeTracking,
 }: MemberDashboardClientProps) {
   const router = useRouter();
   const [generatingProgramme, setGeneratingProgramme] = useState(false);
@@ -333,6 +349,51 @@ export default function MemberDashboardClient({
   const [weeklyCheckIns, setWeeklyCheckIns] = useState<Record<number, WeeklyCheckInRecord>>(
     () => Object.fromEntries(initialWeeklyCheckIns.map((entry) => [entry.week_number, entry]))
   );
+
+  const weekTrackingSummary = useMemo(() => {
+    if (!programmeGenerated) return null;
+    const weeks12 = buildTwelveProgrammeWeeks(
+      allWeeks.map((w) => ({
+        week_number: w.week_number,
+        is_unlocked: w.is_unlocked ?? false,
+        plan_json: w.plan_json,
+      }))
+    );
+    const logsList = Object.values(sessionLogs).map((log) => ({
+      week_number: log.week_number,
+      session_key: log.session_key,
+      completed: log.completed,
+      rpe: log.rpe,
+    }));
+    const checkInsList = Object.values(weeklyCheckIns).map((c) => ({
+      week_number: c.week_number,
+      bodyweight_kg: c.bodyweight_kg,
+      sleep_hours: c.sleep_hours,
+      energy_score: c.energy_score,
+      recovery_score: c.recovery_score,
+      stress_score: c.stress_score,
+      motivation_score: c.motivation_score,
+      submitted_at: c.submitted_at,
+    }));
+    return buildDashboardWeekTrackingSummary({
+      weeks: weeks12,
+      sessionLogs: logsList,
+      weeklyCheckIns: checkInsList,
+      effectiveWeek: effectiveCurrentWeek,
+      habitLogs,
+      challenge: challengeTracking,
+      benchmarkTests,
+    });
+  }, [
+    programmeGenerated,
+    allWeeks,
+    sessionLogs,
+    weeklyCheckIns,
+    effectiveCurrentWeek,
+    habitLogs,
+    challengeTracking,
+    benchmarkTests,
+  ]);
   const [checkInDraft, setCheckInDraft] = useState({
     bodyweight_kg: "",
     sleep_hours: "",
@@ -569,9 +630,12 @@ export default function MemberDashboardClient({
     }
   }
 
-  function openCheckInDrawer() {
-    if (!weekUnlocked) return;
-    const existing = getCheckInForWeek(weeklyCheckIns, selectedWeek);
+  function openCheckInDrawer(forWeek?: number) {
+    const week = forWeek ?? selectedWeek;
+    const weekRow = allWeeks.find((w) => w.week_number === week);
+    if (!weekRow?.is_unlocked) return;
+    setSelectedWeek(week);
+    const existing = getCheckInForWeek(weeklyCheckIns, week);
     setCheckInDraft({
       bodyweight_kg: existing?.bodyweight_kg != null ? String(existing.bodyweight_kg) : "",
       sleep_hours: existing?.sleep_hours != null ? String(existing.sleep_hours) : "",
@@ -1108,6 +1172,13 @@ export default function MemberDashboardClient({
         <div className="grid gap-10 lg:grid-cols-[1fr_min(380px,34%)] xl:grid-cols-[1fr_420px] xl:gap-12">
           {/* ——— Main column ——— */}
           <div className="min-w-0 space-y-10">
+            {programmeGenerated && weekTrackingSummary ? (
+              <ThisWeekTrackingCard
+                summary={weekTrackingSummary}
+                onCompleteCheckIn={() => openCheckInDrawer(effectiveCurrentWeek)}
+              />
+            ) : null}
+
             {/* Week hero */}
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 sm:p-8 lg:p-10">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-yellow-400/10 px-4 py-1.5 text-sm font-medium text-yellow-400">
@@ -1634,7 +1705,7 @@ export default function MemberDashboardClient({
               {checkInError ? <p className="mt-3 text-sm text-red-300">{checkInError}</p> : null}
               <button
                 type="button"
-                onClick={openCheckInDrawer}
+                onClick={() => openCheckInDrawer()}
                 disabled={!weekUnlocked}
                 className="mt-5 w-full rounded-xl bg-yellow-400 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
