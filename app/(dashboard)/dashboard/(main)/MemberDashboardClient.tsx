@@ -55,6 +55,11 @@ import type { SessionShareCardProps } from "@/components/share/SessionShareCard"
 import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { AddToHomeScreenBanner } from "@/components/dashboard/AddToHomeScreenBanner";
+import {
+  OnboardingHowItWorksCard,
+  OnboardingStructureBlock,
+  OnboardingWhopEmailNote,
+} from "@/components/dashboard/OnboardingEducation";
 
 export type WeekPayload = {
   week_number: number;
@@ -842,9 +847,7 @@ export default function MemberDashboardClient({
                   Before your programme is built, we need to understand your goal, training availability, current fitness
                   and what you&apos;re working around. Your answers shape the 12-week plan.
                 </p>
-                <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-                  Access is linked to your Whop email — keep using the same email for login.
-                </p>
+                <OnboardingWhopEmailNote />
 
                 <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                   {(() => {
@@ -892,6 +895,9 @@ export default function MemberDashboardClient({
                     });
                   })()}
                 </div>
+
+                <OnboardingStructureBlock />
+                <OnboardingHowItWorksCard />
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                   {/* Step 1 */}
@@ -1033,14 +1039,6 @@ export default function MemberDashboardClient({
                     </p>
                     <p className="mt-3 text-xs font-medium text-zinc-600">Unlocks when your plan is live.</p>
                   </div>
-                </div>
-
-                <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-6">
-                  <h3 className="text-base font-bold text-yellow-200/95 sm:text-lg">Structure beats motivation</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                    Hybrid365 is built for athletes who want to run better, lift properly, perform harder and look like
-                    they train. The goal is simple: build the structure that lets you become stronger, fitter and faster.
-                  </p>
                 </div>
 
                 <div className="mt-8 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

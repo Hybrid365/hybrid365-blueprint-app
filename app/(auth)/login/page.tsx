@@ -122,10 +122,12 @@ function LoginForm() {
               placeholder="you@example.com"
               disabled={submitting}
             />
-            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-              Paid member? Use the exact same email you used to join Whop so your dashboard access
-              unlocks automatically.
-            </p>
+            <div className="mt-2.5 rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-3 py-2.5">
+              <p className="text-xs leading-relaxed text-zinc-400">
+                <span className="font-medium text-zinc-300">Paid member?</span> Use the exact same email you used to
+                join Whop so your dashboard access unlocks automatically.
+              </p>
+            </div>
           </div>
 
           {banner ? (
@@ -156,8 +158,8 @@ function LoginForm() {
             {submitting ? "Sending…" : "Email me a link"}
           </button>
 
-          <p className="text-center text-xs leading-relaxed text-zinc-500">
-            Use the latest email link. Sign-in links can expire or be invalidated if you request a new one.
+          <p className="text-center text-[11px] leading-relaxed text-zinc-500">
+            If you request multiple sign-in links, use the latest email link. Older links may expire.
           </p>
         </form>
       )}
