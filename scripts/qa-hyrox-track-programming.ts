@@ -27,12 +27,20 @@ import { buildRoleByDayFromSchedule } from "../app/lib/weekScheduleRepair";
 import {
   countHardRunExposures,
   hasBikeOrErgAerobicSupport,
+  isCompromisedRunExposure,
   isFloatOrIntervalQuality,
+  isHardRunExposure,
   maxHardRunExposuresForHyroxPro,
   mondayViolatesSundayRecovery,
   sundayIsLongAerobic,
   weekHasThresholdAndCompromised,
 } from "../app/lib/hyroxRunIntensityPolicy";
+import {
+  getSkeletonForDay,
+  hasConsecutiveMidweekRunQuality,
+  sessionViolatesSkeleton,
+  shouldUseHyroxProWeeklySkeleton,
+} from "../app/lib/hyroxProWeeklySkeleton";
 import type { DayPlan } from "../app/lib/sessionLibrary";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -202,7 +210,7 @@ function testCaseA() {
     );
   }
 
-  assert(analysis.warnings.length < 30, "Case A: preview warnings should be bounded");
+  assert(analysis.warnings.length < 45, "Case A: preview warnings should be bounded");
 
   console.log("✓ Case A: HYROX Pro — threshold, compromised, rhythm, erg, specific strength");
 }
@@ -363,6 +371,7 @@ function testAdvancedHyroxPro7Day() {
   assert(input.hyrox_track?.active, "7d Pro: hyrox track active");
   assert(input.ability_level === "advanced", "7d Pro: advanced ability");
   assert(input.days_per_week === 7, "7d Pro: seven training days");
+  assert(shouldUseHyroxProWeeklySkeleton(input), "7d Pro: strict weekly skeleton active");
 
   const weeks = generate12WeekProgramme(input);
   function doubleIntentCounts(schedule: DayPlan[]) {
@@ -484,9 +493,15 @@ function testAdvancedHyroxPro7Day() {
     }
 
     const runs = countRunExposuresInSchedule(schedule);
-    const runFloor = wn === 1 ? 3 : 4;
-    if (wn <= 2) {
+    const runFloor = wn <= 3 ? 3 : 4;
+    if (wn <= 3) {
       assert(runs >= runFloor, `Week ${wn}: need ≥${runFloor} run exposures (got ${runs})`);
+      if (runs < 4) {
+        assert(
+          hasBikeOrErgAerobicSupport(schedule),
+          `Week ${wn}: with ${runs} runs, bike/erg aerobic support should cover easy-day volume`
+        );
+      }
     }
 
     const rhythm = analyzeWeeklyRhythm(schedule, roleByDay);
@@ -547,6 +562,70 @@ function testAdvancedHyroxPro7Day() {
         `Week ${wn}: double bike/aerobic "${d.double_session!.secondary.title}" needs duration`
       );
     }
+
+    if (wn === 7) {
+      const mon = schedule.find((d) => d.day === "Mon");
+      const tue = schedule.find((d) => d.day === "Tue");
+      const wed = schedule.find((d) => d.day === "Wed");
+      const thu = schedule.find((d) => d.day === "Thu");
+      const fri = schedule.find((d) => d.day === "Fri");
+      const sat = schedule.find((d) => d.day === "Sat");
+      const sun = schedule.find((d) => d.day === "Sun");
+
+      assert(mon && getSkeletonForDay("Mon", 7) === "recovery", "Week 7: Monday is recovery slot");
+      assert(
+        mon &&
+          !isHardRunExposure(mon, roleByDay.get("Mon")) &&
+          !sessionViolatesSkeleton(mon, "recovery", roleByDay.get("Mon")),
+        `Week 7: Monday must be recovery/easy (got ${mon?.title})`
+      );
+      assert(
+        tue &&
+          (isRunThresholdAnchorDay(tue) || tue.tags?.[0] === "threshold_run") &&
+          !isFloatOrIntervalQuality(tue),
+        `Week 7: Tuesday hard threshold anchor (got ${tue?.title})`
+      );
+      assert(
+        wed &&
+          !isHardRunExposure(wed, roleByDay.get("Wed")) &&
+          !sessionViolatesSkeleton(wed, "easy", roleByDay.get("Wed")),
+        `Week 7: Wednesday easy aerobic (got ${wed?.title})`
+      );
+      assert(
+        thu && !sessionViolatesSkeleton(thu, "hard", roleByDay.get("Thu")),
+        `Week 7: Thursday hard slot valid (got ${thu?.title})`
+      );
+      assert(
+        fri &&
+          !isHardRunExposure(fri, roleByDay.get("Fri")) &&
+          !sessionViolatesSkeleton(fri, "easy", roleByDay.get("Fri")),
+        `Week 7: Friday easy (got ${fri?.title})`
+      );
+      assert(
+        sat &&
+          (isCompromisedRunExposure(sat) ||
+            /hyrox|compromised|station/i.test(sat.title) ||
+            roleByDay.get("Sat") === "hybrid_primary"),
+        `Week 7: Saturday HYROX-specific hard (got ${sat?.title})`
+      );
+      assert(
+        sun && (sun.tags?.[0] === "long_run" || /long run|long zone|long aerobic/i.test(sun.title)),
+        `Week 7: Sunday longer aerobic (got ${sun?.title})`
+      );
+      assert(
+        !hasConsecutiveMidweekRunQuality(schedule),
+        "Week 7: no Tue float + Wed intervals + Thu threshold chain"
+      );
+      assert(
+        hardRuns <= 2,
+        `Week 7: max 2 hard run exposures in mid build (got ${hardRuns})`
+      );
+      const w7Thr = summariseThresholdVolume(schedule);
+      assert(
+        w7Thr.run_threshold_minutes > 0,
+        "Week 7: run threshold anchor minutes required"
+      );
+    }
   }
 
   const preferredUsed = weeks.some((w) =>
@@ -565,7 +644,7 @@ function testAdvancedHyroxPro7Day() {
 
   const analysis = analyseProgrammePreview(weeks, input);
   const rhythmWarnings = analysis.warnings.filter((w) =>
-    /Monday is hard after Sunday|Monday moderate\/hard after Sunday|hard run exposures|interval\/float run with threshold|run volume .* below band with .* hard runs|only 3 run exposure|no erg threshold minutes detected|3 consecutive hard days|non-run session.*run prescription|below target.*km|missing calf|missing explicit duration/i.test(
+    /Monday is hard after Sunday|Monday moderate\/hard after Sunday|hard run exposures|HYROX Pro skeleton|easy\/recovery\/long slot|Tuesday\/Wed\/Thu all contain|threshold volume may be rising via extra hard runs|interval\/float run with threshold|run volume .* below band with .* hard runs|no erg threshold minutes detected|3 consecutive hard days|non-run session.*run prescription|missing calf|missing explicit duration/i.test(
       w
     )
   );

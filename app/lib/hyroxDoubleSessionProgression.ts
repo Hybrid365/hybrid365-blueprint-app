@@ -18,6 +18,10 @@ import {
   isRunThresholdAnchorDay,
 } from "./thresholdVolumeTracking";
 import {
+  preferredDoubleDaysForSkeleton,
+  shouldUseHyroxProWeeklySkeleton,
+} from "./hyroxProWeeklySkeleton";
+import {
   classifyDayPlan,
   type SessionStressLevel,
 } from "./sessionStressClassification";
@@ -167,8 +171,15 @@ export function resolveHyroxDoubleWeekPlan(args: {
     .map(normalizeDayKey)
     .filter((d): d is DayKey => d !== null && !BLOCKED_DOUBLE_DAYS.has(d));
 
-  const double_days =
-    preferred.length > 0
+  const skeletonDays =
+    shouldUseHyroxProWeeklySkeleton(args.input) &&
+    args.input.hyrox_track?.hyrox_event_type === "pro"
+      ? preferredDoubleDaysForSkeleton(args.input, args.weekNumber, args.weekFocus)
+      : null;
+
+  const double_days = skeletonDays
+    ? skeletonDays.slice(0, maxDoublesForBand(args.input.weekly_hours_band))
+    : preferred.length > 0
       ? [...new Set(preferred)].slice(0, maxDoublesForBand(args.input.weekly_hours_band))
       : DEFAULT_DOUBLE_DAYS.filter((d) => !BLOCKED_DOUBLE_DAYS.has(d)).slice(
           0,

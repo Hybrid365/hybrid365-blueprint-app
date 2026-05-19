@@ -142,6 +142,7 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
             <th className="px-3 py-2">Long</th>
             <th className="px-3 py-2">Run km</th>
             <th className="px-3 py-2">Rhythm</th>
+            <th className="px-3 py-2">Skeleton</th>
             <th className="px-3 py-2">HYROX</th>
           </tr>
         </thead>
@@ -202,6 +203,20 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
                 title={w.day_stress_sequence}
               >
                 {w.day_stress_sequence.replace(/ /g, "")}
+              </td>
+              <td
+                className={`px-3 py-2 font-mono text-xs ${
+                  w.skeleton_sequence?.includes("⚠") ? "text-amber-400" : "text-zinc-500"
+                }`}
+                title={
+                  w.skeleton_sequence
+                    ? `Recovery / Hard / Easy rhythm. Hard runs: ${w.hard_run_exposures ?? "—"}`
+                    : undefined
+                }
+              >
+                {w.skeleton_sequence
+                  ? w.skeleton_sequence.replace(/Recovery/g, "R").replace(/Hard/g, "H").replace(/Easy/g, "E").replace(/Long Aerobic/g, "L")
+                  : "—"}
               </td>
               <td className="px-3 py-2 text-zinc-400">
                 {w.compromised_sessions > 0 ? w.compromised_sessions : "—"}

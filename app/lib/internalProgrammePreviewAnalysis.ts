@@ -29,7 +29,21 @@ import {
   summariseDoubleSessionsFromSchedule,
 } from "./hyroxDoubleSessionProgression";
 import type { HyroxDoublePhase } from "./hyroxDoubleSessionProgression";
-import { isHyroxProAdvancedProfile } from "./hyroxRunIntensityPolicy";
+import {
+  countHardRunExposures,
+  isHyroxProAdvancedProfile,
+  maxHardRunExposuresForHyroxPro,
+  mondayViolatesSundayRecovery,
+  sundayIsLongAerobic,
+} from "./hyroxRunIntensityPolicy";
+import {
+  getSkeletonForDay,
+  hasConsecutiveMidweekRunQuality,
+  sessionViolatesSkeleton,
+  shouldUseHyroxProWeeklySkeleton,
+  skeletonSequenceForPreview,
+} from "./hyroxProWeeklySkeleton";
+import { buildRoleByDayFromSchedule } from "./weekScheduleRepair";
 
 export type WeekPreviewMetrics = {
   week_number: number;
@@ -53,6 +67,8 @@ export type WeekPreviewMetrics = {
   run_volume_target_km_max: number | null;
   run_volume_band_compliant: boolean | null;
   day_stress_sequence: string;
+  skeleton_sequence: string | null;
+  hard_run_exposures: number | null;
   non_run_with_run_prescription: number;
   bike_sessions_missing_duration: number;
   hyrox_lower_has_calf_iso: boolean | null;
@@ -204,16 +220,26 @@ export function analyseProgrammePreview(
         : marker.estimated_run_volume_km ??
           (runPlan ? Math.round((runPlan.targetKmMin + runPlan.targetKmMax) / 2) : null);
 
+    const roleByDay = buildRoleByDayFromSchedule(schedule);
+    const usesProSkeleton = shouldUseHyroxProWeeklySkeleton(input);
+
     const stressSeq = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
       .map((d) => {
         const day = schedule.find((x) => x.day === d);
         if (!day) return `${d}:—`;
-        const c = classifyDayPlan(day);
+        const c = classifyDayPlan(day, roleByDay.get(d as "Mon"));
         const abbrev =
           c.session_stress === "high" ? "H" : c.session_stress === "moderate" ? "M" : "L";
         return `${d}:${abbrev}`;
       })
       .join(" ");
+
+    const skeletonSeq = usesProSkeleton
+      ? skeletonSequenceForPreview(schedule, input.days_per_week, roleByDay)
+      : null;
+    const hardRunCount = usesProSkeleton
+      ? countHardRunExposures(schedule, roleByDay)
+      : null;
 
     let nonRunRx = 0;
     let bikeMissingDuration = 0;
@@ -282,6 +308,8 @@ export function analyseProgrammePreview(
       run_volume_target_km_max: runPlan?.targetKmMax ?? null,
       run_volume_band_compliant: bandCompliant,
       day_stress_sequence: stressSeq,
+      skeleton_sequence: skeletonSeq,
+      hard_run_exposures: hardRunCount,
       non_run_with_run_prescription: nonRunRx,
       bike_sessions_missing_duration: bikeMissingDuration,
       hyrox_lower_has_calf_iso: calfOk,
@@ -303,6 +331,60 @@ export function analyseProgrammePreview(
     if (usesRepairDiagnostics && remaining.length > 0) {
       for (const issue of remaining) {
         warnings.push(`Week ${week.week_number}: ${issue}`);
+      }
+    }
+
+    if (
+      usesProSkeleton &&
+      !usesRepairDiagnostics &&
+      !isDeloadWeekNumber(week.week_number, week.plan_json.week_context?.week_focus)
+    ) {
+      if (skeletonSeq?.includes("⚠")) {
+        warnings.push(
+          `Week ${week.week_number}: HYROX Pro skeleton violation — ${skeletonSeq}.`
+        );
+      }
+      for (const dayKey of ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const) {
+        const sk = getSkeletonForDay(dayKey, input.days_per_week);
+        if (!sk) continue;
+        const dayPlan = schedule.find((x) => x.day === dayKey);
+        if (!dayPlan) continue;
+        if (sessionViolatesSkeleton(dayPlan, sk, roleByDay.get(dayKey))) {
+          warnings.push(
+            `Week ${week.week_number} (${dayKey}): easy/recovery/long slot contains threshold, interval, float, hard lower, or compromised work.`
+          );
+        }
+      }
+      const mon = schedule.find((d) => d.day === "Mon");
+      const sun = schedule.find((d) => d.day === "Sun");
+      if (mon && sun && sundayIsLongAerobic(sun) && mondayViolatesSundayRecovery(mon, roleByDay.get("Mon"))) {
+        warnings.push(
+          `Week ${week.week_number}: Monday must be recovery/easy after Sunday long aerobic.`
+        );
+      }
+      const hardCap = maxHardRunExposuresForHyroxPro(
+        week.week_number,
+        week.plan_json.week_context?.week_focus
+      );
+      if (hardRunCount != null && hardRunCount > hardCap) {
+        warnings.push(
+          `Week ${week.week_number}: ${hardRunCount} hard run exposures (max ${hardCap} for this block) — downgrade float/interval before threshold anchor.`
+        );
+      }
+      if (hasConsecutiveMidweekRunQuality(schedule)) {
+        warnings.push(
+          `Week ${week.week_number}: Tue/Wed/Thu all contain run quality — keep threshold anchor only; ease float/interval.`
+        );
+      }
+      if (
+        week.week_number <= 7 &&
+        hardRunCount != null &&
+        hardRunCount >= 3 &&
+        thrVol.erg_threshold_minutes === 0
+      ) {
+        warnings.push(
+          `Week ${week.week_number}: threshold volume may be rising via extra hard runs — use erg/bike threshold on hard days instead.`
+        );
       }
     }
 

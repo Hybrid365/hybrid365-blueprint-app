@@ -282,7 +282,14 @@ export function planWeeklyRunVolume(
   if (bandCap != null) targetMax = Math.min(targetMax, bandCap);
 
   let structureIdHint: string | null = null;
-  if (highVolumeAdvanced && days >= 7 && goal === "hybrid") {
+  if (
+    input.hyrox_track?.active &&
+    input.hyrox_track.hyrox_event_type === "pro" &&
+    advanced &&
+    days >= 7
+  ) {
+    structureIdHint = "7D-C";
+  } else if (highVolumeAdvanced && days >= 7 && goal === "hybrid") {
     structureIdHint = "7D-D";
   } else if (highVolumeAdvanced && days >= 6 && goal === "hybrid") {
     structureIdHint = "6D-E";

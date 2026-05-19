@@ -4,6 +4,7 @@
 
 import type { BlueprintInput } from "./buildWeekBlueprint";
 import { bikeAerobicDurationGuidance } from "./aerobicSessionGuidance";
+import { getSkeletonForDay, shouldUseHyroxProWeeklySkeleton } from "./hyroxProWeeklySkeleton";
 import type { DayKey, DayPlan, StructureRole } from "./sessionLibrary";
 import { classifyDayPlan } from "./sessionStressClassification";
 import { isRunThresholdAnchorDay } from "./thresholdVolumeTracking";
@@ -94,16 +95,26 @@ export function countHardRunExposures(
 
 export function maxHardRunExposuresForHyroxPro(weekNumber: number, weekFocus?: string | null): number {
   if (weekFocus?.includes("deload")) return 2;
-  if (weekNumber <= 3) return 2;
-  if (weekNumber <= 7) return 3;
-  return 4;
+  if (weekNumber <= 7) return 2;
+  if (weekNumber <= 11) return 3;
+  return 2;
 }
 
 /** Lower = downgrade first. */
-export function hardRunDowngradePriority(day: DayPlan, role?: StructureRole): number {
+export function hardRunDowngradePriority(
+  day: DayPlan,
+  role?: StructureRole,
+  input?: BlueprintInput
+): number {
   if (isRunThresholdAnchorDay(day)) return 10_000;
   if (day.day === "Sun" && (day.tags?.[0] === "long_run" || /long run|long zone|long aerobic/i.test(day.title))) {
     return 10_000;
+  }
+  if (input && shouldUseHyroxProWeeklySkeleton(input)) {
+    const sk = getSkeletonForDay(day.day, input.days_per_week);
+    if (sk === "recovery" || sk === "easy") return 5;
+    if (sk === "long_aerobic" && day.tags?.[0] !== "long_run") return 12;
+    if (day.day === "Tue" && isFloatOrIntervalQuality(day)) return 8;
   }
   if (isFloatOrIntervalQuality(day) || day.tags?.[0] === "interval_run") return 10;
   if (isCompromisedRunExposure(day)) return 40;
@@ -201,14 +212,15 @@ export function mondayViolatesSundayRecovery(
 
 export function listHardRunExposureDays(
   schedule: DayPlan[],
-  roleByDay: Map<DayKey, StructureRole>
+  roleByDay: Map<DayKey, StructureRole>,
+  input?: BlueprintInput
 ): { day: DayKey; dayPlan: DayPlan; priority: number }[] {
   return schedule
     .filter((d) => isHardRunExposure(d, roleByDay.get(d.day)))
     .map((d) => ({
       day: d.day,
       dayPlan: d,
-      priority: hardRunDowngradePriority(d, roleByDay.get(d.day)),
+      priority: hardRunDowngradePriority(d, roleByDay.get(d.day), input),
     }))
     .sort((a, b) => a.priority - b.priority);
 }

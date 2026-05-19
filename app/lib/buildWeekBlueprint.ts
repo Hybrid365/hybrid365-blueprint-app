@@ -23,6 +23,13 @@ import { enrichAerobicSessionNotes, isBikeOrEasyAerobicSession } from "./aerobic
 import { buildRunPrescription } from "./runPrescription";
 import { hyroxSessionWeightDelta, hyroxWeeklyStructureBoost } from "./hyroxTrackContext";
 import { isHyroxEarlyBuildWeek, isHyroxProAdvancedProfile } from "./hyroxRunIntensityPolicy";
+import {
+  buildHyroxProSkeletonAssignments,
+  getSkeletonForDay,
+  HYROX_EASY_DAY_BIKE_NOTE,
+  hyroxProSevenDayStructureRoles,
+  shouldUseHyroxProWeeklySkeleton,
+} from "./hyroxProWeeklySkeleton";
 import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import {
   analyzeWeeklyRhythm,
@@ -983,7 +990,8 @@ function pickWeightedSession(
   previousTag?: string,
   runProgression?: RunProgressionContext | null,
   runVolumePlan?: RunVolumePlan | null,
-  blueprintInput?: BlueprintInput
+  blueprintInput?: BlueprintInput,
+  assignedDay?: DayKey
 ): SessionTemplate {
   const equipment = defaultEquipment(input.equipment);
 
@@ -1424,10 +1432,12 @@ function pickWeightedSession(
         }
       }
 
-      if (
+      const hyroxProMidBuild =
         isHyroxProAdvancedProfile(input) &&
-        isHyroxEarlyBuildWeek(pickContext.weekNumber, pickContext.weekFocus)
-      ) {
+        pickContext.weekNumber <= 7 &&
+        !pickContext.weekFocus?.includes("deload");
+
+      if (hyroxProMidBuild) {
         if (s.type === "interval_run") weight -= 34;
         if (s.id === "TMP-400-400" || s.id === "TMP-300-300") weight -= 30;
         if (s.type === "tempo_run" && /400|float|broken threshold/i.test(blob)) weight -= 28;
@@ -1442,6 +1452,42 @@ function pickWeightedSession(
         }
         if (pickContext.runningQualitySessionCount >= 2 && isQualityRunSession(s)) weight -= 32;
         if (s.type === "aerobic_run" || s.type === "aerobic_support") weight += 10;
+      }
+
+      if (assignedDay && shouldUseHyroxProWeeklySkeleton(input)) {
+        const sk = getSkeletonForDay(assignedDay, input.days_per_week);
+        if (sk === "recovery" || sk === "easy") {
+          if (isQualityRunSession(s)) weight -= 48;
+          if (s.type === "threshold_run" || s.type === "interval_run") weight -= 45;
+          if (s.type === "hybrid_compromised") weight -= 40;
+          if (s.type === "strength_lower" && s.fatigue !== "low") weight -= 35;
+          if (s.type === "aerobic_support") weight += 20;
+          if (s.type === "aerobic_run" && s.intensity === "low") weight += 16;
+          if (s.type === "recovery") weight += 14;
+          if (s.category === "strength" && s.fatigue === "low") weight += 8;
+        }
+        if (sk === "hard" && assignedDay === "Tue" && role === "run_quality") {
+          if (s.type === "threshold_run") weight += 45;
+          if (s.id === "TMP-400-400" || s.id === "TMP-300-300") weight -= 50;
+          if (s.type === "interval_run") weight -= 45;
+          if (s.type === "tempo_run" && /float|400|broken threshold/i.test(blob)) weight -= 40;
+        }
+        if (sk === "hard" && assignedDay === "Thu") {
+          if (s.type === "strength_lower" || s.variation_group?.includes("lower")) weight += 18;
+          if (isQualityRunSession(s)) weight -= 40;
+        }
+        if (sk === "hard" && assignedDay === "Sat") {
+          if (s.type === "hybrid_compromised" || s.variation_group === "hybrid_primary") weight += 22;
+          if (isQualityRunSession(s)) weight -= 35;
+        }
+        if (sk === "long_aerobic" && role === "run_long") {
+          if (s.type === "long_run" && s.intensity === "low") weight += 28;
+          if (s.type === "long_run" && /steady finish|progression finish|tempo/i.test(blob)) weight -= 25;
+          if (isQualityRunSession(s) && s.type !== "long_run") weight -= 40;
+        }
+        if (sk === "easy" && (assignedDay === "Wed" || assignedDay === "Fri")) {
+          if (s.equipment.includes("Bike / Spin bike") || s.type === "aerobic_support") weight += 12;
+        }
       }
 
       if (s.category === "run") {
@@ -1753,11 +1799,16 @@ function buildActivePlanDays(
         hyrox_track: input.hyrox_track,
       });
 
+  const structureRoles =
+    shouldUseHyroxProWeeklySkeleton(input) && input.days_per_week >= 6
+      ? hyroxProSevenDayStructureRoles()
+      : runPlan
+        ? applyRunVolumeToStructureRoles(baseStructure.roles, runPlan, input)
+        : baseStructure.roles;
+
   const structure = {
     ...baseStructure,
-    roles: runPlan
-      ? applyRunVolumeToStructureRoles(baseStructure.roles, runPlan, input)
-      : baseStructure.roles,
+    roles: structureRoles,
   };
 
   const weekNumber = options?.week_number ?? 1;
@@ -1813,24 +1864,44 @@ function buildActivePlanDays(
     (a, b) => roleAssignPriority(a) - roleAssignPriority(b)
   );
 
-  rolesInRhythmOrder.forEach((role, idx) => {
+  const skeletonAssignments = buildHyroxProSkeletonAssignments({
+    input,
+    structureRoles: structure.roles,
+    weekNumber,
+    weekFocus,
+  });
+
+  const roleDayPairs: Array<{ role: StructureRole; day: DayKey }> = [];
+  if (skeletonAssignments) {
+    for (const a of skeletonAssignments) {
+      roleDayPairs.push({ role: a.structureRole, day: a.day });
+      assignedDays.add(a.day);
+    }
+  } else {
+    rolesInRhythmOrder.forEach((role, idx) => {
+      const day = pickDayForRole({
+        role,
+        fallbackDay: dayOrder[idx]!,
+        assignedDays,
+        parsedConstraints,
+        input,
+        isRunSession:
+          role === "run_quality" ||
+          role === "run_quality_beginner" ||
+          role === "run_long" ||
+          role === "run_aerobic",
+      });
+      assignedDays.add(day);
+      roleDayPairs.push({ role, day });
+    });
+  }
+
+  roleDayPairs.forEach(({ role, day: dayKey }, idx) => {
+    let assignedDay = dayKey;
     const runSlot = runSlotForRole(role, runQualityPickIndex);
     if (role === "run_quality" || role === "run_quality_beginner") {
       runQualityPickIndex += 1;
     }
-
-    let assignedDay = pickDayForRole({
-      role,
-      fallbackDay: dayOrder[idx]!,
-      assignedDays,
-      parsedConstraints,
-      input,
-      isRunSession:
-        role === "run_quality" ||
-        role === "run_quality_beginner" ||
-        role === "run_long" ||
-        role === "run_aerobic",
-    });
 
     let runProgression: RunProgressionContext | null = null;
     if (runSlot) {
@@ -1858,7 +1929,8 @@ function buildActivePlanDays(
         previousFatigueTag,
         runProgression,
         runPlan,
-        input
+        input,
+        assignedDay
       ),
       input.weekly_hours_band,
       input.double_sessions,
@@ -1917,7 +1989,6 @@ function buildActivePlanDays(
         ? "hybrid_high_fatigue"
         : picked.type;
 
-    // Conservative day-placement preference: avoid blocked run days where possible, but never drop sessions.
     if (picked.category === "run" && parsedConstraints.no_running_days.includes(assignedDay)) {
       const fallbackDay = dayOrder.find(
         (day) => !parsedConstraints.no_running_days.includes(day) && !assignedDays.has(day)
@@ -1925,7 +1996,6 @@ function buildActivePlanDays(
       if (fallbackDay) assignedDay = fallbackDay;
     }
 
-    assignedDays.add(assignedDay);
     dayRoleByAssignedDay.set(assignedDay, role);
 
     const { dayPlan, stress } = buildDayPlanAndStressFromTemplate({
@@ -1937,6 +2007,16 @@ function buildActivePlanDays(
       paceGuidance,
       appliedProgression,
     });
+
+    if (shouldUseHyroxProWeeklySkeleton(input)) {
+      const sk = getSkeletonForDay(assignedDay, input.days_per_week);
+      if (sk === "easy" && (assignedDay === "Wed" || assignedDay === "Fri")) {
+        if (!dayPlan.session.notes) dayPlan.session.notes = [];
+        if (!dayPlan.session.notes.some((n) => n.includes(HYROX_EASY_DAY_BIKE_NOTE.slice(0, 28)))) {
+          dayPlan.session.notes.push(HYROX_EASY_DAY_BIKE_NOTE);
+        }
+      }
+    }
 
     stressByDay.set(assignedDay, stress);
     activeDays.push(dayPlan);
