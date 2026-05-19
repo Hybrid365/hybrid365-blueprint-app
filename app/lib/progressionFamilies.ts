@@ -783,7 +783,11 @@ export const PROGRESSION_FAMILIES: ProgressionFamily[] = [
       {
         block_week: 2,
         title: "Upper Strength — Added Set",
-        main: ["Push 4×8–10", "Pull 4×8–10", "Accessory 3×12"],
+        main: [
+          "Incline DB press 4×8–10",
+          "Chest-supported row or lat pulldown 4×8–10",
+          "Seated row 3×10 + strict press 3×8",
+        ],
         marker: { strength_main_lift_sets: 4, previous_week_comparison: "+1 set upper volume" },
         progression_focus: "Add one set on main upper patterns.",
         coach_snippet: "Same effort standard — add load only if all sets stay clean.",

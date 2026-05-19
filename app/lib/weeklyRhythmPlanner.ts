@@ -17,14 +17,14 @@ const ALL_DAYS: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const ROLE_DAY_PREFERENCE: Record<StructureRole, DayKey[]> = {
   run_long: ["Sun", "Sat", "Fri"],
   recovery: ["Mon", "Wed", "Sun"],
-  run_aerobic: ["Mon", "Wed", "Fri", "Thu"],
+  run_aerobic: ["Mon", "Wed", "Fri", "Thu", "Tue"],
   upper_full: ["Mon", "Wed", "Thu"],
   upper_primary: ["Mon", "Wed", "Thu", "Tue"],
   aerobic_support: ["Wed", "Thu", "Sat"],
-  run_quality: ["Thu", "Tue", "Wed", "Fri"],
+  run_quality: ["Thu", "Wed", "Tue", "Fri"],
   run_quality_beginner: ["Thu", "Wed", "Tue"],
-  lower_primary: ["Tue", "Fri", "Thu"],
-  lower_full: ["Tue", "Fri", "Wed"],
+  lower_primary: ["Fri", "Thu", "Tue"],
+  lower_full: ["Fri", "Thu", "Tue"],
   full_body_strength: ["Tue", "Sat", "Thu"],
   hybrid_primary: ["Sat", "Thu", "Fri"],
   hybrid_density: ["Wed", "Sat", "Fri"],
@@ -112,6 +112,9 @@ export function pickDayForRole(args: {
     if (MONDAY_EASY_ROLES.has(role)) {
       candidates = ["Mon", "Wed", "Thu", ...candidates.filter((d) => d !== "Mon")];
     }
+    if (role === "run_aerobic" && input.ability_level !== "beginner") {
+      candidates = ["Mon", "Wed", "Fri", ...candidates.filter((d) => d !== "Mon")];
+    }
     if (MONDAY_BLOCKED_HARD_ROLES.has(role) && !userKeyDays?.has("Mon")) {
       candidates = candidates.filter((d) => d !== "Mon");
     }
@@ -152,22 +155,47 @@ function stressRank(s: SessionStressLevel): number {
 /**
  * Swap two non-filler sessions between days if it reduces consecutive hard days.
  */
+function isLongAerobicAnchorDay(day: DayPlan): boolean {
+  const t0 = day.tags?.[0] ?? "";
+  return t0 === "long_run" || /long run|long zone|endurance long/i.test(day.title);
+}
+
+function sundayLongProtectsMonday(schedule: DayPlan[]): boolean {
+  const sun = schedule.find((d) => d.day === "Sun");
+  if (!sun) return false;
+  if (sun.tags?.[0] === "long_run") return true;
+  return /long run|long zone|long aerobic|long endurance/i.test(sun.title);
+}
+
+function mondayWouldBeHardAfterSwap(
+  swapped: DayPlan[],
+  protectMon: boolean
+): boolean {
+  if (!protectMon) return false;
+  const mon = swapped.find((d) => d.day === "Mon");
+  return mon ? classifyDayPlan(mon).session_stress === "high" : false;
+}
+
 export function balanceScheduleHardEasy(
   schedule: DayPlan[],
   roleByDay: Map<DayKey, StructureRole>
 ): DayPlan[] {
   const days = [...schedule];
-  const maxPasses = 4;
+  const maxPasses = 16;
+  const protectMon = sundayLongProtectsMonday(days);
 
   for (let pass = 0; pass < maxPasses; pass++) {
     const before = analyzeWeeklyRhythm(days, roleByDay);
     if (before.max_consecutive_hard < 3) break;
 
     let improved = false;
-    for (let i = 0; i < days.length; i++) {
-      for (let j = i + 1; j < days.length; j++) {
-        const a = days[i]!;
-        const b = days[j]!;
+    for (let i = 0; i < ALL_DAYS.length; i++) {
+      for (let j = i + 1; j < ALL_DAYS.length; j++) {
+        const dayA = ALL_DAYS[i]!;
+        const dayB = ALL_DAYS[j]!;
+        const a = days.find((d) => d.day === dayA);
+        const b = days.find((d) => d.day === dayB);
+        if (!a || !b) continue;
         if (
           a.template_id?.startsWith("FILLER") ||
           b.template_id?.startsWith("FILLER") ||
@@ -183,6 +211,15 @@ export function balanceScheduleHardEasy(
           return d;
         });
 
+        if (mondayWouldBeHardAfterSwap(swapped, protectMon)) continue;
+        if (
+          protectMon &&
+          ((dayA === "Sun" && isLongAerobicAnchorDay(a)) ||
+            (dayB === "Sun" && isLongAerobicAnchorDay(b)))
+        ) {
+          continue;
+        }
+
         const ra = roleByDay.get(a.day);
         const rb = roleByDay.get(b.day);
         const newRoles = new Map(roleByDay);
@@ -196,11 +233,7 @@ export function balanceScheduleHardEasy(
         }
 
         const after = analyzeWeeklyRhythm(swapped, newRoles);
-        if (
-          after.max_consecutive_hard < before.max_consecutive_hard ||
-          (after.max_consecutive_hard === before.max_consecutive_hard &&
-            after.hard_day_count < before.hard_day_count)
-        ) {
+        if (after.max_consecutive_hard < before.max_consecutive_hard) {
           days.splice(0, days.length, ...swapped);
           if (ra) roleByDay.set(b.day, ra);
           if (rb) roleByDay.set(a.day, rb);

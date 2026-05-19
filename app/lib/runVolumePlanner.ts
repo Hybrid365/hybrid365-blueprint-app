@@ -159,30 +159,64 @@ export function planWeeklyRunVolume(
   const midpoint = bandMidpointKm(band);
   const bandCap = bandMaxKm(band);
 
-  if (advanced && days >= 6 && highHours && !injury && isRunningPriority(goal)) {
-    highVolumeAdvanced = true;
-    if (band === "35-50km/week") {
-      targetMin = 35;
-      targetMax = 45;
-    } else if (band === "50-70km/week") {
-      targetMin = 45;
-      targetMax = 60;
-    } else if (band === "70km+/week") {
-      targetMin = 55;
-      targetMax = 70;
-    } else if (band === "20-35km/week") {
-      targetMin = 28;
-      targetMax = 38;
-    } else if (band === "10-20km/week") {
-      targetMin = 22;
-      targetMax = 32;
-      conservative = true;
-    } else {
-      targetMin = 35;
-      targetMax = 50;
+  if (band && !injury) {
+    switch (band) {
+      case "0-10km/week":
+        targetMin = 6;
+        targetMax = 12;
+        conservative = true;
+        break;
+      case "10-20km/week":
+        targetMin = 14;
+        targetMax = 22;
+        conservative = true;
+        break;
+      case "20-35km/week":
+        targetMin = 22;
+        targetMax = 32;
+        conservative = !advanced;
+        break;
+      case "35-50km/week":
+        targetMin = advanced ? 35 : 28;
+        targetMax = advanced ? 45 : 38;
+        conservative = false;
+        break;
+      case "50-70km/week":
+        targetMin = advanced ? 45 : 35;
+        targetMax = advanced ? 60 : 50;
+        conservative = false;
+        if (advanced && days >= 5 && (highHours || Boolean(input.hyrox_track?.active))) {
+          highVolumeAdvanced = true;
+        }
+        break;
+      case "70km+/week":
+        targetMin = advanced ? 55 : 40;
+        targetMax = advanced ? 70 : 55;
+        conservative = false;
+        highVolumeAdvanced = advanced && days >= 6;
+        break;
+      default:
+        break;
     }
-    conservative = Boolean(band && (band === "0-10km/week" || band === "10-20km/week"));
-  } else if (advanced && isRunningPriority(goal)) {
+  }
+
+  if (advanced && days >= 6 && highHours && !injury && isRunningPriority(goal) && !band) {
+    highVolumeAdvanced = true;
+    targetMin = 35;
+    targetMax = 50;
+    conservative = false;
+  } else if (
+    advanced &&
+    days >= 6 &&
+    highHours &&
+    !injury &&
+    isRunningPriority(goal) &&
+    band === "50-70km/week"
+  ) {
+    highVolumeAdvanced = true;
+    targetMin = Math.max(targetMin, 45);
+    targetMax = Math.min(60, bandCap ?? 70);
+  } else if (advanced && isRunningPriority(goal) && !band) {
     if (midpoint != null) {
       targetMin = Math.round(midpoint * 0.92);
       targetMax = Math.round(midpoint * 1.05);
@@ -225,9 +259,15 @@ export function planWeeklyRunVolume(
     highVolumeAdvanced = false;
   }
 
+  if (bandCap != null) {
+    targetMax = Math.min(targetMax, bandCap);
+    targetMin = Math.min(targetMin, targetMax - 4);
+  }
+
   const scale = weekScaleFactor(weekNumber, weekFocus);
   targetMin = Math.max(8, Math.round(targetMin * scale));
   targetMax = Math.max(targetMin + 4, Math.round(targetMax * scale));
+  if (bandCap != null) targetMax = Math.min(targetMax, bandCap);
 
   let structureIdHint: string | null = null;
   if (highVolumeAdvanced && days >= 7 && goal === "hybrid") {
@@ -380,6 +420,54 @@ export function applyRunVolumeToStructureRoles(
   }
 
   return out;
+}
+
+function isRunSessionForKmEstimate(day: { title: string; tags?: string[] }): boolean {
+  const t0 = day.tags?.[0] ?? "";
+  const title = day.title.toLowerCase();
+  if (
+    t0 === "threshold_run" ||
+    t0 === "interval_run" ||
+    t0 === "long_run" ||
+    t0 === "aerobic_run" ||
+    t0 === "tempo_run"
+  ) {
+    return true;
+  }
+  if (t0 === "hybrid_compromised" && /run|compromised/i.test(title)) return true;
+  if (/easy run|long run|threshold run|aerobic run|tempo run/i.test(title)) return true;
+  return false;
+}
+
+/** Rough planned run km from session durations (preview / repair). */
+export function estimatePlannedRunKmFromSchedule(
+  schedule: {
+    title: string;
+    tags?: string[];
+    time_cap_minutes?: number;
+    progression_marker?: { long_run_minutes?: number };
+  }[]
+): number {
+  let km = 0;
+  for (const day of schedule) {
+    if (!isRunSessionForKmEstimate(day)) continue;
+    const t0 = day.tags?.[0] ?? "";
+    const longMins = day.progression_marker?.long_run_minutes;
+    const mins =
+      t0 === "long_run" && longMins
+        ? longMins
+        : day.time_cap_minutes ?? (t0 === "long_run" ? 70 : 45);
+    const title = day.title.toLowerCase();
+    const isHyroxBrick = /hyrox.*brick|endurance brick/i.test(title);
+    const workMins = mins * (isHyroxBrick ? 0.72 : 0.84);
+    let minPerKm = 5.5;
+    if (t0 === "threshold_run" || t0 === "interval_run") minPerKm = 4.3;
+    else if (t0 === "long_run") minPerKm = isHyroxBrick ? 6.0 : 5.7;
+    else if (t0 === "hybrid_compromised") minPerKm = 4.8;
+    else if (t0 === "tempo_run") minPerKm = 5.0;
+    km += workMins / minPerKm;
+  }
+  return Math.round(km);
 }
 
 export function countRunExposuresInSchedule(

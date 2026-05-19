@@ -4,7 +4,11 @@
 
 import type { GeneratedProgrammeWeek } from "./generate12WeekProgramme";
 import type { PaidProgrammeInput } from "./generate12WeekProgramme";
-import { countRunExposuresInSchedule, planWeeklyRunVolume } from "./runVolumePlanner";
+import {
+  countRunExposuresInSchedule,
+  estimatePlannedRunKmFromSchedule,
+  planWeeklyRunVolume,
+} from "./runVolumePlanner";
 import { summariseWeekMarkers } from "./progressionFamilies";
 import type { DayPlan } from "./sessionLibrary";
 import {
@@ -43,6 +47,14 @@ export type WeekPreviewMetrics = {
   long_run_present: boolean;
   long_run_minutes: number | null;
   estimated_run_km: number | null;
+  planned_run_km: number | null;
+  run_volume_target_km_min: number | null;
+  run_volume_target_km_max: number | null;
+  run_volume_band_compliant: boolean | null;
+  day_stress_sequence: string;
+  non_run_with_run_prescription: number;
+  bike_sessions_missing_duration: number;
+  hyrox_lower_has_calf_iso: boolean | null;
   compromised_sessions: number;
   hyrox_titles: string[];
   station_focus_hint: string | null;
@@ -184,9 +196,53 @@ export function analyseProgrammePreview(
     const marker = summariseWeekMarkers(schedule);
     const thrVol = summariseThresholdVolume(schedule);
     const rhythm = analyzeWeeklyRhythm(schedule);
+    const plannedKm = estimatePlannedRunKmFromSchedule(schedule);
     const km =
-      marker.estimated_run_volume_km ??
-      (runPlan ? Math.round((runPlan.targetKmMin + runPlan.targetKmMax) / 2) : null);
+      plannedKm > 0
+        ? plannedKm
+        : marker.estimated_run_volume_km ??
+          (runPlan ? Math.round((runPlan.targetKmMin + runPlan.targetKmMax) / 2) : null);
+
+    const stressSeq = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+      .map((d) => {
+        const day = schedule.find((x) => x.day === d);
+        if (!day) return `${d}:—`;
+        const c = classifyDayPlan(day);
+        const abbrev =
+          c.session_stress === "high" ? "H" : c.session_stress === "moderate" ? "M" : "L";
+        return `${d}:${abbrev}`;
+      })
+      .join(" ");
+
+    let nonRunRx = 0;
+    let bikeMissingDuration = 0;
+    for (const day of schedule) {
+      if (
+        day.run_prescription &&
+        /hyrox lower|lower_strength_hyrox|strength_lower/i.test(
+          `${day.title} ${day.progression_family ?? ""} ${day.tags?.[0] ?? ""}`
+        )
+      ) {
+        nonRunRx += 1;
+      }
+      if (
+        /bike|flush|aerobic support/i.test(`${day.title} ${(day.session?.main ?? []).join(" ")}`) &&
+        !/(\d{2}–\d{2}|\d{2}-\d{2})\s*min/i.test(
+          `${day.title} ${(day.session?.main ?? []).join(" ")} ${(day.session?.notes ?? []).join(" ")}`
+        )
+      ) {
+        bikeMissingDuration += 1;
+      }
+    }
+
+    const hasHyroxLower = schedule.some((d) =>
+      /hyrox lower|lower_strength_hyrox/i.test(`${d.progression_family ?? ""} ${d.title}`.toLowerCase())
+    );
+    const calfOk = hasHyroxLower ? hasCalfIsoAccessory(schedule) : null;
+    const bandCompliant =
+      runPlan && !isDeloadWeekNumber(week.week_number, week.plan_json.week_context?.week_focus)
+        ? plannedKm >= runPlan.targetKmMin - 4
+        : null;
 
     const doublePlan = shouldUseHyroxProDoubleProgression(input)
       ? resolveHyroxDoubleWeekPlan({
@@ -216,6 +272,14 @@ export function analyseProgrammePreview(
       long_run_present: longRunPresent(schedule),
       long_run_minutes: longRunMinutes(schedule),
       estimated_run_km: km,
+      planned_run_km: plannedKm > 0 ? plannedKm : null,
+      run_volume_target_km_min: runPlan?.targetKmMin ?? null,
+      run_volume_target_km_max: runPlan?.targetKmMax ?? null,
+      run_volume_band_compliant: bandCompliant,
+      day_stress_sequence: stressSeq,
+      non_run_with_run_prescription: nonRunRx,
+      bike_sessions_missing_duration: bikeMissingDuration,
+      hyrox_lower_has_calf_iso: calfOk,
       compromised_sessions: compromisedSessions(schedule).length,
       hyrox_titles: compromisedSessions(schedule).map((d) => d.title),
       station_focus_hint: input.hyrox_track?.station_focus_this_week?.[0] ?? null,
@@ -280,6 +344,25 @@ export function analyseProgrammePreview(
       for (const w of rhythm.warnings) {
         warnings.push(`Week ${week.week_number}: ${w}`);
       }
+    }
+
+    if (runPlan && bandCompliant === false && !isDeloadWeekNumber(week.week_number, week.plan_json.week_context?.week_focus)) {
+      warnings.push(
+        `Week ${week.week_number}: planned run ~${plannedKm}km below target ${runPlan.targetKmMin}–${runPlan.targetKmMax}km for ${input.current_run_volume_band ?? "profile"}.`
+      );
+    }
+    if (nonRunRx > 0) {
+      warnings.push(
+        `Week ${week.week_number}: ${nonRunRx} non-run session(s) still show run prescription.`
+      );
+    }
+    if (bikeMissingDuration > 0) {
+      warnings.push(
+        `Week ${week.week_number}: ${bikeMissingDuration} bike/aerobic session(s) missing explicit duration window.`
+      );
+    }
+    if (calfOk === false) {
+      warnings.push(`Week ${week.week_number}: HYROX lower strength missing calf isometric accessory.`);
     }
 
     for (const day of schedule) {

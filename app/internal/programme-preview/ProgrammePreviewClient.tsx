@@ -140,7 +140,8 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
             <th className="px-3 py-2">Total</th>
             <th className="px-3 py-2">Hard</th>
             <th className="px-3 py-2">Long</th>
-            <th className="px-3 py-2">~km</th>
+            <th className="px-3 py-2">Run km</th>
+            <th className="px-3 py-2">Rhythm</th>
             <th className="px-3 py-2">HYROX</th>
           </tr>
         </thead>
@@ -181,7 +182,27 @@ function QaSummaryTable({ analysis }: { analysis: ProgrammePreviewAnalysis }) {
               <td className="px-3 py-2">
                 {w.long_run_present ? (w.long_run_minutes ? `${w.long_run_minutes}m` : "Yes") : "—"}
               </td>
-              <td className="px-3 py-2">{w.estimated_run_km ?? "—"}</td>
+              <td
+                className={`px-3 py-2 ${
+                  w.run_volume_band_compliant === false ? "text-amber-400" : ""
+                }`}
+                title={
+                  w.run_volume_target_km_min != null
+                    ? `Target ${w.run_volume_target_km_min}–${w.run_volume_target_km_max}km`
+                    : undefined
+                }
+              >
+                {w.planned_run_km ?? w.estimated_run_km ?? "—"}
+                {w.run_volume_target_km_min != null
+                  ? ` / ${w.run_volume_target_km_min}–${w.run_volume_target_km_max}`
+                  : ""}
+              </td>
+              <td
+                className="px-3 py-2 font-mono text-xs text-zinc-500"
+                title={w.day_stress_sequence}
+              >
+                {w.day_stress_sequence.replace(/ /g, "")}
+              </td>
               <td className="px-3 py-2 text-zinc-400">
                 {w.compromised_sessions > 0 ? w.compromised_sessions : "—"}
               </td>

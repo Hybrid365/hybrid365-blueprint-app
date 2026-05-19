@@ -19,6 +19,7 @@ import { mapGoalToBias, pickWeeklyStructure } from "./weeklyStructures";
 import { classifyRunner, type RunnerProfile } from "./classifyRunner";
 import { parseConstraints, type ModalityAvoids, type ParsedConstraints } from "./parseConstraints";
 import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuidance } from "./paceGuidance";
+import { enrichAerobicSessionNotes, isBikeOrEasyAerobicSession } from "./aerobicSessionGuidance";
 import { buildRunPrescription } from "./runPrescription";
 import { hyroxSessionWeightDelta, hyroxWeeklyStructureBoost } from "./hyroxTrackContext";
 import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
@@ -301,6 +302,31 @@ function pickGovernorTemplateByNames(
   );
 }
 
+const STRENGTH_STRUCTURE_ROLES = new Set<StructureRole>([
+  "lower_primary",
+  "lower_full",
+  "upper_primary",
+  "upper_full",
+  "full_body_strength",
+  "recovery",
+]);
+
+/** Run prescription only on true run or hybrid-primary sessions — not strength slots. */
+function shouldAttachRunPrescription(
+  picked: SessionTemplate,
+  role: StructureRole
+): boolean {
+  if (STRENGTH_STRUCTURE_ROLES.has(role)) return false;
+  if (picked.category === "run") return true;
+  if (
+    (role === "hybrid_primary" || role === "hybrid_density") &&
+    (picked.type === "hybrid_compromised" || picked.type === "hybrid_density")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function buildDayPlanAndStressFromTemplate(args: {
   picked: SessionTemplate;
   assignedDay: DayKey;
@@ -342,7 +368,7 @@ function buildDayPlanAndStressFromTemplate(args: {
       ? [input.hyrox_track.equipment_note]
       : [];
 
-  const sessionNotes = [
+  const sessionNotesRaw = [
     ...coachingPrefix,
     ...(paceNote ? [paceNote] : []),
     ...hyroxEquipmentNote,
@@ -350,6 +376,8 @@ function buildDayPlanAndStressFromTemplate(args: {
     ...libraryNotes,
     ...(extraSessionNotes ?? []),
   ].filter((line) => typeof line === "string" && line.trim().length > 0);
+
+  const sessionNotes = enrichAerobicSessionNotes(picked, input, sessionNotesRaw);
 
   const classified = classifySessionFromTemplate({
     type: picked.type,
@@ -380,18 +408,15 @@ function buildDayPlanAndStressFromTemplate(args: {
   const displayMain =
     appliedProgression?.variant.main?.length ? appliedProgression.variant.main : picked.prescription.main;
 
-  const run_prescription =
-    picked.category === "run" ||
-    (input.hyrox_track?.active &&
-      (picked.type === "hybrid_compromised" || picked.type === "hybrid_density"))
-      ? buildRunPrescription({
-          sessionType: picked.type,
-          paceGuidance,
-          maxHeartRate: input.max_heart_rate ?? null,
-          goalFocus: input.goal_focus,
-          hyroxTrack: input.hyrox_track?.active ?? false,
-        })
-      : undefined;
+  const run_prescription = shouldAttachRunPrescription(picked, role)
+    ? buildRunPrescription({
+        sessionType: picked.type,
+        paceGuidance,
+        maxHeartRate: input.max_heart_rate ?? null,
+        goalFocus: input.goal_focus,
+        hyroxTrack: input.hyrox_track?.active ?? false,
+      })
+    : undefined;
 
   const dayPlan: DayPlan = {
     template_id: picked.id,
@@ -548,7 +573,7 @@ function pickTimeSofteningReplacement(args: {
 }): { dayPlan: DayPlan; stress: SessionStressInput } {
   const { dayKey, recoveryMinutes, aerobicSupportMinutes, aerobicSupportStressDur, input, note } = args;
   if (input.goal_focus === "running") {
-    const d = lightAerobicDay(dayKey, aerobicSupportMinutes);
+    const d = lightAerobicDay(dayKey, input, aerobicSupportMinutes);
     return {
       dayPlan: {
         ...d,
@@ -1615,18 +1640,28 @@ function recoveryDay(day: DayKey, timeCapMinutes = 35): DayPlan {
   };
 }
 
-function lightAerobicDay(day: DayKey, timeCapMinutes = 40): DayPlan {
+function lightAerobicDay(day: DayKey, input: BlueprintInput, timeCapMinutes = 45): DayPlan {
+  const advanced = input.ability_level === "advanced";
+  const duration = advanced ? "30–60 min easy Z2 bike or easy jog" : "20–40 min easy Z2 bike or jog";
   return {
     template_id: "FILLER-AEROBIC",
     day,
     title: "Aerobic Support",
     intent: "Low-cost aerobic support to keep the week balanced.",
     session: {
-      main: ["20–40 min easy Z2 bike or jog", "Optional: lower leg durability 2 rounds"],
-      notes: ["Stay controlled and conversational throughout."],
+      main: [duration, "Optional: lower leg durability 2 rounds"],
+      notes: [
+        "RPE 2–4/10 — conversational, nose-breathe.",
+        "Should improve recovery between hard sessions, not add fatigue.",
+        ...(input.hyrox_track?.active && advanced
+          ? [
+              "Bike Z2 can replace or support easy run volume if legs feel heavy — keep it genuinely easy.",
+            ]
+          : []),
+      ],
     },
     time_cap_minutes: timeCapMinutes,
-    tags: ["aerobic_support"],
+    tags: ["aerobic_support", "aerobic", "bike_z2_support"],
     priority: createFillerPriority("aerobic_support"),
   };
 }
@@ -1733,7 +1768,31 @@ function buildActivePlanDays(
   const suppressStrengthRunExtras =
     parsedConstraints.flags.includes("time_limit") || input.weekly_hours_band === "2-3";
 
-  structure.roles.forEach((role, idx) => {
+  const roleAssignPriority = (role: StructureRole): number => {
+    const order: StructureRole[] = [
+      "run_long",
+      "run_quality",
+      "run_quality_beginner",
+      "hybrid_primary",
+      "hybrid_density",
+      "run_aerobic",
+      "upper_primary",
+      "upper_full",
+      "lower_primary",
+      "lower_full",
+      "full_body_strength",
+      "aerobic_support",
+      "recovery",
+    ];
+    const i = order.indexOf(role);
+    return i >= 0 ? i : 50;
+  };
+
+  const rolesInRhythmOrder = [...structure.roles].sort(
+    (a, b) => roleAssignPriority(a) - roleAssignPriority(b)
+  );
+
+  rolesInRhythmOrder.forEach((role, idx) => {
     const runSlot = runSlotForRole(role, runQualityPickIndex);
     if (role === "run_quality" || role === "run_quality_beginner") {
       runQualityPickIndex += 1;
@@ -1868,6 +1927,7 @@ function buildActivePlanDays(
 function fillSevenDayWeek(
   activeDays: DayPlan[],
   stressByDay: Map<DayKey, SessionStressInput>,
+  input: BlueprintInput,
   opts?: { compressOffSessions?: boolean }
 ) {
   const result: DayPlan[] = [];
@@ -1892,7 +1952,7 @@ function fillSevenDayWeek(
     }
 
     if (dayKey === "Thu" || dayKey === "Sat") {
-      result.push(lightAerobicDay(dayKey, aerobicSupportMinutes));
+      result.push(lightAerobicDay(dayKey, input, aerobicSupportMinutes));
       orderedStressInputs.push({
         day: dayKey,
         title: "Aerobic Support",
@@ -2062,7 +2122,7 @@ export function buildWeekBlueprint(
     paceGuidance,
     options
   );
-  let { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay, {
+  let { schedule, orderedStressInputs } = fillSevenDayWeek(activeDays, stressByDay, input, {
     compressOffSessions,
   });
 

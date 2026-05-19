@@ -18,7 +18,12 @@ import {
   isRunThresholdAnchorDay,
   summariseThresholdVolume,
 } from "../app/lib/thresholdVolumeTracking";
-import { countRunExposuresInSchedule } from "../app/lib/runVolumePlanner";
+import {
+  countRunExposuresInSchedule,
+  estimatePlannedRunKmFromSchedule,
+  planWeeklyRunVolume,
+} from "../app/lib/runVolumePlanner";
+import { buildRoleByDayFromSchedule } from "../app/lib/weekScheduleRepair";
 import type { DayPlan } from "../app/lib/sessionLibrary";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -254,6 +259,10 @@ function testCaseB() {
     );
   }
 
+  const roleByDay = buildRoleByDayFromSchedule(schedule);
+  const rhythm = analyzeWeeklyRhythm(schedule, roleByDay);
+  assert(rhythm.max_consecutive_hard < 3, "Case B: no 3 consecutive hard days in week 3");
+
   console.log("✓ Case B: HYROX Open + wall balls — Sunday/Monday rhythm, durability bias");
 }
 
@@ -440,8 +449,57 @@ function testAdvancedHyroxPro7Day() {
       assert(runs >= 4, `Week ${wn}: need ≥4 run exposures (got ${runs})`);
     }
 
-    const rhythm = analyzeWeeklyRhythm(schedule);
+    const roleByDay = buildRoleByDayFromSchedule(schedule);
+    const rhythm = analyzeWeeklyRhythm(schedule, roleByDay);
     assert(rhythm.max_consecutive_hard < 3, `Week ${wn}: no 3 consecutive hard days`);
+
+    const plannedKm = estimatePlannedRunKmFromSchedule(schedule);
+    assert(
+      plannedKm >= 45,
+      `Week ${wn}: planned run volume should be ≥45km for 50–70 band (got ~${plannedKm}km)`
+    );
+    const volPlan = planWeeklyRunVolume(input, wn, weeks[wn - 1]!.plan_json.week_context?.week_focus);
+    const kmCap = Math.min(75, volPlan.targetKmMax + 15);
+    assert(
+      plannedKm <= kmCap,
+      `Week ${wn}: planned run volume should not exceed 70km band cap (got ~${plannedKm}km)`
+    );
+
+    const lowerHyrox = schedule.find((d) =>
+      /hyrox lower|lower_strength_hyrox/i.test(`${d.progression_family ?? ""} ${d.title}`)
+    );
+    if (lowerHyrox) {
+      assert(!lowerHyrox.run_prescription, `Week ${wn}: HYROX lower must not have run prescription`);
+      const blob = (lowerHyrox.session?.main ?? []).join(" ").toLowerCase();
+      assert(/calf iso|soleus iso/i.test(blob), `Week ${wn}: HYROX lower needs calf isometrics`);
+    }
+
+    const bikeSessions = schedule.filter(
+      (d) =>
+        d.title === "Aerobic Support" ||
+        d.tags?.includes("aerobic_support") ||
+        d.tags?.includes("bike_z2_support") ||
+        /easy z2 bike|bike flush|bike z2/i.test(d.title)
+    );
+    for (const bikeSupport of bikeSessions) {
+      const bikeBlob = `${bikeSupport.title} ${(bikeSupport.session?.main ?? []).join(" ")} ${(bikeSupport.session?.notes ?? []).join(" ")}`;
+      assert(
+        /(\d{2}–\d{2}|\d{2}-\d{2})\s*min/i.test(bikeBlob),
+        `Week ${wn}: bike/aerobic "${bikeSupport.title}" needs duration window`
+      );
+    }
+    const bikeDoubles = schedule.filter(
+      (d) =>
+        d.double_session?.enabled &&
+        /bike|z2 flush|row.*z2/i.test(d.double_session?.secondary.title ?? "")
+    );
+    for (const d of bikeDoubles) {
+      const blob = `${d.double_session!.secondary.title} ${(d.double_session!.secondary.session?.main ?? []).join(" ")}`;
+      assert(
+        /\d+\s*min|\d{2}–\d{2}/i.test(blob),
+        `Week ${wn}: double bike/aerobic "${d.double_session!.secondary.title}" needs duration`
+      );
+    }
   }
 
   const preferredUsed = weeks.some((w) =>
@@ -460,7 +518,7 @@ function testAdvancedHyroxPro7Day() {
 
   const analysis = analyseProgrammePreview(weeks, input);
   const rhythmWarnings = analysis.warnings.filter((w) =>
-    /Monday is hard after Sunday|only 3 run exposure|no erg threshold minutes detected|3 consecutive hard days/i.test(
+    /Monday is hard after Sunday|only 3 run exposure|no erg threshold minutes detected|3 consecutive hard days|non-run session.*run prescription|below target.*km|missing calf|missing explicit duration/i.test(
       w
     )
   );

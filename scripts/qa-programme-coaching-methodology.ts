@@ -7,6 +7,7 @@ import { generate12WeekProgramme } from "../app/lib/generate12WeekProgramme";
 import { mapAssessmentToProgrammeInput } from "../app/lib/mapAssessmentToProgrammeInput";
 import { summariseThresholdVolume } from "../app/lib/thresholdVolumeTracking";
 import type { DayPlan } from "../app/lib/sessionLibrary";
+import { hasVagueStrengthPrescription } from "../app/lib/sessionStressClassification";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -52,6 +53,16 @@ function testGeneralHybridMuscle() {
 
   const hyroxOnly = w1.filter((d) => /wall ball|hyrox compromised/i.test(d.title));
   assert(hyroxOnly.length <= 1, "Muscle profile should not be overly HYROX-specific");
+
+  const vagueStrength = w1.filter((d) => hasVagueStrengthPrescription(d));
+  assert(vagueStrength.length === 0, "General hybrid: strength sessions should name specific exercises");
+
+  const bikeNote = w1.some((d) =>
+    /bike|row|erg|optional support/i.test(
+      `${d.title} ${(d.session?.notes ?? []).join(" ")}`
+    )
+  );
+  assert(bikeNote || strengthDays.length >= 2, "General hybrid: bike/erg support optional or strength focus");
 
   console.log("✓ General hybrid muscle-building — adequate strength exposure");
 }

@@ -17,7 +17,10 @@ import {
   ergThresholdModalityForWeek,
   isRunThresholdAnchorDay,
 } from "./thresholdVolumeTracking";
-import type { SessionStressLevel } from "./sessionStressClassification";
+import {
+  classifyDayPlan,
+  type SessionStressLevel,
+} from "./sessionStressClassification";
 
 export type HyroxDoublePhase =
   | "early_aerobic"
@@ -197,6 +200,20 @@ function isLongRunDay(day: DayPlan): boolean {
 function isEasyRunDay(day: DayPlan): boolean {
   const t0 = day.tags?.[0] ?? "";
   return t0 === "aerobic_run" || /easy run|z2 run|aerobic run/i.test(day.title);
+}
+
+function dayBefore(day: DayKey): DayKey | null {
+  const i = DAY_ORDER.indexOf(day);
+  return i > 0 ? DAY_ORDER[i - 1]! : null;
+}
+
+function isHardLowerDay(day: DayPlan): boolean {
+  const t0 = day.tags?.[0] ?? "";
+  if (t0 === "strength_lower") return true;
+  if (/hyrox lower|lower strength|lower_strength/i.test(`${day.title} ${day.progression_family ?? ""}`)) {
+    return classifyDayPlan(day).session_stress !== "low";
+  }
+  return false;
 }
 
 function isHighFatigueMain(day: DayPlan): boolean {
@@ -567,14 +584,23 @@ export function applyHyroxProDoubleSessions(
       }
     }
   } else if (phase === "late_double_threshold") {
+    let doubleThrDay: DayKey | null = runAnchorDay;
     if (runAnchorDay) {
+      const prev = dayBefore(runAnchorDay);
+      const prevPlan = prev ? result.find((d) => d.day === prev) : null;
+      if (prevPlan && isHardLowerDay(prevPlan)) {
+        const alt = double_days.find((d) => d !== runAnchorDay && d !== "Mon" && d !== prev);
+        if (alt) doubleThrDay = alt;
+      }
+    }
+    if (doubleThrDay) {
       const dt = buildDoubleThresholdDouble(
         args.weekNumber,
         args.weekFocus,
         ergMod,
-        dayLabel(runAnchorDay)
+        dayLabel(doubleThrDay)
       );
-      if (dt && attachToDay(runAnchorDay, dt)) {
+      if (dt && attachToDay(doubleThrDay, dt)) {
         doubleThresholdApplied = true;
       }
     }
