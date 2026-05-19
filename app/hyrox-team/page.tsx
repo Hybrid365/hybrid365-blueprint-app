@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
+import { AthletePathwayPhoneStack } from "@/components/hyrox-landing/AthletePathwayPhoneStack"
+import { AthleteScreeningPhoneStack } from "@/components/hyrox-landing/AthleteScreeningPhoneStack"
 
 export const metadata: Metadata = {
   title: "Hybrid365 Hyrox Team | Elite Coaching & Athlete Development",
@@ -213,26 +215,6 @@ function TimelineStep({
   )
 }
 
-function MetricBar({
-  label,
-  status,
-  progress,
-}: {
-  label: string
-  status: string
-  progress: number
-}) {
-  return (
-    <div className="grid grid-cols-[1fr_auto] gap-3 items-center py-3.5 border-t border-white/[0.08] first:border-t-0">
-      <span className="text-[#eaeaea] text-sm font-extrabold">{label}</span>
-      <strong className="text-[#f4d23c] text-[15px]">{status}</strong>
-      <div className="col-span-2 h-[7px] rounded-full bg-white/[0.09] overflow-hidden">
-        <div className="h-full rounded-full bg-[#f4d23c]" style={{ width: `${progress}%` }} />
-      </div>
-    </div>
-  )
-}
-
 function AthleteCard({
   name,
   tag,
@@ -388,6 +370,11 @@ function NotJustCoachingSection() {
         highlight="coaching."
         description="This is a coached athlete project. Every member gets first-class 1-1 programming, weekly check-ins and individual progression, but the bigger vision is to build a real Hybrid365 team that represents the brand publicly."
       />
+
+      <div className="mb-8 lg:mb-10">
+        <AthletePathwayPhoneStack />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {cards.map((card, i) => (
           <Card key={i} num={card.num} title={card.title} description={card.description} />
@@ -541,14 +528,6 @@ function AthleteStandardSection() {
 }
 
 function AthleteScreeningSection() {
-  const metrics = [
-    { label: "5km running", status: "Current / Target", progress: 72 },
-    { label: "Sled strength", status: "Needs work", progress: 48 },
-    { label: "Wall balls", status: "Improving", progress: 61 },
-    { label: "Compromised running", status: "Key focus", progress: 54 },
-    { label: "Race strategy", status: "To build", progress: 40 },
-  ]
-
   const tracks = [
     {
       num: "Track 01",
@@ -582,16 +561,11 @@ function AthleteScreeningSection() {
         highlight="screening."
         description="Every athlete starts with a screening process so we can understand their current level, identify weaknesses and track genuine progress across the build."
       />
-      <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-4">
-        <div className="bg-[#0f0f0f] border border-white/[0.11] rounded-[20px] sm:rounded-[28px] p-5 sm:p-[26px]">
-          <h3 className="m-0 mb-4 text-[26px] tracking-[-0.055em] uppercase">
-            Example performance profile
-          </h3>
-          {metrics.map((metric, i) => (
-            <MetricBar key={i} label={metric.label} status={metric.status} progress={metric.progress} />
-          ))}
+      <div className="mt-2 grid grid-cols-1 items-start gap-8 lg:mt-4 lg:grid-cols-[0.88fr_1.12fr] lg:gap-10 xl:gap-12">
+        <div className="flex justify-center px-1 py-2 lg:justify-start lg:py-4 lg:pr-6">
+          <AthleteScreeningPhoneStack />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:pt-1">
           {tracks.map((track, i) => (
             <Card key={i} num={track.num} title={track.title} description={track.description} />
           ))}

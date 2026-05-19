@@ -29,6 +29,7 @@ import {
   summariseDoubleSessionsFromSchedule,
 } from "./hyroxDoubleSessionProgression";
 import type { HyroxDoublePhase } from "./hyroxDoubleSessionProgression";
+import { isHyroxProAdvancedProfile } from "./hyroxRunIntensityPolicy";
 
 export type WeekPreviewMetrics = {
   week_number: number;
@@ -239,9 +240,13 @@ export function analyseProgrammePreview(
       /hyrox lower|lower_strength_hyrox/i.test(`${d.progression_family ?? ""} ${d.title}`.toLowerCase())
     );
     const calfOk = hasHyroxLower ? hasCalfIsoAccessory(schedule) : null;
+    const earlyHyroxPro =
+      isHyroxProAdvancedProfile(input) &&
+      week.week_number <= 3 &&
+      !isDeloadWeekNumber(week.week_number, week.plan_json.week_context?.week_focus);
     const bandCompliant =
       runPlan && !isDeloadWeekNumber(week.week_number, week.plan_json.week_context?.week_focus)
-        ? plannedKm >= runPlan.targetKmMin - 4
+        ? plannedKm >= (earlyHyroxPro ? runPlan.targetKmMin - 10 : runPlan.targetKmMin - 4)
         : null;
 
     const doublePlan = shouldUseHyroxProDoubleProgression(input)

@@ -188,6 +188,18 @@ export function planWeeklyRunVolume(
         if (advanced && days >= 5 && (highHours || Boolean(input.hyrox_track?.active))) {
           highVolumeAdvanced = true;
         }
+        if (
+          input.hyrox_track?.active &&
+          input.hyrox_track.hyrox_event_type === "pro" &&
+          advanced &&
+          weekNumber <= 3 &&
+          !weekFocus?.includes("deload")
+        ) {
+          targetMin = Math.min(targetMin, 42);
+          targetMax = Math.min(targetMax, 52);
+          preferredRuns = Math.min(preferredRuns, 5);
+          highVolumeAdvanced = false;
+        }
         break;
       case "70km+/week":
         targetMin = advanced ? 55 : 40;

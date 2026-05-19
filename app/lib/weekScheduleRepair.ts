@@ -30,6 +30,23 @@ import {
   scheduleHasHyroxManagedErgSupport,
   shouldUseHyroxProDoubleProgression,
 } from "./hyroxDoubleSessionProgression";
+import {
+  appendWeekRunQualityNote,
+  countHardRunExposures,
+  downgradeDayToEasyBike,
+  downgradeDayToEasyRun,
+  hasBikeOrErgAerobicSupport,
+  HYROX_RUN_QUALITY_PROTECTED_NOTE,
+  isFloatOrIntervalQuality,
+  isHardRunExposure,
+  isHyroxEarlyBuildWeek,
+  isHyroxProAdvancedProfile,
+  listHardRunExposureDays,
+  maxHardRunExposuresForHyroxPro,
+  mondayViolatesSundayRecovery,
+  sundayIsLongAerobic,
+  weekHasThresholdAndCompromised,
+} from "./hyroxRunIntensityPolicy";
 
 const DAY_ORDER: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -209,31 +226,45 @@ function repairSundayLongAnchor(
   return null;
 }
 
-/** Monday must not follow Sunday long/hard with another hard session. */
+/** Monday must not follow Sunday long/hard with hard/moderate work — swap or downgrade. */
 function repairMondayAfterSunday(
   schedule: DayPlan[],
-  roleByDay: Map<DayKey, StructureRole>
+  roleByDay: Map<DayKey, StructureRole>,
+  ctx: WeekRepairContext
 ): string | null {
   const sun = schedule.find((d) => d.day === "Sun");
   const mon = schedule.find((d) => d.day === "Mon");
   if (!sun || !mon) return null;
-  if (!isSundayLongOrHard(sun)) return null;
+  if (!isSundayLongOrHard(sun) && !sundayIsLongAerobic(sun)) return null;
 
   const monRole = roleByDay.get("Mon");
-  if (!isHardActiveDay(mon, monRole)) return null;
+  const strictHyrox = isHyroxProAdvancedProfile(ctx.input);
+  const violates = strictHyrox
+    ? mondayViolatesSundayRecovery(mon, monRole)
+    : isHardActiveDay(mon, monRole);
+  if (!violates) return null;
 
   const swapCandidates: DayKey[] = ["Wed", "Fri", "Thu", "Tue", "Sat"];
   for (const key of swapCandidates) {
     const other = schedule.find((d) => d.day === key);
     const otherRole = roleByDay.get(key);
     if (!other || !isEasyActiveDay(other, otherRole)) continue;
+    if (isHardActiveDay(other, otherRole) || isFloatOrIntervalQuality(other)) continue;
     if (swapScheduleDays(schedule, "Mon", key, roleByDay)) {
+      const monAfter = schedule.find((d) => d.day === "Mon")!;
       appendCoachingNote(
-        schedule.find((d) => d.day === "Mon")!,
+        monAfter,
         "Monday stays easier after Sunday's long session — quality work moved to mid-week."
       );
       return `Swapped Monday (${mon.title}) with ${key} (${other.title}) for Sun→Mon recovery rhythm.`;
     }
+  }
+
+  if (strictHyrox && mondayViolatesSundayRecovery(schedule.find((d) => d.day === "Mon")!, roleByDay.get("Mon"))) {
+    const monPlan = schedule.find((d) => d.day === "Mon")!;
+    const prevTitle = monPlan.title;
+    downgradeDayToEasyBike(monPlan, ctx.input, roleByDay);
+    return `Downgraded Monday (${prevTitle}) to easy bike/erg after Sunday long — recovery rhythm protected.`;
   }
 
   appendCoachingNote(mon, `${FATIGUE_MONITORING_NOTE} Monday follows Sunday long — treat as optional if legs are heavy.`);
@@ -422,6 +453,53 @@ function repairCalfIsoOnHyroxLower(schedule: DayPlan[]): string | null {
   return null;
 }
 
+/** Cap/downgrade excess hard run sessions for HYROX Pro early build. */
+function repairHyroxHardRunIntensity(
+  schedule: DayPlan[],
+  roleByDay: Map<DayKey, StructureRole>,
+  ctx: WeekRepairContext
+): string | null {
+  if (!isHyroxProAdvancedProfile(ctx.input)) return null;
+  if (isDeloadWeek(ctx.weekNumber, ctx.weekFocus)) return null;
+
+  const repairs: string[] = [];
+  const maxHard = maxHardRunExposuresForHyroxPro(ctx.weekNumber, ctx.weekFocus);
+
+  if (weekHasThresholdAndCompromised(schedule)) {
+    for (const d of schedule) {
+      if (!isFloatOrIntervalQuality(d) && d.tags?.[0] !== "interval_run") continue;
+      const prev = d.title;
+      downgradeDayToEasyRun(d, ctx.input, roleByDay);
+      repairs.push(`downgraded interval/float (${prev}) — threshold + compromised already scheduled`);
+    }
+  }
+
+  let guard = 0;
+  while (countHardRunExposures(schedule, roleByDay) > maxHard && guard < 6) {
+    guard += 1;
+    const victims = listHardRunExposureDays(schedule, roleByDay);
+    const victim = victims[0];
+    if (!victim || victim.priority >= 10_000) break;
+    const prev = victim.dayPlan.title;
+    if (victim.day === "Mon") downgradeDayToEasyBike(victim.dayPlan, ctx.input, roleByDay);
+    else downgradeDayToEasyRun(victim.dayPlan, ctx.input, roleByDay);
+    repairs.push(`downgraded hard run (${prev} on ${victim.day})`);
+  }
+
+  if (repairs.length > 0 && !hasBikeOrErgAerobicSupport(schedule)) {
+    const slot = schedule.find((d) => d.day === "Fri" || d.day === "Wed");
+    if (slot && isFiller(slot)) {
+      downgradeDayToEasyBike(slot, ctx.input, roleByDay);
+    }
+  }
+
+  if (repairs.length > 0) {
+    appendWeekRunQualityNote(schedule);
+    return `HYROX Pro run intensity: ${repairs.join("; ")}.`;
+  }
+  return null;
+}
+
 function repairRunVolumeBandCompliance(
   schedule: DayPlan[],
   roleByDay: Map<DayKey, StructureRole>,
@@ -431,8 +509,12 @@ function repairRunVolumeBandCompliance(
   if (!plan || isDeloadWeek(ctx.weekNumber, ctx.weekFocus)) return null;
   if (ctx.input.has_injury) return null;
 
+  const hyroxPro = isHyroxProAdvancedProfile(ctx.input);
+  const earlyHyrox = hyroxPro && isHyroxEarlyBuildWeek(ctx.weekNumber, ctx.weekFocus);
+
   let planned = estimatePlannedRunKmFromSchedule(schedule);
-  if (planned >= plan.targetKmMin) return null;
+  const volumeFloor = earlyHyrox ? Math.max(32, plan.targetKmMin - 12) : plan.targetKmMin;
+  if (planned >= volumeFloor) return null;
 
   const longRun = schedule.find(
     (d) => d.tags?.[0] === "long_run" || /long run|long zone/i.test(d.title)
@@ -447,29 +529,50 @@ function repairRunVolumeBandCompliance(
         longRun.time_cap_minutes = (longRun.time_cap_minutes ?? 70) + extraMins;
       }
       planned = estimatePlannedRunKmFromSchedule(schedule);
-      if (planned >= plan.targetKmMin) {
+      if (planned >= volumeFloor) {
         return `Extended long-run cap toward ${plan.targetKmMin}–${plan.targetKmMax}km weekly run target.`;
       }
     }
   }
 
-  if (planned < plan.targetKmMin) {
+  if (planned < volumeFloor) {
     for (const day of ["Thu", "Wed", "Fri", "Sat"] as DayKey[]) {
       const filler = schedule.find((d) => d.day === day && d.title === "Aerobic Support");
+      if (hyroxPro && filler) {
+        const g = bikeAerobicDurationGuidance(ctx.input, "support");
+        filler.session.main = [
+          `${g.duration} easy Z2 bike or easy row/ski`,
+          ...(filler.session.main ?? []).filter((m) => !/easy bike|aerobic support/i.test(m)),
+        ];
+        if (!filler.session.notes) filler.session.notes = [];
+        if (!filler.session.notes.some((n) => n.includes(HYROX_RUN_QUALITY_PROTECTED_NOTE.slice(0, 30)))) {
+          filler.session.notes.push(HYROX_RUN_QUALITY_PROTECTED_NOTE);
+        }
+        planned = estimatePlannedRunKmFromSchedule(schedule);
+        if (planned >= volumeFloor - 4) {
+          return `Added bike/erg aerobic volume (run km target is a guide — intensity protected).`;
+        }
+      }
       const donor = schedule.find(
         (x) =>
           !isFiller(x) &&
           x.tags?.[0] === "aerobic_run" &&
           x.day !== "Mon" &&
-          x.day !== "Sun"
+          x.day !== "Sun" &&
+          !isHardRunExposure(x, roleByDay.get(x.day))
       );
       if (filler && donor && swapScheduleDays(schedule, day, donor.day, roleByDay)) {
         planned = estimatePlannedRunKmFromSchedule(schedule);
-        if (planned >= plan.targetKmMin - 4) {
+        if (planned >= volumeFloor - 4) {
           return `Promoted easy run over aerobic filler to meet run volume band (~${plan.targetKmMin}km).`;
         }
       }
     }
+  }
+
+  if (hyroxPro && planned < plan.targetKmMin && countHardRunExposures(schedule, roleByDay) >= 2) {
+    appendWeekRunQualityNote(schedule);
+    return `Run volume ~${planned}km below ${plan.targetKmMin}km band — kept hard-run cap; use bike/erg for extra aerobic work.`;
   }
 
   return null;
@@ -586,8 +689,19 @@ function repairConsecutiveHard(
 
 function minRunExposuresTarget(ctx: WeekRepairContext): number {
   const { input, runVolumePlan } = ctx;
-  if (runVolumePlan) return runVolumePlan.minRunSessionsPerWeek;
+  if (runVolumePlan) {
+    if (
+      isHyroxProAdvancedProfile(input) &&
+      isHyroxEarlyBuildWeek(ctx.weekNumber, ctx.weekFocus)
+    ) {
+      return Math.min(runVolumePlan.minRunSessionsPerWeek, 4);
+    }
+    return runVolumePlan.minRunSessionsPerWeek;
+  }
   if (input.hyrox_track?.active && input.ability_level === "advanced") {
+    if (isHyroxProAdvancedProfile(input) && isHyroxEarlyBuildWeek(ctx.weekNumber, ctx.weekFocus)) {
+      return 4;
+    }
     return input.days_per_week >= 7 ? 5 : 4;
   }
   if (input.ability_level === "advanced") return 4;
@@ -671,6 +785,44 @@ function collectRemainingIssues(
   const mon = schedule.find((d) => d.day === "Mon");
   if (sun && mon && isSundayLongOrHard(sun) && isHardActiveDay(mon, roleByDay.get("Mon"))) {
     issues.push("Monday remains hard after Sunday long/hard — could not fully swap (day constraints).");
+  }
+  if (
+    isHyroxProAdvancedProfile(ctx.input) &&
+    sun &&
+    mon &&
+    sundayIsLongAerobic(sun) &&
+    mondayViolatesSundayRecovery(mon, roleByDay.get("Mon"))
+  ) {
+    issues.push("Monday is moderate/hard after Sunday long — HYROX Pro requires easy recovery Monday.");
+  }
+
+  if (isHyroxProAdvancedProfile(ctx.input) && !isDeloadWeek(ctx.weekNumber, ctx.weekFocus)) {
+    const hardRuns = countHardRunExposures(schedule, roleByDay);
+    const cap = maxHardRunExposuresForHyroxPro(ctx.weekNumber, ctx.weekFocus);
+    if (hardRuns > cap) {
+      issues.push(
+        `${hardRuns} hard run exposures (cap ${cap} for week ${ctx.weekNumber}) — reduce intervals/floats before adding more quality runs.`
+      );
+    }
+    if (weekHasThresholdAndCompromised(schedule)) {
+      const intervals = schedule.filter(
+        (d) => d.tags?.[0] === "interval_run" || isFloatOrIntervalQuality(d)
+      );
+      if (intervals.length > 0) {
+        issues.push(
+          "Interval/float run present with threshold + compromised already scheduled — drop intervals first."
+        );
+      }
+    }
+    const plan = ctx.runVolumePlan;
+    if (plan) {
+      const plannedKm = estimatePlannedRunKmFromSchedule(schedule);
+      if (plannedKm < plan.targetKmMin && hardRuns >= 2) {
+        issues.push(
+          `Run volume ~${plannedKm}km below target with ${hardRuns} hard runs — add easy/bike aerobic volume instead of more intensity.`
+        );
+      }
+    }
   }
 
   if (rhythm.max_consecutive_hard >= 3) {
@@ -756,6 +908,7 @@ export function repairWeekSchedule(
 
   const passes: Array<() => string | null> = [
     () => repairStripRunPrescription(schedule),
+    () => repairHyroxHardRunIntensity(schedule, roleByDay, ctx),
     () => repairLegsBeforeThreshold(schedule, roleByDay),
     () => repairModerateStressChains(schedule, roleByDay),
     () => repairConsecutiveHard(schedule, roleByDay),
@@ -782,7 +935,8 @@ export function repairWeekSchedule(
       return after < before ? "Final hard/easy rebalance for weekly rhythm." : null;
     },
     () => repairSundayLongAnchor(schedule, roleByDay, ctx),
-    () => repairMondayAfterSunday(schedule, roleByDay),
+    () => repairMondayAfterSunday(schedule, roleByDay, ctx),
+    () => repairHyroxHardRunIntensity(schedule, roleByDay, ctx),
     () => repairBreakHardChains(schedule, roleByDay),
   ];
 

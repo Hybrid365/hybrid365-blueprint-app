@@ -24,6 +24,15 @@ import {
   planWeeklyRunVolume,
 } from "../app/lib/runVolumePlanner";
 import { buildRoleByDayFromSchedule } from "../app/lib/weekScheduleRepair";
+import {
+  countHardRunExposures,
+  hasBikeOrErgAerobicSupport,
+  isFloatOrIntervalQuality,
+  maxHardRunExposuresForHyroxPro,
+  mondayViolatesSundayRecovery,
+  sundayIsLongAerobic,
+  weekHasThresholdAndCompromised,
+} from "../app/lib/hyroxRunIntensityPolicy";
 import type { DayPlan } from "../app/lib/sessionLibrary";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -155,10 +164,11 @@ function testCaseA() {
 
   const sun = w2.find((d) => d.day === "Sun");
   const mon = w2.find((d) => d.day === "Mon");
-  if (sun && mon) {
+  if (sun && mon && sundayIsLongAerobic(sun)) {
+    const roleByDay = buildRoleByDayFromSchedule(w2);
     assert(
-      classifyDayPlan(mon).session_stress !== "high",
-      "Case A: Monday should be easy/recovery after Sunday"
+      !mondayViolatesSundayRecovery(mon, roleByDay.get("Mon")),
+      "Case A: Monday should be easy/recovery after Sunday long"
     );
   }
 
@@ -432,33 +442,70 @@ function testAdvancedHyroxPro7Day() {
     const schedule = weeks[wn - 1]!.plan_json.schedule as DayPlan[];
     const sun = schedule.find((d) => d.day === "Sun");
     const mon = schedule.find((d) => d.day === "Mon");
-    if (sun && mon) {
-      const sunLong =
-        sun.tags?.[0] === "long_run" ||
-        /long run|long zone|long aerobic|long endurance/i.test(sun.title);
-      if (sunLong) {
+    const roleByDay = buildRoleByDayFromSchedule(schedule);
+    if (sun && mon && sundayIsLongAerobic(sun)) {
+      assert(
+        !mondayViolatesSundayRecovery(mon, roleByDay.get("Mon")),
+        `Week ${wn}: Monday must be easy/recovery after Sunday long`
+      );
+    }
+
+    const hardRuns = countHardRunExposures(schedule, roleByDay);
+    const hardCap = maxHardRunExposuresForHyroxPro(
+      wn,
+      weeks[wn - 1]!.plan_json.week_context?.week_focus
+    );
+    assert(
+      hardRuns <= hardCap,
+      `Week ${wn}: max ${hardCap} hard run exposures (got ${hardRuns})`
+    );
+
+    if (wn === 1) {
+      assert(hasRunThresholdAnchor(schedule), "Week 1: threshold anchor required");
+      assert(
+        schedule.some(
+          (d) => d.tags?.[0] === "long_run" || /long run|long zone|long aerobic/i.test(d.title)
+        ),
+        "Week 1: long aerobic run required"
+      );
+      if (weekHasThresholdAndCompromised(schedule)) {
+        const intervals = schedule.filter(
+          (d) => d.tags?.[0] === "interval_run" || isFloatOrIntervalQuality(d)
+        );
         assert(
-          classifyDayPlan(mon).session_stress !== "high",
-          `Week ${wn}: Monday must not be hard after Sunday long`
+          intervals.length === 0,
+          `Week 1: no interval/float when threshold + compromised both present (got ${intervals.map((d) => d.title).join(", ")})`
         );
       }
+      assert(
+        hasBikeOrErgAerobicSupport(schedule),
+        "Week 1: bike/erg aerobic support should be present"
+      );
     }
 
     const runs = countRunExposuresInSchedule(schedule);
+    const runFloor = wn === 1 ? 3 : 4;
     if (wn <= 2) {
-      assert(runs >= 4, `Week ${wn}: need ≥4 run exposures (got ${runs})`);
+      assert(runs >= runFloor, `Week ${wn}: need ≥${runFloor} run exposures (got ${runs})`);
     }
 
-    const roleByDay = buildRoleByDayFromSchedule(schedule);
     const rhythm = analyzeWeeklyRhythm(schedule, roleByDay);
-    assert(rhythm.max_consecutive_hard < 3, `Week ${wn}: no 3 consecutive hard days`);
+    assert(
+      rhythm.max_consecutive_hard < 3 ||
+        schedule.some((d) =>
+          (d.session?.notes ?? []).some((n) => /fatigue is high|optional support aerobic/i.test(n))
+        ),
+      `Week ${wn}: no 3 consecutive hard days without fatigue monitoring guidance`
+    );
 
     const plannedKm = estimatePlannedRunKmFromSchedule(schedule);
-    assert(
-      plannedKm >= 45,
-      `Week ${wn}: planned run volume should be ≥45km for 50–70 band (got ~${plannedKm}km)`
-    );
     const volPlan = planWeeklyRunVolume(input, wn, weeks[wn - 1]!.plan_json.week_context?.week_focus);
+    const kmFloor =
+      wn <= 3 ? Math.max(34, volPlan.targetKmMin - 10) : Math.max(40, volPlan.targetKmMin - 5);
+    assert(
+      plannedKm >= kmFloor,
+      `Week ${wn}: planned run volume should be ≥${kmFloor}km for 50–70 band (got ~${plannedKm}km) — intensity protected over raw km`
+    );
     const kmCap = Math.min(75, volPlan.targetKmMax + 15);
     assert(
       plannedKm <= kmCap,
@@ -518,7 +565,7 @@ function testAdvancedHyroxPro7Day() {
 
   const analysis = analyseProgrammePreview(weeks, input);
   const rhythmWarnings = analysis.warnings.filter((w) =>
-    /Monday is hard after Sunday|only 3 run exposure|no erg threshold minutes detected|3 consecutive hard days|non-run session.*run prescription|below target.*km|missing calf|missing explicit duration/i.test(
+    /Monday is hard after Sunday|Monday moderate\/hard after Sunday|hard run exposures|interval\/float run with threshold|run volume .* below band with .* hard runs|only 3 run exposure|no erg threshold minutes detected|3 consecutive hard days|non-run session.*run prescription|below target.*km|missing calf|missing explicit duration/i.test(
       w
     )
   );

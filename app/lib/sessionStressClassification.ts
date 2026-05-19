@@ -110,6 +110,12 @@ export function classifySessionFromTemplate(args: {
   }
 
   if (type === "tempo_run") {
+    if (
+      /400\s*m|float|on\s*\/\s*off|broken threshold/i.test(blob) ||
+      args.title.includes("400m On")
+    ) {
+      return { session_stress: "high", session_role: "key" };
+    }
     return { session_stress: "moderate", session_role: "key" };
   }
 
@@ -178,6 +184,7 @@ function baseIntensityFromStress(
   }
   if (/ @ rpe [89]|@ threshold|compromised|heavy/i.test(blob)) return "high";
   if (type === "aerobic_run" || /easy|z2|conversational/i.test(blob)) return "low";
+  if (type === "tempo_run" && /400\s*m|float|on\s*\/\s*off/i.test(blob)) return "high";
   return null;
 }
 

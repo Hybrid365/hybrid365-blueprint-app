@@ -22,6 +22,7 @@ import { computePaceGuidanceFromFiveKSeconds, runSessionPaceNote, type PaceGuida
 import { enrichAerobicSessionNotes, isBikeOrEasyAerobicSession } from "./aerobicSessionGuidance";
 import { buildRunPrescription } from "./runPrescription";
 import { hyroxSessionWeightDelta, hyroxWeeklyStructureBoost } from "./hyroxTrackContext";
+import { isHyroxEarlyBuildWeek, isHyroxProAdvancedProfile } from "./hyroxRunIntensityPolicy";
 import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import {
   analyzeWeeklyRhythm,
@@ -1421,6 +1422,26 @@ function pickWeightedSession(
           if (s.type === "aerobic_support") weight += 7;
           if (s.variation_group === "aerobic_run_short") weight += 8;
         }
+      }
+
+      if (
+        isHyroxProAdvancedProfile(input) &&
+        isHyroxEarlyBuildWeek(pickContext.weekNumber, pickContext.weekFocus)
+      ) {
+        if (s.type === "interval_run") weight -= 34;
+        if (s.id === "TMP-400-400" || s.id === "TMP-300-300") weight -= 30;
+        if (s.type === "tempo_run" && /400|float|broken threshold/i.test(blob)) weight -= 28;
+        if (pickContext.runningIntervalSessionCount >= 1 && isQualityRunSession(s)) weight -= 42;
+        if (pickContext.runningThresholdSessionCount >= 1 && s.type === "threshold_run") weight -= 18;
+        if (
+          pickContext.runningThresholdSessionCount >= 1 &&
+          pickContext.runningIntervalSessionCount >= 1 &&
+          s.type === "hybrid_compromised"
+        ) {
+          weight -= 28;
+        }
+        if (pickContext.runningQualitySessionCount >= 2 && isQualityRunSession(s)) weight -= 32;
+        if (s.type === "aerobic_run" || s.type === "aerobic_support") weight += 10;
       }
 
       if (s.category === "run") {
