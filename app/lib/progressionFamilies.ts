@@ -1021,11 +1021,24 @@ export function resolveStrengthFamilyForRole(
   if (role === "upper_primary" || role === "upper_full") {
     return FAMILY_BY_ID.get("upper_strength_hypertrophy_a") ?? null;
   }
-  if (role === "hybrid_primary" && input.goal_focus === "hybrid") {
-    return FAMILY_BY_ID.get("compromised_run_a") ?? null;
+  if (role === "hybrid_primary") {
+    if (input.goal_focus === "muscle") {
+      return FAMILY_BY_ID.get("hybrid_functional_circuit_a") ?? null;
+    }
+    if (input.goal_focus === "hybrid" && !opts?.hyrox?.active) {
+      return FAMILY_BY_ID.get("hybrid_functional_circuit_a") ?? null;
+    }
+    if (input.goal_focus === "hybrid") {
+      return FAMILY_BY_ID.get("compromised_run_a") ?? null;
+    }
   }
-  if (role === "hybrid_density" && input.goal_focus === "hybrid") {
-    return FAMILY_BY_ID.get("wall_ball_durability_a") ?? null;
+  if (role === "hybrid_density") {
+    if (input.goal_focus === "muscle" || (input.goal_focus === "hybrid" && !opts?.hyrox?.active)) {
+      return FAMILY_BY_ID.get("hybrid_functional_circuit_a") ?? null;
+    }
+    if (input.goal_focus === "hybrid") {
+      return FAMILY_BY_ID.get("wall_ball_durability_a") ?? null;
+    }
   }
   return null;
 }

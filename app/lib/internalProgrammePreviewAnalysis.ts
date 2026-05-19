@@ -44,6 +44,16 @@ import {
   skeletonSequenceForPreview,
 } from "./hyroxProWeeklySkeleton";
 import { buildRoleByDayFromSchedule } from "./weekScheduleRepair";
+import {
+  countStrengthExposures,
+  countUpperBodySessions,
+  hasBackToBackHardRuns,
+  hasLowImpactAerobicSupport,
+  isFitnessBenchmarkSession,
+  isNonHyroxProgramme,
+  maxHardRunExposuresForGoal,
+  shouldPreferLowImpactEngine,
+} from "./generalProgrammeRhythm";
 
 export type WeekPreviewMetrics = {
   week_number: number;
@@ -450,6 +460,75 @@ export function analyseProgrammePreview(
     }
     if (calfOk === false) {
       warnings.push(`Week ${week.week_number}: HYROX lower strength missing calf isometric accessory.`);
+    }
+
+    if (isNonHyroxProgramme(input) && !isDeloadWeekNumber(week.week_number, week.plan_json.week_context?.week_focus)) {
+      const hardRuns = countHardRunExposures(schedule, roleByDay);
+      const hardCap = maxHardRunExposuresForGoal(
+        input,
+        week.week_number,
+        week.plan_json.week_context?.week_focus
+      );
+      if (hardRuns > hardCap) {
+        warnings.push(
+          `Week ${week.week_number}: ${hardRuns} hard run exposures exceed cap ${hardCap} for ${input.goal_focus}/${input.ability_level}.`
+        );
+      }
+      if (input.goal_focus === "running" && hasBackToBackHardRuns(schedule, roleByDay)) {
+        warnings.push(
+          `Week ${week.week_number}: running-focused plan has back-to-back hard run days.`
+        );
+      }
+      if (
+        input.goal_focus === "hybrid" &&
+        countStrengthExposures(schedule) < 2 &&
+        input.days_per_week >= 4
+      ) {
+        warnings.push(
+          `Week ${week.week_number}: general hybrid has limited strength volume (${countStrengthExposures(schedule)} sessions).`
+        );
+      }
+      if (
+        input.goal_focus === "muscle" &&
+        countStrengthExposures(schedule) < 3 &&
+        input.days_per_week >= 4
+      ) {
+        warnings.push(
+          `Week ${week.week_number}: strength/body comp may be under-dosed on lifting (${countStrengthExposures(schedule)} strength sessions).`
+        );
+      }
+      if (shouldPreferLowImpactEngine(input) && !hasLowImpactAerobicSupport(schedule)) {
+        warnings.push(
+          `Week ${week.week_number}: no low-impact bike/row/ski aerobic support where engine work is expected.`
+        );
+      }
+      if (
+        input.days_per_week >= 4 &&
+        countUpperBodySessions(schedule) === 0 &&
+        (input.goal_focus === "hybrid" || input.goal_focus === "muscle")
+      ) {
+        warnings.push(
+          `Week ${week.week_number}: upper-body strength missing — use upper work on non-hard days.`
+        );
+      }
+      const tests = schedule.filter(isFitnessBenchmarkSession);
+      for (const t of tests) {
+        const dayIdx = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(t.day);
+        const next = schedule.find(
+          (d) =>
+            ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(d.day) === dayIdx + 1
+        );
+        if (
+          next &&
+          (next.tags?.[0] === "threshold_run" ||
+            next.tags?.[0] === "interval_run" ||
+            next.tags?.[0] === "strength_lower")
+        ) {
+          warnings.push(
+            `Week ${week.week_number}: fitness test on ${t.day} before key session on ${next.day}.`
+          );
+        }
+      }
     }
 
     for (const day of schedule) {

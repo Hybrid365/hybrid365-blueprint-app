@@ -8,6 +8,9 @@ import type { SessionTemplate } from "./sessionLibrary";
 export const BIKE_Z2_SUBSTITUTE_NOTE =
   "Bike Z2 can replace or support easy run volume if legs feel heavy — keep it genuinely easy (RPE 2–4/10).";
 
+export const GENERAL_LOW_IMPACT_NOTE =
+  "Low-impact aerobic work helps build the engine without stealing recovery from your key runs or strength sessions.";
+
 export function isBikeOrEasyAerobicSession(session: {
   type: string;
   category: string;
@@ -84,6 +87,11 @@ export function enrichAerobicSessionNotes(
     !input.has_injury
   ) {
     lines.push(BIKE_Z2_SUBSTITUTE_NOTE);
+  } else if (
+    !input.hyrox_track?.active &&
+    (input.goal_focus === "hybrid" || input.goal_focus === "muscle" || input.has_injury)
+  ) {
+    lines.push(GENERAL_LOW_IMPACT_NOTE);
   }
   return [...lines, ...extraNotes.filter((n) => !lines.some((l) => l.includes(n.slice(0, 20))))];
 }

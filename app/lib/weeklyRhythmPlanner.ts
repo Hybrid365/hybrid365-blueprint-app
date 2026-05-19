@@ -71,6 +71,10 @@ function hyroxRhythmScheduling(input: BlueprintInput): boolean {
   return Boolean(input.hyrox_track?.active);
 }
 
+function generalRhythmScheduling(input: BlueprintInput): boolean {
+  return !input.hyrox_track?.active;
+}
+
 const MONDAY_EASY_ROLES = new Set<StructureRole>([
   "run_aerobic",
   "upper_primary",
@@ -120,6 +124,37 @@ export function pickDayForRole(args: {
     }
     if (role === "run_quality" && !userKeyDays?.has("Mon")) {
       candidates = candidates.filter((d) => d !== "Mon");
+    }
+  } else if (generalRhythmScheduling(input)) {
+    if (role === "run_long") {
+      candidates = ["Sun", "Sat", "Fri", ...candidates.filter((d) => d !== "Sun")];
+    }
+    if (role === "run_quality" || role === "run_quality_beginner") {
+      candidates = ["Tue", "Thu", "Sat", ...candidates.filter((d) => d !== "Mon")];
+      if (!userKeyDays?.has("Mon")) {
+        candidates = candidates.filter((d) => d !== "Mon");
+      }
+    }
+    if (role === "upper_primary" || role === "upper_full") {
+      candidates = ["Mon", "Wed", "Thu", "Fri", ...candidates.filter((d) => !["Tue", "Sat"].includes(d))];
+    }
+    if (role === "aerobic_support") {
+      candidates = ["Wed", "Mon", "Fri", "Thu", ...candidates];
+    }
+    if (role === "lower_primary" || role === "lower_full") {
+      candidates = ["Fri", "Thu", "Tue", ...candidates.filter((d) => d !== "Sun")];
+    }
+    if (MONDAY_EASY_ROLES.has(role) || role === "recovery") {
+      candidates = ["Mon", "Wed", ...candidates.filter((d) => d !== "Mon")];
+    }
+    if (MONDAY_BLOCKED_HARD_ROLES.has(role) && !userKeyDays?.has("Mon")) {
+      candidates = candidates.filter((d) => d !== "Mon");
+    }
+    if (input.goal_focus === "muscle" && (role === "hybrid_primary" || role === "hybrid_density")) {
+      candidates = ["Sat", "Thu", "Wed", ...candidates];
+    }
+    if (input.goal_focus === "running" && role === "hybrid_primary") {
+      candidates = ["Sat", "Thu", ...candidates.filter((d) => d !== "Sun")];
     }
   }
 

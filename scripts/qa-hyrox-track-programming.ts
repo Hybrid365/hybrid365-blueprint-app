@@ -493,15 +493,15 @@ function testAdvancedHyroxPro7Day() {
     }
 
     const runs = countRunExposuresInSchedule(schedule);
-    const runFloor = wn <= 3 ? 3 : 4;
-    if (wn <= 3) {
+    const runFloor = wn <= 2 ? 3 : 4;
+    if (wn <= 2) {
       assert(runs >= runFloor, `Week ${wn}: need ≥${runFloor} run exposures (got ${runs})`);
-      if (runs < 4) {
-        assert(
-          hasBikeOrErgAerobicSupport(schedule),
-          `Week ${wn}: with ${runs} runs, bike/erg aerobic support should cover easy-day volume`
-        );
-      }
+    }
+    if (wn <= 7 && runs < 4) {
+      assert(
+        hasBikeOrErgAerobicSupport(schedule),
+        `Week ${wn}: with ${runs} runs, bike/erg aerobic support should cover easy-day volume`
+      );
     }
 
     const rhythm = analyzeWeeklyRhythm(schedule, roleByDay);

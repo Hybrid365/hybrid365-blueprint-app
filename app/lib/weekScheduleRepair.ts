@@ -54,6 +54,19 @@ import {
   sessionViolatesSkeleton,
   shouldUseHyroxProWeeklySkeleton,
 } from "./hyroxProWeeklySkeleton";
+import {
+  benchmarkPlacedBeforeKeySession,
+  countStrengthExposures,
+  countUpperBodySessions,
+  hasBackToBackHardRuns,
+  hasBackToBackImpactDays,
+  hasLowImpactAerobicSupport,
+  isLowImpactProfile,
+  isNonHyroxProgramme,
+  maxHardRunExposuresForGoal,
+  repairGeneralProgrammeRhythm,
+  shouldPreferLowImpactEngine,
+} from "./generalProgrammeRhythm";
 
 const DAY_ORDER: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -664,7 +677,9 @@ function repairBikeDurationGuidance(
       d.title === "Aerobic Support" ||
       d.tags?.includes("aerobic_support") ||
       d.tags?.includes("bike_z2_support") ||
-      /easy z2 bike|bike flush|recovery bike|bike low-impact|low-impact aerobic/i.test(d.title);
+      /easy z2 bike|bike flush|recovery bike|bike low-impact|low-impact aerobic|low-impact aerobic base|mixed aerobic|z2 run/i.test(
+        d.title
+      );
     if (!isBikeAerobic) continue;
     if (/(\d{2}–\d{2}|\d{2}-\d{2})\s*min/i.test(blob)) continue;
 
@@ -891,6 +906,58 @@ function collectRemainingIssues(
     }
   }
 
+  if (isNonHyroxProgramme(ctx.input) && !isDeloadWeek(ctx.weekNumber, ctx.weekFocus)) {
+    const hardRuns = countHardRunExposures(schedule, roleByDay);
+    const cap = maxHardRunExposuresForGoal(ctx.input, ctx.weekNumber, ctx.weekFocus);
+    if (hardRuns > cap) {
+      issues.push(
+        `${hardRuns} hard run exposures (cap ${cap}) — ease intervals/floats before adding more run quality.`
+      );
+    }
+    if (hasBackToBackHardRuns(schedule, roleByDay)) {
+      issues.push("Back-to-back hard run days — separate threshold, intervals, and compromised work.");
+    }
+    if (ctx.input.goal_focus === "running" && hasBackToBackHardRuns(schedule, roleByDay)) {
+      issues.push("Running-focused plan has back-to-back hard run days.");
+    }
+    if (
+      (ctx.input.goal_focus === "hybrid" || ctx.input.goal_focus === "muscle") &&
+      countStrengthExposures(schedule) < 2
+    ) {
+      issues.push("General hybrid / muscle plan has limited strength volume — add upper/lower/full-body work.");
+    }
+    if (
+      ctx.input.goal_focus === "muscle" &&
+      countStrengthExposures(schedule) < 3 &&
+      ctx.input.days_per_week >= 4
+    ) {
+      issues.push("Strength/body composition plan needs more weekly strength exposure.");
+    }
+    if (
+      shouldPreferLowImpactEngine(ctx.input) &&
+      !hasLowImpactAerobicSupport(schedule)
+    ) {
+      issues.push("No low-impact bike/row/ski aerobic support — add engine work without extra run impact.");
+    }
+    if (isLowImpactProfile(ctx.input) && hasBackToBackImpactDays(schedule, roleByDay)) {
+      issues.push("Low-impact profile has back-to-back impact days.");
+    }
+    if (ctx.input.ability_level === "beginner" && rhythm.hard_day_count >= 4) {
+      issues.push("Beginner plan has many hard sessions — simplify and add recovery.");
+    }
+    const benchIssue = benchmarkPlacedBeforeKeySession(schedule, roleByDay);
+    if (benchIssue) {
+      issues.push(`${benchIssue} — move test piece or key session.`);
+    }
+    if (
+      (ctx.input.goal_focus === "hybrid" || ctx.input.goal_focus === "muscle") &&
+      countUpperBodySessions(schedule) === 0 &&
+      ctx.input.days_per_week >= 4
+    ) {
+      issues.push("Upper-body strength missing — use upper work on non-hard days for balance.");
+    }
+  }
+
   if (isHyroxProAdvancedProfile(ctx.input) && !isDeloadWeek(ctx.weekNumber, ctx.weekFocus)) {
     const hardRuns = countHardRunExposures(schedule, roleByDay);
     const cap = maxHardRunExposuresForHyroxPro(ctx.weekNumber, ctx.weekFocus);
@@ -1003,6 +1070,14 @@ export function repairWeekSchedule(
 
   const passes: Array<() => string | null> = [
     () => repairStripRunPrescription(schedule),
+    () =>
+      repairGeneralProgrammeRhythm(
+        schedule,
+        roleByDay,
+        ctx.input,
+        ctx.weekNumber,
+        ctx.weekFocus
+      ).message,
     () => repairHyroxProWeeklySkeleton(schedule, roleByDay, ctx),
     () => repairHyroxHardRunIntensity(schedule, roleByDay, ctx),
     () => repairLegsBeforeThreshold(schedule, roleByDay),
@@ -1034,6 +1109,14 @@ export function repairWeekSchedule(
     () => repairMondayAfterSunday(schedule, roleByDay, ctx),
     () => repairHyroxProWeeklySkeleton(schedule, roleByDay, ctx),
     () => repairHyroxHardRunIntensity(schedule, roleByDay, ctx),
+    () =>
+      repairGeneralProgrammeRhythm(
+        schedule,
+        roleByDay,
+        ctx.input,
+        ctx.weekNumber,
+        ctx.weekFocus
+      ).message,
     () => repairBikeDurationGuidance(schedule, ctx),
     () => repairBreakHardChains(schedule, roleByDay),
   ];

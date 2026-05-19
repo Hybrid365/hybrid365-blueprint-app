@@ -1094,11 +1094,24 @@ function pickWeightedSession(
     }
 
     if (input.goal_focus === "muscle") {
-      if (s.category === "strength") weight += 2;
-      if (s.category === "run" && s.intensity === "high") weight -= 1;
+      if (s.category === "strength") weight += 4;
+      if (s.type === "strength_upper") weight += 6;
+      if (s.type === "strength_lower" && s.fatigue !== "high") weight += 4;
+      if (s.category === "run" && s.intensity === "high") weight -= 8;
+      if (s.type === "interval_run") weight -= 10;
+      if (s.type === "aerobic_support") weight += 5;
+      if (role === "upper_primary" || role === "upper_full") weight += 8;
     }
 
-    if (input.goal_focus === "hybrid") {
+    if (input.goal_focus === "hybrid" && !input.hyrox_track?.active) {
+      if (s.category === "hybrid") weight += 3;
+      if (s.type === "aerobic_support") weight += 6;
+      if (s.type === "strength_upper") weight += 5;
+      if (s.name.toLowerCase().includes("hyrox")) weight -= 8;
+      if (/\brace\s*sim\b|wall ball|hyrox compromised/i.test(blob)) weight -= 10;
+      if (role === "upper_primary" || role === "upper_full") weight += 7;
+      if (role === "aerobic_support") weight += 8;
+    } else if (input.goal_focus === "hybrid") {
       if (s.category === "hybrid") weight += 2;
       if (s.name.toLowerCase().includes("hyrox")) weight += 1;
     }
@@ -1116,7 +1129,22 @@ function pickWeightedSession(
       }
     }
 
-    if (input.ability_level === "beginner" && s.intensity === "high") weight -= 1;
+    if (input.ability_level === "beginner" && s.intensity === "high") weight -= 3;
+    if (
+      input.ability_level === "beginner" &&
+      !input.hyrox_track?.active &&
+      s.type === "interval_run"
+    ) {
+      weight -= 12;
+    }
+    if (
+      input.ability_level === "beginner" &&
+      !input.hyrox_track?.active &&
+      s.type === "aerobic_run" &&
+      s.intensity === "low"
+    ) {
+      weight += 6;
+    }
     if (input.double_sessions && s.category === "aerobic") weight += 1;
 
     if (beginnerHyroxContext) {
@@ -1403,6 +1431,15 @@ function pickWeightedSession(
             weight += 10;
           }
         }
+      }
+
+      if (
+        !input.hyrox_track?.active &&
+        pickContext.weekNumber <= 4 &&
+        pickContext.runningThresholdSessionCount >= 1 &&
+        s.type === "interval_run"
+      ) {
+        weight -= 20;
       }
 
       if (isRunRole && s.category === "run") {
