@@ -10,25 +10,47 @@ export type SessionProgressionTemplate = {
 
 export const HYROX_SESSION_PROGRESSIONS: SessionProgressionTemplate[] = [
   {
-    family: "threshold_run_6x6",
-    sessionIds: ["hyrox_run_threshold_6x6"],
-    intent: "Threshold — correct intensity, not forced pace.",
+    family: "threshold_run_5x5",
+    sessionIds: ["hyrox_run_threshold_6x6", "hyrox_run_threshold_3x10"],
+    intent: "Progress duration and reduce recovery before chasing pace.",
     weeks: {
-      week1: "4×6 min @ threshold · 2 min rest — establish rhythm",
-      week2: "5×6 min @ threshold · 90s rest",
-      week3: "6×6 min @ threshold · 90s rest — reduce rest before adding speed",
-      week4: "4×6 min @ threshold (deload volume) · 2 min rest",
+      week1: "5×5 min @ threshold · 90s rest (thresholdMinutes ~25)",
+      week2: "6×5 min @ threshold · 75s rest",
+      week3: "6×6 min @ threshold · 60s rest",
+      week4: "4×5 min deload · 90s rest — reduce overall threshold load",
     },
   },
   {
     family: "wall_ball_emom_addon",
     sessionIds: ["hyrox_compromised_run_wallballs"],
-    intent: "Wall ball capacity — EMOM add-on early, fatigue integration late.",
+    intent: "Wall ball capacity — attach EMOM to strength/Hyrox hard day, not easy aerobic.",
     weeks: {
-      week1: "10 min WB EMOM × 12–15 reps (category ball) after easy day",
-      week2: "10 min WB EMOM × 15–18 · tighter rest",
+      week1: "10 min WB EMOM × 10–15 reps on strength endurance or Hyrox day",
+      week2: "10 min WB EMOM × 12–15 · smoother breathing",
       week3: "30–40 WB then 800m run × 3 rounds (compromised builder)",
       week4: "8 min WB EMOM maintenance only (deload)",
+    },
+  },
+  {
+    family: "threshold_run_station_overload",
+    sessionIds: ["hyrox_compromised_threshold_run_station_overload"],
+    intent: "Saturday key — threshold reps into station overload; progress reps/rest then run/station volume.",
+    weeks: {
+      week1: "6×3 min @ 5k · 90s · then 600m+90s station+600m ×2 · 2 min between blocks",
+      week2: "8×3 min · 75s rest · 750m+2 min station+750m ×2",
+      week3: "8×3 min · 60s · 750m+3 min station+750m ×2 — record pace drop-off",
+      week4: "5×3 min deload · 90s · 1 round station block only",
+    },
+  },
+  {
+    family: "compromised_rounds_progression",
+    sessionIds: ["hyrox_compromised_mini_test", "hyrox_compromised_run_wallballs"],
+    intent: "Compromised running — manipulate rounds, run distance, station volume, rest.",
+    weeks: {
+      week1: "3 rounds 600m run + station · 2 min rest",
+      week2: "4 rounds 600m + station · 90s rest",
+      week3: "4 rounds 800m + station · 90s rest",
+      week4: "Reduced volume / technique deload — 2 rounds easy",
     },
   },
   {

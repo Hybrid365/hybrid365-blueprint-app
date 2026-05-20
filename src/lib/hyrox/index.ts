@@ -8,3 +8,7 @@ export * from "./paceCalculator";
 export * from "./athleteClassification";
 export * from "./weeklyStructureRules";
 export * from "./programmeRules";
+export * from "./sessionStress";
+export * from "./schedulingRules";
+export * from "./thresholdBlockProgression";
+export * from "./sessionResolver";

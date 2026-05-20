@@ -36,17 +36,21 @@ Every week should answer: *Did we improve sustainable output without breaking re
 
 | Day type | Examples | RPE |
 |----------|----------|-----|
-| **Hard** | Threshold run, erg threshold, compromised builder, heavy legs | 7–9 |
-| **Easy** | Easy run, bike Z2, mixed erg aerobic, recovery flush | 3–5 |
-| **Moderate** | Upper strength (non-failure), long easy aerobic | 5–6 |
+| **Hard** | Threshold run, 5k/10k pace intervals, erg threshold, compromised sessions, lower-body strength endurance, sled-heavy work, station overload, parkrun/5km benchmark | 7–9 |
+| **Easy** | Easy aerobic bike/Ski/Row, easy run, recovery aerobic, mobility, low-stress upper strength/support | 3–5 |
+| **Moderate** | Upper strength (non-failure), long easy aerobic, tempo/aerobic quality (below threshold HR) | 5–7 |
 | **Rest** | Full rest or mobility only | — |
 
 **Rules:**
 
 - Beginners: max **2** hard days per week.
 - Intermediates: **2–3** hard days with easy/erg between.
-- Advanced: **3–4** hard exposures if recovery is green; doubles only for **Z2 erg/bike** PM sessions.
-- Never stack: threshold run → heavy legs → full compromised on consecutive days (especially for running-limited athletes).
+- Advanced: **3–4** hard exposures if recovery is green; progress doubles: aerobic → threshold + easy PM → threshold run AM + erg threshold PM (same day).
+- **Saturday key:** for athletes training **5–6+ days/week** with Saturday available, Saturday is usually a hard/key Hyrox or run-specific session.
+- **Do not** place lower-body strength endurance the day before a threshold/hard run.
+- **Do not** place erg threshold the day after threshold run — stack same day if double-ready.
+- Never stack accidental back-to-back hard days without deliberate overload intent.
+- **Weekly hours** gates total volume: key sessions first, fill remaining time with easy bike/erg/support — more hours ≠ more hard sessions.
 
 ---
 
@@ -60,10 +64,17 @@ Every week should answer: *Did we improve sustainable output without breaking re
 
 **Progression**
 
-- Track **total threshold minutes per week** (run + erg).
+- Track **total threshold minutes per week** (run + erg) — metadata: `thresholdMinutes`, `thresholdModality`, `hardDay`, `intensityType`.
+- Prefer **longer intervals and shorter rest** before chasing faster pace (e.g. Week 1: 5×5 min · 90s → Week 3: 6×6 min · 60s → Week 4: 4×5 deload).
 - Progress **5–10%** weekly when sleep, soreness and RPE are stable for 2 weeks.
+- **Tuesday** is the staple **key threshold** day (Sun/Mon easier) — tempo never replaces Tuesday threshold.
+- **Tempo / aerobic quality** is a **secondary** layer — typically **Thursday AM** when double-session ready, paired with **Thursday PM** lower strength endurance.
+- Progress threshold via **duration and rest** before pace — HR/RPE governs whether pace increases.
 - If running tolerance is yellow, **substitute erg threshold** before adding run intervals.
+- Week **4** of each block: deload overall volume and threshold load ~10–20%.
 - Near race (4–2 weeks out): maintain intensity, **reduce volume** — do not chase new threshold PRs in the gym.
+
+**Staple key session:** *Threshold Run Into Station Overload* — 8×3 min @ 5k pace into 750m run + station overload blocks (Saturday key when appropriate).
 
 ---
 

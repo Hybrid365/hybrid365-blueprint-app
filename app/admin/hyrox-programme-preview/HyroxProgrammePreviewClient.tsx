@@ -44,6 +44,7 @@ import {
 } from "@/src/lib/hyrox/weeklyStructureRules";
 import { getHyroxSession } from "@/src/lib/hyrox/sessionLibrary";
 import type { BlockWeekInCycle } from "@/src/lib/hyrox/types";
+import { EditableProgrammeSandbox } from "@/components/admin/hyrox-programme-preview/EditableProgrammeSandbox";
 
 const ROLE_DISPLAY: Record<string, string> = {
   easy_run: "Easy run / flush",
@@ -527,6 +528,8 @@ export default function HyroxProgrammePreviewClient() {
           ))}
         </div>
       </section>
+
+      <EditableProgrammeSandbox />
 
       <ProfilePreview profile={profile} />
     </HyroxPageShell>

@@ -20,7 +20,8 @@ export const STATION_WEAKNESS_RULES: StationWeaknessRule[] = [
     sessionTags: ["wall_ball", "compromised"],
     earlyBlockFocus: "Technique + EMOM density, submax sets",
     lateBlockFocus: "WB → run rounds at race load",
-    addOnExample: "10 min × 12–18 reps EMOM after aerobic day",
+    addOnExample:
+      "10 min EMOM: 10–15 wall balls @ load · RPE 6–7 — attach to strength endurance or Saturday Hyrox day",
   },
   {
     weakness: "sled",

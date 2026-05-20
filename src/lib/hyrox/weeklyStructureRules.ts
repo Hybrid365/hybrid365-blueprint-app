@@ -1,4 +1,5 @@
 import type { RaceTimelinePhase, WeeklyStructureTemplate } from "./types";
+import { applyHybrid365WeeklyRhythm, type WeeklyScheduleBuildOptions } from "./schedulingRules";
 
 export const WEEKLY_STRUCTURE_TEMPLATES: WeeklyStructureTemplate[] = [
   {
@@ -9,26 +10,34 @@ export const WEEKLY_STRUCTURE_TEMPLATES: WeeklyStructureTemplate[] = [
     description:
       "Hard/easy rhythm with max 2 true hard days. Erg/bike supports aerobic work without extra run impact.",
     hardEasyRhythm:
-      "Sun/Mon often easier — Sun longer aerobic, Mon recovery aerobic + upper. Hard mid-week where possible.",
-    sessionCategoryEmphasis: ["run_development", "erg_development", "strength", "compromised_running"],
+      "Sun long easy · Mon recovery upper · Tue threshold/tempo · Thu short Hyrox · easy fillers.",
+    sessionCategoryEmphasis: ["run_development", "tempo_aerobic_quality", "erg_development", "strength", "compromised_running"],
     days: [
-      {
-        day: "Sun",
-        role: "long_aerobic",
-        intensity: "easy",
-        notes: "Longer-duration aerobic (run, bike or mixed erg) — true Z2",
-      },
-      {
-        day: "Mon",
-        role: "strength_upper",
-        intensity: "moderate",
-        notes: "Recovery-leaning aerobic optional AM + upper strength",
-      },
-      { day: "Tue", role: "hard_run", intensity: "hard", notes: "Threshold or controlled intervals" },
+      { day: "Sun", role: "long_aerobic", intensity: "easy", notes: "Longer-duration aerobic — true Z2" },
+      { day: "Mon", role: "strength_upper", intensity: "moderate", notes: "Recovery-leaning + upper support" },
+      { day: "Tue", role: "hard_run", intensity: "hard", notes: "Intro threshold / run quality (shortened for beginners)" },
       { day: "Wed", role: "erg_z2", intensity: "easy", notes: "Bike or mixed erg Z2" },
       { day: "Thu", role: "compromised_hybrid", intensity: "hard", notes: "Short compromised builder" },
       { day: "Fri", role: "rest", intensity: "rest" },
-      { day: "Sat", role: "easy_run", intensity: "easy", notes: "Easy run or deload flush" },
+      { day: "Sat", role: "easy_run", intensity: "easy", notes: "Easy flush — or key if 5th day added" },
+    ],
+  },
+  {
+    id: "intermediate_4_day",
+    label: "Intermediate — 4 days (limited)",
+    daysPerWeek: 4,
+    allowsDoubleSessions: false,
+    description: "Limited days — threshold/tempo, strength endurance, Hyrox compromised, long aerobic.",
+    hardEasyRhythm: "Highest-value sessions only — strength endurance may replace an extra run quality slot.",
+    sessionCategoryEmphasis: ["run_development", "strength", "compromised_running", "erg_development"],
+    days: [
+      { day: "Sun", role: "long_aerobic", intensity: "easy" },
+      { day: "Mon", role: "rest", intensity: "rest" },
+      { day: "Tue", role: "hard_run", intensity: "hard" },
+      { day: "Wed", role: "rest", intensity: "rest" },
+      { day: "Thu", role: "strength_lower", intensity: "hard" },
+      { day: "Fri", role: "rest", intensity: "rest" },
+      { day: "Sat", role: "compromised_hybrid", intensity: "hard" },
     ],
   },
   {
@@ -37,33 +46,24 @@ export const WEEKLY_STRUCTURE_TEMPLATES: WeeklyStructureTemplate[] = [
     daysPerWeek: 5,
     allowsDoubleSessions: false,
     description:
-      "Three hard touches: threshold run, strength, compromised. Easy run + erg Z2 fill aerobic gaps.",
+      "Hybrid365 rhythm: Sun long aerobic · Mon recovery upper · Tue run quality · Thu leg endurance · Sat key Hyrox.",
     hardEasyRhythm:
-      "Sun long aerobic · Mon upper/recovery aerobic · hard Tue/Thu · easy fillers. Week 4 deload volume.",
+      "Sun long easy · Mon recovery · Tue KEY threshold · Wed easy · Thu strength endurance · Fri support · Sat KEY hard.",
     sessionCategoryEmphasis: [
       "run_development",
+      "tempo_aerobic_quality",
       "erg_development",
       "strength",
       "compromised_running",
     ],
     days: [
-      {
-        day: "Sun",
-        role: "long_aerobic",
-        intensity: "easy",
-        notes: "Longer aerobic — Z2, low impact option via erg/bike",
-      },
-      {
-        day: "Mon",
-        role: "strength_upper",
-        intensity: "moderate",
-        notes: "Upper strength + optional easy aerobic — recovery-leaning",
-      },
-      { day: "Tue", role: "hard_run", intensity: "hard", notes: "Threshold session" },
-      { day: "Wed", role: "easy_run", intensity: "easy" },
-      { day: "Thu", role: "compromised_hybrid", intensity: "hard" },
-      { day: "Fri", role: "erg_z2", intensity: "easy", notes: "Ski/row/bike Z2" },
-      { day: "Sat", role: "easy_run", intensity: "easy", notes: "Easy run or secondary aerobic" },
+      { day: "Sun", role: "long_aerobic", intensity: "easy", notes: "Longer aerobic — Z2, erg option if run-limited" },
+      { day: "Mon", role: "strength_upper", intensity: "moderate", notes: "Recovery aerobic + upper / grip support" },
+      { day: "Tue", role: "hard_run", intensity: "hard", notes: "Key Tuesday threshold run — primary weekly run-quality progression" },
+      { day: "Wed", role: "erg_z2", intensity: "easy", notes: "Easy bike / mixed erg" },
+      { day: "Thu", role: "strength_lower", intensity: "hard", notes: "Lower strength endurance — tempo AM only if double-ready" },
+      { day: "Fri", role: "gym_aerobic_upper", intensity: "easy", notes: "Easy aerobic + upper/grip support" },
+      { day: "Sat", role: "compromised_hybrid", intensity: "hard", notes: "Saturday key — Hyrox / compromised / race-specific" },
     ],
   },
   {
@@ -72,8 +72,9 @@ export const WEEKLY_STRUCTURE_TEMPLATES: WeeklyStructureTemplate[] = [
     daysPerWeek: 6,
     allowsDoubleSessions: true,
     description:
-      "Higher frequency with erg threshold and compromised density. Doubles optional (Z2 erg PM).",
-    hardEasyRhythm: "Alternate hard/easy — max 3–4 hard exposures with true easy between.",
+      "6-day rhythm with Saturday key. Doubles optional — stack threshold + erg threshold same day when ready.",
+    hardEasyRhythm:
+      "Sun long easy · Mon recovery upper · Tue run quality · Wed easy · Thu leg endurance · Fri support · Sat KEY.",
     sessionCategoryEmphasis: [
       "run_development",
       "erg_development",
@@ -81,18 +82,13 @@ export const WEEKLY_STRUCTURE_TEMPLATES: WeeklyStructureTemplate[] = [
       "strength",
     ],
     days: [
-      { day: "Mon", role: "strength_upper", intensity: "moderate" },
-      { day: "Tue", role: "hard_run", intensity: "hard" },
-      { day: "Wed", role: "erg_threshold", intensity: "hard", notes: "Ski or row threshold" },
-      { day: "Thu", role: "compromised_hybrid", intensity: "hard" },
-      { day: "Fri", role: "easy_run", intensity: "easy" },
-      { day: "Sat", role: "long_aerobic", intensity: "moderate" },
-      {
-        day: "Sun",
-        role: "long_aerobic",
-        intensity: "easy",
-        notes: "Long aerobic — primary Z2 duration day",
-      },
+      { day: "Sun", role: "long_aerobic", intensity: "easy", notes: "Primary long Z2 duration" },
+      { day: "Mon", role: "strength_upper", intensity: "moderate", notes: "Recovery-leaning + upper" },
+      { day: "Tue", role: "hard_run", intensity: "hard", notes: "Threshold run — AM if doubling" },
+      { day: "Wed", role: "erg_z2", intensity: "easy", notes: "Easy erg or recovery after stacked hard day" },
+      { day: "Thu", role: "strength_lower", intensity: "hard", notes: "Leg endurance / sled — not day before key run" },
+      { day: "Fri", role: "erg_z2", intensity: "easy", notes: "Support / flush" },
+      { day: "Sat", role: "compromised_hybrid", intensity: "hard", notes: "Saturday key session" },
     ],
   },
   {
@@ -101,8 +97,8 @@ export const WEEKLY_STRUCTURE_TEMPLATES: WeeklyStructureTemplate[] = [
     daysPerWeek: 7,
     allowsDoubleSessions: true,
     description:
-      "High aerobic throughput — doubles for Z2 erg. Race-specific compromised increases near event.",
-    hardEasyRhythm: "Hard Mon/Tue/Thu/Sat pattern with easy doubles and recovery flush days.",
+      "High aerobic throughput — Saturday key. Extra volume via Z1/Z2 erg, not extra hard runs.",
+    hardEasyRhythm: "Hard Tue (+ optional erg PM) · Thu legs · Sat key · easy doubles elsewhere.",
     sessionCategoryEmphasis: [
       "run_development",
       "erg_development",
@@ -111,23 +107,17 @@ export const WEEKLY_STRUCTURE_TEMPLATES: WeeklyStructureTemplate[] = [
       "testing",
     ],
     days: [
-      { day: "Mon", role: "strength_lower", intensity: "moderate" },
+      { day: "Sun", role: "long_aerobic", intensity: "easy", notes: "Long aerobic — optional PM aerobic double only (never threshold/tempo)" },
+      { day: "Mon", role: "strength_upper", intensity: "moderate" },
       { day: "Tue", role: "hard_run", intensity: "hard", notes: "AM threshold" },
-      { day: "Wed", role: "erg_threshold", intensity: "hard" },
-      { day: "Thu", role: "compromised_hybrid", intensity: "hard" },
-      { day: "Fri", role: "easy_run", intensity: "easy", notes: "Optional PM erg Z2 double" },
-      { day: "Sat", role: "long_aerobic", intensity: "moderate" },
-      {
-        day: "Sun",
-        role: "long_aerobic",
-        intensity: "easy",
-        notes: "Long aerobic + optional PM Z2 double when readiness allows",
-      },
+      { day: "Wed", role: "erg_threshold", intensity: "hard", notes: "PM erg threshold when double-ready — else easy" },
+      { day: "Thu", role: "strength_lower", intensity: "hard" },
+      { day: "Fri", role: "erg_z2", intensity: "easy" },
+      { day: "Sat", role: "compromised_hybrid", intensity: "hard", notes: "Saturday key — race-specific" },
     ],
   },
 ];
 
-/** Week 4 of each 4-week block — apply deload notes to structure. */
 export function applyBlockWeekDeload(
   template: WeeklyStructureTemplate,
   blockWeek: import("./types").BlockWeekInCycle
@@ -135,7 +125,7 @@ export function applyBlockWeekDeload(
   if (blockWeek !== 4) return template;
   return {
     ...template,
-    description: `${template.description} Week 4: reduce total volume ~10–20% — maintain rhythm.`,
+    description: `${template.description} Week 4: reduce total volume ~10–20% and threshold minutes — maintain rhythm.`,
   };
 }
 
@@ -147,37 +137,62 @@ export function suggestWeeklyStructure(options: {
   trainingDaysAvailable: number;
   classification: import("./types").AthleteClassificationId;
   allowsDoubles?: boolean;
+  scheduleOptions?: WeeklyScheduleBuildOptions;
 }): WeeklyStructureTemplate {
-  const { trainingDaysAvailable, classification, allowsDoubles } = options;
+  const { trainingDaysAvailable, classification, allowsDoubles, scheduleOptions } = options;
 
-  if (trainingDaysAvailable <= 4 || classification === "beginner_foundation") {
-    return getWeeklyStructure("beginner_4_day")!;
+  let template: WeeklyStructureTemplate;
+
+  if (trainingDaysAvailable <= 3) {
+    template = applyHybrid365WeeklyRhythm(getWeeklyStructure("beginner_4_day")!, {
+      trainingDaysAvailable,
+      ...scheduleOptions,
+      recoveryStatus: scheduleOptions?.recoveryStatus ?? "moderate",
+      blockWeek: scheduleOptions?.blockWeek ?? 1,
+    });
+    return template;
   }
-  if (trainingDaysAvailable === 5 || classification === "balanced_intermediate") {
-    return getWeeklyStructure("intermediate_5_day")!;
-  }
-  if (
+
+  if (trainingDaysAvailable === 4) {
+    template =
+      classification === "beginner_foundation"
+        ? getWeeklyStructure("beginner_4_day")!
+        : getWeeklyStructure("intermediate_4_day")!;
+  } else if (trainingDaysAvailable === 5 || classification === "balanced_intermediate") {
+    template = getWeeklyStructure("intermediate_5_day")!;
+  } else if (
     trainingDaysAvailable >= 7 ||
     classification === "advanced_competitive" ||
     (allowsDoubles && trainingDaysAvailable >= 6)
   ) {
-    return getWeeklyStructure("pro_high_volume_6_7_day")!;
+    template = getWeeklyStructure("pro_high_volume_6_7_day")!;
+  } else {
+    template = getWeeklyStructure("advanced_6_day")!;
   }
-  return getWeeklyStructure("advanced_6_day")!;
+
+  if (scheduleOptions) {
+    template = applyHybrid365WeeklyRhythm(template, {
+      ...scheduleOptions,
+      trainingDaysAvailable,
+      recoveryStatus: scheduleOptions.recoveryStatus ?? "moderate",
+      blockWeek: scheduleOptions.blockWeek ?? 1,
+    });
+  }
+
+  return template;
 }
 
-/** Adjust slot emphasis by weeks to race — specificity ramps up. */
 export function applyRaceTimelineToStructure(
   template: WeeklyStructureTemplate,
   phase: RaceTimelinePhase
 ): WeeklyStructureTemplate {
   const notes =
     phase === "far"
-      ? "Emphasise threshold, Z2, strength base — minimal race simulation."
+      ? "Emphasise tempo/aerobic quality, threshold intro, Z2, strength base — minimal race simulation."
       : phase === "mid"
         ? "Add compromised builders and station volume."
         : phase === "near"
-          ? "Race-pace runs, compromised density, reduce strength maxes."
+          ? "Race-pace runs, compromised density, Saturday key race-specific sessions."
           : "Taper — sharpness only, minimal fatigue.";
 
   return {
@@ -187,7 +202,7 @@ export function applyRaceTimelineToStructure(
       phase === "near" || phase === "race_week"
         ? ["compromised_running", "run_development", "erg_development", "testing"]
         : phase === "far"
-          ? ["run_development", "erg_development", "strength", "testing"]
+          ? ["run_development", "tempo_aerobic_quality", "erg_development", "strength", "testing"]
           : template.sessionCategoryEmphasis,
   };
 }

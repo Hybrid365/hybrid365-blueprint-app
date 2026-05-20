@@ -13,11 +13,32 @@ const ENRICHMENTS: Partial<
       "Builds threshold engine with controlled reps — pace from 5k/10k, governed by HR/RPE. Progress duration/rest before speed.",
     filmPrompt: null,
     progressionExamples: {
-      week1: "4×6 min threshold · 2 min rest",
-      week2: "5×6 min · 90s rest",
-      week3: "6×6 min · 90s rest",
-      week4: "4×6 min deload · 2 min rest",
+      week1: "5×5 min @ threshold · 90s rest",
+      week2: "6×5 min · 75s rest",
+      week3: "6×6 min · 60s rest",
+      week4: "4×5 min deload · 90s rest",
     },
+  },
+  hyrox_run_tempo_hm: {
+    prescriptionRationale:
+      "Tempo / aerobic quality bridges easy aerobic and true threshold — use before stacking multiple key runs.",
+    filmPrompt: null,
+  },
+  hyrox_compromised_threshold_run_station_overload: {
+    prescriptionRationale:
+      "Hybrid365 Saturday staple — fast running into station overload; track pace drop-off and station reps.",
+    filmPrompt: "Film final 750m run split after station for coach pacing review.",
+    progressionExamples: {
+      week1: "6×3 min + 600m/station block ×2",
+      week2: "8×3 min + 750m/station ×2",
+      week3: "8×3 min shorter rest + 3 min station",
+      week4: "Reduced reps + 1 station block",
+    },
+  },
+  hyrox_gym_aerobic_upper_grip: {
+    prescriptionRationale:
+      "Gym-based aerobic fills weekly hours with low-impact volume while ticking upper strength and grip.",
+    filmPrompt: null,
   },
   hyrox_run_easy: {
     prescriptionRationale:

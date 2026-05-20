@@ -43,6 +43,10 @@ export type ProgrammeContext = {
   /** Suggest HRV / resting HR monitoring when recovery is poor */
   suggestRecoveryMonitoring?: boolean;
   preferErgOverRun?: boolean;
+  saturdayAvailable?: boolean;
+  preferredLongAerobicDay?: import("./types").Weekday;
+  lowerBodySoreness?: "none" | "mild" | "high";
+  weeklyRunKm?: number;
 };
 
 export type SessionSelectionHint = {
@@ -266,10 +270,124 @@ export const HYROX_PROGRAMME_RULES: ProgrammeRule[] = [
     then: "Prompt filming key station/movement sets for coach feedback and social proof where useful.",
   },
   {
+    id: "saturday_key_session",
+    priority: "should",
+    when: "Always",
+    then: "For 5–6+ day athletes with Saturday available and acceptable recovery, Saturday is usually a hard/key Hyrox or run-specific session — not default easy.",
+    sessionCategories: ["compromised_running", "run_development"],
+    sessionTags: ["saturday_key", "race_specific"],
+  },
+  {
+    id: "leg_endurance_before_run",
+    priority: "must",
+    when: "Always",
+    then: "Do not schedule lower-body strength endurance the day before a threshold run or hard running day.",
+    sessionCategories: ["strength", "run_development"],
+  },
+  {
+    id: "erg_threshold_after_run",
+    priority: "must",
+    when: "Always",
+    then: "Do not place erg threshold the day after threshold run — stack AM run + PM erg same day for double-ready athletes.",
+    sessionCategories: ["erg_development", "run_development"],
+    sessionTags: ["threshold"],
+  },
+  {
+    id: "tuesday_key_threshold",
+    priority: "must",
+    when: "Always",
+    then: "Tuesday is the staple key threshold run day for 4–6+ day athletes — do not replace with tempo. Sun/Mon are easier so athlete is fresh for threshold progression.",
+    sessionCategories: ["run_development"],
+    sessionTags: ["threshold"],
+  },
+  {
+    id: "thursday_strength_staple",
+    priority: "must",
+    when: "Always",
+    then: "On Thursday, lower strength endurance is the key/staple session. Tempo is only an optional AM add-on for double-session-ready athletes — never overwrite the strength slot.",
+    sessionCategories: ["strength"],
+    sessionTags: ["legs", "strength_endurance"],
+  },
+  {
+    id: "tempo_thursday_double_only",
+    priority: "should",
+    when: "allowsDoubleSessions",
+    then: "Tempo / aerobic quality is Thursday AM only when double-session ready — paired with PM lower strength endurance. Tempo is secondary, not a Tuesday replacement.",
+    sessionCategories: ["tempo_aerobic_quality", "strength"],
+    sessionTags: ["tempo", "HM"],
+  },
+  {
+    id: "tempo_before_three_key_runs",
+    priority: "should",
+    when: "programmeBlock === 1",
+    then: "Use tempo as an extra Thursday layer when double-ready — Tuesday remains threshold. Do not over-classify tempo as full threshold.",
+    sessionCategories: ["tempo_aerobic_quality"],
+    sessionTags: ["tempo", "HM"],
+  },
+  {
+    id: "sunday_aerobic_double_only",
+    priority: "must",
+    when: "Always",
+    then: "Sunday optional doubles are aerobic only — easy bike/Ski/Row Z1–low Z2, mobility. Never threshold, tempo, intervals or above-threshold work on Sunday.",
+    sessionTags: ["easy", "z2"],
+  },
+  {
+    id: "aerobic_day_extra_volume",
+    priority: "should",
+    when: "Always",
+    then: "Extra time on aerobic days: low Z2 bike/erg, mobility, upper/grip on gym days — never threshold, tempo, station overload or hard EMOMs.",
+    sessionTags: ["z2", "easy"],
+  },
+  {
+    id: "threshold_hr_rpe_governed",
+    priority: "must",
+    when: "Always",
+    then: "Threshold pace is a target range — HR and RPE govern the session. Reduce pace if above threshold. Progress duration and rest before pace increases.",
+    sessionCategories: ["run_development"],
+    sessionTags: ["threshold"],
+  },
+  {
+    id: "weekly_hours_volume_gate",
+    priority: "must",
+    when: "Always",
+    then: "Weekly training hours gates total volume — place key sessions first, fill remaining time with easy bike/erg/support; more hours does not mean more hard sessions.",
+    sessionTags: ["z2", "easy"],
+  },
+  {
+    id: "high_volume_erg_fill",
+    priority: "should",
+    when: "weeklyTrainingHours >= 12",
+    then: "Add volume via bike/Ski/Row Z1–Z2 — protect run quality; do not keep adding running beyond tolerance.",
+    sessionCategories: ["erg_development"],
+    sessionTags: ["z2", "bike"],
+  },
+  {
+    id: "limited_days_priority",
+    priority: "must",
+    when: "Always",
+    then: "3–4 day athletes: preserve run quality, strength endurance + station finisher, then Hyrox compromised — strength endurance may replace a run slot.",
+    sessionCategories: ["run_development", "strength", "compromised_running"],
+  },
+  {
+    id: "station_emom_placement",
+    priority: "must",
+    when: "Always",
+    then: "Station EMOMs attach to strength endurance, Hyrox-specific, or Saturday key — not default easy aerobic/recovery days unless low-fatigue technique only.",
+    sessionTags: ["emom"],
+  },
+  {
+    id: "gym_aerobic_upper_grip",
+    priority: "should",
+    when: "Always",
+    then: "Gym-based easy aerobic/support days may include upper-body density EMOM and DB grip holds without lower-body stress.",
+    sessionCategories: ["strength", "erg_development"],
+    sessionTags: ["upper", "grip"],
+  },
+  {
     id: "advanced_double_threshold",
     priority: "may",
     when: "classification === advanced_competitive && allowsDoubleSessions && doubleSessionReadiness === threshold_run_plus_erg_threshold",
-    then: "Allow lower-end run threshold AM + erg threshold PM on non-consecutive days if recovery is good.",
+    then: "Lower-end threshold run AM + Ski/Row threshold PM same day when recovery is good — follow with easy/recovery day.",
     sessionCategories: ["run_development", "erg_development"],
     sessionTags: ["threshold"],
   },
