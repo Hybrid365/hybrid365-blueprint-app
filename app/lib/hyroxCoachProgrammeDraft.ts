@@ -36,6 +36,7 @@ export type CoachProgrammeStatus =
 /** Roster list status for coach dashboard. */
 export type CoachAthleteListStatus =
   | "assessment_submitted"
+  | "profile_mapped"
   | "draft_generated"
   | "needs_coach_review"
   | "approved"
@@ -951,7 +952,13 @@ function buildSessionFromCoachEntry(
       thresholdMinutes: entry.thresholdMinutes ?? resolved.thresholdMinutes,
       qualityRunMinutes: entry.qualityRunMinutes ?? resolved.qualityRunMinutes,
       mainSet: entry.prescription.mainSet.length > 0 ? entry.prescription.mainSet : resolved.mainSet,
+      warmup: entry.prescription.warmup.length > 0 ? entry.prescription.warmup : resolved.warmup,
+      cooldown: entry.prescription.cooldown.length > 0 ? entry.prescription.cooldown : resolved.cooldown,
+      objective: entry.prescription.objective || resolved.objective,
+      whatToRecord:
+        entry.prescription.whatToRecord.length > 0 ? entry.prescription.whatToRecord : resolved.whatToRecord,
       coachNote: entry.prescription.coachNote || resolved.coachNote,
+      safetyNote: entry.prescription.safetyNote || resolved.safetyNote,
     };
   }
 

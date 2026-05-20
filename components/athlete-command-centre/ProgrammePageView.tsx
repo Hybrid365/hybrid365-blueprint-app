@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import {
   HYROX_BLOCKS,
   MOCK_ATHLETE,
+  MOCK_ATHLETE_PROGRAMME_VISIBLE,
   MOCK_WEEK_RATIONALE,
   MOCK_WEEK_SESSIONS,
 } from "@/app/lib/hyroxTeamDashboardMock";
@@ -69,28 +70,38 @@ export function ProgrammePageView() {
         </p>
       </div>
 
-      <section>
-        <SectionTitle
-          title="This week's sessions"
-          description={`${completed} of ${MOCK_WEEK_SESSIONS.length} complete`}
-          action={
-            <ProgressBar
-              value={Math.round((completed / MOCK_WEEK_SESSIONS.length) * 100)}
-              className="w-32"
-            />
-          }
-        />
-        <div className="space-y-4">
-          {MOCK_WEEK_SESSIONS.map((session) => (
-            <WeekSessionCard
-              key={session.id}
-              session={session}
-              onView={() => openSession(session.id, session.name)}
-              onLog={() => openSession(session.id, session.name)}
-            />
-          ))}
+      {!MOCK_ATHLETE_PROGRAMME_VISIBLE ? (
+        <div className={`${athleteCard} ${athleteCardPadding}`}>
+          <p className={eyebrowClass}>Programme</p>
+          <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+            Your assessment and testing have been submitted. Your coach is reviewing your profile and
+            building your programme. You&apos;ll see your week here once it&apos;s published.
+          </p>
         </div>
-      </section>
+      ) : (
+        <section>
+          <SectionTitle
+            title="This week's sessions"
+            description={`${completed} of ${MOCK_WEEK_SESSIONS.length} complete`}
+            action={
+              <ProgressBar
+                value={Math.round((completed / MOCK_WEEK_SESSIONS.length) * 100)}
+                className="w-32"
+              />
+            }
+          />
+          <div className="space-y-4">
+            {MOCK_WEEK_SESSIONS.map((session) => (
+              <WeekSessionCard
+                key={session.id}
+                session={session}
+                onView={() => openSession(session.id, session.name)}
+                onLog={() => openSession(session.id, session.name)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <SessionDrawer
         sessionId={sessionId}

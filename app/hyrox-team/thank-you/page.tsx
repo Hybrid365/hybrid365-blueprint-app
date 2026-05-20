@@ -67,8 +67,11 @@ export default function HyroxTeamThankYouPage() {
             </h1>
 
             <p className="max-w-[720px] mx-auto text-[#dddddd] text-[clamp(17px,2vw,22px)] leading-[1.45] m-0">
-              Thanks for applying for the first Hybrid365 Hyrox Team. Your
-              application has been received and will be reviewed manually.
+              Application received. We&apos;ll review your application and contact successful applicants with next steps.
+            </p>
+
+            <p className="max-w-[640px] mx-auto mt-4 text-sm text-zinc-500 m-0">
+              Thanks for your interest in the first Hybrid365 Hyrox Team. Applications are reviewed manually — there is no automatic next step to payment.
             </p>
 
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-left">

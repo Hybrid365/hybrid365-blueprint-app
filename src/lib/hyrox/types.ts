@@ -135,6 +135,8 @@ export type HyroxSessionDefinition = {
   filmPrompt?: string | null;
   /** Why this session exists for dashboard personalisation copy. */
   prescriptionRationale?: string;
+  /** Session-specific safety / scaling warning (shown in resolved prescription). */
+  safetyNote?: string;
   /** Hard/easy classification, threshold minutes, preferred placement */
   scheduling?: SessionSchedulingMetadata;
   /** Compromised session progression levers */

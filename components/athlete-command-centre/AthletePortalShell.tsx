@@ -12,8 +12,8 @@ export function AthletePortalShell({
   children: React.ReactNode;
   showNav?: boolean;
 }) {
-  const { mockActive, setMockActive } = useAthletePortal();
-  const navVisible = showNav && mockActive;
+  const { programmePublishedMock, setProgrammePublishedMock } = useAthletePortal();
+  const navVisible = showNav && programmePublishedMock;
 
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
@@ -29,11 +29,11 @@ export function AthletePortalShell({
             <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-400 transition hover:border-zinc-600">
               <input
                 type="checkbox"
-                checked={mockActive}
-                onChange={(e) => setMockActive(e.target.checked)}
+                checked={programmePublishedMock}
+                onChange={(e) => setProgrammePublishedMock(e.target.checked)}
                 className="rounded border-zinc-600"
               />
-              Preview active dashboard (mock)
+              Programme live (mock)
             </label>
           </div>
         </div>
@@ -48,9 +48,9 @@ export function AthletePortalShell({
 }
 
 export function AthletePortalGate({ children }: { children: React.ReactNode }) {
-  const { mockActive } = useAthletePortal();
+  const { programmePublishedMock } = useAthletePortal();
 
-  if (!mockActive) {
+  if (!programmePublishedMock) {
     return <PreviewGateCard />;
   }
 

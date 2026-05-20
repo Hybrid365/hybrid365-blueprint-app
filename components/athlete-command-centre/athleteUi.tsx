@@ -242,8 +242,8 @@ export function PreviewGateCard() {
       </div>
       <p className="text-lg font-semibold text-white">Preview not enabled</p>
       <p className="mx-auto mt-2 text-sm leading-relaxed text-zinc-500">
-        Turn on <span className="font-medium text-yellow-400">Preview active dashboard (mock)</span> on Home to
-        explore the athlete portal.
+        Turn on <span className="font-medium text-yellow-400">Programme live (mock)</span> on the dashboard to explore the
+        full athlete portal preview.
       </p>
       <Link href="/athlete/dashboard" className={`${btnPrimaryClass} mt-6`}>
         Go to Home

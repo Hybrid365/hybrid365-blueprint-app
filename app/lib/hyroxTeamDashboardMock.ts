@@ -42,6 +42,9 @@ export const MOCK_ATHLETE = {
     "Establish repeatable station rhythm under fatigue. Keep Tuesday threshold controlled and Thursday as your key hybrid day.",
 };
 
+/** Mock: set true once coach publishes week — when false, athlete sees coach-build placeholder only. */
+export const MOCK_ATHLETE_PROGRAMME_VISIBLE = false;
+
 export const MOCK_WEEK_RATIONALE = {
   weekRole: "Foundation week 1",
   whyMatters:

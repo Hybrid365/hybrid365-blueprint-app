@@ -4,11 +4,11 @@ import HyroxTeamDashboardActive from "./HyroxTeamDashboardActive";
 import HyroxTeamDashboardLocked from "./HyroxTeamDashboardLocked";
 
 type Props = {
-  mockActive: boolean;
+  programmePublishedMock: boolean;
 };
 
-export default function HyroxTeamDashboardView({ mockActive }: Props) {
-  if (!mockActive) {
+export default function HyroxTeamDashboardView({ programmePublishedMock }: Props) {
+  if (!programmePublishedMock) {
     return <HyroxTeamDashboardLocked />;
   }
   return <HyroxTeamDashboardActive />;

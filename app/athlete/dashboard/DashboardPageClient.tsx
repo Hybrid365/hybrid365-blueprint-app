@@ -12,12 +12,12 @@ import { AthletePortalShell } from "@/components/athlete-command-centre/AthleteP
 import HyroxTeamDashboardView from "./HyroxTeamDashboardView";
 
 export default function DashboardPageClient() {
-  const { mockActive, setMockActive } = useAthletePortal();
+  const { programmePublishedMock, setProgrammePublishedMock } = useAthletePortal();
 
-  if (mockActive) {
+  if (programmePublishedMock) {
     return (
       <AthletePortalShell>
-        <HyroxTeamDashboardView mockActive />
+        <HyroxTeamDashboardView programmePublishedMock />
       </AthletePortalShell>
     );
   }
@@ -30,22 +30,23 @@ export default function DashboardPageClient() {
             <HyroxEyebrow>Hyrox Team / Dashboard</HyroxEyebrow>
             <HyroxH1 accent="portal">Athlete</HyroxH1>
             <HyroxLead>
-              Your Hyrox training hub — programme, benchmarks, check-ins and coach support.
+              Your Hyrox training hub — programme, benchmarks, check-ins and coach support unlock when your first block
+              is published.
             </HyroxLead>
           </div>
           <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-xs font-semibold text-zinc-400">
             <input
               type="checkbox"
-              checked={mockActive}
-              onChange={(e) => setMockActive(e.target.checked)}
+              checked={programmePublishedMock}
+              onChange={(e) => setProgrammePublishedMock(e.target.checked)}
               className="rounded border-zinc-600"
             />
-            Preview active dashboard (mock)
+            Programme live (mock)
           </label>
         </div>
       </HyroxSection>
 
-      <HyroxTeamDashboardView mockActive={false} />
+      <HyroxTeamDashboardView programmePublishedMock={false} />
     </HyroxPageShell>
   );
 }

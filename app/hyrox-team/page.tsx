@@ -3,6 +3,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { AthletePathwayPhoneStack } from "@/components/hyrox-landing/AthletePathwayPhoneStack"
 import { AthleteScreeningPhoneStack } from "@/components/hyrox-landing/AthleteScreeningPhoneStack"
+import { HyroxTeamHeroTrailer } from "@/components/hyrox-team/HyroxTeamHeroTrailer"
 
 export const metadata: Metadata = {
   title: "Hybrid365 Hyrox Team | Elite Coaching & Athlete Development",
@@ -285,52 +286,7 @@ function HeroSection() {
           </SecondaryButton>
         </div>
       </div>
-      <div className="rounded-[24px] sm:rounded-[32px] border border-white/[0.14] overflow-hidden bg-[#0b0b0b] shadow-[0_28px_90px_rgba(0,0,0,0.5)]">
-        <div className="relative w-full aspect-video overflow-hidden">
-          <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Sequence%2001.00_37_26_11.Still015-SvB40zqquvzbypgCHSLtqKIXipujBq.jpg"
-            alt="Hyrox athletes at the start line"
-            fill
-            className="object-cover grayscale-[20%] contrast-[1.1] brightness-[0.7]"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
-          <div className="absolute inset-0 grid place-items-center">
-            <div className="w-[76px] h-[76px] rounded-full bg-[#f4d23c] text-[#050505] grid place-items-center text-[30px] font-black shadow-[0_0_40px_rgba(244,210,60,0.4)] cursor-pointer transition-transform hover:scale-105">
-              ▶
-            </div>
-          </div>
-          <div className="absolute bottom-4 left-4 right-4 z-10">
-            <p className="text-white/80 text-sm font-medium">Watch the trailer</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-white/[0.08]">
-          <div className="bg-[#0d0d0d] p-[18px]">
-            <strong className="block text-[#f4d23c] text-[28px] leading-none mb-1.5 tracking-[-0.05em]">
-              5-6
-            </strong>
-            <small className="text-[#a9a9a9] uppercase text-[11px] font-black tracking-[0.09em]">
-              Selected athletes
-            </small>
-          </div>
-          <div className="bg-[#0d0d0d] p-[18px]">
-            <strong className="block text-[#f4d23c] text-[28px] leading-none mb-1.5 tracking-[-0.05em]">
-              1-1
-            </strong>
-            <small className="text-[#a9a9a9] uppercase text-[11px] font-black tracking-[0.09em]">
-              Programming
-            </small>
-          </div>
-          <div className="bg-[#0d0d0d] p-[18px]">
-            <strong className="block text-[#f4d23c] text-[28px] leading-none mb-1.5 tracking-[-0.05em]">
-              Race
-            </strong>
-            <small className="text-[#a9a9a9] uppercase text-[11px] font-black tracking-[0.09em]">
-              Documented build
-            </small>
-          </div>
-        </div>
-      </div>
+      <HyroxTeamHeroTrailer />
     </Section>
   )
 }

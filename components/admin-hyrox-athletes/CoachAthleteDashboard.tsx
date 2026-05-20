@@ -1,9 +1,12 @@
 "use client";
 
+import type { HyroxAssessmentInput } from "@/app/lib/hyroxAthleteProfileTypes";
+import type { ProfileReviewOverrides } from "@/app/lib/hyroxAthleteProfileTypes";
+import type { CoachDraftWeek, CoachProgrammeStatus } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import { formatRaceCountdown } from "@/app/lib/hyroxCoachMockAthletes";
-import type { CoachProgrammeStatus } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { ProgrammeBuilder } from "@/components/admin-hyrox-athletes/ProgrammeBuilder";
+import { ProfileReviewTab } from "@/components/admin-hyrox-athletes/ProfileReviewTab";
 import {
   ListStatusBadge,
   ProgrammeStatusBadge,
@@ -15,10 +18,30 @@ const TABS = [
   "Overview",
   "Assessment",
   "Testing",
+  "Profile Review",
   "Programme Builder",
   "Check-Ins",
   "Coach Notes",
 ] as const;
+
+export type ProfileReviewPanelProps = {
+  athlete: CoachAthlete;
+  assessment?: HyroxAssessmentInput;
+  overrides: ProfileReviewOverrides;
+  onOverridesChange: (o: ProfileReviewOverrides) => void;
+  onSaveProfileReview: () => void;
+  onResetToAuto: () => void;
+  onGenerateProgrammeDraft: () => void;
+  generateSuccess?: boolean;
+  draftExists?: boolean;
+};
+
+export type ProgrammeWorkflowInjectProps = {
+  injectedDraft: CoachDraftWeek | null;
+  draftInjectionKey: number;
+  assessmentMappingBanner: { bullets: string[] } | null;
+  onClearAssessmentMappingBanner: () => void;
+};
 
 export type AthleteTab = (typeof TABS)[number];
 
@@ -38,6 +61,8 @@ export function CoachAthleteDashboard({
   onProgrammeStatusChange,
   coachNotes,
   onCoachNotesChange,
+  profileReview,
+  programmeWorkflowInject,
 }: {
   athlete: CoachAthlete;
   tab: AthleteTab;
@@ -46,6 +71,8 @@ export function CoachAthleteDashboard({
   onProgrammeStatusChange: (s: CoachProgrammeStatus) => void;
   coachNotes: CoachNotesState;
   onCoachNotesChange: (patch: Partial<CoachNotesState>) => void;
+  profileReview: ProfileReviewPanelProps;
+  programmeWorkflowInject: ProgrammeWorkflowInjectProps;
 }) {
   return (
     <div>
@@ -71,6 +98,19 @@ export function CoachAthleteDashboard({
       {tab === "Overview" && <OverviewTab athlete={athlete} />}
       {tab === "Assessment" && <AssessmentTab athlete={athlete} />}
       {tab === "Testing" && <TestingTab athlete={athlete} />}
+      {tab === "Profile Review" && (
+        <ProfileReviewTab
+          athlete={profileReview.athlete}
+          assessment={profileReview.assessment}
+          overrides={profileReview.overrides}
+          onOverridesChange={profileReview.onOverridesChange}
+          onSaveProfileReview={profileReview.onSaveProfileReview}
+          onResetToAuto={profileReview.onResetToAuto}
+          onGenerateDraft={profileReview.onGenerateProgrammeDraft}
+          generateSuccess={profileReview.generateSuccess}
+          draftExists={profileReview.draftExists}
+        />
+      )}
       {tab === "Programme Builder" && (
         <ProgrammeBuilder
           athlete={athlete}
@@ -78,6 +118,10 @@ export function CoachAthleteDashboard({
           onStatusChange={onProgrammeStatusChange}
           coachNotes={coachNotes}
           onCoachNotesChange={onCoachNotesChange}
+          injectedDraft={programmeWorkflowInject.injectedDraft}
+          draftInjectionKey={programmeWorkflowInject.draftInjectionKey}
+          assessmentMappingBanner={programmeWorkflowInject.assessmentMappingBanner}
+          onClearAssessmentMappingBanner={programmeWorkflowInject.onClearAssessmentMappingBanner}
         />
       )}
       {tab === "Check-Ins" && <CheckInsTab athlete={athlete} />}

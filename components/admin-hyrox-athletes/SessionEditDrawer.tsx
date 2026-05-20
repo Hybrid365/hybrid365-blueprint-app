@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CoachDraftSession, CoachSessionEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { calcThresholdMinutesFromConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
+import { PrescriptionDetailBlocks } from "@/components/admin-hyrox-athletes/PrescriptionDetailBlocks";
 import { X } from "lucide-react";
 
 export function SessionEditDrawer({
@@ -51,6 +52,14 @@ export function SessionEditDrawer({
             <X className="h-5 w-5" />
           </button>
         </header>
+        {session.prescription ? (
+          <div className="border-b border-zinc-800/80 bg-zinc-900/40 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase text-zinc-500">Prescription (library)</p>
+            <div className="mt-2 max-h-[min(50vh,360px)] overflow-y-auto pr-1">
+              <PrescriptionDetailBlocks p={session.prescription} />
+            </div>
+          </div>
+        ) : null}
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <Field label="Session name" value={c.sessionName} onChange={(v) => patch({ sessionName: v })} />
 

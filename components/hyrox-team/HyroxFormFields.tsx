@@ -116,9 +116,12 @@ export function HyroxRadioGroup({
 export function HyroxScaleRow({
   label,
   name,
+  scaleEnds,
 }: {
   label: string;
   name: string;
+  /** Optional labels under the 1–10 scale (e.g. weak vs strong). */
+  scaleEnds?: { low: string; high: string };
 }) {
   return (
     <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/50 p-4 sm:col-span-2">
@@ -134,6 +137,12 @@ export function HyroxScaleRow({
           </label>
         ))}
       </div>
+      {scaleEnds ? (
+        <div className="mt-2 flex justify-between gap-4 text-[10px] leading-snug text-zinc-600">
+          <span>{scaleEnds.low}</span>
+          <span className="text-right">{scaleEnds.high}</span>
+        </div>
+      ) : null}
       <HyroxField label="Notes (optional)" className="mt-3">
         <HyroxInput placeholder="Short note" />
       </HyroxField>

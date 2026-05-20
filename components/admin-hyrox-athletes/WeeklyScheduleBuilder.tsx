@@ -3,6 +3,7 @@
 import type { CoachDraftDay, CoachDraftSession } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { TIME_OF_DAY_OPTIONS, WEEKDAYS, type WeekdayName } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { SandboxTimeOfDay } from "@/app/lib/hyroxProgrammeSandbox";
+import { PrescriptionDetailBlocks } from "@/components/admin-hyrox-athletes/PrescriptionDetailBlocks";
 
 export function WeeklyScheduleBuilder({
   days,
@@ -191,11 +192,9 @@ function SessionCard({
       <p className="mt-0.5 text-[10px] text-zinc-500">{session.rpeHr}</p>
       <p className="mt-1 line-clamp-2 text-[10px] text-zinc-600">{session.rationale}</p>
       {session.showDetail && p ? (
-        <ul className="mt-2 space-y-0.5 border-t border-zinc-800 pt-2 text-[10px] text-zinc-400">
-          {p.mainSet.slice(0, 4).map((line) => (
-            <li key={line}>· {line}</li>
-          ))}
-        </ul>
+        <div className="mt-2 max-h-[480px] overflow-y-auto border-t border-zinc-800 pt-2">
+          <PrescriptionDetailBlocks p={p} />
+        </div>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-1">
         <Btn label="View" onClick={onViewDetail} />

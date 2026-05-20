@@ -274,11 +274,33 @@ export function AssessmentStepContent({ stepId }: { stepId: string }) {
 
     case "stations":
       return (
-        <FieldGrid>
-          {STATIONS.map((station) => (
-            <HyroxScaleRow key={station} label={station} name={`station-${station}`} />
-          ))}
-        </FieldGrid>
+        <div className="space-y-6 sm:col-span-2">
+          <HyroxCard className="p-4 sm:p-5">
+            <p className="m-0 text-xs font-black uppercase tracking-wide text-[#f4d23c]">Hyrox station profile</p>
+            <p className="m-0 mt-3 text-sm leading-relaxed text-zinc-300">
+              Rate your confidence/current ability for each station:{" "}
+              <span className="font-semibold text-white">1 = major weakness / low confidence</span>
+              {" · "}
+              <span className="font-semibold text-white">10 = major strength / high confidence</span>
+            </p>
+            <p className="m-0 mt-3 text-sm text-zinc-500">
+              Be honest — this helps us decide which stations need extra work in your programme.
+            </p>
+          </HyroxCard>
+          <FieldGrid>
+            {STATIONS.map((station) => (
+              <HyroxScaleRow
+                key={station}
+                label={station}
+                name={`station-${station}`}
+                scaleEnds={{
+                  low: "1 · Weak / low confidence",
+                  high: "10 · Strong / high confidence",
+                }}
+              />
+            ))}
+          </FieldGrid>
+        </div>
       );
 
     case "injury":

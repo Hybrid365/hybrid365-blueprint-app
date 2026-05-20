@@ -487,12 +487,33 @@ export function formatRaceCountdown(weeksToRace: number): string {
 
 export const LIST_STATUS_LABELS: Record<CoachAthleteListStatus, string> = {
   assessment_submitted: "Assessment submitted",
+  profile_mapped: "Profile mapped",
   draft_generated: "Draft generated",
   needs_coach_review: "Needs coach review",
   approved: "Approved",
-  published_to_athlete: "Published to athlete",
+  published_to_athlete: "Published",
   check_in_requires_adjustment: "Check-in requires adjustment",
 };
+
+export function suggestedNextCoachAction(status: CoachAthleteListStatus): string {
+  switch (status) {
+    case "assessment_submitted":
+      return "Review profile · map assessment";
+    case "profile_mapped":
+      return "Generate draft";
+    case "draft_generated":
+    case "needs_coach_review":
+      return "Review programme";
+    case "approved":
+      return "Publish week";
+    case "published_to_athlete":
+      return "Ongoing · check-ins";
+    case "check_in_requires_adjustment":
+      return "Check-in review";
+    default:
+      return "Review athlete";
+  }
+}
 
 export const PROGRAMME_STATUS_LABELS: Record<CoachProgrammeStatus, string> = {
   generated_draft: "Generated draft",

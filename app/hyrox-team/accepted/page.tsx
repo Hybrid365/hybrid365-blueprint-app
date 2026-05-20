@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   HyroxCard,
   HyroxEyebrow,
   HyroxH1,
   HyroxLead,
   HyroxPageShell,
-  HyroxPrimaryButton,
   HyroxSection,
 } from "@/components/hyrox-team/HyroxTeamUi";
+import { HyroxStripePriceOptions } from "@/components/hyrox-team/HyroxStripeCheckoutButtons";
+import {
+  FOUNDING_PRICE_NOTE,
+  MINIMUM_COMMITMENT_NOTE,
+  MONTHLY_COMMITMENT_DETAIL,
+  MONTHLY_COMMITMENT_HEADLINE,
+} from "@/components/hyrox-team/hyroxTeamOfferCopy";
 import { TimelineSteps } from "@/components/hyrox-team/TimelineSteps";
 import {
   BarChart3,
@@ -26,12 +33,12 @@ export const metadata: Metadata = {
 };
 
 const NEXT_STEPS = [
-  { n: 1, title: "Secure your place", description: "Choose monthly or upfront payment to confirm your spot." },
-  { n: 2, title: "Complete athlete assessment", description: "Deep-dive profile so programming matches your goal and schedule." },
-  { n: 3, title: "Complete baseline testing", description: "Run, erg and station markers for accurate progress tracking." },
-  { n: 4, title: "Coach review", description: "Your data is reviewed before anything is built." },
-  { n: 5, title: "Dashboard unlock", description: "Programme, benchmarks and check-ins go live in your athlete hub." },
-  { n: 6, title: "Start training", description: "Execute Week 1 with structure, accountability and coach support." },
+  { n: 1, title: "Secure your place", description: "Monthly or upfront via Stripe — your links are sent when you're approved." },
+  { n: 2, title: "Onboarding", description: "After payment, land on /athlete/onboarding — then assessment + testing." },
+  { n: 3, title: "Complete athlete assessment", description: "Deep-dive profile so programming matches you — coach-reviewed, not generic." },
+  { n: 4, title: "Complete baseline testing", description: "Markers + optional RoxFit race splits." },
+  { n: 5, title: "Coach review", description: "Your data is read manually before anything is published." },
+  { n: 6, title: "Dashboard unlock", description: "Programme appears when your coach publishes — not automatic on submit." },
 ];
 
 const INCLUDED = [
@@ -54,19 +61,41 @@ export default function HyroxTeamAcceptedPage() {
           You&apos;ve been accepted into the Hybrid365
         </HyroxH1>
         <HyroxLead>
-          This is a selective 12-week Hyrox athlete project — not a generic template. A small group, high standards,
-          personalised programming and full accountability from assessment through race day.
+          You&apos;ve been accepted into the Hybrid365 Hyrox Team. Secure your place, then complete your athlete
+          assessment. This is selective 1-1 coaching inside a small team — your first block is coach-reviewed before it
+          goes live, not scraped from a template library.
         </HyroxLead>
+        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-zinc-500">
+          Secure your place below. <span className="font-medium text-zinc-300">{MONTHLY_COMMITMENT_HEADLINE}</span> — each
+          athlete gets real coach time and project investment from day one, not a generic plan. Prefer full
+          detail?{" "}
+          <Link href="/hyrox-team/payment" className="font-semibold text-[#f4d23c] underline-offset-4 hover:underline">
+            View all payment options →
+          </Link>
+        </p>
+        <HyroxCard className="mt-6 max-w-3xl border-zinc-800/90">
+          <p className="m-0 text-sm leading-relaxed text-zinc-300">{MINIMUM_COMMITMENT_NOTE}</p>
+          <p className="m-0 mt-3 text-xs leading-relaxed text-zinc-500">{MONTHLY_COMMITMENT_DETAIL}</p>
+          <p className="m-0 mt-4 text-xs leading-relaxed text-zinc-500">{FOUNDING_PRICE_NOTE}</p>
+        </HyroxCard>
         <div className="mt-8">
-          <HyroxPrimaryButton href="/hyrox-team/payment">Secure your place</HyroxPrimaryButton>
+          <HyroxStripePriceOptions
+            monthlyLabel="Pay monthly — £150/month · 3-month min."
+            upfrontLabel="Pay upfront — £399 · 12 weeks"
+            sixteenWeekLabel="Pay upfront — £549 · 16 weeks"
+          />
         </div>
+        <p className="mt-4 max-w-2xl text-xs text-zinc-600">
+          Also available: <span className="text-zinc-400">£549 · 16-week build (best value for money)</span> on the payment
+          page for athletes further from race day.
+        </p>
       </HyroxSection>
 
       <HyroxSection clean>
         <h2 className="m-0 text-2xl font-black uppercase tracking-[-0.04em] text-white">Your next steps</h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#a9a9a9]">
-          Follow the path below. Each step unlocks the next — your programme is built manually after assessment and
-          testing.
+          Flow is intentional: payment → onboarding → assessment + testing → coach review → programme published to your
+          dashboard.
         </p>
         <div className="mt-8">
           <TimelineSteps steps={NEXT_STEPS} />
@@ -90,14 +119,23 @@ export default function HyroxTeamAcceptedPage() {
         <HyroxCard highlight className="max-w-3xl">
           <h3 className="m-0 text-lg font-black uppercase tracking-[-0.03em] text-white">Commitment note</h3>
           <p className="m-0 mt-3 text-sm leading-relaxed text-[#cccccc]">
-            This is not a generic Hyrox plan pulled off a shelf. Your programme is manually built after your athlete
-            assessment and baseline testing are complete and reviewed. That process takes time — and it&apos;s what makes
-            the coaching worth it.
+            This is not a generic Hyrox plan pulled off a shelf. Your programme is manually built and checked after your
+            athlete assessment and baseline testing are complete. That delay is the point — it&apos;s what makes the
+            coaching bespoke.
           </p>
         </HyroxCard>
         <div className="mt-8">
-          <HyroxPrimaryButton href="/hyrox-team/payment">Continue to payment</HyroxPrimaryButton>
+          <Link
+            href="/hyrox-team/payment"
+            className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.04] px-6 font-black tracking-[-0.02em] text-[#f6f6f6] transition hover:-translate-y-0.5 hover:opacity-90"
+          >
+            View payment details & pricing
+          </Link>
         </div>
+        <p className="mt-6 text-sm text-zinc-600">
+          Configure Stripe success URL to <span className="font-mono text-zinc-400">/athlete/onboarding</span> when you
+          wire live checkout.
+        </p>
       </HyroxSection>
     </HyroxPageShell>
   );

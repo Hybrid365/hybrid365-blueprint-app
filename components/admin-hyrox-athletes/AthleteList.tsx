@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { COACH_ATHLETES } from "@/app/lib/hyroxCoachMockAthletes";
+import { COACH_ATHLETES, suggestedNextCoachAction } from "@/app/lib/hyroxCoachMockAthletes";
 import { CoachActionQueue } from "@/components/admin-hyrox-athletes/CoachActionQueue";
 import { CoachAdminShell } from "@/components/admin-hyrox-athletes/CoachAdminShell";
 import { ListStatusBadge } from "@/components/admin-hyrox-athletes/StatusBadge";
@@ -16,6 +16,7 @@ export function AthleteList() {
     (a) =>
       a.listStatus === "needs_coach_review" ||
       a.listStatus === "draft_generated" ||
+      a.listStatus === "profile_mapped" ||
       a.listStatus === "check_in_requires_adjustment"
   ).length;
 
@@ -90,7 +91,9 @@ export function AthleteList() {
                 <td className="px-4 py-3">
                   <ListStatusBadge status={a.listStatus} />
                 </td>
-                <td className="max-w-[180px] px-4 py-3 text-xs text-zinc-500">{a.nextCoachAction}</td>
+                <td className="max-w-[180px] px-4 py-3 text-xs text-zinc-400">
+                  {suggestedNextCoachAction(a.listStatus)}
+                </td>
                 <td className="px-4 py-3">
                   <Link
                     href={`/admin/hyrox-athletes/${a.id}`}
@@ -120,7 +123,7 @@ export function AthleteList() {
                     {a.raceDate} · B{a.programmeBlock} W{a.blockWeek} · {a.trainingDays}d ·{" "}
                     {a.weeklyHours}h
                   </p>
-                  <p className="mt-1 text-xs text-zinc-400">{a.nextCoachAction}</p>
+                  <p className="mt-1 text-xs text-zinc-400">{suggestedNextCoachAction(a.listStatus)}</p>
                 </div>
               </div>
               <ListStatusBadge status={a.listStatus} />

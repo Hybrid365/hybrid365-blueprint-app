@@ -190,7 +190,7 @@ function basePrescription(
     hardDayReason: partial.hardDayReason ?? sched?.hardDayReason,
     whatToRecord: partial.whatToRecord ?? [...session.whatToRecord],
     coachNote: partial.coachNote ?? session.coachNotes[0] ?? session.prescriptionRationale ?? "",
-    safetyNote: partial.safetyNote ?? SESSION_SAFETY_NOTE,
+    safetyNote: partial.safetyNote ?? session.safetyNote ?? SESSION_SAFETY_NOTE,
     progressionNote,
     filmPrompt: partial.filmPrompt ?? session.filmPrompt ?? null,
     equipmentRequired: partial.equipmentRequired ?? [...session.equipment],
@@ -670,7 +670,6 @@ function enrichFromLibrary(
     targetHRRange: hr.targetHRRange,
     fallbackHRGuide: hr.fallbackHRGuide,
     coachNote,
-    safetyNote: SESSION_SAFETY_NOTE,
   });
 }
 

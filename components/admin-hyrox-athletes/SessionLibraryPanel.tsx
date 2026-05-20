@@ -138,6 +138,7 @@ export function SessionLibraryPanel({
                   ) : null}
                 </div>
                 <p className="text-[10px] text-zinc-500">{s.abbrev}</p>
+                <p className="mt-1 line-clamp-3 text-[10px] text-zinc-500">{s.prescription.objective}</p>
                 <p className="mt-1 text-[10px] text-zinc-600">
                   {s.hardEasy} · {s.duration}
                   {s.thresholdMinutes ? ` · ${s.thresholdMinutes}′ TH` : ""}

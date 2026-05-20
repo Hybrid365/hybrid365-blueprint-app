@@ -136,7 +136,8 @@ export const SESSION_SCHEDULING_METADATA: Record<string, SessionSchedulingMetada
   hyrox_strength_upper_emom: {
     hardDay: false,
     intensityType: "steady",
-    muscularStress: "low",
+    muscularStress: "moderate",
+    sessionStress: "low",
     impactType: "none",
     estimatedDurationMinutes: 45,
     emomAttachRoles: ["strength_upper", "gym_aerobic_upper"],

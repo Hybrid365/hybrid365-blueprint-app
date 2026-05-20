@@ -42,6 +42,10 @@ export function ProgrammeBuilder({
   onStatusChange,
   coachNotes,
   onCoachNotesChange,
+  injectedDraft = null,
+  draftInjectionKey = 0,
+  assessmentMappingBanner = null,
+  onClearAssessmentMappingBanner,
 }: {
   athlete: CoachAthlete;
   programmeStatus: CoachProgrammeStatus;
@@ -54,6 +58,11 @@ export function ProgrammeBuilder({
     athleteFacingNote: string;
   };
   onCoachNotesChange: (patch: Partial<typeof coachNotes>) => void;
+  /** When set with a bumped `draftInjectionKey`, replaces the local week from Profile Review generation. */
+  injectedDraft?: CoachDraftWeek | null;
+  draftInjectionKey?: number;
+  assessmentMappingBanner?: { bullets: string[] } | null;
+  onClearAssessmentMappingBanner?: () => void;
 }) {
   const [draft, setDraft] = useState<CoachDraftWeek>(() => generateCoachDraftWeek(athlete));
   const [status, setStatus] = useState(programmeStatus);
@@ -96,6 +105,15 @@ export function ProgrammeBuilder({
     setRationaleAutoFilled(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial auto-fill per draft generation
   }, [athlete.id, draft.block, draft.week, draft.generatedAt]);
+
+  useEffect(() => {
+    if (injectedDraft && draftInjectionKey > 0) {
+      setDraft(injectedDraft);
+      rationaleTouched.current = false;
+      setStatus("generated_draft");
+      onStatusChange("generated_draft");
+    }
+  }, [injectedDraft, draftInjectionKey, onStatusChange]);
 
   const athletePreview = useMemo(
     () => buildAthleteWeekPreview(athlete, draft, coachNotes),
@@ -145,6 +163,21 @@ export function ProgrammeBuilder({
 
   return (
     <div className="space-y-4">
+      {assessmentMappingBanner ? (
+        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-400/5 px-4 py-3 text-sm">
+          <p className="font-bold text-cyan-100">Draft source: Assessment mapping</p>
+          <p className="mt-1 text-xs text-zinc-400">
+            Status: Needs coach review — athlete dashboard unchanged until you publish.
+          </p>
+          <p className="mt-2 text-[11px] font-semibold uppercase text-zinc-500">Generated from</p>
+          <ul className="mt-1 list-inside list-disc text-xs text-zinc-300">
+            {assessmentMappingBanner.bullets.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-400">
           Block {draft.block} · Week {draft.week} · generated{" "}
@@ -157,6 +190,7 @@ export function ProgrammeBuilder({
             onClick={() => {
               setDraft(generateCoachDraftWeek(athlete));
               rationaleTouched.current = false;
+              onClearAssessmentMappingBanner?.();
               showToast("Regenerated from methodology");
               setStatus("generated_draft");
               onStatusChange("generated_draft");
