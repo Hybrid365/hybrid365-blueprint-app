@@ -37,10 +37,22 @@ export function AthleteUnlinkedNotice({
             </>
           )}
         </p>
-        {process.env.NODE_ENV === "development" && debug && Object.keys(debug).length > 0 ? (
-          <pre className="mx-auto mt-6 max-w-md overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-left text-[10px] leading-relaxed text-zinc-500">
-            {JSON.stringify(debug, null, 2)}
-          </pre>
+        {process.env.NODE_ENV === "development" ? (
+          <div className="mx-auto mt-6 max-w-md text-left text-xs text-zinc-500">
+            <p>
+              <span className="font-semibold text-zinc-400">Authenticated email:</span>{" "}
+              {debug?.authEmail ?? "—"}
+            </p>
+            <p className="mt-1">
+              <span className="font-semibold text-zinc-400">hyrox_athletes match:</span>{" "}
+              {debug?.emailMatchFound ? "email found" : "no matching hyrox_athletes row for this sign-in"}
+            </p>
+            {debug && Object.keys(debug).length > 0 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-[10px] leading-relaxed">
+                {JSON.stringify(debug, null, 2)}
+              </pre>
+            ) : null}
+          </div>
         ) : null}
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link

@@ -9,6 +9,7 @@ import {
   MOCK_ATHLETE,
   MOCK_WEEK_RATIONALE,
   MOCK_WEEK_SESSIONS,
+  type HyroxSession,
 } from "@/app/lib/hyroxTeamDashboardMock";
 import {
   ATHLETE_PAGE_META,
@@ -24,8 +25,10 @@ import {
 import { SessionDrawer } from "./SessionDrawer";
 import { WeekSessionCard } from "./WeekSessionCard";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
+import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { useAthletePortal } from "./athletePortalContext";
-import type { AthleteWeekCalendarStatus } from "./useAthleteLiveProgramme";
+import { resolveDefaultProgrammeWeekNumber } from "@/app/lib/hyroxAthleteProgrammeCalendar";
+import type { AthleteWeekCalendarStatus } from "@/app/lib/hyroxAthleteProgrammeTypes";
 
 type WeekTabMode = "active" | "upcoming" | "past" | "not_generated" | "locked";
 
@@ -71,6 +74,7 @@ export function ProgrammePageView() {
     portalAthlete,
     useMockPreview,
     programmeHubLive,
+    reloadLiveProgramme,
   } = useAthletePortal();
   const { dashboardLive } = useAthleteDashboardLive();
   const useLive = programmePublishedLive && !useMockPreview;
@@ -78,6 +82,8 @@ export function ProgrammePageView() {
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionTitle, setSessionTitle] = useState<string | undefined>();
+  const [drawerSession, setDrawerSession] = useState<HyroxSession | null>(null);
+  const [drawerShowLogForm, setDrawerShowLogForm] = useState(false);
   const [sessionDetailOverride, setSessionDetailOverride] = useState<
     ReturnType<typeof sessionDetailFromHyroxSession> | null
   >(null);
@@ -121,12 +127,16 @@ export function ProgrammePageView() {
     });
   }, [block.weeks, useLive, useMock, liveProgramme?.programmeWeeks]);
 
-  const defaultTab =
-    weekTabs.find((t) => t.mode === "active")?.globalWeek ??
-    weekTabs.find((t) => t.generated && t.mode === "upcoming")?.globalWeek ??
-    weekTabs.find((t) => t.generated)?.globalWeek ??
-    weekTabs[0]?.globalWeek ??
-    1;
+  const defaultTab = useLive
+    ? resolveDefaultProgrammeWeekNumber(
+        liveProgramme?.programmeWeeks ?? [],
+        [...block.weeks]
+      )
+    : weekTabs.find((t) => t.mode === "active")?.globalWeek ??
+      weekTabs.find((t) => t.generated && t.mode === "upcoming")?.globalWeek ??
+      weekTabs.find((t) => t.generated)?.globalWeek ??
+      weekTabs[0]?.globalWeek ??
+      1;
   const [selectedWeek, setSelectedWeek] = useState(defaultTab);
 
   useEffect(() => {
@@ -170,17 +180,46 @@ export function ProgrammePageView() {
 
   const completed = sessions.filter((s) => s.status === "complete").length;
   const meta = ATHLETE_PAGE_META.programme;
-  const athleteName =
-    (useLive && liveProgramme?.athlete.name) || portalAthlete?.name || MOCK_ATHLETE.name;
+  const athleteName = useLive
+    ? liveProgramme?.athlete.name?.trim() || portalAthleteDisplayName(portalAthlete)
+    : useMock
+      ? MOCK_ATHLETE.name
+      : portalAthleteDisplayName(portalAthlete);
+
+  const weekLoggingEnabled =
+    useLive && (selectedTab?.mode === "active" || selectedTab?.mode === "past");
+  const weekLoggingBlockedMessage =
+    selectedTab?.mode === "upcoming"
+      ? "This session unlocks when the week goes live."
+      : selectedTab?.mode === "locked"
+        ? "This week unlocks when your coach publishes the next block."
+        : selectedTab?.mode === "not_generated"
+          ? "This week has not been published yet."
+          : undefined;
 
   const openSession = useCallback(
-    (id: string, title?: string) => {
+    (id: string, title?: string, opts?: { showLogForm?: boolean }) => {
       setSessionId(id);
       setSessionTitle(title);
-      const session = sessions.find((s) => s.id === id);
-      setSessionDetailOverride(session ? sessionDetailFromHyroxSession(session) : null);
+      setDrawerShowLogForm(Boolean(opts?.showLogForm));
+      const hit = sessions.find((s) => s.id === id) ?? null;
+      setDrawerSession(hit);
+      setSessionDetailOverride(hit ? sessionDetailFromHyroxSession(hit) : null);
     },
     [sessions]
+  );
+
+  const handleSessionUpdated = useCallback(
+    async (updated: HyroxSession | null) => {
+      if (updated) {
+        setDrawerSession(updated);
+        setSessionDetailOverride(sessionDetailFromHyroxSession(updated));
+      }
+      if (programmePublishedLive && !useMockPreview) {
+        await reloadLiveProgramme();
+      }
+    },
+    [programmePublishedLive, useMockPreview, reloadLiveProgramme]
   );
 
   const programmeVisible = programmeHubLive;
@@ -313,8 +352,8 @@ export function ProgrammePageView() {
                     session={session}
                     onView={() => openSession(session.id, session.name)}
                     onLog={
-                      useMock || selectedTab?.mode === "active"
-                        ? () => openSession(session.id, session.name)
+                      weekLoggingEnabled
+                        ? () => openSession(session.id, session.name, { showLogForm: true })
                         : undefined
                     }
                   />
@@ -352,10 +391,18 @@ export function ProgrammePageView() {
 
       <SessionDrawer
         sessionId={sessionId}
+        session={drawerSession}
         sessionTitle={sessionTitle}
         sessionDetail={sessionDetailOverride}
+        loggingEnabled={weekLoggingEnabled}
+        loggingBlockedMessage={weekLoggingBlockedMessage}
+        useLiveApi={useLive && !useMock}
+        initialShowLogForm={drawerShowLogForm}
+        onSessionUpdated={(updated) => void handleSessionUpdated(updated)}
         onClose={() => {
           setSessionId(null);
+          setDrawerSession(null);
+          setDrawerShowLogForm(false);
           setSessionDetailOverride(null);
         }}
       />

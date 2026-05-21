@@ -2,8 +2,16 @@
 
 import { HyroxPageShell } from "@/components/hyrox-team/HyroxTeamUi";
 import { AthleteAppNav } from "./AthleteAppNav";
-import { PreviewGateCard } from "./athleteUi";
+import { PreviewGateCard, ProgrammeWaitingCard } from "./athleteUi";
 import { useAthletePortal } from "./athletePortalContext";
+
+function MockPreviewBanner() {
+  return (
+    <div className="border-b border-amber-500/30 bg-amber-950/40 px-4 py-2 text-center text-xs font-semibold text-amber-200/90 sm:px-6">
+      Mock preview — sample data only (Alex Morgan). Not your real programme.
+    </div>
+  );
+}
 
 export function AthletePortalShell({
   children,
@@ -14,6 +22,7 @@ export function AthletePortalShell({
 }) {
   const {
     setProgrammePublishedMock,
+    allowMockPreview,
     hasLinkedAthlete,
     programmeHubLive,
     programmePublishedLive,
@@ -23,6 +32,7 @@ export function AthletePortalShell({
 
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
+      {useMockPreview ? <MockPreviewBanner /> : null}
       <div className="sticky top-0 z-40 border-b border-zinc-800/90 bg-black/95 backdrop-blur-md">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -32,8 +42,8 @@ export function AthletePortalShell({
               </p>
               <p className="text-sm text-zinc-500">Athlete portal</p>
             </div>
-            {hasLinkedAthlete && !programmePublishedLive ? (
-              <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-400 transition hover:border-zinc-600">
+            {allowMockPreview && hasLinkedAthlete && !programmePublishedLive ? (
+              <label className="flex cursor-pointer items-center gap-2 rounded-full border border-amber-500/35 bg-amber-950/30 px-4 py-2 text-xs font-semibold text-amber-200/90 transition hover:border-amber-500/50">
                 <input
                   type="checkbox"
                   checked={useMockPreview}
@@ -56,11 +66,20 @@ export function AthletePortalShell({
 }
 
 export function AthletePortalGate({ children }: { children: React.ReactNode }) {
-  const { programmeHubLive } = useAthletePortal();
+  const { programmeHubLive, programmePublishedLive, hasLinkedAthlete, allowMockPreview } =
+    useAthletePortal();
 
-  if (!programmeHubLive) {
+  if (programmePublishedLive || programmeHubLive) {
+    return <>{children}</>;
+  }
+
+  if (hasLinkedAthlete) {
+    return <ProgrammeWaitingCard />;
+  }
+
+  if (allowMockPreview) {
     return <PreviewGateCard />;
   }
 
-  return <>{children}</>;
+  return <ProgrammeWaitingCard />;
 }

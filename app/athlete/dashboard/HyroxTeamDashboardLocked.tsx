@@ -20,7 +20,7 @@ import {
   getAthleteNextAction,
   getDashboardCtas,
 } from "@/app/lib/hyroxAthleteOnboardingFlow";
-import { LOCKED_PREVIEW_MODULES, MOCK_ATHLETE } from "@/app/lib/hyroxTeamDashboardMock";
+import { LOCKED_PREVIEW_MODULES } from "@/app/lib/hyroxTeamDashboardMock";
 import { DashCard, LockedPreviewCard } from "@/components/hyrox-team/HyroxDashboardUi";
 
 type CardState = "complete" | "current" | "queued" | "locked";
@@ -129,7 +129,7 @@ export default function HyroxTeamDashboardLocked({
   const nextAction = getAthleteNextAction(pipeline);
   const ctas = getDashboardCtas(pipeline);
 
-  const displayName = athleteDisplayName?.trim() || MOCK_ATHLETE.name;
+  const displayName = athleteDisplayName?.trim() || "Athlete";
 
   const heroTitle = checklist.programmeLive
     ? "Your programme is live."
@@ -166,9 +166,8 @@ export default function HyroxTeamDashboardLocked({
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">{heroCopy}</p>
           </div>
           <div className="shrink-0 text-left lg:text-right">
-            <p className="text-xs font-semibold uppercase text-zinc-500">Race countdown</p>
-            <p className="text-2xl font-bold text-white">{MOCK_ATHLETE.raceCountdownWeeks} weeks</p>
-            <p className="mt-1 text-sm text-zinc-500">{MOCK_ATHLETE.race}</p>
+            <p className="text-xs font-semibold uppercase text-zinc-500">Race</p>
+            <p className="text-sm font-medium text-zinc-400">Set with your coach after programme publish</p>
           </div>
         </div>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">

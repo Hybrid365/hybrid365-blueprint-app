@@ -10,50 +10,91 @@ import {
   MOCK_PROGRESS_STATS,
 } from "@/app/lib/hyroxTeamDashboardMock";
 import { athleteCard, athleteCardPadding, eyebrowClass, ProgressBar } from "./athleteUi";
+import { nextSessionDisplayForDashboard } from "@/app/lib/hyroxAthleteDashboardLive";
+import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
+import { useAthletePortal } from "./athletePortalContext";
 
 export function CommandCentreHeader() {
+  const { portalAthlete, useMockPreview, programmePublishedLive, liveProgrammeLoading } =
+    useAthletePortal();
   const { useLive, dashboardLive } = useAthleteDashboardLive();
+  const useMockData = useMockPreview;
+  const showLiveLoading = programmePublishedLive && liveProgrammeLoading && !dashboardLive;
 
-  const a = useLive && dashboardLive
-    ? {
-        name: dashboardLive.athleteName,
-        status: dashboardLive.statusLabel,
-        race: dashboardLive.raceLabel,
-        targetTime: dashboardLive.targetTime,
-        blockId: dashboardLive.blockId,
-        currentWeek: dashboardLive.currentWeek,
-        totalWeeks: dashboardLive.totalWeeks,
-        raceCountdownWeeks: MOCK_ATHLETE.raceCountdownWeeks,
-        blockPhase: dashboardLive.blockName,
-        coachingFocus: dashboardLive.coachingFocus,
-      }
-    : MOCK_ATHLETE;
+  const a =
+    useLive && dashboardLive
+      ? {
+          name: dashboardLive.athleteName,
+          status: dashboardLive.statusLabel,
+          race: dashboardLive.raceLabel,
+          targetTime: dashboardLive.targetTime,
+          blockId: dashboardLive.blockId,
+          currentWeek: dashboardLive.currentWeek,
+          totalWeeks: dashboardLive.totalWeeks,
+          raceCountdownWeeks: MOCK_ATHLETE.raceCountdownWeeks,
+          blockPhase: dashboardLive.blockName,
+          coachingFocus: dashboardLive.coachingFocus,
+        }
+      : useMockData
+        ? { ...MOCK_ATHLETE, name: portalAthleteDisplayName(portalAthlete) }
+        : {
+            name: portalAthleteDisplayName(portalAthlete),
+            status: showLiveLoading ? "Loading programme…" : "Programme live",
+            race: "Race TBC",
+            targetTime: "—",
+            blockId: 1 as 1 | 2 | 3,
+            currentWeek: 1,
+            totalWeeks: 12,
+            raceCountdownWeeks: 0,
+            blockPhase: "Hyrox Team",
+            coachingFocus: "Your coach will share focus notes when your programme is live.",
+          };
 
-  const stats = useLive && dashboardLive
-    ? {
-        weeklyCompletionPct: dashboardLive.weeklyCompletionPct,
-        sessionsCompleted: dashboardLive.sessionsCompleted,
-        sessionsPlanned: dashboardLive.sessionsPlanned,
-      }
-    : MOCK_PROGRESS_STATS;
+  const stats =
+    useLive && dashboardLive
+      ? {
+          weeklyCompletionPct: dashboardLive.weeklyCompletionPct,
+          sessionsCompleted: dashboardLive.sessionsCompleted,
+          sessionsPlanned: dashboardLive.sessionsPlanned,
+        }
+      : useMockData
+        ? MOCK_PROGRESS_STATS
+        : { weeklyCompletionPct: 0, sessionsCompleted: 0, sessionsPlanned: 0 };
 
   const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
-  const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : MOCK_CHECK_IN.status === "Due";
-  const checkInStatus = useLive && dashboardLive ? dashboardLive.checkInStatus : MOCK_CHECK_IN.status;
-  const checkInSub = useLive && dashboardLive ? dashboardLive.checkInSub : `Due ${MOCK_CHECK_IN.dueLabel}`;
-  const m = useLive && dashboardLive
-    ? {
-        raceReadiness: {
-          value: dashboardLive.raceReadiness.value,
-          delta: dashboardLive.raceReadiness.sub ?? "",
-        },
-      }
-    : MOCK_PERFORMANCE_METRICS;
+  const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : useMockData && MOCK_CHECK_IN.status === "Due";
+  const checkInStatus =
+    useLive && dashboardLive ? dashboardLive.checkInStatus : useMockData ? MOCK_CHECK_IN.status : "After Week 1";
+  const checkInSub =
+    useLive && dashboardLive
+      ? dashboardLive.checkInSub
+      : useMockData
+        ? `Due ${MOCK_CHECK_IN.dueLabel}`
+        : "Weekly check-ins unlock after your first training week";
+  const m =
+    useLive && dashboardLive
+      ? {
+          raceReadiness: {
+            value: dashboardLive.raceReadiness.value,
+            delta: dashboardLive.raceReadiness.sub ?? "",
+          },
+        }
+      : useMockData
+        ? MOCK_PERFORMANCE_METRICS
+        : { raceReadiness: { value: "Awaiting data", delta: "Starts after first training week" } };
 
-  const next = useLive && dashboardLive?.nextSession
-    ? dashboardLive.nextSession
-    : MOCK_NEXT_SESSION;
+  const next =
+    useLive && dashboardLive
+      ? nextSessionDisplayForDashboard(dashboardLive)
+      : useMockData
+        ? { ...MOCK_NEXT_SESSION, actionable: true }
+        : {
+            ...MOCK_NEXT_SESSION,
+            sessionId: "",
+            name: showLiveLoading ? "Loading programme…" : "No session yet",
+            actionable: false,
+          };
 
   return (
     <header className={`${athleteCard} ${athleteCardPadding}`}>

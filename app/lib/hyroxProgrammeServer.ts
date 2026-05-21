@@ -30,6 +30,7 @@ import {
   sortProgrammeSessions,
   type ProgrammeTimeOfDay,
 } from "@/app/lib/hyroxAthleteProgrammeSort";
+import { parseHyroxAthleteSessionFeedback } from "@/app/lib/hyroxAthleteSessionFeedback";
 import type { HyroxSession, SessionStatus } from "@/app/lib/hyroxTeamDashboardMock";
 import {
   deriveLiveGlobalWeek,
@@ -522,9 +523,11 @@ export function mapPublishedSessionsToAthleteUi(
       (prescription.coachNote as string) ??
       (prescription.coach_note as string) ??
       "";
+    const feedback = parseHyroxAthleteSessionFeedback(s.athlete_feedback);
 
     return {
       id: s.id,
+      programmeWeekId: s.programme_week_id,
       day,
       dayShort: short,
       dateLabel: formatProgrammeDayLabel(day, timeOfDay),
@@ -534,6 +537,11 @@ export function mapPublishedSessionsToAthleteUi(
       duration,
       rpeTarget,
       status: mapDbSessionStatus(s.status),
+      loggedRpe: feedback.rpe ?? undefined,
+      logNotes: feedback.notes ?? undefined,
+      logModifications: feedback.modifications ?? undefined,
+      logScore: feedback.score ?? undefined,
+      completedAt: s.completed_at,
       priority: (timeOfDay === "Optional" || s.session_slot === "Optional"
         ? "Optional"
         : "Key") as HyroxSession["priority"],

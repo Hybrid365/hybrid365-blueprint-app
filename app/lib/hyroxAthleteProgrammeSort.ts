@@ -86,6 +86,10 @@ export type ResolvedNextSession = {
   priority: HyroxSession["priority"];
 };
 
+/**
+ * @deprecated Use `resolveProgrammeNextSession` from `hyroxAthleteProgrammeCalendar` with
+ * programme_start_date and programmeWeeks[]. Kept for legacy callers only.
+ */
 export function resolveNextSession(sessions: HyroxSession[]): ResolvedNextSession | null {
   const sorted = sortProgrammeSessions(sessions);
   const incomplete = sorted.filter((s) => s.status !== "complete");

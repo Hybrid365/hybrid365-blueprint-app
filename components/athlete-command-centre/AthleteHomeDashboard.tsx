@@ -24,11 +24,16 @@ import {
   MOCK_PROGRESS_STATS,
   MOCK_WEEK_RATIONALE,
   MOCK_WEEK_SESSIONS,
+  type HyroxSession,
 } from "@/app/lib/hyroxTeamDashboardMock";
 import { BenchmarkSnapshotStrip } from "@/components/dashboard/BenchmarkSnapshotStrip";
 import { HyroxThisWeekTrackingCard } from "@/components/hyrox-team/HyroxThisWeekTrackingCard";
 import { sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
-import { sessionDetailFromHyroxSession } from "@/app/lib/hyroxAthleteDashboardLive";
+import {
+  nextSessionDisplayForDashboard,
+  sessionDetailFromHyroxSession,
+} from "@/app/lib/hyroxAthleteDashboardLive";
+import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { ChartDataPlaceholder } from "./ChartDataPlaceholder";
 import { ThresholdProgressionChart } from "./DashboardCharts";
 import { CommandCentreHeader } from "./CommandCentreHeader";
@@ -79,41 +84,80 @@ function HomePriorityTile({
   );
 }
 
+const EMPTY_WEEK_RATIONALE = {
+  weekRole: "Training week",
+  whyMatters: "",
+  prioritise: [] as string[],
+  coachNote: "",
+};
+
 export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProgramme?: boolean }) {
   const router = useRouter();
-  const { portalAthlete } = useAthletePortal();
+  const {
+    portalAthlete,
+    useMockPreview,
+    liveProgrammeLoading,
+    programmePublishedLive,
+    reloadLiveProgramme,
+  } = useAthletePortal();
   const { dashboardLive } = useAthleteDashboardLive();
   const useLive = useLiveProgramme && Boolean(dashboardLive);
+  const showLiveLoading = useLiveProgramme && liveProgrammeLoading && !dashboardLive;
+  const useMockData = useMockPreview;
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionTitle, setSessionTitle] = useState<string | undefined>();
+  const [drawerSession, setDrawerSession] = useState<HyroxSession | null>(null);
+  const [drawerShowLogForm, setDrawerShowLogForm] = useState(false);
   const [sessionDetailOverride, setSessionDetailOverride] = useState<
     ReturnType<typeof sessionDetailFromHyroxSession> | null
   >(null);
 
   const a = useLive && dashboardLive
     ? {
-        ...MOCK_ATHLETE,
         name: dashboardLive.athleteName,
         blockId: dashboardLive.blockId,
         currentWeek: dashboardLive.currentWeek,
         totalWeeks: dashboardLive.totalWeeks,
       }
-    : portalAthlete
-      ? { ...MOCK_ATHLETE, name: portalAthlete.name }
-      : MOCK_ATHLETE;
+    : useMockData
+      ? { ...MOCK_ATHLETE, name: portalAthleteDisplayName(portalAthlete) }
+      : {
+          name: portalAthleteDisplayName(portalAthlete),
+          blockId: 1 as 1 | 2 | 3,
+          currentWeek: 1,
+          totalWeeks: 12,
+        };
 
-  const weekRationale = useLive && dashboardLive ? dashboardLive.weekRationale : MOCK_WEEK_RATIONALE;
-  const weekSessions = useLive && dashboardLive ? dashboardLive.sortedSessions : MOCK_WEEK_SESSIONS;
-  const next = useLive && dashboardLive?.nextSession
-    ? dashboardLive.nextSession
-    : MOCK_NEXT_SESSION;
-  const stats = useLive && dashboardLive
-    ? {
-        weeklyCompletionPct: dashboardLive.weeklyCompletionPct,
-        sessionsCompleted: dashboardLive.sessionsCompleted,
-        sessionsPlanned: dashboardLive.sessionsPlanned,
-      }
-    : MOCK_PROGRESS_STATS;
+  const weekRationale =
+    useLive && dashboardLive
+      ? dashboardLive.weekRationale
+      : useMockData
+        ? MOCK_WEEK_RATIONALE
+        : EMPTY_WEEK_RATIONALE;
+  const weekSessions =
+    useLive && dashboardLive ? dashboardLive.sortedSessions : useMockData ? MOCK_WEEK_SESSIONS : [];
+  const next =
+    useLive && dashboardLive
+      ? nextSessionDisplayForDashboard(dashboardLive)
+      : useMockData
+        ? { ...MOCK_NEXT_SESSION, actionable: true }
+        : {
+            ...MOCK_NEXT_SESSION,
+            sessionId: "",
+            name: "Loading programme…",
+            objective: "",
+            actionable: false,
+          };
+  const stats =
+    useLive && dashboardLive
+      ? {
+          weeklyCompletionPct: dashboardLive.weeklyCompletionPct,
+          sessionsCompleted: dashboardLive.sessionsCompleted,
+          sessionsPlanned: dashboardLive.sessionsPlanned,
+        }
+      : useMockData
+        ? MOCK_PROGRESS_STATS
+        : { weeklyCompletionPct: 0, sessionsCompleted: 0, sessionsPlanned: 0 };
   const m = useLive && dashboardLive
     ? {
         raceReadiness: {
@@ -122,31 +166,70 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
         },
         consistency: { value: dashboardLive.weeklyCompletionPct, delta: dashboardLive.consistency.sub ?? "" },
       }
-    : MOCK_PERFORMANCE_METRICS;
+    : useMockData
+      ? MOCK_PERFORMANCE_METRICS
+      : {
+          raceReadiness: { value: 0, delta: "Awaiting data" },
+          consistency: { value: 0, delta: "" },
+        };
   const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
-  const upcoming = useLive && dashboardLive
-    ? dashboardLive.upcomingThisWeek
-    : weekSessions.filter((s) => s.status === "upcoming").slice(0, 2);
-  const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : MOCK_CHECK_IN.status === "Due";
-  const checkInStatus = useLive && dashboardLive ? dashboardLive.checkInStatus : MOCK_CHECK_IN.status;
-  const checkInSub = useLive && dashboardLive ? dashboardLive.checkInSub : `Due ${MOCK_CHECK_IN.dueLabel}`;
-  const benchmarkItems = useLive && dashboardLive ? dashboardLive.benchmarkSnapshot : MOCK_BENCHMARK_SNAPSHOT;
+  const upcoming =
+    useLive && dashboardLive
+      ? dashboardLive.upcomingThisWeek
+      : useMockData
+        ? weekSessions.filter((s) => s.status === "upcoming").slice(0, 2)
+        : [];
+  const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : useMockData && MOCK_CHECK_IN.status === "Due";
+  const checkInStatus =
+    useLive && dashboardLive ? dashboardLive.checkInStatus : useMockData ? MOCK_CHECK_IN.status : "After Week 1";
+  const checkInSub =
+    useLive && dashboardLive
+      ? dashboardLive.checkInSub
+      : useMockData
+        ? `Due ${MOCK_CHECK_IN.dueLabel}`
+        : "Weekly check-ins unlock after your first training week";
+  const benchmarkItems =
+    useLive && dashboardLive ? dashboardLive.benchmarkSnapshot : useMockData ? MOCK_BENCHMARK_SNAPSHOT : [];
   const benchmarksLoading = useLive && dashboardLive ? dashboardLive.benchmarksLoading : false;
   const benchmarksError = useLive && dashboardLive ? dashboardLive.benchmarksError : null;
-  const coachFocus = useLive && dashboardLive ? dashboardLive.coachingFocus : MOCK_COACH_NOTES.currentFocus;
+  const coachFocus =
+    useLive && dashboardLive
+      ? dashboardLive.coachingFocus
+      : useMockData
+        ? MOCK_COACH_NOTES.currentFocus
+        : "Your coach will share focus notes when your programme is live.";
 
   const openSession = useCallback(
-    (id: string, title?: string) => {
+    (id: string, title?: string, opts?: { showLogForm?: boolean }) => {
+      if (!id) return;
       setSessionId(id);
       setSessionTitle(title);
-      const session = weekSessions.find((s) => s.id === id);
-      setSessionDetailOverride(session ? sessionDetailFromHyroxSession(session) : null);
+      setDrawerShowLogForm(Boolean(opts?.showLogForm));
+      const hit = weekSessions.find((s) => s.id === id) ?? null;
+      setDrawerSession(hit);
+      setSessionDetailOverride(hit ? sessionDetailFromHyroxSession(hit) : null);
     },
     [weekSessions]
   );
 
+  const handleSessionUpdated = useCallback(
+    async (updated: HyroxSession | null) => {
+      if (updated) {
+        setDrawerSession(updated);
+        setSessionDetailOverride(sessionDetailFromHyroxSession(updated));
+      }
+      if (programmePublishedLive && !useMockPreview) {
+        await reloadLiveProgramme();
+      }
+    },
+    [programmePublishedLive, useMockPreview, reloadLiveProgramme]
+  );
+
   return (
     <PageContent width="full" className="!max-w-none">
+      {showLiveLoading ? (
+        <p className="mb-4 text-sm text-zinc-500">Loading your programme…</p>
+      ) : null}
       <CommandCentreHeader />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -196,7 +279,10 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
                 </span>
               </div>
               <div className="flex flex-wrap gap-2 sm:justify-end">
-                <BtnPrimary onClick={() => openSession(next.sessionId, next.name)}>
+                <BtnPrimary
+                  disabled={!("actionable" in next) || !next.actionable || !next.sessionId}
+                  onClick={() => next.sessionId && openSession(next.sessionId, next.name)}
+                >
                   <Play className="h-4 w-4" />
                   View session
                 </BtnPrimary>
@@ -373,16 +459,23 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
 
         <HomeStickyActions
           onViewSession={() => openSession(next.sessionId, next.name)}
-          onLogResult={() => openSession(next.sessionId, next.name)}
+          onLogResult={() => openSession(next.sessionId, next.name, { showLogForm: true })}
         />
       </div>
 
       <SessionDrawer
         sessionId={sessionId}
+        session={drawerSession}
         sessionTitle={sessionTitle}
         sessionDetail={sessionDetailOverride}
+        loggingEnabled={useLive && !useMockData}
+        useLiveApi={useLive && !useMockData}
+        initialShowLogForm={drawerShowLogForm}
+        onSessionUpdated={(updated) => void handleSessionUpdated(updated)}
         onClose={() => {
           setSessionId(null);
+          setDrawerSession(null);
+          setDrawerShowLogForm(false);
           setSessionDetailOverride(null);
         }}
       />

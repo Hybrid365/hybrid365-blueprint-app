@@ -1,4 +1,5 @@
 import {
+  buildAthleteAccessDebug,
   evaluateAthleteEmailAccess,
   isAthletePortalLinked,
   shouldShowAthleteUnlinkedNotice,
@@ -69,13 +70,18 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       resolvedAthlete,
     })
   ) {
-    return (
-      <AthleteUnlinkedNotice
-        debug={
-          process.env.NODE_ENV === "development" ? emailAccess?.debug ?? null : null
-        }
-      />
-    );
+    const unlinkedDebug =
+      process.env.NODE_ENV === "development" && user?.email
+        ? (emailAccess?.debug ??
+          buildAthleteAccessDebug({
+            authUserId: user.id,
+            authEmail: user.email,
+            athlete: null,
+            reason: "UNLINKED_PAID",
+          }))
+        : null;
+
+    return <AthleteUnlinkedNotice debug={unlinkedDebug} />;
   }
 
   if (resolvedAthlete && resolvedAthlete.payment_status !== "paid") {

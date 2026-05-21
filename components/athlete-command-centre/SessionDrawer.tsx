@@ -1,19 +1,57 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getSessionDetail, type SessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
+import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
+import {
+  useHyroxSessionLog,
+  type HyroxSessionLogForm,
+} from "./useHyroxSessionLog";
 
 type Props = {
   sessionId: string | null;
+  session?: HyroxSession | null;
   sessionTitle?: string;
   sessionDetail?: SessionDetail | null;
+  /** When false, buttons are disabled with loggingBlockedMessage. */
+  loggingEnabled?: boolean;
+  loggingBlockedMessage?: string;
+  /** When false (mock preview), saving is disabled with a clear message. */
+  useLiveApi?: boolean;
+  /** Open with log form expanded (e.g. Log result from programme card). */
+  initialShowLogForm?: boolean;
   onClose: () => void;
+  onSessionUpdated?: (session: HyroxSession | null) => void;
 };
 
-export function SessionDrawer({ sessionId, sessionTitle, sessionDetail, onClose }: Props) {
+function formFromSession(session: HyroxSession | null | undefined): HyroxSessionLogForm {
+  return {
+    completed: session?.status === "complete",
+    rpe: session?.loggedRpe ?? "",
+    notes: session?.logNotes ?? "",
+    modifications: session?.logModifications ?? "",
+    score: session?.logScore ?? "",
+  };
+}
+
+export function SessionDrawer({
+  sessionId,
+  session,
+  sessionTitle,
+  sessionDetail,
+  loggingEnabled = true,
+  loggingBlockedMessage,
+  useLiveApi = true,
+  initialShowLogForm = false,
+  onClose,
+  onSessionUpdated,
+}: Props) {
   const open = Boolean(sessionId);
   const d = sessionDetail ?? (sessionId ? getSessionDetail(sessionId) : null);
+  const { saving, error, successMessage, clearMessages, saveSessionLog } = useHyroxSessionLog();
+  const [showLogForm, setShowLogForm] = useState(initialShowLogForm);
+  const [form, setForm] = useState<HyroxSessionLogForm>(() => formFromSession(session));
 
   useEffect(() => {
     if (!open) return;
@@ -24,9 +62,66 @@ export function SessionDrawer({ sessionId, sessionTitle, sessionDetail, onClose 
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    setForm(formFromSession(session));
+    setShowLogForm(initialShowLogForm);
+    clearMessages();
+  }, [open, sessionId, session, initialShowLogForm, clearMessages]);
+
+  const canSave =
+    useLiveApi &&
+    loggingEnabled &&
+    Boolean(sessionId) &&
+    !saving;
+
+  const blockedReason = !useLiveApi
+    ? "Session logging is disabled in mock preview. Turn off mock preview to log real sessions."
+    : !loggingEnabled
+      ? loggingBlockedMessage ?? "This session cannot be logged yet."
+      : null;
+
+  const handleUpdated = useCallback(
+    (updated: HyroxSession | null) => {
+      if (updated) {
+        setForm(formFromSession(updated));
+      }
+      onSessionUpdated?.(updated);
+    },
+    [onSessionUpdated]
+  );
+
+  const handleMarkComplete = useCallback(async () => {
+    if (!sessionId || !canSave) return;
+    clearMessages();
+    const updated = await saveSessionLog({
+      programmeSessionId: sessionId,
+      completed: true,
+      feedback: {
+        rpe: form.rpe || undefined,
+        notes: form.notes || undefined,
+        modifications: form.modifications || undefined,
+        score: form.score || undefined,
+      },
+    });
+    if (updated) handleUpdated(updated);
+  }, [sessionId, canSave, clearMessages, saveSessionLog, form, handleUpdated]);
+
+  const handleSaveLog = useCallback(async () => {
+    if (!sessionId || !canSave) return;
+    clearMessages();
+    const updated = await saveSessionLog({
+      programmeSessionId: sessionId,
+      completed: form.completed,
+      feedback: form,
+    });
+    if (updated) handleUpdated(updated);
+  }, [sessionId, canSave, clearMessages, saveSessionLog, form, handleUpdated]);
+
   if (!open || !d) return null;
 
   const recordFields = d.recordFields ?? ["RPE", "Duration", "Notes"];
+  const isComplete = session?.status === "complete" || form.completed;
 
   return (
     <>
@@ -44,7 +139,10 @@ export function SessionDrawer({ sessionId, sessionTitle, sessionDetail, onClose 
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-yellow-400">{d.weekLabel}</p>
-            <h2 className="mt-1 text-xl font-bold text-white">{sessionTitle ?? d.categoryTag}</h2>
+            <h2 className="mt-1 text-xl font-bold text-white">{sessionTitle ?? session?.name ?? d.categoryTag}</h2>
+            {isComplete ? (
+              <p className="mt-1 text-xs font-semibold text-emerald-400">Completed</p>
+            ) : null}
             <div className="mt-2 flex flex-wrap gap-1.5">
               {d.tags.map((t) => (
                 <span
@@ -125,32 +223,126 @@ export function SessionDrawer({ sessionId, sessionTitle, sessionDetail, onClose 
               ))}
             </ul>
           </Block>
+
+          {showLogForm ? (
+            <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-4 space-y-3">
+              <p className="text-xs font-bold uppercase text-yellow-400">Log session</p>
+              <label className="flex items-center gap-2 text-sm text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={form.completed}
+                  disabled={!canSave}
+                  onChange={(e) => setForm((f) => ({ ...f, completed: e.target.checked }))}
+                  className="rounded border-zinc-600"
+                />
+                Mark as completed
+              </label>
+              <Field label="RPE (actual)">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="e.g. 7"
+                  disabled={!canSave}
+                  value={form.rpe}
+                  onChange={(e) => setForm((f) => ({ ...f, rpe: e.target.value }))}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Session notes">
+                <textarea
+                  rows={3}
+                  disabled={!canSave}
+                  value={form.notes}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  className={inputClass}
+                  placeholder="How it felt, pacing, anything your coach should know"
+                />
+              </Field>
+              <Field label="Modifications">
+                <textarea
+                  rows={2}
+                  disabled={!canSave}
+                  value={form.modifications}
+                  onChange={(e) => setForm((f) => ({ ...f, modifications: e.target.value }))}
+                  className={inputClass}
+                  placeholder="Scaled, substituted, or cut anything?"
+                />
+              </Field>
+              <Field label="Time / score (optional)">
+                <input
+                  type="text"
+                  disabled={!canSave}
+                  value={form.score}
+                  onChange={(e) => setForm((f) => ({ ...f, score: e.target.value }))}
+                  className={inputClass}
+                  placeholder="Finish time, splits, load, etc."
+                />
+              </Field>
+            </div>
+          ) : null}
         </div>
 
         <footer className="shrink-0 space-y-2 border-t border-zinc-800 p-4">
+          {blockedReason ? (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-200/90">
+              {blockedReason}
+            </p>
+          ) : null}
+          {error ? (
+            <p className="rounded-lg border border-red-500/35 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+              {error}
+            </p>
+          ) : null}
+          {successMessage ? (
+            <p className="rounded-lg border border-emerald-500/35 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
+              {successMessage}
+            </p>
+          ) : null}
+
           <button
             type="button"
-            className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300"
+            disabled={!canSave || isComplete}
+            onClick={() => void handleMarkComplete()}
+            className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Mark complete
+            {saving ? "Saving…" : isComplete ? "Already complete" : "Mark complete"}
           </button>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              className="rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
+              disabled={!canSave}
+              onClick={() => {
+                clearMessages();
+                setShowLogForm((v) => !v);
+              }}
+              className="rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Save notes
+              {showLogForm ? "Hide log" : "Log session"}
             </button>
             <button
               type="button"
-              className="rounded-xl border border-yellow-400/40 py-2.5 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10"
+              disabled={!canSave || !showLogForm}
+              onClick={() => void handleSaveLog()}
+              className="rounded-xl border border-yellow-400/40 py-2.5 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Log result
+              {saving ? "Saving…" : "Save log"}
             </button>
           </div>
         </footer>
       </aside>
     </>
+  );
+}
+
+const inputClass =
+  "mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400/50 focus:outline-none disabled:opacity-50";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block text-xs font-semibold text-zinc-400">
+      {label}
+      {children}
+    </label>
   );
 }
 

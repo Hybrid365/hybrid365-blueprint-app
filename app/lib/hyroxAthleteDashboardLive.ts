@@ -1,15 +1,18 @@
 import type { AthleteLiveProgrammePayload } from "@/components/athlete-command-centre/useAthleteLiveProgramme";
 import type { PortalAthleteSummary } from "@/components/athlete-command-centre/athletePortalContext";
 import {
-  formatProgrammeDayLabel,
-  resolveNextSession,
-  sortProgrammeSessions,
-  upcomingSessionsAfterNext,
-  type ResolvedNextSession,
-} from "@/app/lib/hyroxAthleteProgrammeSort";
+  buildHyroxProgrammeCalendarContext,
+  resolveProgrammeCheckInSummary,
+  resolveProgrammeNextSession,
+  resolveProgrammeRaceReadiness,
+  resolveProgrammeWeeklyFocusLabel,
+  upcomingSessionsForCalendarWeek,
+  type ProgrammeNextSessionState,
+} from "@/app/lib/hyroxAthleteProgrammeCalendar";
+import { formatProgrammeDayLabel, sortProgrammeSessions, type ResolvedNextSession } from "@/app/lib/hyroxAthleteProgrammeSort";
+import { HYROX_BLOCKS } from "@/app/lib/hyroxTeamDashboardMock";
 import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
 import type { HyroxSession, SessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
-import { HYROX_BLOCKS } from "@/app/lib/hyroxTeamDashboardMock";
 export type HyroxWeekTrackingLive = {
   sessionsCompleted: number;
   sessionsPlanned: number;
@@ -49,6 +52,11 @@ export type AthleteDashboardLiveView = {
   sessionsCompleted: number;
   sessionsPlanned: number;
   nextSession: ResolvedNextSession | null;
+  nextSessionState: ProgrammeNextSessionState;
+  nextSessionMessage: string | null;
+  weeklyFocusLabel: string;
+  displayWeekInBlock: number;
+  missingProgrammeStartDate: boolean;
   upcomingThisWeek: HyroxSession[];
   weekRationale: {
     weekRole: string;
@@ -186,6 +194,37 @@ export function buildLiveBenchmarkTracker(
     });
 }
 
+/** Resolved session or status message for dashboard cards when week/block is complete. */
+export function nextSessionDisplayForDashboard(
+  live: AthleteDashboardLiveView
+): ResolvedNextSession & { actionable: boolean } {
+  if (live.nextSession) {
+    return { ...live.nextSession, actionable: true };
+  }
+  const label =
+    live.nextSessionMessage ??
+    (live.nextSessionState === "upcoming" ? "Upcoming session" : "No session scheduled");
+  const sub =
+    live.nextSessionState === "upcoming"
+      ? "Starts with your programme"
+      : live.nextSessionState === "block_complete"
+        ? "Coach will publish your next block"
+        : "";
+  return {
+    sessionId: "",
+    name: label,
+    day: "",
+    dateLabel: sub,
+    type: "Recovery",
+    duration: "—",
+    rpeTarget: "—",
+    objective: sub,
+    coachNote: "",
+    priority: "Supporting",
+    actionable: false,
+  };
+}
+
 export function sessionDetailFromHyroxSession(session: HyroxSession): SessionDetail {
   const prescriptionNote = session.coachNote?.trim();
   return {
@@ -219,12 +258,16 @@ export function buildAthleteDashboardLiveView(params: {
   if (!params.programmePublishedLive || !params.liveProgramme) return null;
 
   const lp = params.liveProgramme;
-  const currentWeekNum = lp.liveGlobalWeek ?? lp.athlete.current_week ?? lp.week?.week_number ?? 1;
-  const activeBundle =
-    lp.programmeWeeks?.find((b) => b.calendarStatus === "live" && b.generated) ??
-    lp.programmeWeeks?.find((b) => b.weekNumber === currentWeekNum && b.generated) ??
-    lp.programmeWeeks?.find((b) => b.generated) ??
-    null;
+  const programmeWeeks = lp.programmeWeeks ?? [];
+
+  const calendar = buildHyroxProgrammeCalendarContext({
+    programmeStartDate: lp.programmeStartDate,
+    programmeLengthWeeks: lp.programmeLengthWeeks,
+    programmeWeeks,
+    currentBlock: lp.athlete.current_block,
+  });
+
+  const activeBundle = calendar.activeWeekBundle;
   const sessionSource = activeBundle?.sessions?.length
     ? activeBundle.sessions
     : (lp.sessions ?? []);
@@ -233,17 +276,45 @@ export function buildAthleteDashboardLiveView(params: {
   const planned = sortedSessions.length;
   const weeklyCompletionPct = planned ? Math.round((completed / planned) * 100) : 0;
 
-  const nextSession = resolveNextSession(sortedSessions);
-  const upcomingThisWeek = upcomingSessionsAfterNext(sortedSessions, nextSession, 3);
+  const nextResolution = resolveProgrammeNextSession({
+    programmeStartDate: calendar.programmeStartDate,
+    programmeWeeks,
+    activeWeekBundle: activeBundle,
+    beforeProgrammeStart: calendar.beforeProgrammeStart,
+  });
+  const nextSession = nextResolution.session;
+  const upcomingThisWeek = upcomingSessionsForCalendarWeek(
+    sortedSessions,
+    nextSession,
+    3
+  );
 
-  const blockId = (lp.athlete.current_block as 1 | 2 | 3) ?? 1;
+  const blockId = Math.min(
+    calendar.blockNumber,
+    3
+  ) as 1 | 2 | 3;
   const block = HYROX_BLOCKS.find((b) => b.id === blockId) ?? HYROX_BLOCKS[0];
-  const rationale = lp.weekRationale ?? {
-    weekRole: "Training week",
-    whyMatters: "",
-    prioritise: [],
-    coachNote: "",
-  };
+
+  const bundleRationale = activeBundle?.week
+    ? {
+        weekRole: activeBundle.weekRole,
+        whyMatters:
+          activeBundle.week.athlete_facing_note ??
+          lp.weekRationale?.whyMatters ??
+          "",
+        prioritise: lp.weekRationale?.prioritise ?? [],
+        coachNote: activeBundle.week.coach_note ?? lp.weekRationale?.coachNote ?? "",
+      }
+    : (lp.weekRationale ?? {
+        weekRole: resolveProgrammeWeeklyFocusLabel(calendar),
+        whyMatters: "",
+        prioritise: [] as string[],
+        coachNote: "",
+      });
+
+  const checkIn = resolveProgrammeCheckInSummary(calendar);
+  const raceReadiness = resolveProgrammeRaceReadiness(calendar);
+  const weeklyFocusLabel = resolveProgrammeWeeklyFocusLabel(calendar);
 
   const raceParts = [lp.athlete.race_name, lp.athlete.race_category].filter(Boolean);
   const athleteName =
@@ -253,41 +324,45 @@ export function buildAthleteDashboardLiveView(params: {
 
   const benchmarkSnapshot = params.benchmarkSnapshot ?? [];
 
-  const weekNum = lp.week?.week_number ?? lp.athlete.current_week ?? 1;
+  if (process.env.NODE_ENV === "development" && calendar.missingStartDate) {
+    console.warn(
+      "[hyrox/dashboard] programme_start_date missing — week calendar and next session may be inaccurate."
+    );
+  }
 
   return {
     athleteName,
-    statusLabel: "Programme live",
+    statusLabel: calendar.beforeProgrammeStart ? "Programme upcoming" : "Programme live",
     raceLabel: raceParts.length ? raceParts.join(" · ") : "Race TBC",
     targetTime: lp.athlete.target_time ?? "—",
     blockId,
     blockName: block.name,
-    currentWeek: lp.liveGlobalWeek ?? lp.athlete.current_week ?? weekNum,
-    totalWeeks: 12,
+    currentWeek: calendar.blockWeekInCycle,
+    totalWeeks: calendar.programmeLengthWeeks,
     weeklyCompletionPct,
     sessionsCompleted: completed,
     sessionsPlanned: planned,
     nextSession,
+    nextSessionState: nextResolution.state,
+    nextSessionMessage: nextResolution.message,
+    weeklyFocusLabel,
+    displayWeekInBlock: calendar.blockWeekInCycle,
+    missingProgrammeStartDate: calendar.missingStartDate,
     upcomingThisWeek,
     weekRationale: {
-      weekRole: rationale.weekRole,
-      whyMatters: rationale.whyMatters,
-      prioritise: rationale.prioritise ?? [],
-      coachNote: rationale.coachNote,
+      weekRole: weeklyFocusLabel,
+      whyMatters: bundleRationale.whyMatters,
+      prioritise: bundleRationale.prioritise ?? [],
+      coachNote: bundleRationale.coachNote,
     },
     coachingFocus:
-      rationale.coachNote ||
-      rationale.whyMatters ||
+      bundleRationale.coachNote ||
+      bundleRationale.whyMatters ||
       "Follow this week's sessions — log RPE honestly for your coach.",
-    checkInStatus: weekNum >= 1 ? "After Week 1" : "Pending",
-    checkInSub: "Weekly check-ins unlock after your first training week",
-    checkInDue: false,
-    raceReadiness: {
-      label: "Race readiness",
-      value: "Awaiting data",
-      sub: "Starts after first training week",
-      awaiting: true,
-    },
+    checkInStatus: checkIn.status,
+    checkInSub: checkIn.sub,
+    checkInDue: checkIn.due,
+    raceReadiness,
     consistency: {
       label: "Consistency",
       value: `${weeklyCompletionPct}%`,
@@ -299,7 +374,7 @@ export function buildAthleteDashboardLiveView(params: {
     weekTracking: buildWeekTrackingFromSessions(
       sortedSessions,
       weeklyCompletionPct,
-      weekNum >= 1 ? "Weekly check-ins unlock after your first training week" : "Pending"
+      checkIn.sub
     ),
     thresholdSummary: {
       label: "Threshold minutes",

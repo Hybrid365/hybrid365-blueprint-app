@@ -234,19 +234,39 @@ export function LockedBanner({
   );
 }
 
+export function ProgrammeWaitingCard() {
+  return (
+    <div className={`${athleteCard} ${athleteCardPadding} mx-auto max-w-md text-center`}>
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-amber-500/25 bg-amber-500/10">
+        <Lock className="h-5 w-5 text-amber-300/80" />
+      </div>
+      <p className="text-lg font-semibold text-white">Your programme is not live yet</p>
+      <p className="mx-auto mt-2 text-sm leading-relaxed text-zinc-500">
+        Your coach is building your first block. You&apos;ll see Week 1–4 sessions here once your coach publishes your
+        programme.
+      </p>
+      <Link href="/athlete/dashboard" className={`${btnPrimaryClass} mt-6`}>
+        Back to dashboard
+      </Link>
+    </div>
+  );
+}
+
+/** Dev-only: shown when exploring the portal without a linked athlete or published programme. */
 export function PreviewGateCard() {
   return (
     <div className={`${athleteCard} ${athleteCardPadding} mx-auto max-w-md text-center`}>
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950">
         <Lock className="h-5 w-5 text-zinc-500" />
       </div>
-      <p className="text-lg font-semibold text-white">Preview not enabled</p>
+      <p className="text-lg font-semibold text-white">Dev mock preview</p>
       <p className="mx-auto mt-2 text-sm leading-relaxed text-zinc-500">
-        Turn on <span className="font-medium text-yellow-400">Programme live (mock)</span> on the dashboard to explore the
-        full athlete portal preview.
+        In development, turn on{" "}
+        <span className="font-medium text-yellow-400">Programme live (mock preview)</span> on the dashboard to explore
+        sample UI. Real athletes use data from their published programme only.
       </p>
       <Link href="/athlete/dashboard" className={`${btnPrimaryClass} mt-6`}>
-        Go to Home
+        Go to dashboard
       </Link>
     </div>
   );

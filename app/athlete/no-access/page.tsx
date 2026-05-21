@@ -17,8 +17,7 @@ export default function HyroxAthleteNoAccessPage() {
         <code className="text-zinc-300">hyrox_athletes.user_id</code>.
       </p>
       <p className="mt-3 text-xs text-zinc-500">
-        Programme preview toggles in the browser still work after you have access — data is not
-        persisted until later phases.
+        Use the same email address your coach has on your Hyrox Team athlete record.
       </p>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Link

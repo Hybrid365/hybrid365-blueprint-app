@@ -4,6 +4,7 @@ export type SessionStatus = "complete" | "upcoming" | "missed" | "modified";
 
 export type HyroxSession = {
   id: string;
+  programmeWeekId?: string;
   day: string;
   dayShort: string;
   dateLabel: string;
@@ -14,6 +15,10 @@ export type HyroxSession = {
   rpeTarget: string;
   status: SessionStatus;
   loggedRpe?: string;
+  logNotes?: string;
+  logModifications?: string;
+  logScore?: string;
+  completedAt?: string | null;
   priority: "Key" | "Supporting" | "Optional";
   intent: string;
   timeOfDay?: "AM" | "Main" | "PM" | "Optional";

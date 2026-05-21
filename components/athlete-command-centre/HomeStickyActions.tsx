@@ -15,7 +15,9 @@ import {
   btnGhostClass,
   eyebrowClass,
 } from "./athleteUi";
+import { nextSessionDisplayForDashboard } from "@/app/lib/hyroxAthleteDashboardLive";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
+import { useAthletePortal } from "./athletePortalContext";
 
 type Props = {
   onViewSession: () => void;
@@ -23,15 +25,32 @@ type Props = {
 };
 
 export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
+  const { useMockPreview } = useAthletePortal();
   const { useLive, dashboardLive } = useAthleteDashboardLive();
+  const useMockData = useMockPreview;
 
-  const next = useLive && dashboardLive?.nextSession
-    ? dashboardLive.nextSession
-    : MOCK_NEXT_SESSION;
-  const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : MOCK_CHECK_IN.status === "Due";
-  const checkInStatus = useLive && dashboardLive ? dashboardLive.checkInStatus : MOCK_CHECK_IN.status;
-  const checkInSub = useLive && dashboardLive ? dashboardLive.checkInSub : `Due ${MOCK_CHECK_IN.dueLabel}`;
-  const coachingFocus = useLive && dashboardLive ? dashboardLive.coachingFocus : MOCK_ATHLETE.coachingFocus;
+  const next =
+    useLive && dashboardLive
+      ? nextSessionDisplayForDashboard(dashboardLive)
+      : useMockData
+        ? { ...MOCK_NEXT_SESSION, actionable: true }
+        : { ...MOCK_NEXT_SESSION, sessionId: "", name: "—", actionable: false };
+  const nextActionable = "actionable" in next && next.actionable && Boolean(next.sessionId);
+  const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : useMockData && MOCK_CHECK_IN.status === "Due";
+  const checkInStatus =
+    useLive && dashboardLive ? dashboardLive.checkInStatus : useMockData ? MOCK_CHECK_IN.status : "After Week 1";
+  const checkInSub =
+    useLive && dashboardLive
+      ? dashboardLive.checkInSub
+      : useMockData
+        ? `Due ${MOCK_CHECK_IN.dueLabel}`
+        : "Weekly check-ins unlock after your first training week";
+  const coachingFocus =
+    useLive && dashboardLive
+      ? dashboardLive.coachingFocus
+      : useMockData
+        ? MOCK_ATHLETE.coachingFocus
+        : "Your coach will share focus notes when your programme is live.";
 
   return (
     <aside className="hidden lg:block">
@@ -46,11 +65,11 @@ export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
             {next.type}
           </span>
           <div className="mt-4 space-y-2">
-            <BtnPrimary className="w-full" onClick={onViewSession}>
+            <BtnPrimary className="w-full" disabled={!nextActionable} onClick={onViewSession}>
               <Play className="h-4 w-4" />
               View session
             </BtnPrimary>
-            <BtnSecondary className="w-full" onClick={onLogResult}>
+            <BtnSecondary className="w-full" disabled={!nextActionable} onClick={onLogResult}>
               Log result
             </BtnSecondary>
             <Link href="/athlete/programme" className={`${btnGhostClass} w-full`}>

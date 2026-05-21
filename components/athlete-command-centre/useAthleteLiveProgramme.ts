@@ -5,7 +5,13 @@ import type {
   AthleteProgrammeApiState,
   AthleteProgrammeVisibility,
 } from "@/app/lib/hyroxProgrammeServer";
+import type {
+  AthleteProgrammeWeekBundle,
+  AthleteWeekCalendarStatus,
+} from "@/app/lib/hyroxAthleteProgrammeTypes";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
+
+export type { AthleteProgrammeWeekBundle, AthleteWeekCalendarStatus };
 
 export type AthleteLiveProgrammeWeek = {
   id: string;
@@ -14,26 +20,6 @@ export type AthleteLiveProgrammeWeek = {
   weekly_focus: string | null;
   coach_note: string | null;
   athlete_facing_note: string | null;
-};
-
-export type AthleteWeekCalendarStatus =
-  | "past"
-  | "live"
-  | "upcoming"
-  | "not_generated"
-  | "locked";
-
-export type AthleteProgrammeWeekBundle = {
-  weekNumber: number;
-  blockWeekInCycle: number;
-  generated: boolean;
-  calendarStatus?: AthleteWeekCalendarStatus;
-  weekStartDate?: string | null;
-  weekEndDate?: string | null;
-  dateRangeLabel?: string | null;
-  week: AthleteLiveProgrammeWeek | null;
-  weekRole: string;
-  sessions: HyroxSession[];
 };
 
 export type AthleteLiveProgrammePayload = {
