@@ -23,7 +23,6 @@ import {
   Wind,
   Zap,
 } from "lucide-react";
-import { Nav } from "@/components/nav";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import type {
   BodyweightTrend,
@@ -231,9 +230,8 @@ export default function ProgressClient({
       : 0;
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-100">
-      <Nav />
-      <main className="flex-1 pb-24 md:pb-10">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <main className="pb-8 md:pb-10">
         <div className="mx-auto max-w-5xl px-4 pt-8 md:px-8 md:pt-10">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">

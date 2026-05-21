@@ -68,6 +68,13 @@ import type { SessionShareCardProps } from "@/components/share/SessionShareCard"
 import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { AddToHomeScreenBanner } from "@/components/dashboard/AddToHomeScreenBanner";
+import { DashboardRotatingMessage } from "@/components/dashboard/DashboardRotatingMessage";
+import { GoToNextSessionCta } from "@/components/dashboard/GoToNextSessionCta";
+import { MemberSessionDetailDrawer } from "@/components/dashboard/MemberSessionDetailDrawer";
+import { MemberStartHereChecklist } from "@/components/dashboard/MemberStartHereChecklist";
+import { findNextMemberSession } from "@/app/lib/memberNextSession";
+import { useMemberSessionLogs } from "@/app/lib/memberSessionLog";
+import type { MemberSessionDrawerSession } from "@/app/lib/memberSessionTypes";
 import {
   OnboardingHowItWorksCard,
   OnboardingStructureBlock,
@@ -349,16 +356,36 @@ export default function MemberDashboardClient({
     clampWeek(instanceCurrentWeek) ?? clampWeek(derivedFromFlags) ?? 1;
 
   const [selectedWeek, setSelectedWeek] = useState(effectiveCurrentWeek);
-  const [selectedSession, setSelectedSession] = useState<SessionWithKey | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [sessionLogs, setSessionLogs] = useState<Record<string, SessionLogRecord>>(
-    () => Object.fromEntries(initialSessionLogs.map((log) => [log.session_key, log]))
-  );
-  const [draftRpe, setDraftRpe] = useState<number | null>(null);
-  const [draftNotes, setDraftNotes] = useState("");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [homeScreenHintDone, setHomeScreenHintDone] = useState(false);
+  const {
+    sessionLogs,
+    drawerOpen,
+    setDrawerOpen,
+    selectedSession,
+    selectedLog,
+    draftRpe,
+    setDraftRpe,
+    draftNotes,
+    setDraftNotes,
+    saving,
+    saveError,
+    openSessionDrawer,
+    closeSessionDrawer,
+    saveSessionLog,
+  } = useMemberSessionLogs(programmeInstanceId, initialSessionLogs);
   const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
+
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem("hybrid365-home-screen-cta-dismissed") === "1";
+      const nav = window.navigator as Navigator & { standalone?: boolean };
+      const standalone =
+        nav.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+      if (dismissed || standalone) setHomeScreenHintDone(true);
+    } catch {
+      // ignore
+    }
+  }, []);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [checkInSaving, setCheckInSaving] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
@@ -538,7 +565,22 @@ export default function MemberDashboardClient({
   const currentBlockMeta = BLOCKS.find((b) => b.id === blockIdForWeek(effectiveCurrentWeek))!;
   const totalSessionsThisWeek = sessions.length;
   const completedCount = sessions.filter((s) => sessionLogs[s.sessionKey]?.completed).length;
-  const nextSession = sessions.find((s) => !sessionLogs[s.sessionKey]?.completed) ?? null;
+  const nextSession = useMemo(() => {
+    if (!programmeGenerated) return null;
+    return findNextMemberSession({
+      weeks: allWeeks,
+      sessionLogs,
+      startWeek: effectiveCurrentWeek,
+    });
+  }, [programmeGenerated, allWeeks, sessionLogs, effectiveCurrentWeek]);
+
+  const hasCompletedSession = useMemo(
+    () => Object.values(sessionLogs).some((log) => log.completed),
+    [sessionLogs]
+  );
+  const hasHabitLog = habitLogs.length > 0;
+  const hasCheckIn = Boolean(getCheckInForWeek(weeklyCheckIns, effectiveCurrentWeek));
+  const forceShowStartHere = !assessmentCompleted || !programmeGenerated;
   const allSessionsCompleted = sessions.length > 0 && completedCount === sessions.length;
   const adherencePercent =
     totalSessionsThisWeek > 0 ? Math.round((completedCount / totalSessionsThisWeek) * 100) : null;
@@ -581,73 +623,8 @@ export default function MemberDashboardClient({
     window.location.href = "/logout";
   }
 
-  function openSessionDrawer(session: SessionWithKey) {
-    const existing = sessionLogs[session.sessionKey];
-    setSelectedSession(session);
-    setDraftRpe(existing?.rpe ?? null);
-    setDraftNotes(existing?.notes ?? "");
-    setSaveError(null);
-    setDrawerOpen(true);
-  }
-
-  function openSessionShare(session: SessionWithKey) {
+  function openSessionShare(session: MemberSessionDrawerSession) {
     setShareCard(shareCardInputFromMemberSession(session, sessionLogs[session.sessionKey]));
-  }
-
-  async function saveSessionLog(completed: boolean) {
-    if (!selectedSession || !programmeInstanceId) return;
-    setSaving(true);
-    setSaveError(null);
-    const optimistic: SessionLogRecord = {
-      id: sessionLogs[selectedSession.sessionKey]?.id ?? `optimistic-${selectedSession.sessionKey}`,
-      week_number: selectedSession.weekNumber,
-      session_key: selectedSession.sessionKey,
-      session_title: selectedSession.title,
-      session_day: selectedSession.day,
-      completed,
-      completed_at: completed ? new Date().toISOString() : null,
-      rpe: draftRpe,
-      notes: draftNotes.trim() || null,
-    };
-    const previous = sessionLogs[selectedSession.sessionKey];
-    setSessionLogs((prev) => ({ ...prev, [selectedSession.sessionKey]: optimistic }));
-    try {
-      const res = await fetch("/api/dashboard/session-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          programme_instance_id: programmeInstanceId,
-          week_number: selectedSession.weekNumber,
-          session_key: selectedSession.sessionKey,
-          session_title: selectedSession.title,
-          session_day: selectedSession.day,
-          completed,
-          rpe: draftRpe,
-          notes: draftNotes,
-        }),
-      });
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(payload.error || "Failed to save session");
-      }
-      const payload = (await res.json()) as { log: SessionLogRecord };
-      setSessionLogs((prev) => ({ ...prev, [selectedSession.sessionKey]: payload.log }));
-      if (!completed) {
-        setDrawerOpen(false);
-      }
-    } catch (err) {
-      setSessionLogs((prev) => {
-        if (!previous) {
-          const copy = { ...prev };
-          delete copy[selectedSession.sessionKey];
-          return copy;
-        }
-        return { ...prev, [selectedSession.sessionKey]: previous };
-      });
-      setSaveError(err instanceof Error ? err.message : "Unable to save session");
-    } finally {
-      setSaving(false);
-    }
   }
 
   function openCheckInDrawer(forWeek?: number) {
@@ -769,7 +746,6 @@ export default function MemberDashboardClient({
   }
 
   const blockPillLabel = `Block ${blockIdForWeek(effectiveCurrentWeek)} · ${currentBlockMeta.name}`;
-  const selectedLog = selectedSession ? sessionLogs[selectedSession.sessionKey] : null;
 
   const roadmapPillClass = (
     week: number,
@@ -866,7 +842,7 @@ export default function MemberDashboardClient({
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="mx-auto max-w-6xl px-4 pb-24 pt-2 sm:px-6 lg:px-8 lg:pt-4">
+      <div className="mx-auto max-w-6xl px-4 pb-10 pt-2 sm:px-6 lg:px-8 lg:pt-4">
         {/* Premium header — full width */}
         <header className="mb-10 border-b border-zinc-800 pb-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -914,6 +890,41 @@ export default function MemberDashboardClient({
         </header>
 
         <AddToHomeScreenBanner />
+
+        {programmeGenerated ? (
+          <GoToNextSessionCta
+            nextSession={nextSession}
+            programmeGenerated={programmeGenerated}
+            onOpenSession={(session) => {
+              if (session.weekNumber !== selectedWeek) {
+                setSelectedWeek(session.weekNumber);
+              }
+              openSessionDrawer(session);
+            }}
+          />
+        ) : null}
+
+        {programmeGenerated && weekTrackingSummary ? (
+          <ThisWeekTrackingCard
+            summary={weekTrackingSummary}
+            onCompleteCheckIn={() => openCheckInDrawer(effectiveCurrentWeek)}
+          />
+        ) : null}
+
+        {programmeGenerated ? <DashboardRotatingMessage /> : null}
+
+        <MemberStartHereChecklist
+          assessmentCompleted={assessmentCompleted}
+          coreTestsLogged={coreTestsLogged}
+          programmeGenerated={programmeGenerated}
+          hasCompletedSession={hasCompletedSession}
+          hasHabitLog={hasHabitLog}
+          hasCheckIn={hasCheckIn}
+          homeScreenHintDone={homeScreenHintDone}
+          forceShow={forceShowStartHere}
+          onGenerateProgramme={handleGenerateProgramme}
+          generatingProgramme={generatingProgramme}
+        />
 
         {!programmeGenerated ? (
           <section className="mb-10">
@@ -1164,47 +1175,11 @@ export default function MemberDashboardClient({
               </div>
             </div>
           </section>
-        ) : (
-          <section className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 sm:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400/90">Next steps</p>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              Train with intent. Stack sessions, habits and check-ins — then open Progress and the Hybrid Challenge to
-              prove the work.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href="/dashboard/habits"
-                className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-yellow-500/30 bg-yellow-400/10 px-4 py-2 text-sm font-semibold text-yellow-200 transition hover:bg-yellow-400/15"
-              >
-                Habits
-              </Link>
-              <Link
-                href="/dashboard/progress"
-                className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-zinc-600"
-              >
-                Progress
-              </Link>
-              <Link
-                href="/dashboard/challenge"
-                className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-zinc-600"
-              >
-                Challenge
-              </Link>
-            </div>
-            <DashboardSupportCard className="mt-6" />
-          </section>
-        )}
+        ) : null}
 
         <div className="grid gap-10 lg:grid-cols-[1fr_min(380px,34%)] xl:grid-cols-[1fr_420px] xl:gap-12">
           {/* ——— Main column ——— */}
           <div className="min-w-0 space-y-10">
-            {programmeGenerated && weekTrackingSummary ? (
-              <ThisWeekTrackingCard
-                summary={weekTrackingSummary}
-                onCompleteCheckIn={() => openCheckInDrawer(effectiveCurrentWeek)}
-              />
-            ) : null}
-
             {programmeGenerated && showProgrammeReadyBanner ? (
               <ProgrammeReadyBanner onDismiss={() => setShowProgrammeReadyBanner(false)} />
             ) : null}
@@ -2036,268 +2011,26 @@ export default function MemberDashboardClient({
         </div>
       )}
 
-      {drawerOpen && selectedSession && (
-        <div className="fixed inset-0 z-50">
-          <button
-            type="button"
-            aria-label="Close session details"
-            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
-            onClick={() => setDrawerOpen(false)}
-          />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-3xl border-t border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
-            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-600" />
-            <div className="mx-auto max-w-3xl p-5 pb-12 sm:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-yellow-400">
-                    {selectedSession.day}
-                  </p>
-                  <span className="text-sm font-medium text-zinc-300">
-                    {selectedSession.priorityDisplayLabel} — {selectedSession.priorityCategoryLabel}
-                  </span>
-                  <h3 className="mt-2 text-2xl font-bold text-white sm:text-3xl">{selectedSession.title}</h3>
-                  <p className="mt-3 text-base leading-relaxed text-zinc-400">{selectedSession.intent}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDrawerOpen(false)}
-                  className="rounded-xl border border-zinc-800 bg-zinc-800 p-2.5 text-zinc-300 hover:bg-zinc-700"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    <Timer className="h-4 w-4" />
-                    Duration
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">{selectedSession.duration}</p>
-                </div>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    <Clock className="h-4 w-4" />
-                    Time cap
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">
-                    {selectedSession.timeCap || "—"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    <Gauge className="h-4 w-4" />
-                    Guide
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">{selectedSession.rpeGuide}</p>
-                </div>
-              </div>
-
-              {(selectedSession.category === "Run" || selectedSession.category === "Hybrid") &&
-              selectedSession.runPrescription ? (
-                <div className="mt-6 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-zinc-900/80 p-5 sm:p-6">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-yellow-400/90">
-                    Your intensity guide
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                    {selectedSession.runPrescription.effort_description}
-                  </p>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {selectedSession.runPrescription.pace_range ? (
-                      <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
-                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                          Target pace
-                        </p>
-                        <p className="mt-1 text-base font-semibold text-white">
-                          {selectedSession.runPrescription.pace_range}
-                        </p>
-                      </div>
-                    ) : null}
-                    {selectedSession.runPrescription.hr_range ? (
-                      <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
-                        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                          <Heart className="h-3.5 w-3.5" />
-                          HR guide
-                        </p>
-                        <p className="mt-1 text-base font-semibold text-white">
-                          {selectedSession.runPrescription.hr_range}
-                        </p>
-                      </div>
-                    ) : null}
-                    <div
-                      className={`rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3${
-                        !selectedSession.runPrescription.pace_range &&
-                        !selectedSession.runPrescription.hr_range
-                          ? " sm:col-span-2"
-                          : ""
-                      }`}
-                    >
-                      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                        <Gauge className="h-3.5 w-3.5" />
-                        RPE
-                      </p>
-                      <p className="mt-1 text-base font-semibold text-white">
-                        {selectedSession.runPrescription.rpe}
-                      </p>
-                    </div>
-                  </div>
-                  {selectedSession.runPrescription.coach_note ? (
-                    <p className="mt-4 border-t border-zinc-800/80 pt-4 text-sm leading-relaxed text-zinc-300">
-                      {selectedSession.runPrescription.coach_note}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {[
-                ["Warm-up", selectedSession.warmUp],
-                ["Main work", selectedSession.mainWork],
-                ["Cool-down", selectedSession.coolDown],
-                ["Finish", selectedSession.finisher],
-                ["Coaching notes", selectedSession.coachingNotes ? [selectedSession.coachingNotes] : []],
-              ].map(([label, lines]) =>
-                Array.isArray(lines) && lines.length > 0 ? (
-                  <div key={String(label)} className="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-                    <p className="text-sm font-bold text-white">{String(label)}</p>
-                    <ul className="mt-3 space-y-2 text-sm leading-relaxed text-zinc-300">
-                      {lines.map((line) => (
-                        <li key={line}>
-                          <span className="text-yellow-400">·</span> {line}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null
-              )}
-
-              {/* ── Optional PM / Double session ── */}
-              {selectedSession.doubleSession ? (
-                <div className="mt-5 rounded-xl border border-blue-500/25 bg-blue-950/20 p-5">
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-300">
-                      {selectedSession.doubleSession.label}
-                    </span>
-                    <p className="text-sm font-bold text-white">{selectedSession.doubleSession.title}</p>
-                    <span className="ml-auto text-xs text-zinc-500">{selectedSession.doubleSession.time_cap_minutes} min</span>
-                  </div>
-                  <p className="mb-3 text-sm leading-relaxed text-zinc-400">{selectedSession.doubleSession.intent}</p>
-                  {selectedSession.doubleSession.main.length > 0 ? (
-                    <ul className="space-y-1.5 text-sm text-zinc-300">
-                      {selectedSession.doubleSession.main.map((line) => (
-                        <li key={line} className="flex gap-2">
-                          <span className="shrink-0 text-blue-400">·</span>
-                          {line}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {selectedSession.doubleSession.notes.length > 0 ? (
-                    <ul className="mt-3 space-y-1 text-xs text-zinc-500">
-                      {selectedSession.doubleSession.notes.map((n) => (
-                        <li key={n} className="italic">{n}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-bold text-white">Session log</p>
-                  {selectedLog?.completed ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Completed
-                    </span>
-                  ) : (
-                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-xs font-medium text-zinc-400">
-                      Not completed
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">RPE</p>
-                  <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
-                    {Array.from({ length: 10 }, (_, i) => i + 1).map((value) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setDraftRpe(value)}
-                        className={`rounded-lg border px-2 py-2 text-sm font-semibold transition ${
-                          draftRpe === value
-                            ? "border-yellow-400 bg-yellow-400 text-zinc-950"
-                            : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-zinc-700/60"
-                        }`}
-                      >
-                        {value}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Notes</p>
-                  <textarea
-                    value={draftNotes}
-                    onChange={(e) => setDraftNotes(e.target.value)}
-                    rows={4}
-                    placeholder="Optional notes about this session..."
-                    className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none transition focus:border-zinc-700/60"
-                  />
-                </div>
-
-                {saveError ? <p className="mt-3 text-sm text-red-300">{saveError}</p> : null}
-
-                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                  <button
-                    type="button"
-                    disabled={saving || !programmeInstanceId}
-                    aria-busy={saving}
-                    onClick={() => saveSessionLog(true)}
-                    className="flex-1 rounded-xl bg-yellow-400 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {saving ? "Saving..." : selectedLog?.completed ? "Save changes" : "Mark complete"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saving || !programmeInstanceId}
-                    aria-busy={saving}
-                    onClick={() => saveSessionLog(false)}
-                    className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-zinc-700/60 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Save as incomplete
-                  </button>
-                </div>
-
-                {selectedLog?.completed ? (
-                  <div className="mt-6 rounded-xl border border-yellow-500/20 bg-yellow-400/[0.06] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-yellow-400/95">Share your session</p>
-                    <p className="mt-1 text-sm text-zinc-400">
-                      Opens a clean, screenshot-ready card — story tips appear on the next screen.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => selectedSession && openSessionShare(selectedSession)}
-                      className="mt-3 w-full rounded-xl border border-yellow-500/35 bg-yellow-400/10 py-2.5 text-sm font-semibold text-yellow-200 transition hover:border-yellow-400/55 hover:bg-yellow-400/15"
-                    >
-                      View Share Card
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => selectedSession && openSessionShare(selectedSession)}
-                    className="mt-4 w-full text-center text-xs font-medium text-zinc-500 transition hover:text-zinc-300"
-                  >
-                    Preview share card (today&apos;s session)
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <MemberSessionDetailDrawer
+        open={drawerOpen}
+        session={selectedSession}
+        onClose={closeSessionDrawer}
+        log={selectedLog}
+        draftRpe={draftRpe}
+        onDraftRpeChange={setDraftRpe}
+        draftNotes={draftNotes}
+        onDraftNotesChange={setDraftNotes}
+        saving={saving}
+        saveError={saveError}
+        programmeInstanceId={programmeInstanceId}
+        onSaveComplete={() => saveSessionLog(true)}
+        onSaveIncomplete={() => saveSessionLog(false)}
+        onShare={
+          selectedSession
+            ? () => openSessionShare(selectedSession)
+            : undefined
+        }
+      />
       {shareCard ? (
         <SessionShareCardModal open onClose={() => setShareCard(null)} card={shareCard} />
       ) : null}

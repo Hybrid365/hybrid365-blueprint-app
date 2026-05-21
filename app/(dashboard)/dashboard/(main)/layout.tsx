@@ -1,4 +1,5 @@
 import { requireDashboardMemberAccess } from "@/app/lib/dashboardAuth";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
 export default async function DashboardMemberLayout({
   children,
@@ -6,5 +7,5 @@ export default async function DashboardMemberLayout({
   children: React.ReactNode;
 }) {
   await requireDashboardMemberAccess("/dashboard");
-  return <>{children}</>;
+  return <DashboardShell>{children}</DashboardShell>;
 }

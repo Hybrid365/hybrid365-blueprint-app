@@ -15,7 +15,6 @@ import {
   Save,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Nav } from "@/components/nav";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 import { RUN_VOLUME_BAND_OPTIONS } from "@/app/lib/runVolumePlanner";
@@ -417,8 +416,7 @@ export default function AssessmentClient({
   const progressPercent = (completedSections / sections.length) * 100;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Nav />
+    <div className="min-h-screen bg-background">
       <main className="flex-1 pb-20 md:pb-0">
         <div className="px-4 pt-6 pb-4 md:px-8 md:pt-10">
           <div className="flex items-center gap-2 mb-1">

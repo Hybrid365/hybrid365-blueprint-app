@@ -3,7 +3,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Nav } from "@/components/nav";
 import {
   Timer,
   Plus,
@@ -303,8 +302,7 @@ export default function TestingClient({
   ];
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Nav />
+    <div className="min-h-screen bg-background">
       <main className="flex-1 pb-20 md:pb-0">
         <div className="px-4 pt-6 pb-4 md:px-8 md:pt-10">
           <div className="flex items-center gap-2 mb-1">

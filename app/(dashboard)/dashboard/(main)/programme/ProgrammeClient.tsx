@@ -18,8 +18,9 @@ import {
   Timer,
   X,
 } from "lucide-react";
-import { Nav } from "@/components/nav";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
+import { MemberSessionDetailDrawer } from "@/components/dashboard/MemberSessionDetailDrawer";
+import { useMemberSessionLogs } from "@/app/lib/memberSessionLog";
 import {
   extractWeekRationale,
   type ExtractedProgrammeIntelligence,
@@ -120,13 +121,23 @@ export default function ProgrammeClient({
   programmeIntelligence,
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(defaultSelectedWeek);
-  const [drawerSession, setDrawerSession] = useState<SessionWithKey | null>(null);
   const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
 
-  const logByKey = useMemo(
-    () => Object.fromEntries(initialSessionLogs.map((l) => [l.session_key, l])),
-    [initialSessionLogs]
-  );
+  const {
+    sessionLogs,
+    drawerOpen,
+    selectedSession,
+    selectedLog,
+    draftRpe,
+    setDraftRpe,
+    draftNotes,
+    setDraftNotes,
+    saving,
+    saveError,
+    openSessionDrawer,
+    closeSessionDrawer,
+    saveSessionLog,
+  } = useMemberSessionLogs(programmeInstanceId, initialSessionLogs);
 
   const selectedPayload = getSelectedProgrammeWeek(
     weeksFromDb.map((w) => ({
@@ -181,9 +192,8 @@ export default function ProgrammeClient({
     : [];
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-100">
-      <Nav />
-      <main className="flex-1 pb-24 md:pb-10">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <main className="pb-8 md:pb-10">
         <div className="mx-auto max-w-6xl px-4 pt-8 md:px-8 md:pt-10">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Hybrid365</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-white md:text-4xl">Your 12-Week Programme</h1>
@@ -492,13 +502,13 @@ export default function ProgrammeClient({
                     ) : (
                       <div className="space-y-3">
                         {sessions.map((session) => {
-                          const log = logByKey[session.sessionKey];
+                          const log = sessionLogs[session.sessionKey];
                           const done = Boolean(log?.completed);
                           return (
                             <button
                               key={session.sessionKey}
                               type="button"
-                              onClick={() => setDrawerSession(session)}
+                              onClick={() => openSessionDrawer(session)}
                               className="flex w-full flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 text-left transition hover:border-zinc-700 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <div className="min-w-0 flex-1">
@@ -606,143 +616,29 @@ export default function ProgrammeClient({
           </div>
         )}
 
-        {drawerSession ? (
-          <div className="fixed inset-0 z-50">
-            <button
-              type="button"
-              aria-label="Close"
-              className="absolute inset-0 bg-black/75 backdrop-blur-sm"
-              onClick={() => setDrawerSession(null)}
-            />
-            <div className="absolute bottom-0 left-0 right-0 max-h-[min(92vh,900px)] overflow-y-auto rounded-t-3xl border-t border-zinc-800 bg-zinc-950 sm:max-h-[90vh]">
-              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-zinc-600" />
-              <div className="mx-auto max-w-3xl p-5 pb-12 sm:p-8">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-yellow-400">{drawerSession.day}</p>
-                    <p className="text-sm text-zinc-400">
-                      {drawerSession.priorityDisplayLabel} — {drawerSession.priorityCategoryLabel}
-                    </p>
-                    <h3 className="mt-2 text-2xl font-bold text-white">{drawerSession.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">{drawerSession.intent}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDrawerSession(null)}
-                    className="min-h-[44px] min-w-[44px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-800 p-2.5 text-zinc-300"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                    <p className="flex items-center gap-2 text-xs font-semibold uppercase text-zinc-500">
-                      <Timer className="h-4 w-4" />
-                      Duration
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-white">{drawerSession.duration}</p>
-                  </div>
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                    <p className="flex items-center gap-2 text-xs font-semibold uppercase text-zinc-500">
-                      <Clock className="h-4 w-4" />
-                      Time cap
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-white">{drawerSession.timeCap || "—"}</p>
-                  </div>
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-                    <p className="flex items-center gap-2 text-xs font-semibold uppercase text-zinc-500">
-                      <Gauge className="h-4 w-4" />
-                      RPE guide
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-white">{drawerSession.rpeGuide}</p>
-                  </div>
-                </div>
-
-                {(
-                  [
-                    ["Warm-up", drawerSession.warmUp],
-                    ["Main work", drawerSession.mainWork],
-                    ["Cool-down", drawerSession.coolDown],
-                    ["Finish", drawerSession.finisher],
-                  ] as const
-                ).map(([label, lines]) =>
-                  Array.isArray(lines) && lines.length > 0 ? (
-                    <div key={label} className="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-                      <p className="text-sm font-bold text-white">{label}</p>
-                      <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-                        {lines.map((line) => (
-                          <li key={line}>
-                            <span className="text-yellow-400">·</span> {line}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null
-                )}
-
-                {drawerSession.coachingNotes ? (
-                  <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-                    <p className="text-sm font-bold text-white">Coaching notes</p>
-                    <p className="mt-2 text-sm text-zinc-300">{drawerSession.coachingNotes}</p>
-                  </div>
-                ) : null}
-
-                {drawerSession.doubleSession ? (
-                  <div className="mt-5 rounded-xl border border-blue-500/25 bg-blue-950/20 p-5">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-300">
-                        {drawerSession.doubleSession.label}
-                      </span>
-                      <span className="font-semibold text-white">{drawerSession.doubleSession.title}</span>
-                    </div>
-                    <p className="text-sm text-zinc-400">{drawerSession.doubleSession.intent}</p>
-                    {drawerSession.doubleSession.main.length > 0 ? (
-                      <ul className="mt-3 space-y-1 text-sm text-zinc-300">
-                        {drawerSession.doubleSession.main.map((line) => (
-                          <li key={line} className="flex gap-2">
-                            <span className="text-blue-400">·</span>
-                            {line}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-                  <p className="text-sm font-bold text-white">Completion & logging</p>
-                  <p className="mt-2 text-sm text-zinc-400">
-                    {logByKey[drawerSession.sessionKey]?.completed
-                      ? "This session is marked complete."
-                      : "Mark sessions complete from the main dashboard to update your progress."}
-                  </p>
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShareCard(
-                          shareCardInputFromMemberSession(drawerSession, logByKey[drawerSession.sessionKey])
-                        )
-                      }
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-yellow-500/35 bg-yellow-400/10 px-4 py-2.5 text-sm font-semibold text-yellow-200 transition hover:border-yellow-400/55 hover:bg-yellow-400/15"
-                    >
-                      <Share2 className="h-4 w-4 shrink-0" />
-                      View Share Card
-                    </button>
-                    <Link
-                      href="/dashboard"
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-yellow-300"
-                    >
-                      Open dashboard
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        <MemberSessionDetailDrawer
+          open={drawerOpen}
+          session={selectedSession}
+          onClose={closeSessionDrawer}
+          log={selectedLog}
+          draftRpe={draftRpe}
+          onDraftRpeChange={setDraftRpe}
+          draftNotes={draftNotes}
+          onDraftNotesChange={setDraftNotes}
+          saving={saving}
+          saveError={saveError}
+          programmeInstanceId={programmeInstanceId}
+          onSaveComplete={() => saveSessionLog(true)}
+          onSaveIncomplete={() => saveSessionLog(false)}
+          onShare={
+            selectedSession
+              ? () =>
+                  setShareCard(
+                    shareCardInputFromMemberSession(selectedSession, sessionLogs[selectedSession.sessionKey])
+                  )
+              : undefined
+          }
+        />
       </main>
       {shareCard ? (
         <SessionShareCardModal open onClose={() => setShareCard(null)} card={shareCard} />
