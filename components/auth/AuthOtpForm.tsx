@@ -54,7 +54,10 @@ async function athleteAutoLinkAfterLogin(): Promise<{
   message: string | null;
 }> {
   try {
-    const res = await fetch("/api/hyrox/athlete/auto-link", { method: "POST" });
+    const res = await fetch("/api/hyrox/athlete/auto-link", {
+      method: "POST",
+      credentials: "include",
+    });
     const data = (await res.json()) as {
       linked?: boolean;
       message?: string;
@@ -562,27 +565,42 @@ export function AuthOtpForm({
     setSubmitting(true);
     setBanner(null);
     try {
-      const supabase = createClient();
-      const { error } = await withTimeout(
-        supabase.auth.verifyOtp({
-          email: trimmedEmail,
-          token,
-          type: "email",
+      const res = await withTimeout(
+        fetch("/api/auth/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email: trimmedEmail, token, next }),
         }),
         OTP_TIMEOUT_MS,
         "Verification timed out. Try again."
       );
 
-      if (error) {
-        console.error(`[${variant} login] verifyOtp error`, error);
+      const data = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        redirectTo?: string;
+      };
+
+      if (!res.ok || !data.success) {
         setBanner({
           kind: "otp",
           headline: "Code didn’t work",
-          detail:
-            error.message?.includes("expired") || error.message?.includes("invalid")
-              ? "That code expired or was already used. Request a new code and use the latest one."
-              : error.message || "Check the code and try again.",
+          detail: data.error ?? "Check the code and try again.",
         });
+        return;
+      }
+
+      if (variant === "athlete") {
+        const { message } = await athleteAutoLinkAfterLogin();
+        if (message) {
+          try {
+            sessionStorage.setItem("hyrox_auto_link_notice", message);
+          } catch {
+            /* ignore */
+          }
+        }
+        window.location.assign(data.redirectTo ?? next);
         return;
       }
 

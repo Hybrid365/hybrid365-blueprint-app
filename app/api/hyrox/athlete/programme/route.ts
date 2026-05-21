@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
 import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
@@ -9,11 +9,11 @@ import {
   resolveAthleteProgrammeApiState,
 } from "@/app/lib/hyroxProgrammeServer";
 
-export async function GET() {
-  const auth = await requireCurrentHyroxAthleteForApi();
+export async function GET(request: NextRequest) {
+  const auth = await requireCurrentHyroxAthleteForApi(request);
   if (auth.error) return auth.error;
 
-  const { athlete, user } = auth;
+  const { athlete, user, withAuthCookies } = auth;
   const { client: supabase, mode } = await createCoachServerClient();
 
   try {
@@ -76,7 +76,8 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({
+    return withAuthCookies(
+      NextResponse.json({
       success: true,
       state,
       visibility: programme.visibility,
@@ -106,9 +107,12 @@ export async function GET() {
             coachNote: programme.week.coach_note ?? "",
           }
         : null,
-    });
+    })
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not load programme.";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return withAuthCookies(
+      NextResponse.json({ success: false, error: message }, { status: 500 })
+    );
   }
 }

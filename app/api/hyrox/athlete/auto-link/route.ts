@@ -1,36 +1,40 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import {
   attachDevDebug,
   autoLinkHyroxAthleteByEmail,
   autoLinkUserMessage,
 } from "@/app/lib/hyroxAthleteAutoLink";
-import { createClient } from "@/app/lib/supabase/server";
+import { createApiRouteSupabase } from "@/app/lib/supabase/apiRoute";
 
-export async function POST() {
-  const supabase = await createClient();
+export async function POST(request: NextRequest) {
+  const { supabase, withAuthCookies } = createApiRouteSupabase(request);
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return NextResponse.json(
-      { success: false, linked: false, error: "Unauthorized" },
-      { status: 401 }
+    return withAuthCookies(
+      NextResponse.json(
+        { success: false, linked: false, error: "Not signed in" },
+        { status: 401 }
+      )
     );
   }
 
   const email = user.email?.trim().toLowerCase();
   if (!email) {
-    return NextResponse.json({
-      success: true,
-      linked: false,
-      reason: "NO_PAID_ATHLETE_FOUND",
-      message: autoLinkUserMessage({
+    return withAuthCookies(
+      NextResponse.json({
+        success: true,
         linked: false,
         reason: "NO_PAID_ATHLETE_FOUND",
-      }),
-    });
+        message: autoLinkUserMessage({
+          linked: false,
+          reason: "NO_PAID_ATHLETE_FOUND",
+        }),
+      })
+    );
   }
 
   const raw = await autoLinkHyroxAthleteByEmail(user.id, email);
@@ -45,9 +49,11 @@ export async function POST() {
     });
   }
 
-  return NextResponse.json({
-    success: true,
-    ...result,
-    ...(message ? { message } : {}),
-  });
+  return withAuthCookies(
+    NextResponse.json({
+      success: true,
+      ...result,
+      ...(message ? { message } : {}),
+    })
+  );
 }

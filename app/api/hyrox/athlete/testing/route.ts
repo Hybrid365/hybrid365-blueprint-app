@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import {
   benchmarkKindForTestId,
   type BenchmarkSubmission,
@@ -72,11 +72,11 @@ function mapRaceRowToSubmission(
   };
 }
 
-export async function GET() {
-  const auth = await requireCurrentHyroxAthleteForApi();
+export async function GET(request: NextRequest) {
+  const auth = await requireCurrentHyroxAthleteForApi(request);
   if (auth.error) return auth.error;
 
-  const { athlete } = auth;
+  const { athlete, withAuthCookies } = auth;
   const { tests, race: raceRow, error } = await fetchHyroxAthleteTestingRows(athlete.id);
 
   if (error) {
@@ -115,18 +115,20 @@ export async function GET() {
 
   const snapshot = buildAthleteBenchmarkSnapshot(tests);
 
-  return NextResponse.json({
-    benchmarks,
-    snapshot,
-    race,
-    coreSubmittedCount: coreSubmitted,
-    coreRequiredCount: CORE_TEST_IDS.length,
-    athleteStatus: athlete.status,
-  });
+  return withAuthCookies(
+    NextResponse.json({
+      benchmarks,
+      snapshot,
+      race,
+      coreSubmittedCount: coreSubmitted,
+      coreRequiredCount: CORE_TEST_IDS.length,
+      athleteStatus: athlete.status,
+    })
+  );
 }
 
-export async function POST(request: Request) {
-  const auth = await requireCurrentHyroxAthleteForApi();
+export async function POST(request: NextRequest) {
+  const auth = await requireCurrentHyroxAthleteForApi(request);
   if (auth.error) return auth.error;
 
   const body = (await request.json()) as {
@@ -137,7 +139,7 @@ export async function POST(request: Request) {
     race?: Omit<HyroxRaceSplitSubmission, "id" | "submittedAt">;
   };
 
-  const { athlete, user } = auth;
+  const { athlete, user, withAuthCookies } = auth;
 
   if (athlete.user_id && athlete.user_id !== user.id) {
     return NextResponse.json(
@@ -174,12 +176,14 @@ export async function POST(request: Request) {
     const { tests: allTests } = await fetchHyroxAthleteTestingRows(athlete.id);
     const snapshot = buildAthleteBenchmarkSnapshot(allTests);
 
-    return NextResponse.json({
-      success: true,
-      snapshot,
-      race: mapRaceRowToSubmission(saved),
-      nextStatus,
-    });
+    return withAuthCookies(
+      NextResponse.json({
+        success: true,
+        snapshot,
+        race: mapRaceRowToSubmission(saved),
+        nextStatus,
+      })
+    );
   }
 
   if (body.type === "benchmark" && body.testId && body.submission) {
@@ -213,14 +217,18 @@ export async function POST(request: Request) {
     const { tests: allTests } = await fetchHyroxAthleteTestingRows(athlete.id);
     const snapshot = buildAthleteBenchmarkSnapshot(allTests);
 
-    return NextResponse.json({
-      success: true,
-      result: saved as HyroxTestingResultRow,
-      testId: body.testId,
-      snapshot,
-      nextStatus,
-    });
+    return withAuthCookies(
+      NextResponse.json({
+        success: true,
+        result: saved as HyroxTestingResultRow,
+        testId: body.testId,
+        snapshot,
+        nextStatus,
+      })
+    );
   }
 
-  return NextResponse.json({ error: "Invalid testing payload." }, { status: 400 });
+  return withAuthCookies(
+    NextResponse.json({ error: "Invalid testing payload." }, { status: 400 })
+  );
 }

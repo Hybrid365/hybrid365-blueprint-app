@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
 import {
   HyroxSessionLogError,
@@ -33,9 +33,11 @@ function feedbackFromBody(body: SessionLogBody): HyroxAthleteSessionFeedback | u
   };
 }
 
-export async function POST(request: Request) {
-  const auth = await requireCurrentHyroxAthleteForApi();
+export async function POST(request: NextRequest) {
+  const auth = await requireCurrentHyroxAthleteForApi(request);
   if (auth.error) return auth.error;
+
+  const { withAuthCookies } = auth;
 
   let body: SessionLogBody;
   try {
@@ -55,13 +57,15 @@ export async function POST(request: Request) {
     const { session } = await upsertHyroxAthleteSessionLog(auth.supabase, auth.athlete, input);
     const [uiSession] = mapPublishedSessionsToAthleteUi([session]);
 
-    return NextResponse.json({
-      success: true,
-      session: uiSession ?? null,
-      message: input.completed
-        ? "Session marked complete."
-        : "Session log saved.",
-    });
+    return withAuthCookies(
+      NextResponse.json({
+        success: true,
+        session: uiSession ?? null,
+        message: input.completed
+          ? "Session marked complete."
+          : "Session log saved.",
+      })
+    );
   } catch (e) {
     if (e instanceof HyroxSessionLogError) {
       const status =

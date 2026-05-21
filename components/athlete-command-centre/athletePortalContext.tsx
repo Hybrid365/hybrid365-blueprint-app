@@ -25,6 +25,13 @@ export type PortalAthleteSummary = {
 
 export type PortalMatchSource = "user_id" | "email" | "none";
 
+export type PortalLayoutAuth = {
+  hasSession: boolean;
+  email: string | null;
+  userId: string | null;
+  hasSupabaseAuthCookie: boolean;
+};
+
 type AthletePortalContextValue = {
   programmePublishedMock: boolean;
   setProgrammePublishedMock: (value: boolean) => void;
@@ -41,20 +48,30 @@ type AthletePortalContextValue = {
   liveProgrammeLoading: boolean;
   programmeHubLive: boolean;
   reloadLiveProgramme: () => Promise<void>;
+  layoutAuth: PortalLayoutAuth;
 };
 
 const AthletePortalContext = createContext<AthletePortalContextValue | null>(null);
+
+const EMPTY_LAYOUT_AUTH: PortalLayoutAuth = {
+  hasSession: false,
+  email: null,
+  userId: null,
+  hasSupabaseAuthCookie: false,
+};
 
 export function AthletePortalProvider({
   children,
   hasLinkedAthlete = true,
   portalAthlete = null,
   portalMatchSource = "none",
+  layoutAuth = EMPTY_LAYOUT_AUTH,
 }: {
   children: React.ReactNode;
   hasLinkedAthlete?: boolean;
   portalAthlete?: PortalAthleteSummary | null;
   portalMatchSource?: PortalMatchSource;
+  layoutAuth?: PortalLayoutAuth;
 }) {
   const allowMockPreview = isHyroxAthleteMockPreviewAllowed();
   const [programmePublishedMock, setProgrammePublishedMockState] = useState(false);
@@ -153,6 +170,7 @@ export function AthletePortalProvider({
       liveProgrammeLoading,
       programmeHubLive,
       reloadLiveProgramme,
+      layoutAuth,
     }),
     [
       hydrated,
@@ -171,6 +189,7 @@ export function AthletePortalProvider({
       liveProgrammeLoading,
       programmeHubLive,
       reloadLiveProgramme,
+      layoutAuth,
     ]
   );
 

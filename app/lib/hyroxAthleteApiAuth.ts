@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
-import { createClient } from "@/app/lib/supabase/server";
+import { createApiRouteSupabase } from "@/app/lib/supabase/apiRoute";
 
 function devFields(extra: Record<string, unknown>): Record<string, unknown> {
   if (process.env.NODE_ENV !== "development") return {};
@@ -28,12 +28,20 @@ function logApiResolutionFailure(
   });
 }
 
+function apiJson(
+  withAuthCookies: ReturnType<typeof createApiRouteSupabase>["withAuthCookies"],
+  body: Record<string, unknown>,
+  status: number
+) {
+  return withAuthCookies(NextResponse.json(body, { status }));
+}
+
 /**
- * Athlete API guard — same resolution as app/athlete/layout.tsx
- * (resolveHyroxPortalAthlete with auto-link).
+ * Athlete API guard — same resolution as app/athlete/layout.tsx.
+ * Uses request-bound Supabase so session refresh cookies are returned to the client.
  */
-export async function requireCurrentHyroxAthleteForApi() {
-  const supabase = await createClient();
+export async function requireCurrentHyroxAthleteForApi(request: NextRequest) {
+  const { supabase, withAuthCookies } = createApiRouteSupabase(request);
   const {
     data: { user },
     error: userError,
@@ -42,15 +50,19 @@ export async function requireCurrentHyroxAthleteForApi() {
   if (!user) {
     logHyroxAuthDebug("hyrox-api-no-user", {
       userError: userError?.message ?? null,
+      cookieCount: request.cookies.getAll().length,
     });
     return {
-      error: NextResponse.json(
-        {
-          error: "Not signed in",
-          ...devFields({ reason: "NO_AUTH_SESSION", authEmail: null }),
-        },
-        { status: 401 }
-      ),
+      error: apiJson(withAuthCookies, {
+        error: "Not signed in",
+        ...devFields({
+          reason: "NO_AUTH_SESSION",
+          authEmail: null,
+          hasAuthCookie: request.cookies
+            .getAll()
+            .some((c) => c.name.includes("-auth-token")),
+        }),
+      }, 401),
     };
   }
 
@@ -64,7 +76,8 @@ export async function requireCurrentHyroxAthleteForApi() {
   if (portal.accessReason === "ATHLETE_EMAIL_LINKED_TO_DIFFERENT_AUTH_USER") {
     logApiResolutionFailure(authEmail, user.id, portal);
     return {
-      error: NextResponse.json(
+      error: apiJson(
+        withAuthCookies,
         {
           error:
             "Your email matches a paid athlete profile linked to a different sign-in account. Ask your coach to relink your account.",
@@ -76,7 +89,7 @@ export async function requireCurrentHyroxAthleteForApi() {
             matchSource: portal.matchSource,
           }),
         },
-        { status: 403 }
+        403
       ),
     };
   }
@@ -97,7 +110,8 @@ export async function requireCurrentHyroxAthleteForApi() {
         : "No Hyrox athlete profile found for this login email";
 
     return {
-      error: NextResponse.json(
+      error: apiJson(
+        withAuthCookies,
         {
           error: message,
           code: reason,
@@ -109,7 +123,7 @@ export async function requireCurrentHyroxAthleteForApi() {
             autoLinked: portal.autoLinked,
           }),
         },
-        { status: 403 }
+        403
       ),
     };
   }
@@ -122,7 +136,7 @@ export async function requireCurrentHyroxAthleteForApi() {
     autoLinked: portal.autoLinked,
   });
 
-  return { supabase, user, athlete: athlete as HyroxAthleteRow };
+  return { supabase, user, athlete: athlete as HyroxAthleteRow, withAuthCookies };
 }
 
 /** @deprecated Use requireCurrentHyroxAthleteForApi */

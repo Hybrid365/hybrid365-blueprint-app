@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AthletePortalDebugSnapshot } from "@/app/lib/hyroxAthletePortalResolve";
 import { readHyroxMockPreviewEnabled } from "@/app/lib/hyroxAthletePortalMock";
+import { useAthletePortal } from "./athletePortalContext";
 
 type ApiCheck = {
   path: string;
@@ -17,7 +18,10 @@ type ApiCheck = {
 const HYROX_ATHLETE_FETCH: RequestInit = { credentials: "include" };
 
 export function HyroxAthletePortalDebugPanel() {
-  const [snapshot, setSnapshot] = useState<AthletePortalDebugSnapshot | null>(null);
+  const { layoutAuth, portalAthlete } = useAthletePortal();
+  const [snapshot, setSnapshot] = useState<
+    (AthletePortalDebugSnapshot & { apiAuthEmail?: string; hasAuthCookie?: boolean }) | null
+  >(null);
   const [apiChecks, setApiChecks] = useState<ApiCheck[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -31,16 +35,20 @@ export function HyroxAthletePortalDebugPanel() {
           success?: boolean;
           error?: string;
           reason?: string;
+          apiAuthEmail?: string;
+          hasAuthCookie?: boolean;
         };
         if (!res.ok) {
           setLoadError(
-            [json.error, json.reason, json.authEmail ? `email: ${json.authEmail}` : null]
+            [json.error, json.reason, json.apiAuthEmail ? `api: ${json.apiAuthEmail}` : null]
               .filter(Boolean)
               .join(" · ") || "Debug endpoint failed"
           );
-          return;
+          setSnapshot(null);
+        } else {
+          setSnapshot(json);
+          setLoadError(null);
         }
-        setSnapshot(json);
 
         const checks: ApiCheck[] = [];
         for (const path of [
@@ -84,26 +92,52 @@ export function HyroxAthletePortalDebugPanel() {
   if (process.env.NODE_ENV !== "development") return null;
 
   const mockOn = readHyroxMockPreviewEnabled();
+  const layoutApiMismatch =
+    layoutAuth.hasSession &&
+    snapshot &&
+    snapshot.apiAuthEmail &&
+    layoutAuth.email &&
+    layoutAuth.email !== snapshot.apiAuthEmail;
 
   return (
     <div className="mb-6 rounded-xl border border-violet-500/35 bg-violet-950/25 p-4 text-left text-xs text-violet-100/90">
-      <p className="font-bold uppercase tracking-wide text-violet-300">Dev — athlete portal link debug</p>
+      <p className="font-bold uppercase tracking-wide text-violet-300">Dev — athlete portal session debug</p>
       {loadError ? <p className="mt-2 text-red-300">{loadError}</p> : null}
+      <dl className="mt-3 grid gap-1.5 sm:grid-cols-2">
+        <Row label="Layout auth email" value={layoutAuth.email ?? "— (no session)"} />
+        <Row label="Layout auth user id" value={layoutAuth.userId ?? "—"} />
+        <Row label="API auth email" value={snapshot?.apiAuthEmail ?? "—"} />
+        <Row
+          label="Supabase auth cookie present"
+          value={layoutAuth.hasSupabaseAuthCookie ? "yes (request)" : "no"}
+        />
+        <Row
+          label="API sees auth cookie"
+          value={
+            snapshot?.hasAuthCookie === undefined
+              ? "—"
+              : snapshot.hasAuthCookie
+                ? "yes"
+                : "no"
+          }
+        />
+        <Row label="Portal athlete (layout)" value={portalAthlete?.name ?? "—"} />
+        <Row label="Matched athlete id" value={snapshot?.matchedAthleteId ?? portalAthlete?.id ?? "—"} />
+        <Row label="Matched by" value={snapshot?.matchedBy ?? "—"} />
+        <Row label="Access reason" value={snapshot?.accessReason ?? "—"} />
+      </dl>
+      {layoutApiMismatch ? (
+        <p className="mt-2 font-medium text-red-300">
+          Layout and API auth emails differ — session cookies may not be reaching API routes.
+        </p>
+      ) : null}
       {snapshot ? (
-        <dl className="mt-3 grid gap-1.5 sm:grid-cols-2">
-          <Row label="Authenticated email" value={snapshot.authEmail || "—"} />
-          <Row label="Auth user id" value={snapshot.authUserId} />
-          <Row label="Matched athlete id" value={snapshot.matchedAthleteId ?? "—"} />
-          <Row label="Matched athlete name" value={snapshot.matchedAthleteName ?? "—"} />
-          <Row label="Matched by" value={snapshot.matchedBy} />
+        <dl className="mt-3 grid gap-1.5 sm:grid-cols-2 border-t border-violet-500/20 pt-3">
           <Row label="DB athlete email" value={snapshot.athleteEmailInDb ?? "—"} />
           <Row label="DB user_id" value={snapshot.athleteUserId ?? "— (unlinked)"} />
-          <Row label="Access reason" value={snapshot.accessReason ?? "—"} />
-          <Row label="Athlete status" value={snapshot.athleteStatus ?? "—"} />
           <Row label="Assessment submitted" value={snapshot.assessmentSubmitted ? "yes" : "no"} />
           <Row label="Testing submitted" value={snapshot.testingSubmitted ? "yes" : "no"} />
           <Row label="Published weeks" value={String(snapshot.publishedWeekCount)} />
-          <Row label="programme_start_date" value={snapshot.programmeStartDate ?? "—"} />
           <Row label="Programme live" value={snapshot.programmeLive ? "yes" : "no"} />
           <Row label="Mock preview (session)" value={mockOn ? "ON" : "off"} />
           <Row label="Duplicate email rows" value={String(snapshot.duplicateEmailCount)} />
@@ -122,7 +156,7 @@ export function HyroxAthletePortalDebugPanel() {
           </ul>
         </div>
       ) : null}
-      {!snapshot?.matchedAthleteId ? (
+      {!snapshot?.matchedAthleteId && !portalAthlete?.id ? (
         <p className="mt-3 font-medium text-amber-200">
           No Hyrox athlete profile found for this login email.
         </p>
@@ -137,7 +171,11 @@ export function HyroxAthletePortalDebugPanel() {
                 {c.ok ? "OK" : (c.error ?? "failed")}
                 {!c.ok && (c.reason || c.authEmail || c.matchedAthleteId) ? (
                   <span className="mt-0.5 block font-mono text-[10px] text-red-200/80">
-                    {[c.reason && `reason: ${c.reason}`, c.authEmail && `authEmail: ${c.authEmail}`, c.matchedAthleteId && `athlete: ${c.matchedAthleteId}`]
+                    {[
+                      c.reason && `reason: ${c.reason}`,
+                      c.authEmail && `authEmail: ${c.authEmail}`,
+                      c.matchedAthleteId && `athlete: ${c.matchedAthleteId}`,
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>

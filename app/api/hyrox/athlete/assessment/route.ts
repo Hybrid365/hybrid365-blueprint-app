@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
 import {
   fetchLatestHyroxAssessment,
@@ -21,27 +21,29 @@ function assessmentSaveErrorResponse(message: string, code?: string) {
   return NextResponse.json(body, { status: 500 });
 }
 
-export async function GET() {
-  const auth = await requireCurrentHyroxAthleteForApi();
+export async function GET(request: NextRequest) {
+  const auth = await requireCurrentHyroxAthleteForApi(request);
   if (auth.error) return auth.error;
 
-  const { athlete } = auth;
+  const { athlete, withAuthCookies } = auth;
 
   const { assessment, error } = await fetchLatestHyroxAssessment(athlete.id);
 
   if (error) {
-    return NextResponse.json({ error }, { status: 500 });
+    return withAuthCookies(NextResponse.json({ error }, { status: 500 }));
   }
 
-  return NextResponse.json({
-    submitted: Boolean(assessment),
-    assessment: assessment ?? null,
-    athleteStatus: athlete.status,
-  });
+  return withAuthCookies(
+    NextResponse.json({
+      submitted: Boolean(assessment),
+      assessment: assessment ?? null,
+      athleteStatus: athlete.status,
+    })
+  );
 }
 
-export async function POST(request: Request) {
-  const auth = await requireCurrentHyroxAthleteForApi();
+export async function POST(request: NextRequest) {
+  const auth = await requireCurrentHyroxAthleteForApi(request);
   if (auth.error) return auth.error;
 
   const body = (await request.json()) as { values?: AssessmentFormValues };
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Assessment values are required." }, { status: 400 });
   }
 
-  const { athlete, user } = auth;
+  const { athlete, user, withAuthCookies } = auth;
 
   if (athlete.user_id && athlete.user_id !== user.id) {
     return NextResponse.json(
@@ -81,11 +83,13 @@ export async function POST(request: Request) {
     console.error("Hyrox assessment status sync failed", message);
   }
 
-  return NextResponse.json({
-    success: true,
-    id: inserted.id,
-    assessment: inserted as HyroxAssessmentRow,
-    nextStatus,
-    message: "Assessment submitted. Next step: complete your baseline testing.",
-  });
+  return withAuthCookies(
+    NextResponse.json({
+      success: true,
+      id: inserted.id,
+      assessment: inserted as HyroxAssessmentRow,
+      nextStatus,
+      message: "Assessment submitted. Next step: complete your baseline testing.",
+    })
+  );
 }
