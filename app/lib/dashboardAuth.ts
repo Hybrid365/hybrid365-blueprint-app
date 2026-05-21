@@ -33,11 +33,11 @@ export async function getDashboardSession(route: string): Promise<{
   }
 
   if (!user) {
-    logAuth("redirect login", route, { hasUser: false });
+    console.log("[dashboard auth] redirect login", { route, hasUser: false });
     redirect(`/login?next=${encodeURIComponent(route)}`);
   }
 
-  logAuth("hasUser", route, { hasUser: true, userId: user.id.slice(0, 8) });
+  console.log("[dashboard auth] hasUser", { route, hasUser: true, userId: user.id.slice(0, 8) });
   return { supabase, user };
 }
 

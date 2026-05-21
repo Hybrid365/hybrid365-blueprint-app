@@ -88,15 +88,13 @@ export async function updateSession(request: NextRequest) {
     error: userError,
   } = await supabase.auth.getUser();
 
-  if (process.env.NODE_ENV === "development") {
-    console.log("[dashboard auth] route", route);
-    console.log("[dashboard auth] hasUser", { route, hasUser: Boolean(user) });
-    if (userError) {
-      console.log("[dashboard auth] getUser error", {
-        route,
-        message: userError.message,
-      });
-    }
+  console.log("[dashboard auth] route", route);
+  console.log("[dashboard auth] hasUser", { route, hasUser: Boolean(user) });
+  if (userError) {
+    console.log("[dashboard auth] getUser error", {
+      route,
+      message: userError.message,
+    });
   }
 
   if (!user) {

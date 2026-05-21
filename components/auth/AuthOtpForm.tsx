@@ -106,7 +106,6 @@ function CommunityEmailCodeLogin({
   verifyCodeLabel: string;
   magicLinkSubmitLabel: string;
 }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = sanitizeNext(searchParams.get("next"));
   const urlError = searchParams.get("error");
@@ -144,11 +143,6 @@ function CommunityEmailCodeLogin({
     }, 500);
     return () => window.clearInterval(t);
   }, [cooldownActive, cooldownUntil]);
-
-  async function finishLogin() {
-    router.push(next);
-    router.refresh();
-  }
 
   async function sendLoginCode() {
     const trimmed = email.trim();
@@ -212,24 +206,30 @@ function CommunityEmailCodeLogin({
     setSubmitting(true);
     setBanner(null);
     try {
-      const supabase = createClient();
-      const { error } = await withTimeout(
-        supabase.auth.verifyOtp({ email: trimmedEmail, token, type: "email" }),
+      const res = await withTimeout(
+        fetch("/api/auth/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email: trimmedEmail, token, next }),
+        }),
         OTP_TIMEOUT_MS,
         "Verification timed out. Try again."
       );
-      if (error) {
+
+      const data = (await res.json()) as { success?: boolean; error?: string; redirectTo?: string };
+
+      if (!res.ok || !data.success) {
         setBanner({
           kind: "otp",
           headline: "Code didn’t work",
-          detail:
-            error.message?.includes("expired") || error.message?.includes("invalid")
-              ? "That code expired or was already used. Request a new code and use the latest one."
-              : error.message || "Check the code and try again.",
+          detail: data.error ?? "Check the code and try again.",
         });
         return;
       }
-      await finishLogin();
+
+      const destination = data.redirectTo ?? next;
+      window.location.assign(destination);
     } catch (unknown) {
       const err = unknown instanceof Error ? unknown : new Error(String(unknown));
       setBanner({ kind: "otp", headline: "Code didn’t work", detail: err.message });
