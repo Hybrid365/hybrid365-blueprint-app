@@ -450,10 +450,14 @@ export function AcceptedAthletesPanel({ refreshToken = 0 }: { refreshToken?: num
                     </span>
                   </div>
                 </div>
+                <p className="mt-1 font-mono text-[10px] text-zinc-600">
+                  id {a.id.slice(0, 8)}… · user_id {a.user_id ? `${a.user_id.slice(0, 8)}…` : "—"}
+                </p>
                 <p className="mt-2 text-[10px] text-zinc-500">
                   {a.hasAssessment ? "Assessment ✓" : "No assessment"} ·{" "}
                   {a.hasTesting ? "Testing ✓" : "No testing"} ·{" "}
-                  {a.hasRaceResult ? "RoxFit ✓" : "No race"}
+                  {a.programmeLive ? `Programme live (${a.publishedWeekCount ?? 0} wks)` : "No published programme"}
+                  {a.programme_start_date ? ` · start ${a.programme_start_date}` : ""}
                 </p>
                 <p className="mt-1 text-xs text-yellow-200/80">
                   Next: {suggestedNextAthleteCoachAction(a)}

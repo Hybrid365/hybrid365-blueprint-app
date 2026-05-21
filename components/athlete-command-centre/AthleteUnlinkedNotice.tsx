@@ -32,8 +32,9 @@ export function AthleteUnlinkedNotice({
             </>
           ) : (
             <>
-              Your athlete account is not linked yet. If you have just joined, your coach will activate
-              your dashboard shortly.
+              No Hyrox athlete profile found for this login email, or your account is not linked yet.
+              Sign in with the same email your coach has on file, or ask your coach to link your account
+              in the admin dashboard.
             </>
           )}
         </p>

@@ -120,9 +120,11 @@ const DEFAULT_PIPELINE: AthleteOnboardingProgress = {
 export default function HyroxTeamDashboardLocked({
   pipeline = DEFAULT_PIPELINE,
   athleteDisplayName,
+  apiLoadError,
 }: {
   pipeline?: DashboardPipelineInput;
   athleteDisplayName?: string | null;
+  apiLoadError?: string | null;
 }) {
   const STATUS_PIPELINE = buildStatusPipeline(pipeline);
   const checklist = buildDashboardStatusChecklist(pipeline);
@@ -155,6 +157,16 @@ export default function HyroxTeamDashboardLocked({
 
   return (
     <div className="space-y-8">
+      {apiLoadError ? (
+        <div className="rounded-xl border border-red-500/35 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+          Could not load your athlete profile data: {apiLoadError}
+          {process.env.NODE_ENV === "development" ? (
+            <span className="mt-1 block text-xs text-red-300/80">
+              Check the dev debug panel above — wrong athlete id or account not linked.
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <DashCard className="border-zinc-700/80 bg-gradient-to-br from-zinc-950 to-zinc-900/90">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>

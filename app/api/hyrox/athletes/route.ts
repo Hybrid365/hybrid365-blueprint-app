@@ -30,15 +30,25 @@ export async function GET() {
   const athletes: HyroxAthleteListItem[] = await Promise.all(
     rows.map(async (row) => {
       const flags = await fetchAthleteProgressFlags(supabase, row.id);
-      const { count: raceCount } = await supabase
-        .from("hyrox_race_results")
-        .select("id", { count: "exact", head: true })
-        .eq("athlete_id", row.id);
+      const [{ count: raceCount }, { count: publishedWeekCount }] = await Promise.all([
+        supabase
+          .from("hyrox_race_results")
+          .select("id", { count: "exact", head: true })
+          .eq("athlete_id", row.id),
+        supabase
+          .from("hyrox_programme_weeks")
+          .select("id", { count: "exact", head: true })
+          .eq("athlete_id", row.id)
+          .eq("status", "published"),
+      ]);
+      const weeks = publishedWeekCount ?? 0;
       return {
         ...row,
         ...flags,
         hasRaceResult: (raceCount ?? 0) > 0,
         userLinked: Boolean(row.user_id),
+        publishedWeekCount: weeks,
+        programmeLive: weeks > 0,
       };
     })
   );

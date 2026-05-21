@@ -170,6 +170,8 @@ export type HyroxAthleteListItem = HyroxAthleteRow & {
   hasTesting: boolean;
   hasRaceResult?: boolean;
   userLinked: boolean;
+  publishedWeekCount?: number;
+  programmeLive?: boolean;
 };
 
 export type HyroxAssessmentRow = {

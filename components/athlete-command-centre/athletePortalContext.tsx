@@ -23,12 +23,15 @@ export type PortalAthleteSummary = {
   status: string;
 };
 
+export type PortalMatchSource = "user_id" | "email" | "none";
+
 type AthletePortalContextValue = {
   programmePublishedMock: boolean;
   setProgrammePublishedMock: (value: boolean) => void;
   allowMockPreview: boolean;
   hasLinkedAthlete: boolean;
   portalAthlete: PortalAthleteSummary | null;
+  portalMatchSource: PortalMatchSource;
   programmePublishedLive: boolean;
   hasPublishedProgramme: boolean;
   programmeState: AthleteProgrammeApiState;
@@ -46,10 +49,12 @@ export function AthletePortalProvider({
   children,
   hasLinkedAthlete = true,
   portalAthlete = null,
+  portalMatchSource = "none",
 }: {
   children: React.ReactNode;
   hasLinkedAthlete?: boolean;
   portalAthlete?: PortalAthleteSummary | null;
+  portalMatchSource?: PortalMatchSource;
 }) {
   const allowMockPreview = isHyroxAthleteMockPreviewAllowed();
   const [programmePublishedMock, setProgrammePublishedMockState] = useState(false);
@@ -138,6 +143,7 @@ export function AthletePortalProvider({
       allowMockPreview,
       hasLinkedAthlete,
       portalAthlete,
+      portalMatchSource,
       programmePublishedLive,
       hasPublishedProgramme,
       programmeState,
@@ -155,6 +161,7 @@ export function AthletePortalProvider({
       setProgrammePublishedMock,
       hasLinkedAthlete,
       portalAthlete,
+      portalMatchSource,
       programmePublishedLive,
       hasPublishedProgramme,
       programmeState,

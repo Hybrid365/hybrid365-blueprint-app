@@ -9,6 +9,7 @@ import {
 } from "@/components/hyrox-team/HyroxTeamUi";
 import { useAthletePortal } from "@/components/athlete-command-centre/athletePortalContext";
 import { AthletePortalShell } from "@/components/athlete-command-centre/AthletePortalShell";
+import { HyroxAthletePortalDebugPanel } from "@/components/athlete-command-centre/HyroxAthletePortalDebugPanel";
 import HyroxTeamDashboardView from "./HyroxTeamDashboardView";
 
 export default function DashboardPageClient() {
@@ -26,6 +27,7 @@ export default function DashboardPageClient() {
   if (programmeHubLive) {
     return (
       <AthletePortalShell>
+        <HyroxAthletePortalDebugPanel />
         <HyroxTeamDashboardView
           programmePublishedMock={useMockPreview}
           programmePublishedLive={programmePublishedLive}

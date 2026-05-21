@@ -52,20 +52,43 @@ export async function fetchHyroxAthleteByApplicationId(
   return { athlete: (data as unknown as HyroxAthleteRow) ?? null, error: null };
 }
 
+export async function fetchHyroxAthletesByEmail(
+  supabase: SupabaseClient,
+  email: string
+): Promise<{ athletes: HyroxAthleteRow[]; error: string | null }> {
+  const normalized = email.trim().toLowerCase();
+  const { data, error } = await supabase
+    .from("hyrox_athletes")
+    .select(HYROX_ATHLETE_SELECT)
+    .ilike("email", normalized)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return { athletes: [], error: error.message };
+  }
+  return { athletes: (data ?? []) as HyroxAthleteRow[], error: null };
+}
+
 export async function fetchHyroxAthleteByEmail(
   supabase: SupabaseClient,
   email: string
 ): Promise<{ athlete: HyroxAthleteRow | null; error: string | null }> {
-  const { data, error } = await supabase
-    .from("hyrox_athletes")
-    .select(HYROX_ATHLETE_SELECT)
-    .ilike("email", email.trim().toLowerCase())
-    .maybeSingle();
-
-  if (error) {
-    return { athlete: null, error: error.message };
+  const { athletes, error } = await fetchHyroxAthletesByEmail(supabase, email);
+  if (error) return { athlete: null, error };
+  if (athletes.length > 1 && process.env.NODE_ENV === "development") {
+    console.warn("[hyrox] multiple hyrox_athletes rows for email", {
+      email: email.trim().toLowerCase(),
+      ids: athletes.map((a) => ({
+        id: a.id,
+        name: a.name,
+        user_id: a.user_id,
+        payment_status: a.payment_status,
+      })),
+    });
   }
-  return { athlete: (data as unknown as HyroxAthleteRow) ?? null, error: null };
+  const paid = athletes.filter((a) => a.payment_status === "paid");
+  const athlete = paid[0] ?? athletes[0] ?? null;
+  return { athlete, error: null };
 }
 
 export function buildAthleteInsertFromApplication(

@@ -1,7 +1,4 @@
-import {
-  evaluateAthleteEmailAccess,
-  isAthletePortalLinked,
-} from "@/app/lib/hyroxAthleteAutoLink";
+import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
 import { createClient } from "@/app/lib/supabase/server";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
@@ -91,44 +88,39 @@ export async function resolveCurrentHyroxAthlete(
     };
   }
 
-  const { athlete: byUserId, error: userIdError } = await fetchAthleteByUserId(client, user.id);
-  let emailAccess: Awaited<ReturnType<typeof evaluateAthleteEmailAccess>> | null = null;
+  const portal = await resolveHyroxPortalAthlete({
+    user,
+    supabase: client,
+    attemptAutoLink: true,
+  });
 
-  if (user.email?.trim()) {
-    emailAccess = await evaluateAthleteEmailAccess(user.id, user.email);
-  }
-
-  const linkedByEmail =
-    isAthletePortalLinked(emailAccess) && emailAccess?.athlete
-      ? emailAccess.athlete
+  const athlete =
+    portal.accessReason === "LINKED" && portal.athlete?.user_id === user.id
+      ? portal.athlete
       : null;
 
-  const athlete = byUserId ?? linkedByEmail ?? null;
-  const source: ResolvedHyroxAthleteSource = byUserId
-    ? "user_id"
-    : linkedByEmail
-      ? "email"
-      : null;
+  const source: ResolvedHyroxAthleteSource =
+    portal.matchSource === "none" ? null : portal.matchSource;
 
   logHyroxAuthDebug("resolveCurrentHyroxAthlete", {
     authUserId: user.id,
     authEmail: user.email ?? null,
-    foundByUserId: Boolean(byUserId),
-    foundByEmail: Boolean(linkedByEmail),
+    foundByUserId: portal.matchSource === "user_id",
+    foundByEmail: portal.matchSource === "email",
     source,
     athleteId: athlete?.id ?? null,
     athleteUserId: athlete?.user_id ?? null,
     paymentStatus: athlete?.payment_status ?? null,
-    userIdError: userIdError ?? null,
-    accessReason: emailAccess?.debug.accessReason ?? null,
-    userIdsMatch: emailAccess?.debug.userIdsMatch ?? null,
+    accessReason: portal.accessReason,
+    duplicateEmailCount: portal.duplicateEmailAthletes.length,
+    autoLinked: portal.autoLinked,
   });
 
   return {
     user,
     athlete,
     source,
-    foundByUserId: Boolean(byUserId),
-    foundByEmail: Boolean(linkedByEmail),
+    foundByUserId: portal.matchSource === "user_id",
+    foundByEmail: portal.matchSource === "email",
   };
 }
