@@ -31,6 +31,14 @@ import {
   type ProgrammeTimeOfDay,
 } from "@/app/lib/hyroxAthleteProgrammeSort";
 import type { HyroxSession, SessionStatus } from "@/app/lib/hyroxTeamDashboardMock";
+import {
+  deriveLiveGlobalWeek,
+  deriveWeekCalendarStatus,
+  getBlockWeekRole,
+  weekDateRangeFromProgrammeStart,
+  type ProgrammeLengthWeeks,
+  type ProgrammeWeekCalendarStatus,
+} from "@/app/lib/hyroxProgrammeDates";
 
 const MAPPED_PROFILE_SELECT =
   "id, athlete_id, created_at, updated_at, mapped_profile, coach_overrides, effective_profile, athlete_level, main_limiter, secondary_limiter, recovery_risk, double_session_readiness, first_block_focus, coach_review_flags, status";
@@ -65,6 +73,9 @@ export type PublishedProgrammeWeekBundle = {
   sessions: HyroxProgrammeSessionRow[];
   generated: boolean;
   weekNumber: number;
+  weekStartDate: string | null;
+  weekEndDate: string | null;
+  calendarStatus: ProgrammeWeekCalendarStatus | "not_generated" | "locked";
 };
 
 export type AthletePublishedProgramme = {
@@ -75,8 +86,40 @@ export type AthletePublishedProgramme = {
   week: HyroxProgrammeWeekRow | null;
   sessions: HyroxProgrammeSessionRow[];
   weeks: PublishedProgrammeWeekBundle[];
-  athlete: Pick<HyroxAthleteRow, "name" | "race_name" | "race_date" | "race_category" | "target_time" | "current_block" | "current_week">;
+  programmeStartDate: string | null;
+  programmeLengthWeeks: ProgrammeLengthWeeks;
+  liveGlobalWeek: number;
+  athlete: Pick<
+    HyroxAthleteRow,
+    | "name"
+    | "race_name"
+    | "race_date"
+    | "race_category"
+    | "target_time"
+    | "current_block"
+    | "current_week"
+    | "programme_start_date"
+    | "programme_length_weeks"
+  >;
 };
+
+export function resolvePublishedWeekCalendarStatus(
+  bundle: Pick<PublishedProgrammeWeekBundle, "generated" | "weekStartDate" | "weekEndDate" | "weekNumber">,
+  programmeStartDate: string | null
+): PublishedProgrammeWeekBundle["calendarStatus"] {
+  if (!bundle.generated) return "not_generated";
+  if (bundle.weekStartDate && bundle.weekEndDate) {
+    return deriveWeekCalendarStatus(bundle.weekStartDate, bundle.weekEndDate);
+  }
+  if (programmeStartDate) {
+    const { startYmd, endYmd } = weekDateRangeFromProgrammeStart(
+      programmeStartDate,
+      bundle.weekNumber
+    );
+    return deriveWeekCalendarStatus(startYmd, endYmd);
+  }
+  return "upcoming";
+}
 
 /** One active mapped profile per athlete — update latest row (simplest safe model). */
 export async function upsertMappedProfile(
@@ -568,20 +611,38 @@ export async function fetchAthletePublishedProgramme(
     allSessions = (sessionRows as HyroxProgrammeSessionRow[]) ?? [];
   }
 
+  const programmeStartDate = athlete.programme_start_date?.trim() || null;
+  const programmeLengthWeeks = (athlete.programme_length_weeks === 16 ? 16 : 12) as ProgrammeLengthWeeks;
+  const liveGlobalWeek = programmeStartDate
+    ? deriveLiveGlobalWeek(programmeStartDate)
+    : 1;
+
   const weeks: PublishedProgrammeWeekBundle[] = blockWeekNumbers.map((globalWeek) => {
     const week = weekRows.find((w) => w.week_number === globalWeek) ?? null;
     const sessionsForWeek = week
       ? allSessions.filter((s) => s.programme_week_id === week.id)
       : [];
-    return {
+    const generated = Boolean(week && sessionsForWeek.length > 0);
+    const weekStartDate = week?.week_start_date ?? null;
+    const weekEndDate = week?.week_end_date ?? null;
+    const base = {
       week,
       sessions: sessionsForWeek,
-      generated: Boolean(week && sessionsForWeek.length > 0),
+      generated,
       weekNumber: globalWeek,
+      weekStartDate,
+      weekEndDate,
+      calendarStatus: "not_generated" as const,
+    };
+    return {
+      ...base,
+      calendarStatus: resolvePublishedWeekCalendarStatus(base, programmeStartDate),
     };
   });
 
-  const activeWeekNumber = athlete.current_week ?? weekRows[0]?.week_number ?? 1;
+  const activeWeekNumber = programmeStartDate
+    ? liveGlobalWeek
+    : athlete.current_week ?? weekRows[0]?.week_number ?? 1;
   const publishedWeek =
     weekRows.find((w) => w.week_number === activeWeekNumber) ?? weekRows[0] ?? null;
   const sessions = publishedWeek
@@ -604,6 +665,9 @@ export async function fetchAthletePublishedProgramme(
     week: publishedWeek,
     sessions,
     weeks,
+    programmeStartDate,
+    programmeLengthWeeks,
+    liveGlobalWeek,
     athlete: {
       name: athlete.name,
       race_name: athlete.race_name,
@@ -611,7 +675,9 @@ export async function fetchAthletePublishedProgramme(
       race_category: athlete.race_category,
       target_time: athlete.target_time,
       current_block: athlete.current_block,
-      current_week: athlete.current_week,
+      current_week: activeWeekNumber,
+      programme_start_date: programmeStartDate,
+      programme_length_weeks: programmeLengthWeeks,
     },
   };
 }
@@ -624,6 +690,7 @@ export async function publishProgrammeDraft(
     draft: HyroxProgrammeDraftRow;
     athleteRow: HyroxAthleteRow;
     weeklyFocus: string;
+    programmeStartDate: string;
     changedBy: string | null;
   }
 ): Promise<{ week: HyroxProgrammeWeekRow; sessionCount: number }> {
@@ -634,6 +701,11 @@ export async function publishProgrammeDraft(
   const draftWeek = parseCoachDraftWeek(params.draft.draft_data);
   if (!draftWeek) throw new Error("Invalid draft data.");
 
+  const { startYmd, endYmd } = weekDateRangeFromProgrammeStart(
+    params.programmeStartDate,
+    params.draft.week_number
+  );
+
   const { data: week, error: weekError } = await supabase
     .from("hyrox_programme_weeks")
     .insert({
@@ -641,6 +713,8 @@ export async function publishProgrammeDraft(
       source_draft_id: params.draft.id,
       block_number: params.draft.block_number,
       week_number: params.draft.week_number,
+      week_start_date: startYmd,
+      week_end_date: endYmd,
       weekly_focus: params.weeklyFocus || null,
       coach_note: params.draft.coach_note,
       athlete_facing_note: params.draft.athlete_facing_note,
@@ -690,6 +764,7 @@ export async function publishProgrammeDraft(
   }
 
   const statusFrom = params.athleteRow.status;
+  const liveWeek = deriveLiveGlobalWeek(params.programmeStartDate);
   await Promise.all([
     supabase
       .from("hyrox_programme_drafts")
@@ -700,8 +775,13 @@ export async function publishProgrammeDraft(
       .update({
         status: "programme_published",
         programme_status: "published",
+        programme_start_date: params.programmeStartDate,
+        programme_started_at:
+          params.athleteRow.programme_started_at ?? new Date().toISOString(),
+        programme_updated_at: new Date().toISOString(),
         current_block: params.draft.block_number,
-        current_week: params.draft.week_number,
+        current_programme_block: params.draft.block_number,
+        current_week: liveWeek,
       })
       .eq("id", params.athleteRow.id),
   ]);
@@ -768,6 +848,7 @@ export async function publishProgrammeBlock(
     coachAthlete: CoachAthlete;
     athleteRow: HyroxAthleteRow;
     mappedProfileId: string | null;
+    programmeStartDate: string;
     changedBy: string | null;
   }
 ): Promise<{ weeks: HyroxProgrammeWeekRow[]; sessionCount: number; generatedWeekNumbers: number[] }> {
@@ -840,10 +921,14 @@ export async function publishProgrammeBlock(
       continue;
     }
 
+    const length = (params.athleteRow.programme_length_weeks === 16 ? 16 : 12) as ProgrammeLengthWeeks;
+    const weeklyFocus = getBlockWeekRole(blockNumber, cycle, length);
+
     const result = await publishProgrammeDraft(supabase, {
       draft: draftRow,
       athleteRow: params.athleteRow,
-      weeklyFocus: BLOCK_WEEK_FOCUS_LABELS[cycle],
+      weeklyFocus,
+      programmeStartDate: params.programmeStartDate,
       changedBy: params.changedBy,
     });
     publishedWeeks.push(result.week);
@@ -851,12 +936,17 @@ export async function publishProgrammeBlock(
     generatedWeekNumbers.push(globalWeek);
   }
 
-  const firstWeek = globalWeekForBlock(blockNumber, 1);
+  const liveWeek = deriveLiveGlobalWeek(params.programmeStartDate);
+  const now = new Date().toISOString();
   await supabase
     .from("hyrox_athletes")
     .update({
+      programme_start_date: params.programmeStartDate,
+      programme_started_at: params.athleteRow.programme_started_at ?? now,
+      programme_updated_at: now,
       current_block: blockNumber,
-      current_week: params.athleteRow.current_week ?? firstWeek,
+      current_programme_block: blockNumber,
+      current_week: liveWeek,
     })
     .eq("id", params.athleteRow.id);
 

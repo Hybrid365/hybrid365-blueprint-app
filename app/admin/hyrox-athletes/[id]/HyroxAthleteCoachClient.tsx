@@ -352,6 +352,11 @@ export default function HyroxAthleteCoachClient({ athleteId }: { athleteId: stri
         draftId: liveDraftId,
         effectiveProfile: effectiveProfile ?? undefined,
         mappedProfileSaved,
+        programmeStartDate: livePayload?.athlete.programme_start_date ?? null,
+        programmeLengthWeeks: livePayload?.athlete.programme_length_weeks ?? 12,
+        blockPublished:
+          livePayload?.athlete.status === "programme_published" ||
+          programmeStatus === "published",
         onDraftIdChange: setLiveDraftId,
         onReload: loadLive,
         onPublished: () => {

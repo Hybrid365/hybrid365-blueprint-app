@@ -1,18 +1,10 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/app/lib/supabase/server";
+import { getDashboardSession } from "@/app/lib/dashboardAuth";
 import HabitsClient from "./HabitsClient";
 
 type ProgrammeInstanceRow = { id: string };
 
 export default async function HabitsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/dashboard/habits");
-  }
+  const { supabase, user } = await getDashboardSession("/dashboard/habits");
 
   const { data: instance } = await supabase
     .from("programme_instances")

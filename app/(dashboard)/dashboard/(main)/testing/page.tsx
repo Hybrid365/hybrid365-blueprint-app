@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/app/lib/supabase/server";
+import { getDashboardSession } from "@/app/lib/dashboardAuth";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import TestingClient, { type BenchmarkTestRow } from "./TestingClient";
 
@@ -12,11 +11,7 @@ type AthleteAssessmentRow = {
 };
 
 export default async function TestingPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/dashboard/testing");
+  const { supabase, user } = await getDashboardSession("/dashboard/testing");
 
   const { data: instance } = await supabase
     .from("programme_instances")

@@ -25,6 +25,7 @@ export async function POST(request: Request, context: RouteContext) {
     weekly_focus?: string;
     /** When true (default), publish all four weeks in the athlete's current block. */
     publish_block?: boolean;
+    programme_start_date?: string;
   };
   const publishBlock = body.publish_block !== false;
 
@@ -75,6 +76,21 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ success: false, error: "Athlete not found." }, { status: 404 });
   }
 
+  const programmeStartDate =
+    body.programme_start_date?.trim() ||
+    (athlete as HyroxAthleteRow).programme_start_date?.trim() ||
+    null;
+
+  if (!programmeStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(programmeStartDate)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Set a programme start date before publishing.",
+      },
+      { status: 400 }
+    );
+  }
+
   try {
     if (publishBlock) {
       const flags = await fetchAthleteProgressFlags(supabase, draft.athlete_id);
@@ -91,6 +107,7 @@ export async function POST(request: Request, context: RouteContext) {
         coachAthlete,
         athleteRow: athlete as HyroxAthleteRow,
         mappedProfileId: mappedProfile?.id ?? null,
+        programmeStartDate,
         changedBy: auth.ctx.userId,
       });
 
@@ -108,6 +125,7 @@ export async function POST(request: Request, context: RouteContext) {
       draft,
       athleteRow: athlete as HyroxAthleteRow,
       weeklyFocus: body.weekly_focus ?? "",
+      programmeStartDate,
       changedBy: auth.ctx.userId,
     });
 

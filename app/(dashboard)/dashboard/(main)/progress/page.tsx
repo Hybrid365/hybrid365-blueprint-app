@@ -1,10 +1,9 @@
-import { redirect } from "next/navigation";
+import { getDashboardSession } from "@/app/lib/dashboardAuth";
 import {
   applyMembershipEntitlementToWeeks,
   MEMBERSHIP_ACCESS_SELECT,
   type MembershipForAccess,
 } from "@/app/lib/membershipAccess";
-import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import { hybridAthleteDisplayName } from "@/app/lib/displayName";
 import { buildBenchmarkSnapshot } from "@/app/lib/dashboardWeekTracking";
@@ -65,14 +64,7 @@ type BenchmarkTestRow = BenchmarkTestLike & {
 };
 
 export default async function ProgressPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/dashboard/progress");
-  }
+  const { supabase, user } = await getDashboardSession("/dashboard/progress");
 
   const [{ data: profileRow }, { data: assessName }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),

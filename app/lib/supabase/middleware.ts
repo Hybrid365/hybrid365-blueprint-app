@@ -12,10 +12,11 @@ import {
 } from "@/app/lib/hyroxAccess";
 import type { ProfileRole } from "@/app/lib/hyroxRoles";
 
+type CookieToSet = { name: string; value: string; options?: Record<string, unknown> };
+
 export function createMiddlewareClient(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request: { headers: request.headers },
-  });
+  let supabaseResponse = NextResponse.next({ request });
+  let pendingCookies: CookieToSet[] = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,10 +27,9 @@ export function createMiddlewareClient(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          pendingCookies = cookiesToSet;
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({
-            request: { headers: request.headers },
-          });
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -38,27 +38,23 @@ export function createMiddlewareClient(request: NextRequest) {
     }
   );
 
-  return { supabase, supabaseResponse };
+  return { supabase, supabaseResponse, getPendingCookies: () => pendingCookies };
 }
 
-/** Preserve Supabase session cookies and forward pathname to server layouts. */
+/** Apply refreshed Supabase cookies and forward pathname to server layouts. */
 function finalizeMiddlewareResponse(
   request: NextRequest,
-  supabaseResponse: NextResponse
+  supabaseResponse: NextResponse,
+  pendingCookies: CookieToSet[]
 ): NextResponse {
-  request.headers.set(
+  const response = NextResponse.next({ request });
+  pendingCookies.forEach(({ name, value, options }) =>
+    response.cookies.set(name, value, options)
+  );
+  response.headers.set(
     "x-pathname",
     `${request.nextUrl.pathname}${request.nextUrl.search}`
   );
-
-  const response = NextResponse.next({
-    request: { headers: request.headers },
-  });
-
-  supabaseResponse.cookies.getAll().forEach((cookie) => {
-    response.cookies.set(cookie);
-  });
-
   return response;
 }
 
@@ -82,18 +78,33 @@ function athleteLoginRedirect(request: NextRequest) {
   return NextResponse.redirect(loginUrl);
 }
 
-/** Dashboard membership routes — auth required only. */
+/** Community dashboard — refresh session cookies; auth gate in dashboard layout. */
 export async function updateSession(request: NextRequest) {
-  const { supabase, supabaseResponse } = createMiddlewareClient(request);
+  const route = request.nextUrl.pathname;
+  const { supabase, supabaseResponse, getPendingCookies } = createMiddlewareClient(request);
+
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("[dashboard auth] route", route);
+    console.log("[dashboard auth] hasUser", { route, hasUser: Boolean(user) });
+    if (userError) {
+      console.log("[dashboard auth] getUser error", {
+        route,
+        message: userError.message,
+      });
+    }
+  }
+
   if (!user) {
+    console.log("[dashboard auth] redirect login", { route, hasUser: false });
     return communityLoginRedirect(request);
   }
 
-  return finalizeMiddlewareResponse(request, supabaseResponse);
+  return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
 }
 
 async function fetchHyroxAccessForMiddleware(
@@ -153,7 +164,7 @@ async function fetchHyroxAccessForMiddleware(
 /** Hyrox admin + athlete portals — auth + role gate. */
 export async function updateHyroxProtectedSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const { supabase, supabaseResponse } = createMiddlewareClient(request);
+  const { supabase, supabaseResponse, getPendingCookies } = createMiddlewareClient(request);
   const {
     data: { user },
     error: userError,
@@ -169,7 +180,7 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
 
   if (!user) {
     if (path === "/athlete/login") {
-      return finalizeMiddlewareResponse(request, supabaseResponse);
+      return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
     }
     if (path.startsWith("/athlete")) {
       return athleteLoginRedirect(request);
@@ -178,11 +189,11 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
   }
 
   if (path === "/athlete/login") {
-    return finalizeMiddlewareResponse(request, supabaseResponse);
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
   }
 
   if (path === "/admin/no-access" || path === "/athlete/no-access") {
-    return finalizeMiddlewareResponse(request, supabaseResponse);
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
   }
 
   const access = await fetchHyroxAccessForMiddleware(supabase, user.id, user.email);
@@ -193,7 +204,7 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
       denied.pathname = "/admin/no-access";
       return NextResponse.redirect(denied);
     }
-    return finalizeMiddlewareResponse(request, supabaseResponse);
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
   }
 
   if (path.startsWith("/athlete")) {
@@ -208,8 +219,8 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
       denied.pathname = "/athlete/no-access";
       return NextResponse.redirect(denied);
     }
-    return finalizeMiddlewareResponse(request, supabaseResponse);
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
   }
 
-  return finalizeMiddlewareResponse(request, supabaseResponse);
+  return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
 }

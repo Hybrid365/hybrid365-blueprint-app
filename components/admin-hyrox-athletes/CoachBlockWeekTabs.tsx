@@ -7,11 +7,13 @@ export function CoachBlockWeekTabs({
   selectedCycle,
   onSelect,
   loading,
+  dateRanges,
 }: {
   weeks: BlockWeekMeta[];
   selectedCycle: 1 | 2 | 3 | 4;
   onSelect: (cycle: 1 | 2 | 3 | 4) => void;
   loading?: boolean;
+  dateRanges?: Array<{ cycle: 1 | 2 | 3 | 4; label: string }>;
 }) {
   const cycles: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
 
@@ -19,6 +21,7 @@ export function CoachBlockWeekTabs({
     <div className="flex flex-wrap gap-2">
       {cycles.map((cycle) => {
         const meta = weeks.find((w) => w.cycle === cycle);
+        const rangeLabel = dateRanges?.find((d) => d.cycle === cycle)?.label;
         const active = selectedCycle === cycle;
         const chipStatus = meta?.published
           ? "Published"
@@ -42,6 +45,9 @@ export function CoachBlockWeekTabs({
           >
             <span className="text-sm font-bold text-white">W{cycle}</span>
             <span className="text-[10px] text-zinc-500">{meta?.role ?? "—"}</span>
+            {rangeLabel ? (
+              <span className="text-[10px] text-zinc-600">{rangeLabel}</span>
+            ) : null}
             <span
               className={`mt-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                 meta?.published

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buildAthleteEmailRedirectTo, buildEmailRedirectTo } from "@/app/lib/authRedirectUrl";
 import {
   ATHLETE_EMAIL_CODE_SUCCESS_COPY,
   CALLBACK_ERROR_HEADLINE,
   EMAIL_CODE_SUCCESS_COPY,
+  LOGIN_CODE_SENT_COPY,
+  LOGIN_RATE_LIMIT_COPY,
   MAGIC_LINK_HELP_COPY,
   MAGIC_LINK_SUCCESS_COPY,
   NO_PAID_ATHLETE_AUTO_LINK_COPY,
@@ -18,6 +20,7 @@ import {
 import { createClient } from "@/app/lib/supabase/client";
 
 const OTP_TIMEOUT_MS = 30_000;
+const SEND_CODE_COOLDOWN_SEC = 60;
 
 type LoginMode = "magic_link" | "email_code";
 type LoginBanner =
@@ -90,6 +93,321 @@ async function athleteAutoLinkAfterLogin(): Promise<{
   }
 }
 
+function CommunityEmailCodeLogin({
+  sanitizeNext,
+  guidance,
+  emailCodeSubmitLabel,
+  verifyCodeLabel,
+  magicLinkSubmitLabel,
+}: {
+  sanitizeNext: AuthOtpFormProps["sanitizeNext"];
+  guidance?: ReactNode;
+  emailCodeSubmitLabel: string;
+  verifyCodeLabel: string;
+  magicLinkSubmitLabel: string;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = sanitizeNext(searchParams.get("next"));
+  const urlError = searchParams.get("error");
+  const urlReason = searchParams.get("reason");
+
+  const [email, setEmail] = useState("");
+  const [emailCode, setEmailCode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [codeRequested, setCodeRequested] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [magicOpen, setMagicOpen] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
+  const [banner, setBanner] = useState<LoginBanner | null>(() => {
+    if (urlError === "auth") {
+      return {
+        kind: "callback",
+        headline: CALLBACK_ERROR_HEADLINE,
+        detail: mapCallbackAuthError(urlReason),
+      };
+    }
+    return null;
+  });
+
+  const cooldownActive = cooldownUntil > Date.now();
+  const cooldownSecondsLeft = cooldownActive
+    ? Math.ceil((cooldownUntil - Date.now()) / 1000)
+    : 0;
+
+  useEffect(() => {
+    if (!cooldownActive) return;
+    const t = window.setInterval(() => {
+      if (Date.now() >= cooldownUntil) {
+        setCooldownUntil(0);
+      }
+    }, 500);
+    return () => window.clearInterval(t);
+  }, [cooldownActive, cooldownUntil]);
+
+  async function finishLogin() {
+    router.push(next);
+    router.refresh();
+  }
+
+  async function sendLoginCode() {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setBanner({
+        kind: "otp",
+        headline: OTP_ERROR_HEADLINE_DEFAULT,
+        detail: "Enter a valid email address.",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    setBanner(null);
+    try {
+      const supabase = createClient();
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email: trimmed,
+          options: { shouldCreateUser: true },
+        }),
+        OTP_TIMEOUT_MS,
+        "Request timed out. Check your connection and try again."
+      );
+      if (error) {
+        const mapped = mapSignInOtpError(error);
+        const isRateLimit =
+          mapped.detail === LOGIN_RATE_LIMIT_COPY ||
+          mapped.headline.toLowerCase().includes("too many");
+        setBanner({
+          kind: "otp",
+          headline: isRateLimit ? "Too many login attempts" : mapped.headline,
+          detail: isRateLimit ? LOGIN_RATE_LIMIT_COPY : mapped.detail,
+        });
+        return;
+      }
+      setCodeRequested(true);
+      setCooldownUntil(Date.now() + SEND_CODE_COOLDOWN_SEC * 1000);
+    } catch (unknown) {
+      const err = unknown instanceof Error ? unknown : new Error(String(unknown));
+      const mapped = mapSignInOtpThrownError(err);
+      setBanner({ kind: "otp", headline: mapped.headline, detail: mapped.detail });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function verifyLoginCode(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmedEmail = email.trim();
+    const token = emailCode.trim().replace(/\s/g, "");
+    if (!trimmedEmail || token.length < 6) {
+      setBanner({
+        kind: "otp",
+        headline: "Enter your code",
+        detail: "Enter the 6-digit code from your email.",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    setBanner(null);
+    try {
+      const supabase = createClient();
+      const { error } = await withTimeout(
+        supabase.auth.verifyOtp({ email: trimmedEmail, token, type: "email" }),
+        OTP_TIMEOUT_MS,
+        "Verification timed out. Try again."
+      );
+      if (error) {
+        setBanner({
+          kind: "otp",
+          headline: "Code didn’t work",
+          detail:
+            error.message?.includes("expired") || error.message?.includes("invalid")
+              ? "That code expired or was already used. Request a new code and use the latest one."
+              : error.message || "Check the code and try again.",
+        });
+        return;
+      }
+      await finishLogin();
+    } catch (unknown) {
+      const err = unknown instanceof Error ? unknown : new Error(String(unknown));
+      setBanner({ kind: "otp", headline: "Code didn’t work", detail: err.message });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function sendMagicLink() {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setBanner({
+        kind: "otp",
+        headline: OTP_ERROR_HEADLINE_DEFAULT,
+        detail: "Enter a valid email address.",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    setBanner(null);
+    try {
+      const supabase = createClient();
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email: trimmed,
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: buildEmailRedirectTo(next),
+          },
+        }),
+        OTP_TIMEOUT_MS,
+        "Request timed out. Check your connection and try again."
+      );
+      if (error) {
+        const mapped = mapSignInOtpError(error);
+        setBanner({ kind: "otp", headline: mapped.headline, detail: mapped.detail });
+        return;
+      }
+      setMagicSent(true);
+    } catch (unknown) {
+      const err = unknown instanceof Error ? unknown : new Error(String(unknown));
+      const mapped = mapSignInOtpThrownError(err);
+      setBanner({ kind: "otp", headline: mapped.headline, detail: mapped.detail });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+      <form onSubmit={verifyLoginCode} className="space-y-4">
+        <div>
+          <label
+            htmlFor="community-email"
+            className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-zinc-500"
+          >
+            Email
+          </label>
+          <input
+            id="community-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white placeholder:text-zinc-600 focus:border-[#F4D23C]/60 focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/40"
+            placeholder="you@example.com"
+            disabled={submitting}
+          />
+          {guidance}
+        </div>
+
+        <div>
+          <label
+            htmlFor="community-code"
+            className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-zinc-500"
+          >
+            Login code
+          </label>
+          <input
+            id="community-code"
+            name="code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={8}
+            value={emailCode}
+            onChange={(e) => setEmailCode(e.target.value)}
+            placeholder="123456"
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-center text-lg tracking-widest text-white placeholder:text-zinc-600 focus:border-[#F4D23C]/60 focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/40"
+            disabled={submitting}
+          />
+          <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+            {codeRequested ? LOGIN_CODE_SENT_COPY : "Request a code below, then enter it here."}
+          </p>
+        </div>
+
+        {banner ? (
+          <div
+            className={`rounded-xl border px-3 py-3 text-sm ${
+              banner.kind === "info"
+                ? "border-amber-500/30 bg-amber-950/30"
+                : "border-red-500/30 bg-red-950/30"
+            }`}
+          >
+            <p
+              className={`font-medium ${
+                banner.kind === "info" ? "text-amber-200" : "text-red-200"
+              }`}
+            >
+              {banner.headline}
+            </p>
+            {banner.detail ? (
+              <p
+                className={`mt-2 text-xs leading-relaxed ${
+                  banner.kind === "info" ? "text-amber-200/80" : "text-red-200/80"
+                }`}
+              >
+                {banner.detail}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          disabled={submitting || cooldownActive}
+          onClick={() => void sendLoginCode()}
+          className="w-full rounded-xl bg-[#F4D23C] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[#e6c235] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting
+            ? "Sending…"
+            : cooldownActive
+              ? `Send login code (${cooldownSecondsLeft}s)`
+              : emailCodeSubmitLabel}
+        </button>
+
+        <button
+          type="submit"
+          disabled={submitting || emailCode.trim().replace(/\s/g, "").length < 6}
+          className="w-full rounded-xl border border-zinc-600 bg-zinc-800/80 px-4 py-3 text-sm font-semibold text-white transition hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {submitting ? "Verifying…" : verifyCodeLabel}
+        </button>
+      </form>
+
+      <div className="mt-4 border-t border-zinc-800 pt-4">
+        <button
+          type="button"
+          onClick={() => setMagicOpen((o) => !o)}
+          className="text-xs font-medium text-zinc-400 hover:text-[#F4D23C]"
+        >
+          {magicOpen ? "Hide magic link" : "Prefer magic link?"}
+        </button>
+        {magicOpen ? (
+          <div className="mt-3 space-y-3">
+            {magicSent ? (
+              <p className="text-sm leading-relaxed text-zinc-300">{MAGIC_LINK_SUCCESS_COPY}</p>
+            ) : (
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => void sendMagicLink()}
+                className="w-full rounded-xl border border-zinc-600 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:border-zinc-500 disabled:opacity-60"
+              >
+                {submitting ? "Sending…" : magicLinkSubmitLabel}
+              </button>
+            )}
+            <p className="text-[11px] leading-relaxed text-zinc-500">{MAGIC_LINK_HELP_COPY}</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function AuthOtpForm({
   sanitizeNext,
   variant,
@@ -102,6 +420,18 @@ export function AuthOtpForm({
   showModeTabs,
   defaultMode,
 }: AuthOtpFormProps) {
+  if (variant === "community" && defaultMode === "email_code" && showModeTabs === false) {
+    return (
+      <CommunityEmailCodeLogin
+        sanitizeNext={sanitizeNext}
+        guidance={guidance}
+        emailCodeSubmitLabel={emailCodeSubmitLabel}
+        verifyCodeLabel={verifyCodeLabel}
+        magicLinkSubmitLabel={magicLinkSubmitLabel}
+      />
+    );
+  }
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = sanitizeNext(searchParams.get("next"));

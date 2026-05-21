@@ -30,6 +30,8 @@ import { WeeklyRationalePanel } from "@/components/admin-hyrox-athletes/WeeklyRa
 import type { LiveProgrammePersistenceProps } from "@/components/admin-hyrox-athletes/CoachAthleteDashboard";
 import { CoachBlockWeekTabs } from "@/components/admin-hyrox-athletes/CoachBlockWeekTabs";
 import { CoachGenerationScopeControl } from "@/components/admin-hyrox-athletes/CoachGenerationScopeControl";
+import { CoachNextBlockPrompt } from "@/components/admin-hyrox-athletes/CoachNextBlockPrompt";
+import { CoachProgrammeStartDateControl } from "@/components/admin-hyrox-athletes/CoachProgrammeStartDateControl";
 import { CoachPublishPanel } from "@/components/admin-hyrox-athletes/CoachPublishPanel";
 import { CoachWeekSessionPreviewList } from "@/components/admin-hyrox-athletes/CoachWeekSessionPreviewList";
 import { useCoachBlockProgramme } from "@/components/admin-hyrox-athletes/useCoachBlockProgramme";
@@ -102,6 +104,12 @@ export function ProgrammeBuilder({
     publishReadiness,
     persistDraft,
     isLive,
+    programmeStartDate,
+    saveProgrammeStartDate,
+    programmeLengthWeeks,
+    blockWeekDateRanges,
+    showNextBlockPrompt,
+    prepareNextBlock,
   } = block;
 
   const [addTarget, setAddTarget] = useState<{ day: WeekdayName; slot: SandboxTimeOfDay } | null>({
@@ -212,6 +220,22 @@ export function ProgrammeBuilder({
 
       <CoachGenerationScopeControl value={generationScope} onChange={setGenerationScope} />
 
+      <CoachProgrammeStartDateControl
+        value={programmeStartDate}
+        blockNumber={athlete.programmeBlock}
+        saving={saving}
+        onChange={(ymd) => void saveProgrammeStartDate(ymd)}
+      />
+
+      {showNextBlockPrompt ? (
+        <CoachNextBlockPrompt
+          currentBlock={athlete.programmeBlock}
+          programmeLengthWeeks={programmeLengthWeeks}
+          generating={saving}
+          onGenerateNextBlock={() => prepareNextBlock()}
+        />
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-zinc-400">
@@ -243,6 +267,7 @@ export function ProgrammeBuilder({
         selectedCycle={selectedCycle}
         onSelect={selectCycle}
         loading={loadingBlock}
+        dateRanges={blockWeekDateRanges}
       />
 
       {blockLoadError ? (

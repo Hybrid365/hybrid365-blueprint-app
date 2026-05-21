@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/app/lib/supabase/server";
+import { getDashboardSession } from "@/app/lib/dashboardAuth";
 import { localDateKey } from "@/app/lib/dailyHabitLogs";
 import type { DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
 import { displayChallengeWeek } from "@/app/lib/hybridChallengeConfig";
@@ -24,14 +23,7 @@ const SUB_SELECT =
   "id, user_id, programme_instance_id, challenge_key, challenge_week, challenge_title, score_value, score_unit, score_time, proof_url, proof_note, status, points_awarded, admin_notes, submitted_at, reviewed_at";
 
 export default async function ChallengePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/dashboard/challenge");
-  }
+  const { supabase, user } = await getDashboardSession("/dashboard/challenge");
 
   const viewerUserId = user.id;
   const viewerEmail = user.email ?? null;

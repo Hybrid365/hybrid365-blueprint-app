@@ -1,10 +1,9 @@
-import { redirect } from "next/navigation";
+import { getDashboardSession } from "@/app/lib/dashboardAuth";
 import {
   applyMembershipEntitlementToWeeks,
   MEMBERSHIP_ACCESS_SELECT,
   type MembershipForAccess,
 } from "@/app/lib/membershipAccess";
-import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import {
   extractProgrammeIntelligence,
@@ -50,14 +49,7 @@ type AthleteAssessmentRow = {
 };
 
 export default async function ProgrammePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/dashboard/programme");
-  }
+  const { supabase, user } = await getDashboardSession("/dashboard/programme");
 
   const { data: assess } = await supabase
     .from("athlete_assessments")

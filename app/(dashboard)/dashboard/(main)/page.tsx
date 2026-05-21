@@ -1,10 +1,9 @@
-import { redirect } from "next/navigation";
+import { getDashboardSession } from "@/app/lib/dashboardAuth";
 import {
   applyMembershipEntitlementToWeeks,
   MEMBERSHIP_ACCESS_SELECT,
   type MembershipForAccess,
 } from "@/app/lib/membershipAccess";
-import { createClient } from "@/app/lib/supabase/server";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import { countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
 import {
@@ -76,14 +75,7 @@ type BenchmarkTestRow = BenchmarkTestLike & {
 };
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/dashboard");
-  }
+  const { supabase, user } = await getDashboardSession("/dashboard");
 
   const [{ data: profileRow }, { data: assessGlobal }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),

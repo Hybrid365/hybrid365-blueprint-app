@@ -10,6 +10,13 @@ import {
   type CoachProgrammeStatus,
 } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { draftDbToCoachStatus } from "@/app/lib/hyroxCoachProgrammeStatusMap";
+import {
+  defaultProgrammeStartYmd,
+  formatWeekDateRangeFromYmd,
+  shouldShowNextBlockPrompt,
+  weekDateRangeFromProgrammeStart,
+  type ProgrammeLengthWeeks,
+} from "@/app/lib/hyroxProgrammeDates";
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import type { HyroxAthleteProfile } from "@/app/lib/hyroxAthleteProfileTypes";
 import type { LiveProgrammePersistenceProps } from "./CoachAthleteDashboard";
@@ -62,6 +69,20 @@ export function useCoachBlockProgramme(params: {
   const [loadingBlock, setLoadingBlock] = useState(false);
   const [blockLoadError, setBlockLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [programmeStartDate, setProgrammeStartDate] = useState(() =>
+    livePersistence?.programmeStartDate?.trim()
+      ? livePersistence.programmeStartDate
+      : defaultProgrammeStartYmd()
+  );
+  const programmeLengthWeeks = (livePersistence?.programmeLengthWeeks === 16
+    ? 16
+    : 12) as ProgrammeLengthWeeks;
+
+  useEffect(() => {
+    if (livePersistence?.programmeStartDate) {
+      setProgrammeStartDate(livePersistence.programmeStartDate);
+    }
+  }, [livePersistence?.programmeStartDate]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -334,10 +355,77 @@ export function useCoachBlockProgramme(params: {
     return blockWeeks;
   }, [blockWeeks, draft, isLive, selectedCycle, status]);
 
+  const saveProgrammeStartDate = useCallback(
+    async (ymd: string) => {
+      setProgrammeStartDate(ymd);
+      if (!isLive || !livePersistence?.athleteId) return true;
+      try {
+        const res = await fetch(
+          `/api/hyrox/athletes/${livePersistence.athleteId}/programme-settings`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ programme_start_date: ymd }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          showToast(data.error ?? "Could not save programme start date.");
+          return false;
+        }
+        return true;
+      } catch {
+        showToast("Network error saving programme start date.");
+        return false;
+      }
+    },
+    [isLive, livePersistence?.athleteId, showToast]
+  );
+
+  const blockWeekDateRanges = useMemo(() => {
+    return ([1, 2, 3, 4] as const).map((cycle) => {
+      const globalWeek = globalWeekForBlock(athlete.programmeBlock, cycle);
+      const { startYmd, endYmd } = weekDateRangeFromProgrammeStart(
+        programmeStartDate,
+        globalWeek
+      );
+      return {
+        cycle,
+        label: formatWeekDateRangeFromYmd(startYmd, endYmd),
+      };
+    });
+  }, [athlete.programmeBlock, programmeStartDate]);
+
+  const showNextBlockPrompt = useMemo(
+    () =>
+      shouldShowNextBlockPrompt({
+        currentBlock: athlete.programmeBlock,
+        programmeLengthWeeks,
+        programmeStartYmd: programmeStartDate,
+        blockPublished: Boolean(livePersistence?.blockPublished) || status === "published",
+      }),
+    [
+      athlete.programmeBlock,
+      livePersistence?.blockPublished,
+      programmeLengthWeeks,
+      programmeStartDate,
+      status,
+    ]
+  );
+
   const publishReadiness: PublishReadiness = useMemo(() => {
     const generatedWeeks = effectiveBlockWeeks.filter((w) => w.generated);
     const hasDraft = isLive ? Boolean(activeDraftId) : true;
     const sessionCount = draft.days.reduce((n, d) => n + d.sessions.length, 0);
+
+    if (!programmeStartDate?.trim()) {
+      return {
+        canPublish: false,
+        reason: "Set a programme start date before publishing.",
+        buttonLabel: generationScope === "block_4" ? "Publish 4-Week Block" : "Publish Selected Week",
+        publishBlock: generationScope === "block_4",
+      };
+    }
 
     if (!hasDraft || sessionCount === 0) {
       return {
@@ -368,7 +456,7 @@ export function useCoachBlockProgramme(params: {
       }
       return {
         canPublish: status !== "published",
-        reason: "Ready to publish 4-week block. Weeks 1–4 will be visible to the athlete.",
+        reason: `Ready to publish 4-week block from ${programmeStartDate}. Weeks 1–4 will be visible to the athlete.`,
         buttonLabel: "Publish 4-Week Block",
         publishBlock: true,
       };
@@ -398,6 +486,7 @@ export function useCoachBlockProgramme(params: {
     generationScope,
     isLive,
     selectedCycle,
+    programmeStartDate,
     selectedWeekMeta,
     status,
   ]);
@@ -560,6 +649,7 @@ export function useCoachBlockProgramme(params: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           publish_block: publishBlock,
+          programme_start_date: programmeStartDate,
         }),
       });
       const data = await res.json();
@@ -602,8 +692,16 @@ export function useCoachBlockProgramme(params: {
     onStatusChange,
     selectedCycle,
     showToast,
+    programmeStartDate,
     status,
   ]);
+
+  const prepareNextBlock = useCallback(() => {
+    const next = athlete.programmeBlock + 1;
+    showToast(
+      `To generate Block ${next}: update the athlete's current block to ${next} in Profile Review, then use Generate 4-week block. Full progress-based auto-generation is coming soon.`
+    );
+  }, [athlete.programmeBlock, showToast]);
 
   return {
     effectiveBlockWeeks,
@@ -631,5 +729,12 @@ export function useCoachBlockProgramme(params: {
     loadBlockMeta,
     showToast,
     isLive,
+    programmeStartDate,
+    setProgrammeStartDate,
+    saveProgrammeStartDate,
+    programmeLengthWeeks,
+    blockWeekDateRanges,
+    showNextBlockPrompt,
+    prepareNextBlock,
   };
 }

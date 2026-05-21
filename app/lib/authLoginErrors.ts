@@ -14,6 +14,11 @@ export const OTP_ERROR_HEADLINE_DEFAULT = "We couldn’t send the sign-in link. 
 export const EMAIL_CODE_SUCCESS_COPY =
   "If your email includes a 6-digit code, enter it below. You can also use the magic link in the same email.";
 
+export const LOGIN_CODE_SENT_COPY = "Enter the latest code sent to your email.";
+
+export const LOGIN_RATE_LIMIT_COPY =
+  "Too many login attempts. Wait a few minutes, then request a new code.";
+
 export const ATHLETE_EMAIL_CODE_SUCCESS_COPY =
   "Check your email for your 6-digit login code. Enter it below to sign in.";
 
@@ -61,9 +66,8 @@ export function mapSignInOtpError(error: AuthErrorLike): {
     code.includes("over_email_send_rate_limit")
   ) {
     return {
-      headline: "Email rate limit reached",
-      detail:
-        "Too many sign-in emails were sent in a short time. Wait a few minutes before trying again, or message Kieran if you still can’t sign in.",
+      headline: "Too many login attempts",
+      detail: LOGIN_RATE_LIMIT_COPY,
     };
   }
 

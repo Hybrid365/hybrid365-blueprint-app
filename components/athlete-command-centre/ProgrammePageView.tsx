@@ -25,19 +25,43 @@ import { SessionDrawer } from "./SessionDrawer";
 import { WeekSessionCard } from "./WeekSessionCard";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import { useAthletePortal } from "./athletePortalContext";
+import type { AthleteWeekCalendarStatus } from "./useAthleteLiveProgramme";
 
-type WeekTabMode = "active" | "upcoming" | "past" | "not_generated";
+type WeekTabMode = "active" | "upcoming" | "past" | "not_generated" | "locked";
 
 type WeekTab = {
   label: string;
   subtitle: string;
+  dateRangeLabel: string | null;
   globalWeek: number;
   mode: WeekTabMode;
   generated: boolean;
 };
 
-const FUTURE_WEEK_NOTE =
-  "Future weeks are subject to change based on check-ins and coach review.";
+const UPCOMING_COPY = "Upcoming — subject to coach review";
+const PLANNED_COPY = "Planned — may be adjusted after check-ins.";
+
+function calendarStatusToTabMode(status: AthleteWeekCalendarStatus | undefined): WeekTabMode {
+  if (!status || status === "not_generated") return "not_generated";
+  if (status === "locked") return "locked";
+  if (status === "live") return "active";
+  if (status === "past") return "past";
+  return "upcoming";
+}
+
+function chipLabelForMode(mode: WeekTabMode): string {
+  if (mode === "active") return "Live";
+  if (mode === "past") return "Past";
+  if (mode === "locked") return "Locked";
+  if (mode === "not_generated") return "Not generated";
+  return "Upcoming";
+}
+
+function upcomingSubcopy(mode: WeekTabMode): string {
+  if (mode === "upcoming") return UPCOMING_COPY;
+  if (mode === "active") return "";
+  return PLANNED_COPY;
+}
 
 export function ProgrammePageView() {
   const {
@@ -60,7 +84,10 @@ export function ProgrammePageView() {
 
   const blockId = useLive && dashboardLive ? dashboardLive.blockId : MOCK_ATHLETE.blockId;
   const block = HYROX_BLOCKS.find((b) => b.id === blockId)!;
-  const currentWeek = useLive && liveProgramme ? liveProgramme.athlete.current_week : MOCK_ATHLETE.currentWeek;
+  const programmeStartDate = useLive ? liveProgramme?.programmeStartDate ?? null : null;
+  const liveGlobalWeek = useLive
+    ? liveProgramme?.liveGlobalWeek ?? liveProgramme?.athlete.current_week ?? 1
+    : MOCK_ATHLETE.currentWeek;
 
   const weekTabs: WeekTab[] = useMemo(() => {
     return block.weeks.map((globalWeek, i) => {
@@ -69,27 +96,34 @@ export function ProgrammePageView() {
         ? liveProgramme?.programmeWeeks?.find((b) => b.weekNumber === globalWeek)
         : null;
       const generated = Boolean(bundle?.generated && bundle.sessions.length > 0);
-      const subtitle = BLOCK_WEEK_FOCUS_LABELS[cycle];
+      const subtitle = bundle?.weekRole ?? BLOCK_WEEK_FOCUS_LABELS[cycle];
+      const dateRangeLabel = bundle?.dateRangeLabel ?? null;
 
       let mode: WeekTabMode = "not_generated";
-      if (generated) {
-        if (globalWeek === currentWeek) mode = "active";
-        else if (globalWeek < currentWeek) mode = "past";
+      if (useLive && bundle?.calendarStatus) {
+        mode = calendarStatusToTabMode(bundle.calendarStatus);
+      } else if (generated && useMock) {
+        if (globalWeek === MOCK_ATHLETE.currentWeek) mode = "active";
+        else if (globalWeek < MOCK_ATHLETE.currentWeek) mode = "past";
         else mode = "upcoming";
+      } else if (generated) {
+        mode = "upcoming";
       }
 
       return {
         label: `W${cycle}`,
         subtitle,
+        dateRangeLabel,
         globalWeek,
         mode,
         generated,
       };
     });
-  }, [block.weeks, useLive, liveProgramme?.programmeWeeks, currentWeek]);
+  }, [block.weeks, useLive, useMock, liveProgramme?.programmeWeeks]);
 
   const defaultTab =
     weekTabs.find((t) => t.mode === "active")?.globalWeek ??
+    weekTabs.find((t) => t.generated && t.mode === "upcoming")?.globalWeek ??
     weekTabs.find((t) => t.generated)?.globalWeek ??
     weekTabs[0]?.globalWeek ??
     1;
@@ -105,7 +139,15 @@ export function ProgrammePageView() {
     : null;
 
   const sessions = useLive && selectedBundle?.generated
-    ? selectedBundle.sessions
+    ? selectedBundle.sessions.map((s) => ({
+        ...s,
+        status:
+          selectedTab?.mode === "past"
+            ? ("complete" as const)
+            : selectedTab?.mode === "active"
+              ? s.status
+              : ("upcoming" as const),
+      }))
     : useMock
       ? MOCK_WEEK_SESSIONS
       : [];
@@ -144,6 +186,7 @@ export function ProgrammePageView() {
   const programmeVisible = programmeHubLive;
   const showMockWeek = useMock && !useLive;
   const showWeekSessions = (useLive && selectedTab?.generated) || showMockWeek;
+  const missingStartDateWarning = useLive && programmeVisible && !programmeStartDate;
 
   return (
     <PageContent width="wide">
@@ -152,14 +195,21 @@ export function ProgrammePageView() {
         title={meta.title}
         subtitle={
           useLive
-            ? `Block ${blockId} · Week ${currentWeek} · ${athleteName}`
-            : `${meta.subtitle} · Week ${currentWeek} of ${MOCK_ATHLETE.totalWeeks}`
+            ? `Block ${blockId} · Week ${liveGlobalWeek}${programmeStartDate ? ` · starts ${programmeStartDate}` : ""} · ${athleteName}`
+            : `${meta.subtitle} · Week ${MOCK_ATHLETE.currentWeek} of ${MOCK_ATHLETE.totalWeeks}`
         }
       />
 
       {useLive ? (
         <p className="-mt-4 text-xs text-zinc-500">
-          Your coach may adjust future weeks after check-ins. {FUTURE_WEEK_NOTE}
+          Future weeks may be adjusted after check-ins. {PLANNED_COPY}
+        </p>
+      ) : null}
+
+      {missingStartDateWarning && process.env.NODE_ENV === "development" ? (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
+          Programme start date missing — week status may be inaccurate. Coach should set a start
+          date and re-publish the block.
         </p>
       ) : null}
 
@@ -204,20 +254,13 @@ export function ProgrammePageView() {
           <div className="flex gap-2 overflow-x-auto pb-1">
             {weekTabs.map((tab) => {
               const active = selectedWeek === tab.globalWeek;
-              const chipLabel =
-                tab.mode === "active"
-                  ? "Live"
-                  : tab.mode === "upcoming"
-                    ? "Upcoming"
-                    : tab.mode === "past"
-                      ? "Past"
-                      : "Not generated";
+              const chipLabel = chipLabelForMode(tab.mode);
               return (
                 <button
                   key={tab.globalWeek}
                   type="button"
                   onClick={() => setSelectedWeek(tab.globalWeek)}
-                  className={`flex min-w-[100px] shrink-0 flex-col rounded-xl border px-4 py-3 text-left transition ${
+                  className={`flex min-w-[108px] shrink-0 flex-col rounded-xl border px-4 py-3 text-left transition ${
                     active
                       ? "border-yellow-400/50 bg-yellow-400/10"
                       : "border-zinc-800 bg-zinc-900/80 hover:border-zinc-700"
@@ -225,13 +268,18 @@ export function ProgrammePageView() {
                 >
                   <span className="text-sm font-bold text-white">{tab.label}</span>
                   <span className="text-[10px] text-zinc-500">{tab.subtitle}</span>
+                  {tab.dateRangeLabel ? (
+                    <span className="text-[10px] text-zinc-600">{tab.dateRangeLabel}</span>
+                  ) : null}
                   <span
                     className={`mt-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                       tab.mode === "active"
                         ? "text-emerald-400"
-                        : tab.generated
-                          ? "text-yellow-400/80"
-                          : "text-zinc-600"
+                        : tab.mode === "past"
+                          ? "text-zinc-500"
+                          : tab.generated
+                            ? "text-yellow-400/80"
+                            : "text-zinc-600"
                     }`}
                   >
                     {chipLabel}
@@ -246,41 +294,47 @@ export function ProgrammePageView() {
               <SectionTitle
                 title={`${selectedTab?.subtitle ?? "Week"} · Week ${selectedWeek}`}
                 description={`${completed} of ${sessions.length} complete${
-                  selectedTab?.mode === "upcoming" ? " · upcoming plan" : ""
+                  selectedTab?.mode === "upcoming"
+                    ? ` · ${UPCOMING_COPY}`
+                    : selectedTab?.mode === "active"
+                      ? " · live this week"
+                      : selectedTab?.mode === "past"
+                        ? " · past week"
+                        : ""
                 }`}
               />
+              {selectedTab?.mode === "upcoming" ? (
+                <p className="mb-3 text-xs text-zinc-500">{upcomingSubcopy(selectedTab.mode)}</p>
+              ) : null}
               <div className="space-y-4">
                 {sessions.map((session) => (
                   <WeekSessionCard
                     key={session.id}
                     session={session}
                     onView={() => openSession(session.id, session.name)}
-                    onLog={useMock ? () => openSession(session.id, session.name) : undefined}
+                    onLog={
+                      useMock || selectedTab?.mode === "active"
+                        ? () => openSession(session.id, session.name)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
-              {selectedTab?.mode === "upcoming" ? (
-                <p className="mt-4 text-xs text-zinc-500">{FUTURE_WEEK_NOTE}</p>
-              ) : null}
             </section>
           ) : (
             <div className={`${athleteCard} ${athleteCardPadding}`}>
               <div className="flex items-start gap-3">
                 <Lock className="h-5 w-5 shrink-0 text-zinc-500" />
                 <div>
-                  <p className={eyebrowClass}>Week not generated yet</p>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-                    Your coach has not published sessions for {selectedTab?.label ?? "this week"} (
-                    {selectedTab?.subtitle}) yet. This is not a preview placeholder — the week will
-                    appear here once generated and published.
+                  <p className={eyebrowClass}>
+                    {selectedTab?.mode === "locked" ? "Block not yet available" : "Week not generated yet"}
                   </p>
-                  {process.env.NODE_ENV === "development" ? (
-                    <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
-                      Dev: coach publish should use block publish (4 weeks). Re-publish from programme
-                      builder to backfill weeks 2–4.
-                    </p>
-                  ) : null}
-                  <p className="mt-3 text-xs text-zinc-500">{FUTURE_WEEK_NOTE}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                    {selectedTab?.mode === "locked"
+                      ? `Weeks ${selectedTab.globalWeek}+ will unlock when your coach publishes the next 4-week block after your Block ${blockId} review.`
+                      : `Your coach has not published sessions for ${selectedTab?.label ?? "this week"} (${selectedTab?.subtitle}) yet.`}
+                  </p>
+                  <p className="mt-3 text-xs text-zinc-500">{PLANNED_COPY}</p>
                 </div>
               </div>
             </div>

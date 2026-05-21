@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 
 export const HYROX_ATHLETE_SELECT =
-  "id, user_id, application_id, created_at, updated_at, name, email, status, race_name, race_date, race_category, target_time, current_block, current_week, programme_status, payment_status, stripe_customer_id, stripe_subscription_id, coach_notes";
+  "id, user_id, application_id, created_at, updated_at, name, email, status, race_name, race_date, race_category, target_time, current_block, current_week, current_programme_block, programme_start_date, programme_length_weeks, programme_started_at, programme_updated_at, programme_status, payment_status, stripe_customer_id, stripe_subscription_id, coach_notes";
 
 export type ResolvedHyroxAthleteSource = "user_id" | "email" | null;
 

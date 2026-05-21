@@ -43,6 +43,9 @@ export type LiveProgrammePersistenceProps = {
   draftId: string | null;
   effectiveProfile?: HyroxAthleteProfile;
   mappedProfileSaved: boolean;
+  programmeStartDate?: string | null;
+  programmeLengthWeeks?: number;
+  blockPublished?: boolean;
   onDraftIdChange: (id: string | null) => void;
   onReload: () => Promise<void>;
   onPublished: () => void;

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { BLOCK_WEEK_FOCUS_LABELS } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
 import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
+import { formatWeekDateRangeFromYmd, getBlockWeekRole } from "@/app/lib/hyroxProgrammeDates";
 import {
   fetchAthletePublishedProgramme,
   mapPublishedSessionsToAthleteUi,
@@ -30,21 +30,36 @@ export async function GET() {
 
     const programmeWeeks = programme.weeks.map((bundle) => {
       const cycle = (((bundle.weekNumber - 1) % 4) + 1) as 1 | 2 | 3 | 4;
+      const blockNum = bundle.week?.block_number ?? athlete.current_block ?? 1;
+      const weekRole =
+        bundle.week?.weekly_focus ??
+        getBlockWeekRole(blockNum, cycle, programme.programmeLengthWeeks);
+      const dateRangeLabel =
+        bundle.weekStartDate && bundle.weekEndDate
+          ? formatWeekDateRangeFromYmd(bundle.weekStartDate, bundle.weekEndDate)
+          : null;
+
       return {
         weekNumber: bundle.weekNumber,
         blockWeekInCycle: cycle,
         generated: bundle.generated,
+        calendarStatus: bundle.calendarStatus,
+        weekStartDate: bundle.weekStartDate,
+        weekEndDate: bundle.weekEndDate,
+        dateRangeLabel,
         week: bundle.week
           ? {
               id: bundle.week.id,
               block_number: bundle.week.block_number,
               week_number: bundle.week.week_number,
+              week_start_date: bundle.week.week_start_date,
+              week_end_date: bundle.week.week_end_date,
               weekly_focus: bundle.week.weekly_focus,
               coach_note: bundle.week.coach_note,
               athlete_facing_note: bundle.week.athlete_facing_note,
             }
           : null,
-        weekRole: bundle.week?.weekly_focus ?? BLOCK_WEEK_FOCUS_LABELS[cycle],
+        weekRole,
         sessions: mapPublishedSessionsToAthleteUi(bundle.sessions),
       };
     });
@@ -69,6 +84,9 @@ export async function GET() {
       hasPublishedProgramme: programme.published,
       programmeStatus: programme.programmeStatus,
       athleteStatus: programme.athleteStatus,
+      programmeStartDate: programme.programmeStartDate,
+      programmeLengthWeeks: programme.programmeLengthWeeks,
+      liveGlobalWeek: programme.liveGlobalWeek,
       athlete: {
         ...programme.athlete,
         name: displayName,

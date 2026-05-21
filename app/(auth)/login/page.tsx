@@ -52,7 +52,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Sign in</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Magic link or 6-digit code — no password.
+            Email code sign-in — no password. Magic link available if you prefer.
           </p>
         </div>
 
@@ -60,15 +60,12 @@ export default function LoginPage() {
           <AuthOtpForm
             variant="community"
             sanitizeNext={sanitizeAuthNextPath}
-            magicLinkSubmitLabel="Email me a link"
-            emailCodeSubmitLabel="Email me a code"
+            defaultMode="email_code"
+            showModeTabs={false}
+            magicLinkSubmitLabel="Send magic link"
+            emailCodeSubmitLabel="Send login code"
+            verifyCodeLabel="Verify code"
             guidance={<LoginMembershipGuidance />}
-            emailCodeHint={
-              <p className="text-xs leading-relaxed text-zinc-500">
-                We&apos;ll email a one-time code. Email scanners can&apos;t consume codes the way
-                they sometimes break magic links.
-              </p>
-            }
           />
         </Suspense>
 

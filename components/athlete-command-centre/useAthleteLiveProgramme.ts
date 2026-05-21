@@ -16,10 +16,21 @@ export type AthleteLiveProgrammeWeek = {
   athlete_facing_note: string | null;
 };
 
+export type AthleteWeekCalendarStatus =
+  | "past"
+  | "live"
+  | "upcoming"
+  | "not_generated"
+  | "locked";
+
 export type AthleteProgrammeWeekBundle = {
   weekNumber: number;
   blockWeekInCycle: number;
   generated: boolean;
+  calendarStatus?: AthleteWeekCalendarStatus;
+  weekStartDate?: string | null;
+  weekEndDate?: string | null;
+  dateRangeLabel?: string | null;
   week: AthleteLiveProgrammeWeek | null;
   weekRole: string;
   sessions: HyroxSession[];
@@ -31,6 +42,9 @@ export type AthleteLiveProgrammePayload = {
   published: boolean;
   programmeStatus: string;
   athleteStatus: string;
+  programmeStartDate: string | null;
+  programmeLengthWeeks: number;
+  liveGlobalWeek: number;
   athlete: {
     name: string;
     race_name: string | null;
@@ -39,6 +53,7 @@ export type AthleteLiveProgrammePayload = {
     target_time: string | null;
     current_block: number;
     current_week: number;
+    programme_start_date?: string | null;
   };
   week: AthleteLiveProgrammeWeek | null;
   sessions: HyroxSession[];
@@ -65,6 +80,9 @@ type ProgrammeApiJson = {
   week?: AthleteLiveProgrammeWeek | null;
   sessions?: HyroxSession[];
   programmeWeeks?: AthleteProgrammeWeekBundle[];
+  programmeStartDate?: string | null;
+  programmeLengthWeeks?: number;
+  liveGlobalWeek?: number;
   sessionCount?: number;
   weekRationale?: AthleteLiveProgrammePayload["weekRationale"];
 };
@@ -83,6 +101,9 @@ function mapProgrammeApi(json: ProgrammeApiJson): AthleteLiveProgrammePayload | 
     published,
     programmeStatus: json.programmeStatus ?? "",
     athleteStatus: json.athleteStatus ?? "",
+    programmeStartDate: json.programmeStartDate ?? json.athlete?.programme_start_date ?? null,
+    programmeLengthWeeks: json.programmeLengthWeeks ?? 12,
+    liveGlobalWeek: json.liveGlobalWeek ?? json.athlete?.current_week ?? 1,
     athlete: json.athlete ?? {
       name: "Athlete",
       race_name: null,
@@ -91,6 +112,7 @@ function mapProgrammeApi(json: ProgrammeApiJson): AthleteLiveProgrammePayload | 
       target_time: null,
       current_block: 1,
       current_week: 1,
+      programme_start_date: null,
     },
     week,
     sessions: json.sessions ?? [],

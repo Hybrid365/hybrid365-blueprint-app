@@ -136,6 +136,11 @@ export type HyroxAthleteRow = {
   target_time: string | null;
   current_block: number;
   current_week: number;
+  current_programme_block?: number;
+  programme_start_date?: string | null;
+  programme_length_weeks?: number;
+  programme_started_at?: string | null;
+  programme_updated_at?: string | null;
   programme_status: string;
   payment_status: HyroxAthletePaymentStatus;
   stripe_customer_id: string | null;
@@ -150,6 +155,11 @@ export type HyroxAthleteInsert = Omit<
   id?: string;
   current_block?: number;
   current_week?: number;
+  programme_start_date?: string | null;
+  programme_length_weeks?: number;
+  current_programme_block?: number;
+  programme_started_at?: string | null;
+  programme_updated_at?: string | null;
   programme_status?: string;
   payment_status?: HyroxAthletePaymentStatus;
 };

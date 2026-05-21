@@ -219,8 +219,9 @@ export function buildAthleteDashboardLiveView(params: {
   if (!params.programmePublishedLive || !params.liveProgramme) return null;
 
   const lp = params.liveProgramme;
-  const currentWeekNum = lp.athlete.current_week ?? lp.week?.week_number ?? 1;
+  const currentWeekNum = lp.liveGlobalWeek ?? lp.athlete.current_week ?? lp.week?.week_number ?? 1;
   const activeBundle =
+    lp.programmeWeeks?.find((b) => b.calendarStatus === "live" && b.generated) ??
     lp.programmeWeeks?.find((b) => b.weekNumber === currentWeekNum && b.generated) ??
     lp.programmeWeeks?.find((b) => b.generated) ??
     null;
@@ -261,7 +262,7 @@ export function buildAthleteDashboardLiveView(params: {
     targetTime: lp.athlete.target_time ?? "—",
     blockId,
     blockName: block.name,
-    currentWeek: lp.athlete.current_week ?? weekNum,
+    currentWeek: lp.liveGlobalWeek ?? lp.athlete.current_week ?? weekNum,
     totalWeeks: 12,
     weeklyCompletionPct,
     sessionsCompleted: completed,

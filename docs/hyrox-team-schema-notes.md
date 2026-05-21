@@ -363,17 +363,33 @@ Central mapping: `app/lib/hyroxAthleteDashboardLive.ts` + `app/lib/hyroxAthleteP
 
 Missing metrics show **“Awaiting data”** or **“Starts after first training week”** — not Alex Morgan / fake chart values.
 
+### Programme start date & week calendar
+
+**Migration:** `supabase/migrations/004_hyrox_athlete_programme_calendar.sql` (also duplicated in `002_programme_start_date.sql` for ordering). Run in Supabase SQL editor if coach pages error on missing `programme_start_date`.
+
+| Field | Table | Purpose |
+|-------|--------|---------|
+| `programme_start_date` | `hyrox_athletes` | First day of global Week 1 |
+| `programme_length_weeks` | `hyrox_athletes` | `12` or `16` — roadmap length |
+| `week_start_date` / `week_end_date` | `hyrox_programme_weeks` | Set on publish from start date |
+
+**Coach:** Programme Builder → *Programme start date* (defaults to next Monday). Saved via `PATCH /api/hyrox/athletes/[id]/programme-settings`. Required before publish (`programme_start_date` in publish body). Changing start date backfills dates on already-published weeks.
+
+**Week status** (`app/lib/hyroxProgrammeDates.ts`): Past / Live / Upcoming from calendar ranges — **not** from `current_week` alone. `current_week` is updated to the live global week on publish/save.
+
 ### Programme page week selector
 
 `/athlete/programme` shows block-relative chips **W1–W4** (from `HYROX_BLOCKS`):
 
 | Chip | When |
 |------|------|
-| **Live** | Matches the published `hyrox_programme_weeks.week_number` — real session cards, sorted Mon→Sun |
-| **Preview** | Future weeks in the block — placeholder only: *Planned — subject to coach review* |
-| **Past** | Earlier weeks without published data — locked copy |
+| **Live** | Today is between `week_start_date` and `week_end_date` (or computed from `programme_start_date`) |
+| **Upcoming** | Before week start — copy: *Upcoming — subject to coach review* |
+| **Past** | After week end |
+| **Not generated** | No published sessions for that week |
+| **Locked** | Future block not yet published (roadmap) |
 
-Copy: *Future weeks are subject to change based on check-ins and coach review.* No fake session lists for unpublished weeks.
+Date ranges show under each chip when available. No mock dates for live athletes.
 
 **Coach publish (4-week block):** `POST /api/hyrox/programme-drafts/[draftId]/publish` defaults to `publish_block: true`, which runs `publishProgrammeBlock()` — generates/publishes weeks 1–4 in the athlete’s current block (skips weeks already published). Week focus labels: Base Intro → Base Progression → Base Peak → Deload / Review. Athlete `GET /api/hyrox/athlete/programme` returns `programmeWeeks[]` with sessions per week; tabs show **Not generated** only when that week truly has no published sessions in DB.
 
