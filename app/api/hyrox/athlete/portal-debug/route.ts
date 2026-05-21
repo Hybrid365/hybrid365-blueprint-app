@@ -15,7 +15,14 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      {
+        error: "Not signed in",
+        reason: "NO_AUTH_SESSION",
+        authEmail: null,
+      },
+      { status: 401 }
+    );
   }
 
   const mockPreviewEnabled =

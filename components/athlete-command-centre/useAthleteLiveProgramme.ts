@@ -117,7 +117,7 @@ export function useAthleteLiveProgramme(enabled: boolean) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/hyrox/athlete/programme");
+      const res = await fetch("/api/hyrox/athlete/programme", { credentials: "include" });
       const json = (await res.json()) as ProgrammeApiJson;
       if (!res.ok || !json.success) {
         setError(json.error ?? "Could not load programme.");

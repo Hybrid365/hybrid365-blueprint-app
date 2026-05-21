@@ -65,9 +65,9 @@ export default function OnboardingStatusClient({
     (async () => {
       try {
         const [aRes, tRes, pRes] = await Promise.all([
-          fetch("/api/hyrox/athlete/assessment"),
-          fetch("/api/hyrox/athlete/testing"),
-          fetch("/api/hyrox/athlete/programme"),
+          fetch("/api/hyrox/athlete/assessment", { credentials: "include" }),
+          fetch("/api/hyrox/athlete/testing", { credentials: "include" }),
+          fetch("/api/hyrox/athlete/programme", { credentials: "include" }),
         ]);
         const aData = aRes.ok ? await aRes.json() : {};
         const tData = tRes.ok ? await tRes.json() : {};

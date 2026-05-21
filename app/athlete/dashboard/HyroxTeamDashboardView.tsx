@@ -46,10 +46,11 @@ export default function HyroxTeamDashboardView({
     (async () => {
       setApiLoadError(null);
       try {
+        const fetchOpts: RequestInit = { credentials: "include" };
         const [aRes, tRes, pRes] = await Promise.all([
-          fetch("/api/hyrox/athlete/assessment"),
-          fetch("/api/hyrox/athlete/testing"),
-          fetch("/api/hyrox/athlete/programme"),
+          fetch("/api/hyrox/athlete/assessment", fetchOpts),
+          fetch("/api/hyrox/athlete/testing", fetchOpts),
+          fetch("/api/hyrox/athlete/programme", fetchOpts),
         ]);
         const aData = (await aRes.json()) as Record<string, unknown>;
         const tData = (await tRes.json()) as Record<string, unknown>;

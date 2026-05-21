@@ -27,7 +27,7 @@ export function useAthleteDashboardLive() {
     setBenchmarksLoading(true);
     setBenchmarksError(null);
     try {
-      const res = await fetch("/api/hyrox/athlete/testing");
+      const res = await fetch("/api/hyrox/athlete/testing", { credentials: "include" });
       const json = (await res.json()) as {
         snapshot?: BenchmarkSnapshotItem[];
         error?: string;

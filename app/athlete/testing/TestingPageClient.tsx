@@ -389,7 +389,7 @@ export default function TestingPageClient() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/hyrox/athlete/testing");
+        const res = await fetch("/api/hyrox/athlete/testing", { credentials: "include" });
         const data = await res.json();
         if (!res.ok || cancelled) return;
         if (data.benchmarks) {
@@ -414,6 +414,7 @@ export default function TestingPageClient() {
     try {
       const res = await fetch("/api/hyrox/athlete/testing", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "benchmark", testId: id, submission: data }),
       });
@@ -451,6 +452,7 @@ export default function TestingPageClient() {
     try {
       const res = await fetch("/api/hyrox/athlete/testing", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "race", race: data }),
       });

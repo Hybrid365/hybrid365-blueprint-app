@@ -52,7 +52,7 @@ function AssessmentFormInner() {
   const loadExisting = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/hyrox/athlete/assessment");
+      const res = await fetch("/api/hyrox/athlete/assessment", { credentials: "include" });
       const data = await res.json();
       if (res.ok && data.submitted && data.assessment?.raw_answers) {
         setFields(data.assessment.raw_answers as AssessmentFormValues);
@@ -76,6 +76,7 @@ function AssessmentFormInner() {
     try {
       const res = await fetch("/api/hyrox/athlete/assessment", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ values }),
       });

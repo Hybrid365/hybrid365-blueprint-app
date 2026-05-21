@@ -4,7 +4,17 @@ import { useEffect, useState } from "react";
 import type { AthletePortalDebugSnapshot } from "@/app/lib/hyroxAthletePortalResolve";
 import { readHyroxMockPreviewEnabled } from "@/app/lib/hyroxAthletePortalMock";
 
-type ApiCheck = { path: string; ok: boolean; status: number; error?: string };
+type ApiCheck = {
+  path: string;
+  ok: boolean;
+  status: number;
+  error?: string;
+  authEmail?: string;
+  reason?: string;
+  matchedAthleteId?: string | null;
+};
+
+const HYROX_ATHLETE_FETCH: RequestInit = { credentials: "include" };
 
 export function HyroxAthletePortalDebugPanel() {
   const [snapshot, setSnapshot] = useState<AthletePortalDebugSnapshot | null>(null);
@@ -16,13 +26,18 @@ export function HyroxAthletePortalDebugPanel() {
 
     (async () => {
       try {
-        const res = await fetch("/api/hyrox/athlete/portal-debug");
+        const res = await fetch("/api/hyrox/athlete/portal-debug", HYROX_ATHLETE_FETCH);
         const json = (await res.json()) as AthletePortalDebugSnapshot & {
           success?: boolean;
           error?: string;
+          reason?: string;
         };
         if (!res.ok) {
-          setLoadError(json.error ?? "Debug endpoint failed");
+          setLoadError(
+            [json.error, json.reason, json.authEmail ? `email: ${json.authEmail}` : null]
+              .filter(Boolean)
+              .join(" · ") || "Debug endpoint failed"
+          );
           return;
         }
         setSnapshot(json);
@@ -34,13 +49,21 @@ export function HyroxAthletePortalDebugPanel() {
           "/api/hyrox/athlete/programme",
         ]) {
           try {
-            const r = await fetch(path);
-            const body = r.ok ? null : ((await r.json()) as { error?: string });
+            const r = await fetch(path, HYROX_ATHLETE_FETCH);
+            const body = (await r.json()) as {
+              error?: string;
+              authEmail?: string;
+              reason?: string;
+              matchedAthleteId?: string | null;
+            };
             checks.push({
               path,
               ok: r.ok,
               status: r.status,
-              error: body?.error,
+              error: r.ok ? undefined : body.error ?? `HTTP ${r.status}`,
+              authEmail: body.authEmail,
+              reason: body.reason,
+              matchedAthleteId: body.matchedAthleteId,
             });
           } catch (e) {
             checks.push({
@@ -107,10 +130,18 @@ export function HyroxAthletePortalDebugPanel() {
       {apiChecks.length > 0 ? (
         <div className="mt-3">
           <p className="font-semibold text-violet-300">Client API checks</p>
-          <ul className="mt-1 space-y-1">
+          <ul className="mt-1 space-y-1.5">
             {apiChecks.map((c) => (
               <li key={c.path} className={c.ok ? "text-emerald-300" : "text-red-300"}>
-                {c.path} → {c.status} {c.ok ? "OK" : c.error ?? "failed"}
+                <span className="font-mono">{c.path}</span> → {c.status}{" "}
+                {c.ok ? "OK" : (c.error ?? "failed")}
+                {!c.ok && (c.reason || c.authEmail || c.matchedAthleteId) ? (
+                  <span className="mt-0.5 block font-mono text-[10px] text-red-200/80">
+                    {[c.reason && `reason: ${c.reason}`, c.authEmail && `authEmail: ${c.authEmail}`, c.matchedAthleteId && `athlete: ${c.matchedAthleteId}`]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>

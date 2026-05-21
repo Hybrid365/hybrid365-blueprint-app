@@ -4,7 +4,11 @@ import { updateHyroxProtectedSession, updateSession } from "@/app/lib/supabase/m
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  if (path.startsWith("/admin") || path.startsWith("/athlete")) {
+  if (
+    path.startsWith("/admin") ||
+    path.startsWith("/athlete") ||
+    path.startsWith("/api/hyrox/athlete")
+  ) {
     return updateHyroxProtectedSession(request);
   }
 
@@ -12,5 +16,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard", "/dashboard/:path*", "/admin/:path*", "/athlete/:path*"],
+  matcher: [
+    "/dashboard",
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/athlete/:path*",
+    "/api/hyrox/athlete/:path*",
+  ],
 };

@@ -176,6 +176,11 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
     userError: userError?.message ?? null,
   });
 
+  /** Athlete JSON APIs — refresh session cookies only; route handlers return 401/403. */
+  if (path.startsWith("/api/hyrox/athlete")) {
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
+  }
+
   if (!user) {
     if (path === "/athlete/login") {
       return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
