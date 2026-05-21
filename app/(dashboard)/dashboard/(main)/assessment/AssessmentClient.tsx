@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
+import { ProgrammeRefreshAssessmentNote } from "@/components/dashboard/ProgrammeRefreshAssessmentNote";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 import { RUN_VOLUME_BAND_OPTIONS } from "@/app/lib/runVolumePlanner";
 
@@ -430,6 +431,10 @@ export default function AssessmentClient({
           <div className="mb-6">
             <DashboardSubnav variant="light" />
           </div>
+
+          {hasGeneratedProgramme ? (
+            <ProgrammeRefreshAssessmentNote emphasized={Boolean(success)} />
+          ) : null}
 
           <div className="bg-card rounded-2xl border border-border p-4">
             <div className="flex items-center justify-between mb-2">

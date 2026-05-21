@@ -16,6 +16,11 @@ import {
   type ProgrammeWeekLike,
 } from "@/app/lib/progressMetrics";
 import { getDefaultSelectedWeek } from "@/app/lib/programmePageMetrics";
+import {
+  assessmentUpdatedAfterProgramme,
+  maxIsoTimestamp,
+  resolveProgrammeGeneratedAt,
+} from "@/app/lib/programmeRefreshStatus";
 import type { SessionLogLike } from "@/app/lib/progressMetrics";
 import ProgrammeClient from "./ProgrammeClient";
 
@@ -23,6 +28,8 @@ type ProgrammeInstanceRow = {
   id: string;
   title: string | null;
   current_week?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 type ProgrammeWeekRow = {
@@ -30,6 +37,8 @@ type ProgrammeWeekRow = {
   title: string | null;
   is_unlocked: boolean | null;
   plan_json: unknown | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 type SessionLogRow = SessionLogLike & {
@@ -47,6 +56,7 @@ type WeeklyCheckInRow = {
 type AthleteAssessmentRow = {
   completed_at: string | null;
   max_heart_rate?: number | null;
+  updated_at?: string | null;
 };
 
 export default async function ProgrammePage() {
@@ -55,7 +65,7 @@ export default async function ProgrammePage() {
   const [{ data: assess }, { data: benchTests }] = await Promise.all([
     supabase
       .from("athlete_assessments")
-      .select("completed_at, max_heart_rate")
+      .select("completed_at, max_heart_rate, updated_at")
       .eq("user_id", user.id)
       .maybeSingle(),
     supabase.from("benchmark_tests").select("test_type").eq("user_id", user.id),
@@ -73,7 +83,7 @@ export default async function ProgrammePage() {
 
   const { data: instance } = await supabase
     .from("programme_instances")
-    .select("id, title, current_week")
+    .select("id, title, current_week, created_at, updated_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -86,7 +96,7 @@ export default async function ProgrammePage() {
   if (typedInstance?.id) {
     const { data: weekRows } = await supabase
       .from("programme_weeks")
-      .select("week_number, title, is_unlocked, plan_json")
+      .select("week_number, title, is_unlocked, plan_json, created_at, updated_at")
       .eq("programme_instance_id", typedInstance.id)
       .order("week_number", { ascending: true });
 
@@ -130,6 +140,28 @@ export default async function ProgrammePage() {
     Boolean(typedInstance?.id) &&
     weeksRaw.some((w) => hasMeaningfulPlanJson(w.plan_json));
 
+  let weeksMaxUpdatedAt: string | null = null;
+  for (const w of weeksRaw) {
+    if (!hasMeaningfulPlanJson(w.plan_json)) continue;
+    weeksMaxUpdatedAt = maxIsoTimestamp([
+      weeksMaxUpdatedAt,
+      w.updated_at,
+      w.created_at,
+    ]);
+  }
+
+  const programmeGeneratedAt = resolveProgrammeGeneratedAt({
+    weeksMaxUpdatedAt,
+    instanceUpdatedAt: typedInstance?.updated_at ?? null,
+    instanceCreatedAt: typedInstance?.created_at ?? null,
+  });
+
+  const assessmentUpdatedAt =
+    typedAssess?.updated_at ?? typedAssess?.completed_at ?? null;
+  const assessmentChangedSinceProgramme =
+    programmeGenerated &&
+    assessmentUpdatedAfterProgramme(assessmentUpdatedAt, programmeGeneratedAt);
+
   const effectiveWeek = deriveEffectiveCurrentWeek(typedInstance?.current_week ?? null, weeks12);
   const adherence = calculateSessionAdherence(sessionLogs, weeks12, effectiveWeek);
   const defaultSelectedWeek = getDefaultSelectedWeek(typedInstance?.current_week ?? null, weeks12);
@@ -171,6 +203,7 @@ export default async function ProgrammePage() {
       programmeIntelligence={programmeIntelligence}
       maxHeartRate={maxHeartRate}
       hasEngineBenchmark={hasEngineBenchmark}
+      assessmentChangedSinceProgramme={assessmentChangedSinceProgramme}
     />
   );
 }

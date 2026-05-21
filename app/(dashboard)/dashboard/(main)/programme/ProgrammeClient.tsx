@@ -38,6 +38,7 @@ import { shareCardInputFromMemberSession } from "@/app/lib/sessionShareCardText"
 import type { SessionShareCardProps } from "@/components/share/SessionShareCard";
 import { SessionShareCardModal } from "@/components/share/SessionShareCardModal";
 import { DashboardSupportCard } from "@/components/dashboard/DashboardSupportCard";
+import { ProgrammeRefreshStaleNote } from "@/components/dashboard/ProgrammeRefreshStaleNote";
 import { MissedSessionGuidanceNote } from "@/components/dashboard/MissedSessionGuidanceNote";
 import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
 
@@ -79,6 +80,7 @@ type Props = {
   programmeIntelligence: ExtractedProgrammeIntelligence | null;
   maxHeartRate: number | null;
   hasEngineBenchmark: boolean;
+  assessmentChangedSinceProgramme: boolean;
 };
 
 function blockIdForWeek(week: number): 1 | 2 | 3 {
@@ -123,6 +125,7 @@ export default function ProgrammeClient({
   programmeIntelligence,
   maxHeartRate,
   hasEngineBenchmark,
+  assessmentChangedSinceProgramme,
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(defaultSelectedWeek);
   const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
@@ -211,6 +214,12 @@ export default function ProgrammeClient({
           <div className="mt-4">
             <DashboardSubnav variant="zinc" />
           </div>
+
+          {programmeGenerated && assessmentChangedSinceProgramme ? (
+            <div className="mx-auto mt-6 max-w-6xl px-4 md:px-8">
+              <ProgrammeRefreshStaleNote />
+            </div>
+          ) : null}
         </div>
 
         {!programmeInstanceId || !programmeGenerated ? (
