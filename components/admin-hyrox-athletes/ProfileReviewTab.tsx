@@ -44,6 +44,8 @@ export function ProfileReviewTab({
   onGenerateDraft,
   generateSuccess,
   draftExists,
+  mappedProfileSaved,
+  isLive,
 }: {
   athlete: CoachAthlete;
   assessment?: HyroxAssessmentInput;
@@ -54,6 +56,8 @@ export function ProfileReviewTab({
   onGenerateDraft: () => void;
   generateSuccess?: boolean;
   draftExists?: boolean;
+  mappedProfileSaved?: boolean;
+  isLive?: boolean;
 }) {
   const [savedFlash, setSavedFlash] = useState(false);
 
@@ -81,6 +85,12 @@ export function ProfileReviewTab({
           Map intake to a structured profile, override as needed, then generate a programme draft for
           the builder. Nothing is published to the athlete from here.
         </p>
+        {isLive ? (
+          <p className="mt-3 text-xs text-emerald-400/90">
+            Mapped profile: {mappedProfileSaved ? "saved in Supabase" : "not saved yet"}
+            {draftExists ? " · Programme draft on file" : ""}
+          </p>
+        ) : null}
         {draftExists ? (
           <p className="mt-3 text-xs text-yellow-400/90">
             Draft source: Assessment mapping · Status: needs coach review
@@ -97,7 +107,8 @@ export function ProfileReviewTab({
 
       {savedFlash ? (
         <p className="flex items-center gap-2 text-sm text-emerald-300">
-          <Check className="h-4 w-4" /> Profile review saved locally.
+          <Check className="h-4 w-4" />{" "}
+          {isLive ? "Mapped profile saved to Supabase." : "Profile review saved locally."}
         </p>
       ) : null}
 
@@ -328,7 +339,7 @@ export function ProfileReviewTab({
             onClick={handleSave}
             className="rounded-full bg-yellow-400 px-4 py-2 text-sm font-black text-zinc-950"
           >
-            Save profile review
+            {isLive ? "Save mapped profile" : "Save profile review"}
           </button>
           <button
             type="button"

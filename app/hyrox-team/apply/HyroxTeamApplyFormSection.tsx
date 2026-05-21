@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-const FORMSPREE_ENDPOINT = "https://formspree.io/f/xlgznozk";
+const APPLICATION_API = "/api/hyrox/applications";
 
 function FormField({
   label,
@@ -57,16 +57,46 @@ export default function HyroxTeamApplyFormSection() {
     setError(null);
     const form = e.currentTarget;
     const formData = new FormData(form);
+    const fields: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      if (typeof value === "string" && !key.startsWith("_")) {
+        fields[key] = value;
+      }
+    });
+
+    if (!fields.name?.trim()) {
+      setError("Full name is required.");
+      setSubmitting(false);
+      return;
+    }
+    if (!fields.email?.trim()) {
+      setError("Email is required.");
+      setSubmitting(false);
+      return;
+    }
 
     try {
-      const res = await fetch(FORMSPREE_ENDPOINT, {
+      const res = await fetch(APPLICATION_API, {
         method: "POST",
-        body: formData,
-        headers: { Accept: "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(fields),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(typeof data.error === "string" ? data.error : "Something went wrong. Please try again.");
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        detail?: string;
+      };
+      if (!res.ok || !data.success) {
+        if (process.env.NODE_ENV === "development" && data.detail) {
+          console.error("[hyrox-team/apply] submission failed:", data.error, data.detail);
+        }
+        setError(
+          data.error === "APPLICATION_INSERT_FAILED"
+            ? "Could not save your application. Please try again shortly."
+            : typeof data.error === "string"
+              ? data.error
+              : "Something went wrong. Please try again."
+        );
         return;
       }
       setSubmitted(true);
@@ -128,7 +158,7 @@ export default function HyroxTeamApplyFormSection() {
               <h3 className="mb-6 text-xs font-medium uppercase tracking-[0.15em] text-[#F4D23C]">Personal Details</h3>
 
               <div className="grid gap-5 md:grid-cols-2">
-                <FormField label="Full Name" name="full_name" placeholder="Your full name" />
+                <FormField label="Full Name" name="name" placeholder="Your full name" />
                 <FormField label="Email Address" name="email" type="email" placeholder="your@email.com" />
                 <FormField label="Instagram Handle" name="instagram" placeholder="@yourhandle" required={false} />
                 <FormField label="Location" name="location" placeholder="City, Country" />

@@ -10,49 +10,70 @@ import {
   Lock,
   Sparkles,
   Timer,
+  XCircle,
 } from "lucide-react";
+import { AthleteSecondaryLink } from "@/components/hyrox-team/AthleteNextStepCard";
+import { HyroxPrimaryButton } from "@/components/hyrox-team/HyroxTeamUi";
+import type { AthleteOnboardingProgress } from "@/app/lib/hyroxAthleteOnboardingFlow";
+import {
+  buildDashboardStatusChecklist,
+  getAthleteNextAction,
+  getDashboardCtas,
+} from "@/app/lib/hyroxAthleteOnboardingFlow";
 import { LOCKED_PREVIEW_MODULES, MOCK_ATHLETE } from "@/app/lib/hyroxTeamDashboardMock";
 import { DashCard, LockedPreviewCard } from "@/components/hyrox-team/HyroxDashboardUi";
 
 type CardState = "complete" | "current" | "queued" | "locked";
 
-const STATUS_PIPELINE: {
-  key: string;
-  label: string;
-  description: string;
-  state: CardState;
-}[] = [
-  {
-    key: "assessment",
-    label: "Assessment submitted",
-    description: "Profile captured for coach review.",
-    state: "complete",
-  },
-  {
-    key: "testing",
-    label: "Testing submitted",
-    description: "Baseline tests and/or RoxFit race data on file.",
-    state: "complete",
-  },
-  {
-    key: "coach",
-    label: "Coach reviewing",
-    description: "Your coach is reading your profile — not auto-processed.",
-    state: "current",
-  },
-  {
-    key: "draft",
-    label: "Programme draft",
-    description: "First block built from your assessment — manually checked.",
-    state: "queued",
-  },
-  {
-    key: "live",
-    label: "Programme live",
-    description: "Unlocks here when your coach publishes.",
-    state: "locked",
-  },
-];
+export type DashboardPipelineInput = AthleteOnboardingProgress;
+
+function buildStatusPipeline(input: AthleteOnboardingProgress) {
+  const checklist = buildDashboardStatusChecklist(input);
+  return [
+    {
+      key: "assessment",
+      label: "Assessment submitted",
+      description: "Profile captured for coach review.",
+      state: (checklist.assessmentSubmitted ? "complete" : "current") as CardState,
+    },
+    {
+      key: "testing",
+      label: "Testing submitted",
+      description: "Baseline tests and/or RoxFit race data on file.",
+      state: (checklist.testingSubmitted
+        ? "complete"
+        : checklist.assessmentSubmitted
+          ? "current"
+          : "queued") as CardState,
+    },
+    {
+      key: "coach",
+      label: "Coach reviewing profile",
+      description: "Your coach is reading your profile — not auto-processed.",
+      state: (checklist.coachReviewing
+        ? "current"
+        : checklist.testingSubmitted && checklist.assessmentSubmitted
+          ? "complete"
+          : "queued") as CardState,
+    },
+    {
+      key: "draft",
+      label: "Programme being built",
+      description: "First block built from your assessment — manually checked.",
+      state: (checklist.programmeBeingBuilt
+        ? "current"
+        : checklist.coachReviewing
+          ? "queued"
+          : "queued") as CardState,
+    },
+    {
+      key: "live",
+      label: "Programme live",
+      description: "Unlocks here when your coach publishes.",
+      state: (checklist.programmeLive ? "complete" : "locked") as CardState,
+    },
+  ];
+}
 
 function StatusIcon({ state }: { state: CardState }) {
   if (state === "complete") {
@@ -67,7 +88,71 @@ function StatusIcon({ state }: { state: CardState }) {
   return <Lock className="h-5 w-5 text-zinc-600" aria-hidden />;
 }
 
-export default function HyroxTeamDashboardLocked() {
+function ChecklistRow({ label, yes }: { label: string; yes: boolean }) {
+  return (
+    <li className="flex items-center gap-2 text-sm text-zinc-400">
+      {yes ? (
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+      ) : (
+        <XCircle className="h-4 w-4 shrink-0 text-zinc-600" aria-hidden />
+      )}
+      <span className={yes ? "text-zinc-300" : "text-zinc-500"}>{label}</span>
+      <span className="ml-auto text-xs font-semibold uppercase text-zinc-600">{yes ? "Yes" : "No"}</span>
+    </li>
+  );
+}
+
+const DEFAULT_PIPELINE: AthleteOnboardingProgress = {
+  athleteStatus: "assessment_required",
+  hasAssessment: false,
+  hasTesting: false,
+  hasCoreTestingComplete: false,
+  hasRaceResult: false,
+  coreSubmittedCount: 0,
+  coreRequiredCount: 4,
+  optionalSubmittedCount: 0,
+  optionalRequiredCount: 4,
+  programmeVisibility: "coach_reviewing",
+  programmePublished: false,
+  programmeStatus: null,
+};
+
+export default function HyroxTeamDashboardLocked({
+  pipeline = DEFAULT_PIPELINE,
+  athleteDisplayName,
+}: {
+  pipeline?: DashboardPipelineInput;
+  athleteDisplayName?: string | null;
+}) {
+  const STATUS_PIPELINE = buildStatusPipeline(pipeline);
+  const checklist = buildDashboardStatusChecklist(pipeline);
+  const nextAction = getAthleteNextAction(pipeline);
+  const ctas = getDashboardCtas(pipeline);
+
+  const displayName = athleteDisplayName?.trim() || MOCK_ATHLETE.name;
+
+  const heroTitle = checklist.programmeLive
+    ? "Your programme is live."
+    : checklist.programmeBeingBuilt
+      ? "Your programme is being built."
+      : checklist.coachReviewing
+        ? "Your coach is reviewing your profile."
+        : !checklist.assessmentSubmitted
+          ? "Complete your assessment to get started."
+          : !checklist.testingSubmitted
+            ? "Submit your baseline testing."
+            : "Your coach is reviewing your profile.";
+
+  const heroCopy = checklist.programmeLive
+    ? "Your training hub is active — open your programme for this week's sessions."
+    : checklist.programmeBeingBuilt
+      ? "Your first block is being manually built and reviewed before it goes live in this app."
+      : checklist.coachReviewing || (checklist.assessmentSubmitted && checklist.testingSubmitted)
+        ? "Your assessment and testing are on file. Your coach is reviewing your profile before building your first block — not an instant template."
+        : !checklist.assessmentSubmitted
+          ? "Your assessment gives your coach the information needed to map your profile and build your first block."
+          : "You can complete baseline tests across multiple days. Saved results stay on your athlete profile.";
+
   return (
     <div className="space-y-8">
       <DashCard className="border-zinc-700/80 bg-gradient-to-br from-zinc-950 to-zinc-900/90">
@@ -75,19 +160,10 @@ export default function HyroxTeamDashboardLocked() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/35 bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-200">
               <Timer className="h-3.5 w-3.5" />
-              Your programme is being built.
+              {heroTitle}
             </span>
-            <h2 className="mt-4 text-2xl font-bold text-white sm:text-3xl">{MOCK_ATHLETE.name}</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              Your assessment and testing have been submitted. Your coach is reviewing your profile and building your
-              first training block. This is not an instant template — your programme is manually reviewed before it
-              appears here.
-            </p>
-            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500">
-              Built from your assessment, not a generic calendar. When your coach publishes your block, this dashboard
-              switches to your live programme automatically (in production). Use the mock toggle above only to preview the
-              full hub.
-            </p>
+            <h2 className="mt-4 text-2xl font-bold text-white sm:text-3xl">{displayName}</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">{heroCopy}</p>
           </div>
           <div className="shrink-0 text-left lg:text-right">
             <p className="text-xs font-semibold uppercase text-zinc-500">Race countdown</p>
@@ -95,20 +171,48 @@ export default function HyroxTeamDashboardLocked() {
             <p className="mt-1 text-sm text-zinc-500">{MOCK_ATHLETE.race}</p>
           </div>
         </div>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <HyroxPrimaryButton href={ctas.primary.href}>{ctas.primary.buttonLabel}</HyroxPrimaryButton>
+          {ctas.secondary ? (
+            <AthleteSecondaryLink label={ctas.secondary.label} href={ctas.secondary.href} />
+          ) : null}
+        </div>
       </DashCard>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        <DashCard>
+          <h3 className="m-0 text-xs font-bold uppercase tracking-wide text-zinc-500">Your status</h3>
+          <ul className="m-0 mt-4 space-y-2">
+            <ChecklistRow label="Assessment submitted" yes={checklist.assessmentSubmitted} />
+            <ChecklistRow label="Testing submitted" yes={checklist.testingSubmitted} />
+            <ChecklistRow label="Coach reviewing" yes={checklist.coachReviewing} />
+            <ChecklistRow label="Programme being built" yes={checklist.programmeBeingBuilt} />
+            <ChecklistRow label="Programme live" yes={checklist.programmeLive} />
+          </ul>
+        </DashCard>
+        <DashCard>
+          <h3 className="m-0 text-sm font-bold text-white">Next step</h3>
+          <p className="m-0 mt-2 text-sm font-semibold text-[#f4d23c]">{nextAction.title}</p>
+          <p className="m-0 mt-2 text-xs leading-relaxed text-zinc-500">{nextAction.copy}</p>
+          <Link
+            href="/athlete/onboarding"
+            className="mt-4 inline-block text-xs font-semibold text-zinc-400 hover:text-[#f4d23c]"
+          >
+            Full onboarding timeline →
+          </Link>
+        </DashCard>
+      </div>
 
       <div>
         <h3 className="m-0 text-xs font-bold uppercase tracking-wide text-zinc-500">Pipeline status</h3>
         <p className="m-0 mt-1 max-w-2xl text-sm text-zinc-600">
-          Coach-reviewed flow — each stage updates when your profile progresses (mocked for demo).
+          Coach-reviewed flow — each stage updates as your profile progresses.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {STATUS_PIPELINE.map((s) => (
             <DashCard
               key={s.key}
-              className={`!p-4 ${
-                s.state === "current" ? "border-amber-500/30 bg-amber-500/[0.06]" : ""
-              }`}
+              className={`!p-4 ${s.state === "current" ? "border-amber-500/30 bg-amber-500/[0.06]" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <StatusIcon state={s.state} />
@@ -123,7 +227,7 @@ export default function HyroxTeamDashboardLocked() {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <DashCard>
           <h3 className="m-0 text-lg font-bold text-white">Quick links</h3>
-          <p className="m-0 mt-2 text-sm text-zinc-500">While you wait, finish or update your onboarding data.</p>
+          <p className="m-0 mt-2 text-sm text-zinc-500">Finish or update your onboarding data while you wait.</p>
           <ul className="m-0 mt-4 space-y-2 text-sm">
             <li>
               <Link href="/athlete/assessment" className="font-semibold text-[#f4d23c] hover:underline">
@@ -137,7 +241,7 @@ export default function HyroxTeamDashboardLocked() {
             </li>
             <li>
               <Link href="/athlete/onboarding" className="font-semibold text-zinc-400 hover:text-[#f4d23c]">
-                Onboarding timeline →
+                Onboarding status →
               </Link>
             </li>
           </ul>
@@ -157,12 +261,12 @@ export default function HyroxTeamDashboardLocked() {
 
       <section>
         <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Locked preview — your active dashboard
+          Locked until programme is published
         </h3>
         <p className="mb-4 max-w-2xl text-sm text-zinc-600">
-          These modules unlock when your coach publishes your programme. Enable{" "}
-          <span className="font-medium text-zinc-400">Programme live (mock)</span> above to explore the full experience
-          with sample data.
+          Your coach is building this section. Enable{" "}
+          <span className="font-medium text-zinc-400">Programme live (mock)</span> above only to preview the full
+          hub with sample data.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {LOCKED_PREVIEW_MODULES.map((m) => (
@@ -179,7 +283,7 @@ export default function HyroxTeamDashboardLocked() {
               <item.icon className="h-5 w-5 text-zinc-600" />
               <Lock className="absolute right-3 top-3 h-4 w-4 text-zinc-600" />
               <h4 className="m-0 mt-3 font-semibold text-zinc-500">{item.title}</h4>
-              <p className="m-0 mt-1 text-xs text-zinc-600">Unlocks when your programme is published</p>
+              <p className="m-0 mt-1 text-xs text-zinc-600">Locked until programme is published</p>
             </DashCard>
           ))}
         </div>

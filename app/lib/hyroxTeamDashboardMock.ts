@@ -16,6 +16,8 @@ export type HyroxSession = {
   loggedRpe?: string;
   priority: "Key" | "Supporting" | "Optional";
   intent: string;
+  timeOfDay?: "AM" | "Main" | "PM" | "Optional";
+  coachNote?: string;
 };
 
 export const HYROX_BLOCKS = [

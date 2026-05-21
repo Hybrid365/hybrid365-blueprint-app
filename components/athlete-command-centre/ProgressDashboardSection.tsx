@@ -11,11 +11,13 @@ import {
   MOCK_THRESHOLD_SUMMARY,
   MOCK_TRAINING_LOAD,
 } from "@/app/lib/hyroxTeamDashboardMock";
+import { ChartSectionPlaceholder } from "./ChartDataPlaceholder";
 import {
   BodyweightTrendChart,
   RunVolumeChart,
   ThresholdProgressionChart,
 } from "./DashboardCharts";
+import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import {
   MethodologyChip,
   SectionTitle,
@@ -26,13 +28,36 @@ import {
 } from "./athleteUi";
 
 export function ProgressDashboardSection() {
-  const m = MOCK_PERFORMANCE_METRICS;
-  const stats = MOCK_PROGRESS_STATS;
+  const { useLive, dashboardLive } = useAthleteDashboardLive();
+  const m = useLive && dashboardLive
+    ? {
+        raceReadiness: {
+          value: dashboardLive.raceReadiness.awaiting ? 0 : dashboardLive.weeklyCompletionPct,
+          delta: dashboardLive.raceReadiness.sub ?? "",
+        },
+        consistency: { value: dashboardLive.weeklyCompletionPct, delta: dashboardLive.consistency.sub ?? "" },
+        runningFitness: MOCK_PERFORMANCE_METRICS.runningFitness,
+        strengthEndurance: MOCK_PERFORMANCE_METRICS.strengthEndurance,
+        stationTolerance: MOCK_PERFORMANCE_METRICS.stationTolerance,
+        compromisedRunning: MOCK_PERFORMANCE_METRICS.compromisedRunning,
+      }
+    : MOCK_PERFORMANCE_METRICS;
+  const stats = useLive && dashboardLive
+    ? {
+        weeklyCompletionPct: dashboardLive.weeklyCompletionPct,
+        sessionsCompleted: dashboardLive.sessionsCompleted,
+        sessionsPlanned: dashboardLive.sessionsPlanned,
+        checkInStreak: 0,
+        avgSessionRpe: "—",
+        weeklyRunKm: 0,
+      }
+    : MOCK_PROGRESS_STATS;
   const load = MOCK_TRAINING_LOAD;
   const th = MOCK_THRESHOLD_SUMMARY;
   const rv = MOCK_RUN_VOLUME_SUMMARY;
   const bw = MOCK_BODYWEIGHT;
   const copy = MOCK_PROGRESS_COPY;
+  const showChartPlaceholders = useLive && dashboardLive && !dashboardLive.chartsAvailable;
 
   return (
     <div className="space-y-8">
@@ -48,7 +73,11 @@ export function ProgressDashboardSection() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className={eyebrowClass}>Race readiness</p>
-            <p className="mt-1 text-4xl font-bold tracking-tight text-white">{m.raceReadiness.value}%</p>
+            <p className="mt-1 text-4xl font-bold tracking-tight text-white">
+              {useLive && dashboardLive?.raceReadiness.awaiting
+                ? dashboardLive.raceReadiness.value
+                : `${m.raceReadiness.value}%`}
+            </p>
             <p className="mt-1 text-sm font-medium text-emerald-400">{m.raceReadiness.delta}</p>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-4">
@@ -93,35 +122,54 @@ export function ProgressDashboardSection() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <ChartCard title="Threshold progression" badge={`Target ${th.targetMinutes}m`}>
-          <ThresholdProgressionChart />
-          <p className="mt-3 text-xs italic leading-relaxed text-zinc-500">{copy.thresholdInterpretation}</p>
-        </ChartCard>
-        <ChartCard title="Weekly run volume" badge={`Peak ${rv.peakKm} km · W${rv.peakWeek}`}>
-          <RunVolumeChart />
-          <p className="mt-3 text-xs italic leading-relaxed text-zinc-500">{copy.runVolumeNote}</p>
-        </ChartCard>
-      </div>
+      {showChartPlaceholders ? (
+        <>
+          <ChartSectionPlaceholder
+            heading="Threshold progression"
+            message="This graph starts once you complete sessions with threshold work in your first training week."
+          />
+          <ChartSectionPlaceholder
+            heading="Weekly run volume"
+            message="Run volume is tracked from completed run sessions once your programme week is underway."
+          />
+          <ChartSectionPlaceholder
+            heading="Bodyweight trend"
+            message="Bodyweight charts unlock from weekly check-ins after your first training week."
+          />
+        </>
+      ) : (
+        <>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <ChartCard title="Threshold progression" badge={`Target ${th.targetMinutes}m`}>
+              <ThresholdProgressionChart />
+              <p className="mt-3 text-xs italic leading-relaxed text-zinc-500">{copy.thresholdInterpretation}</p>
+            </ChartCard>
+            <ChartCard title="Weekly run volume" badge={`Peak ${rv.peakKm} km · W${rv.peakWeek}`}>
+              <RunVolumeChart />
+              <p className="mt-3 text-xs italic leading-relaxed text-zinc-500">{copy.runVolumeNote}</p>
+            </ChartCard>
+          </div>
 
-      <ChartCard title="Bodyweight trend" badge={`${bw.currentKg} kg · within range`}>
-        <div className="mb-4 grid grid-cols-3 gap-2 text-center text-sm">
-          <span className="text-zinc-500">
-            Start <strong className="mt-0.5 block text-white">{bw.startKg} kg</strong>
-          </span>
-          <span className="text-zinc-500">
-            Current <strong className="mt-0.5 block text-yellow-400">{bw.currentKg} kg</strong>
-          </span>
-          <span className="text-zinc-500">
-            Range{" "}
-            <strong className="mt-0.5 block text-white">
-              {bw.targetRange.min}–{bw.targetRange.max}
-            </strong>
-          </span>
-        </div>
-        <BodyweightTrendChart />
-        <p className="mt-3 text-xs italic leading-relaxed text-zinc-500">{copy.bodyweightNote}</p>
-      </ChartCard>
+          <ChartCard title="Bodyweight trend" badge={`${bw.currentKg} kg · within range`}>
+            <div className="mb-4 grid grid-cols-3 gap-2 text-center text-sm">
+              <span className="text-zinc-500">
+                Start <strong className="mt-0.5 block text-white">{bw.startKg} kg</strong>
+              </span>
+              <span className="text-zinc-500">
+                Current <strong className="mt-0.5 block text-yellow-400">{bw.currentKg} kg</strong>
+              </span>
+              <span className="text-zinc-500">
+                Range{" "}
+                <strong className="mt-0.5 block text-white">
+                  {bw.targetRange.min}–{bw.targetRange.max}
+                </strong>
+              </span>
+            </div>
+            <BodyweightTrendChart />
+            <p className="mt-3 text-xs italic leading-relaxed text-zinc-500">{copy.bodyweightNote}</p>
+          </ChartCard>
+        </>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Weekly completion" value={`${stats.weeklyCompletionPct}%`} />

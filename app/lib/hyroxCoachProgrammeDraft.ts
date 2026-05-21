@@ -486,8 +486,30 @@ function blockToCoachDraftSession(block: SandboxSessionBlock): CoachDraftSession
   return draft;
 }
 
-export function generateCoachDraftWeek(athlete: CoachAthlete): CoachDraftWeek {
-  const sandboxInputs = athleteInputsToSandbox(athlete.programmeInputs);
+export function globalWeekForBlock(
+  programmeBlock: 1 | 2 | 3,
+  blockWeekInCycle: 1 | 2 | 3 | 4
+): number {
+  return (programmeBlock - 1) * 4 + blockWeekInCycle;
+}
+
+export const BLOCK_WEEK_FOCUS_LABELS: Record<1 | 2 | 3 | 4, string> = {
+  1: "Base Intro",
+  2: "Base Progression",
+  3: "Base Peak",
+  4: "Deload / Review",
+};
+
+export function generateCoachDraftWeekForBlockCycle(
+  athlete: CoachAthlete,
+  blockWeekInCycle: 1 | 2 | 3 | 4
+): CoachDraftWeek {
+  const programmeInputs = {
+    ...athlete.programmeInputs,
+    programmeBlock: athlete.programmeBlock,
+    blockWeek: blockWeekInCycle,
+  };
+  const sandboxInputs = athleteInputsToSandbox(programmeInputs);
   const classification = classifyAthlete(sandboxToClassificationInput(sandboxInputs));
   const ctx = sandboxBuildProgrammeContext(sandboxInputs, classification);
   const schedule = buildSandboxWeeklySchedule(sandboxInputs, ctx, classification);
@@ -495,13 +517,23 @@ export function generateCoachDraftWeek(athlete: CoachAthlete): CoachDraftWeek {
   return {
     athleteId: athlete.id,
     block: athlete.programmeBlock,
-    week: athlete.blockWeek,
+    week: globalWeekForBlock(athlete.programmeBlock, blockWeekInCycle),
     generatedAt: new Date().toISOString(),
     days: schedule.days.map((day) => ({
       ...day,
       sessions: day.sessions.map(blockToCoachDraftSession),
     })),
   };
+}
+
+export function generateCoachBlockDraftWeeks(athlete: CoachAthlete): CoachDraftWeek[] {
+  const cycles: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
+  return cycles.map((cycle) => generateCoachDraftWeekForBlockCycle(athlete, cycle));
+}
+
+export function generateCoachDraftWeek(athlete: CoachAthlete): CoachDraftWeek {
+  const cycle = Math.min(4, Math.max(1, athlete.blockWeek)) as 1 | 2 | 3 | 4;
+  return generateCoachDraftWeekForBlockCycle(athlete, cycle);
 }
 
 export function parseDurationMinutes(duration: string): number {

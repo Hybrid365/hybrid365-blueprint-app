@@ -14,6 +14,12 @@ export const OTP_ERROR_HEADLINE_DEFAULT = "We couldn’t send the sign-in link. 
 export const EMAIL_CODE_SUCCESS_COPY =
   "If your email includes a 6-digit code, enter it below. You can also use the magic link in the same email.";
 
+export const ATHLETE_EMAIL_CODE_SUCCESS_COPY =
+  "Check your email for your 6-digit login code. Enter it below to sign in.";
+
+export const NO_PAID_ATHLETE_AUTO_LINK_COPY =
+  "We couldn’t find a paid Hyrox Team athlete profile for this email yet. If you’ve just joined, your coach may still need to activate your account.";
+
 export const CALLBACK_ERROR_HEADLINE = "That sign-in link didn’t work";
 
 export function mapCallbackAuthError(reason: string | null | undefined): string {

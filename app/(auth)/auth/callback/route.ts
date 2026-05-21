@@ -1,6 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getRequestOrigin, sanitizeAuthNextPath } from "@/app/lib/authRedirectUrl";
+import {
+  getRequestOrigin,
+  resolveAuthCallbackNext,
+  sanitizeAthleteAuthNextPath,
+  sanitizeAuthNextPath,
+} from "@/app/lib/authRedirectUrl";
+import { autoLinkHyroxAthleteByEmail } from "@/app/lib/hyroxAthleteAutoLink";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 function log(message: string, extra?: Record<string, unknown>) {
@@ -23,12 +29,34 @@ function otpTypeFromParam(type: string | null): EmailOtpType | null {
   return null;
 }
 
+function loginErrorRedirect(
+  origin: string,
+  reason: string,
+  rawNext: string | null
+): NextResponse {
+  const params = new URLSearchParams({
+    error: "auth",
+    reason,
+  });
+  if (rawNext) {
+    const trimmed = rawNext.trim();
+    const nextParam = trimmed.startsWith("/athlete/")
+      ? sanitizeAthleteAuthNextPath(trimmed)
+      : sanitizeAuthNextPath(trimmed);
+    params.set("next", nextParam);
+    const loginPath = trimmed.startsWith("/athlete/") ? "/athlete/login" : "/login";
+    return NextResponse.redirect(`${origin}${loginPath}?${params.toString()}`);
+  }
+  return NextResponse.redirect(`${origin}/login?${params.toString()}`);
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const typeParam = requestUrl.searchParams.get("type");
-  const next = sanitizeAuthNextPath(requestUrl.searchParams.get("next"));
+  const rawNext = requestUrl.searchParams.get("next");
+  const next = resolveAuthCallbackNext(rawNext);
   const origin = getRequestOrigin(request);
   const errorDescription = requestUrl.searchParams.get("error_description");
 
@@ -36,6 +64,7 @@ export async function GET(request: NextRequest) {
     hasCode: Boolean(code),
     hasTokenHash: Boolean(tokenHash),
     type: typeParam,
+    rawNext,
     next,
     errorDescription: errorDescription ?? undefined,
   });
@@ -44,8 +73,10 @@ export async function GET(request: NextRequest) {
     log("[auth callback] redirecting to login (provider error)", {
       errorDescription,
     });
-    return NextResponse.redirect(
-      `${origin}/login?error=auth&reason=${encodeURIComponent(errorDescription.slice(0, 120))}`
+    return loginErrorRedirect(
+      origin,
+      encodeURIComponent(errorDescription.slice(0, 120)),
+      rawNext
     );
   }
 
@@ -69,21 +100,26 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user: existingUser },
-  } = await supabase.auth.getUser();
+  const hasAuthPayload = Boolean(code || tokenHash);
 
-  if (existingUser) {
-    log("[auth callback] already authenticated — skipping exchange");
-    log("[auth callback] redirecting to", { next });
-    return response;
+  async function tryAthleteAutoLink() {
+    if (!next.startsWith("/athlete/")) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.email) return;
+    const linkResult = await autoLinkHyroxAthleteByEmail(user.id, user.email);
+    log("[auth callback] athlete auto-link", linkResult);
   }
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      log("[auth callback] exchange success");
-      log("[auth callback] redirecting to", { next });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      log("[auth callback] exchange success", { userId: user?.id ?? null, next });
+      await tryAthleteAutoLink();
       return response;
     }
 
@@ -94,8 +130,7 @@ export async function GET(request: NextRequest) {
     });
 
     const reason = encodeURIComponent(error.code ?? error.message ?? "exchange_failed");
-    response = NextResponse.redirect(`${origin}/login?error=auth&reason=${reason}`);
-    return response;
+    return loginErrorRedirect(origin, reason, rawNext);
   }
 
   if (tokenHash) {
@@ -106,8 +141,15 @@ export async function GET(request: NextRequest) {
     });
 
     if (!error) {
-      log("[auth callback] verifyOtp (token_hash) success", { type: otpType });
-      log("[auth callback] redirecting to", { next });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      log("[auth callback] verifyOtp (token_hash) success", {
+        type: otpType,
+        userId: user?.id ?? null,
+        next,
+      });
+      await tryAthleteAutoLink();
       return response;
     }
 
@@ -118,10 +160,24 @@ export async function GET(request: NextRequest) {
     });
 
     const reason = encodeURIComponent(error.code ?? error.message ?? "verify_failed");
-    response = NextResponse.redirect(`${origin}/login?error=auth&reason=${reason}`);
-    return response;
+    return loginErrorRedirect(origin, reason, rawNext);
+  }
+
+  if (!hasAuthPayload) {
+    const {
+      data: { user: existingUser },
+    } = await supabase.auth.getUser();
+
+    if (existingUser) {
+      log("[auth callback] existing session — redirecting", {
+        userId: existingUser.id,
+        next,
+      });
+      await tryAthleteAutoLink();
+      return response;
+    }
   }
 
   log("[auth callback] no code or token_hash — redirecting to login");
-  return NextResponse.redirect(`${origin}/login?error=auth&reason=missing_code`);
+  return loginErrorRedirect(origin, "missing_code", rawNext);
 }

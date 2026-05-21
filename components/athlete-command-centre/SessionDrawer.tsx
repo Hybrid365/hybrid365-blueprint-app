@@ -2,17 +2,18 @@
 
 import { X } from "lucide-react";
 import { useEffect } from "react";
-import { getSessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
+import { getSessionDetail, type SessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
 
 type Props = {
   sessionId: string | null;
   sessionTitle?: string;
+  sessionDetail?: SessionDetail | null;
   onClose: () => void;
 };
 
-export function SessionDrawer({ sessionId, sessionTitle, onClose }: Props) {
+export function SessionDrawer({ sessionId, sessionTitle, sessionDetail, onClose }: Props) {
   const open = Boolean(sessionId);
-  const d = sessionId ? getSessionDetail(sessionId) : null;
+  const d = sessionDetail ?? (sessionId ? getSessionDetail(sessionId) : null);
 
   useEffect(() => {
     if (!open) return;
@@ -24,6 +25,8 @@ export function SessionDrawer({ sessionId, sessionTitle, onClose }: Props) {
   }, [open]);
 
   if (!open || !d) return null;
+
+  const recordFields = d.recordFields ?? ["RPE", "Duration", "Notes"];
 
   return (
     <>
@@ -117,7 +120,7 @@ export function SessionDrawer({ sessionId, sessionTitle, onClose }: Props) {
 
           <Block title="What to record">
             <ul className="m-0 space-y-1 text-sm text-zinc-400">
-              {d.recordFields.map((f) => (
+              {recordFields.map((f) => (
                 <li key={f}>· {f}</li>
               ))}
             </ul>

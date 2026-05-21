@@ -577,11 +577,8 @@ export default function MemberDashboardClient({
     router.refresh();
   }
 
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+  function handleSignOut() {
+    window.location.href = "/logout";
   }
 
   function openSessionDrawer(session: SessionWithKey) {

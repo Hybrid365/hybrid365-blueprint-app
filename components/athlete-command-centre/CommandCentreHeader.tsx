@@ -10,13 +10,50 @@ import {
   MOCK_PROGRESS_STATS,
 } from "@/app/lib/hyroxTeamDashboardMock";
 import { athleteCard, athleteCardPadding, eyebrowClass, ProgressBar } from "./athleteUi";
+import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 
 export function CommandCentreHeader() {
-  const a = MOCK_ATHLETE;
-  const stats = MOCK_PROGRESS_STATS;
+  const { useLive, dashboardLive } = useAthleteDashboardLive();
+
+  const a = useLive && dashboardLive
+    ? {
+        name: dashboardLive.athleteName,
+        status: dashboardLive.statusLabel,
+        race: dashboardLive.raceLabel,
+        targetTime: dashboardLive.targetTime,
+        blockId: dashboardLive.blockId,
+        currentWeek: dashboardLive.currentWeek,
+        totalWeeks: dashboardLive.totalWeeks,
+        raceCountdownWeeks: MOCK_ATHLETE.raceCountdownWeeks,
+        blockPhase: dashboardLive.blockName,
+        coachingFocus: dashboardLive.coachingFocus,
+      }
+    : MOCK_ATHLETE;
+
+  const stats = useLive && dashboardLive
+    ? {
+        weeklyCompletionPct: dashboardLive.weeklyCompletionPct,
+        sessionsCompleted: dashboardLive.sessionsCompleted,
+        sessionsPlanned: dashboardLive.sessionsPlanned,
+      }
+    : MOCK_PROGRESS_STATS;
+
   const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
-  const checkInDue = MOCK_CHECK_IN.status === "Due";
-  const m = MOCK_PERFORMANCE_METRICS;
+  const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : MOCK_CHECK_IN.status === "Due";
+  const checkInStatus = useLive && dashboardLive ? dashboardLive.checkInStatus : MOCK_CHECK_IN.status;
+  const checkInSub = useLive && dashboardLive ? dashboardLive.checkInSub : `Due ${MOCK_CHECK_IN.dueLabel}`;
+  const m = useLive && dashboardLive
+    ? {
+        raceReadiness: {
+          value: dashboardLive.raceReadiness.value,
+          delta: dashboardLive.raceReadiness.sub ?? "",
+        },
+      }
+    : MOCK_PERFORMANCE_METRICS;
+
+  const next = useLive && dashboardLive?.nextSession
+    ? dashboardLive.nextSession
+    : MOCK_NEXT_SESSION;
 
   return (
     <header className={`${athleteCard} ${athleteCardPadding}`}>
@@ -26,7 +63,7 @@ export function CommandCentreHeader() {
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{a.name}</h1>
             <span className="rounded-full border border-emerald-500/35 bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300">
-              {a.status}
+              {useLive ? dashboardLive?.statusLabel : a.status}
             </span>
           </div>
           <p className="mt-1 text-sm text-zinc-500">
@@ -41,17 +78,17 @@ export function CommandCentreHeader() {
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Weekly completion" value={`${stats.weeklyCompletionPct}%`} sub={`${stats.sessionsCompleted}/${stats.sessionsPlanned} sessions`} highlight />
         <StatTile
-          label="Check-in"
-          value={MOCK_CHECK_IN.status}
-          sub={`Due ${MOCK_CHECK_IN.dueLabel}`}
-          warn={checkInDue}
+          label="Weekly completion"
+          value={`${stats.weeklyCompletionPct}%`}
+          sub={`${stats.sessionsCompleted}/${stats.sessionsPlanned} sessions`}
+          highlight
         />
+        <StatTile label="Check-in" value={checkInStatus} sub={checkInSub} warn={checkInDue} />
         <StatTile label="Phase" value={a.blockPhase} sub={`Block ${a.blockId} · ${block.name}`} />
         <StatTile
           label="Race readiness"
-          value={`${m.raceReadiness.value}%`}
+          value={useLive && dashboardLive?.raceReadiness.awaiting ? dashboardLive.raceReadiness.value : `${m.raceReadiness.value}%`}
           sub={m.raceReadiness.delta}
           icon={TrendingUp}
         />
@@ -64,9 +101,9 @@ export function CommandCentreHeader() {
         </div>
         <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
           <p className="text-[10px] font-bold uppercase text-zinc-500">Next key session</p>
-          <p className="mt-1 font-semibold text-white">{MOCK_NEXT_SESSION.name}</p>
+          <p className="mt-1 font-semibold text-white">{next.name}</p>
           <p className="text-xs text-zinc-500">
-            {MOCK_NEXT_SESSION.day} · {MOCK_NEXT_SESSION.duration} · RPE {MOCK_NEXT_SESSION.rpeTarget}
+            {next.dateLabel ?? next.day} · {next.duration} · RPE {next.rpeTarget}
           </p>
         </div>
       </div>
@@ -113,7 +150,11 @@ function StatTile({
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
       <p className="text-[10px] font-semibold uppercase text-zinc-500">{label}</p>
-      <p className={`mt-1 flex items-center gap-1.5 text-lg font-bold ${highlight ? "text-yellow-400" : warn ? "text-amber-300" : "text-white"}`}>
+      <p
+        className={`mt-1 flex items-center gap-1.5 text-lg font-bold ${
+          highlight ? "text-yellow-400" : warn ? "text-amber-300" : "text-white"
+        }`}
+      >
         {Icon ? <Icon className="h-4 w-4 text-emerald-400" /> : null}
         {value}
       </p>

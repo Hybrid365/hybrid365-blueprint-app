@@ -8,7 +8,7 @@ import {
   Target,
   Zap,
 } from "lucide-react";
-import { MOCK_BENCHMARK_SNAPSHOT, MOCK_PROGRESS_STATS, MOCK_THIS_WEEK_TRACKING } from "@/app/lib/hyroxTeamDashboardMock";
+import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
 import { BenchmarkSnapshotStrip } from "@/components/dashboard/BenchmarkSnapshotStrip";
 
 function StatCell({
@@ -34,13 +34,30 @@ function StatCell({
   );
 }
 
+import type { HyroxWeekTrackingLive } from "@/app/lib/hyroxAthleteDashboardLive";
+
+export type { HyroxWeekTrackingLive };
+
 type Props = {
   onCompleteCheckIn?: () => void;
+  live?: HyroxWeekTrackingLive;
+  benchmarks?: BenchmarkSnapshotItem[];
+  benchmarksLoading?: boolean;
+  benchmarksError?: string | null;
 };
 
-export function HyroxThisWeekTrackingCard({ onCompleteCheckIn }: Props) {
-  const t = MOCK_THIS_WEEK_TRACKING;
-  const stats = MOCK_PROGRESS_STATS;
+export function HyroxThisWeekTrackingCard({
+  onCompleteCheckIn,
+  live,
+  benchmarks,
+  benchmarksLoading,
+  benchmarksError,
+}: Props) {
+  if (!live) {
+    return null;
+  }
+
+  const t = live;
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-yellow-500/20 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black shadow-xl shadow-black/30">
@@ -56,37 +73,37 @@ export function HyroxThisWeekTrackingCard({ onCompleteCheckIn }: Props) {
           <StatCell
             icon={<Activity className="h-4 w-4 shrink-0 text-yellow-400" />}
             label="Sessions"
-            value={`${t.sessions.completed} / ${t.sessions.planned}`}
+            value={`${t.sessionsCompleted} / ${t.sessionsPlanned}`}
             sub="Programme week"
           />
           <StatCell
             icon={<Footprints className="h-4 w-4 shrink-0 text-blue-400" />}
             label="Runs"
-            value={`${t.runs.completed} / ${t.runs.planned}`}
-            sub={`${stats.weeklyRunKm} km · target ${stats.weeklyRunKmPlanned} km`}
+            value={`${t.runsCompleted} / ${t.runsPlanned}`}
+            sub={`${t.weeklyRunKm} · target ${t.weeklyRunKmTarget}`}
           />
           <StatCell
             icon={<Dumbbell className="h-4 w-4 shrink-0 text-red-400" />}
             label="Strength"
-            value={`${t.strength.completed} / ${t.strength.planned}`}
+            value={`${t.strengthCompleted} / ${t.strengthPlanned}`}
           />
           <StatCell
             icon={<Zap className="h-4 w-4 shrink-0 text-purple-400" />}
             label="Hybrid"
-            value={`${t.hybrid.completed} / ${t.hybrid.planned}`}
+            value={`${t.hybridCompleted} / ${t.hybridPlanned}`}
             sub="Key Hyrox session"
           />
           <StatCell
             icon={<ClipboardCheck className="h-4 w-4 shrink-0 text-emerald-400" />}
             label="Check-in"
             value={t.checkInComplete ? "Complete" : "Due"}
-            sub={t.checkInComplete ? "Coach reviewed" : "Due Sunday"}
+            sub={t.checkInSub}
           />
           <StatCell
             icon={<Target className="h-4 w-4 shrink-0 text-amber-400" />}
             label="Completion"
-            value={`${stats.weeklyCompletionPct}%`}
-            sub={`${stats.modifiedSessions} modified · ${stats.missedSessions} missed`}
+            value={`${t.weeklyCompletionPct}%`}
+            sub={`${t.modifiedSessions} modified · ${t.missedSessions} missed`}
           />
         </div>
 
@@ -101,7 +118,21 @@ export function HyroxThisWeekTrackingCard({ onCompleteCheckIn }: Props) {
         ) : null}
 
         <div className="mt-8 border-t border-zinc-800/80 pt-6">
-          <BenchmarkSnapshotStrip items={MOCK_BENCHMARK_SNAPSHOT} compact />
+          {benchmarksLoading ? (
+            <p className="text-sm text-zinc-500">Loading benchmark results…</p>
+          ) : benchmarksError ? (
+            <p className="text-sm text-amber-300/90">{benchmarksError}</p>
+          ) : benchmarks && benchmarks.length > 0 ? (
+            <BenchmarkSnapshotStrip items={benchmarks} compact testingHref="/athlete/testing" />
+          ) : (
+            <p className="text-sm text-zinc-500">
+              No benchmark results yet.{" "}
+              <a href="/athlete/testing" className="font-semibold text-yellow-400 hover:underline">
+                Submit tests
+              </a>{" "}
+              to populate this snapshot.
+            </p>
+          )}
         </div>
       </div>
     </section>

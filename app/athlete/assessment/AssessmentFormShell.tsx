@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import {
   HyroxCard,
   HyroxEyebrow,
@@ -10,7 +11,13 @@ import {
   HyroxPrimaryButton,
   HyroxSection,
 } from "@/components/hyrox-team/HyroxTeamUi";
+import type { AssessmentFormValues } from "@/app/lib/hyroxAssessmentPayload";
 import { AssessmentStepContent } from "./assessmentStepContent";
+import {
+  AssessmentFormProvider,
+  emptyAssessmentValues,
+  useAssessmentForm,
+} from "./assessmentFormContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const STEPS = [
@@ -30,10 +37,116 @@ const STEPS = [
   { id: "submit", title: "Submit" },
 ] as const;
 
-export default function AssessmentFormShell() {
+function AssessmentFormInner() {
+  const { values, setFields } = useAssessmentForm();
   const [stepIndex, setStepIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
+
   const step = STEPS[stepIndex]!;
   const isLast = stepIndex === STEPS.length - 1;
+
+  const loadExisting = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hyrox/athlete/assessment");
+      const data = await res.json();
+      if (res.ok && data.submitted && data.assessment?.raw_answers) {
+        setFields(data.assessment.raw_answers as AssessmentFormValues);
+        setSubmitted(true);
+        setSubmittedAt(data.assessment.submitted_at ?? null);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  }, [setFields]);
+
+  useEffect(() => {
+    void loadExisting();
+  }, [loadExisting]);
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/hyrox/athlete/assessment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values }),
+      });
+      const data = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        detail?: string;
+        code?: string;
+      };
+      if (!res.ok || !data.success) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[athlete/assessment] submit failed", data);
+        }
+        const detail =
+          process.env.NODE_ENV === "development" && data.detail
+            ? `${data.error ?? "ASSESSMENT_SAVE_FAILED"}: ${data.detail}`
+            : data.error === "ASSESSMENT_SAVE_FAILED"
+              ? "Could not save assessment. Please try again."
+              : (data.error ?? "Could not submit assessment.");
+        setError(detail);
+        return;
+      }
+      setSubmitted(true);
+      setSubmittedAt(new Date().toISOString());
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (submitted && !submitting) {
+    return (
+      <HyroxPageShell maxWidth="max-w-[960px]">
+        <HyroxSection>
+          <HyroxCard className="border-emerald-500/25 bg-emerald-500/5 p-8 text-center">
+            <p className="m-0 text-xs font-medium uppercase tracking-[0.2em] text-emerald-400">
+              Assessment submitted
+            </p>
+            <h2 className="m-0 mt-4 text-2xl font-bold text-white">Thank you</h2>
+            <p className="m-0 mx-auto mt-4 max-w-lg text-sm leading-relaxed text-zinc-300">
+              Assessment submitted. Next step: complete your baseline testing.
+            </p>
+            {submittedAt ? (
+              <p className="m-0 mt-2 text-xs text-zinc-500">
+                Last saved {new Date(submittedAt).toLocaleString()}
+              </p>
+            ) : null}
+            <p className="m-0 mt-4 text-xs text-zinc-500">
+              You can update your answers below and resubmit — we use your latest submission for coach review.
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/athlete/testing"
+                className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#F4D23C] px-6 text-sm font-black text-[#050505]"
+              >
+                Go to Testing
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSubmitted(false)}
+                className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-zinc-600 px-6 text-sm font-semibold text-zinc-300"
+              >
+                Update assessment
+              </button>
+            </div>
+          </HyroxCard>
+        </HyroxSection>
+      </HyroxPageShell>
+    );
+  }
 
   return (
     <HyroxPageShell maxWidth="max-w-[960px]">
@@ -47,6 +160,8 @@ export default function AssessmentFormShell() {
         </HyroxLead>
       </HyroxSection>
 
+      {loading ? <p className="px-1 text-sm text-zinc-500">Loading your saved answers…</p> : null}
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
         <p className="m-0 text-sm text-zinc-500">
           Step {stepIndex + 1} of {STEPS.length} · {step.title}
@@ -59,24 +174,11 @@ export default function AssessmentFormShell() {
         </div>
       </div>
 
-      <div className="mb-6 hidden gap-2 overflow-x-auto pb-2 sm:flex">
-        {STEPS.map((s, i) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => setStepIndex(i)}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-              i === stepIndex
-                ? "border-[#f4d23c]/50 bg-[#f4d23c]/15 text-[#f4d23c]"
-                : i < stepIndex
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                  : "border-zinc-800 bg-zinc-900 text-zinc-500"
-            }`}
-          >
-            {s.title}
-          </button>
-        ))}
-      </div>
+      {error ? (
+        <div className="mb-4 rounded-xl border border-red-500/35 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+      ) : null}
 
       <HyroxSection clean className="!my-0">
         <h2 className="m-0 text-xl font-black uppercase tracking-[-0.03em] text-white">{step.title}</h2>
@@ -95,7 +197,14 @@ export default function AssessmentFormShell() {
             Back
           </button>
           {isLast ? (
-            <HyroxPrimaryButton type="submit">Submit assessment</HyroxPrimaryButton>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => void handleSubmit()}
+              className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#f4d23c] px-6 text-sm font-black text-[#050505] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? "Submitting…" : "Submit assessment"}
+            </button>
           ) : (
             <button
               type="button"
@@ -109,5 +218,13 @@ export default function AssessmentFormShell() {
         </div>
       </HyroxSection>
     </HyroxPageShell>
+  );
+}
+
+export default function AssessmentFormShell() {
+  return (
+    <AssessmentFormProvider initialValues={emptyAssessmentValues()}>
+      <AssessmentFormInner />
+    </AssessmentFormProvider>
   );
 }

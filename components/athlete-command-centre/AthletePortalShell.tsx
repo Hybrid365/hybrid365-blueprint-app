@@ -12,8 +12,14 @@ export function AthletePortalShell({
   children: React.ReactNode;
   showNav?: boolean;
 }) {
-  const { programmePublishedMock, setProgrammePublishedMock } = useAthletePortal();
-  const navVisible = showNav && programmePublishedMock;
+  const {
+    setProgrammePublishedMock,
+    hasLinkedAthlete,
+    programmeHubLive,
+    programmePublishedLive,
+    useMockPreview,
+  } = useAthletePortal();
+  const navVisible = showNav && programmeHubLive;
 
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
@@ -26,15 +32,17 @@ export function AthletePortalShell({
               </p>
               <p className="text-sm text-zinc-500">Athlete portal</p>
             </div>
-            <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-400 transition hover:border-zinc-600">
-              <input
-                type="checkbox"
-                checked={programmePublishedMock}
-                onChange={(e) => setProgrammePublishedMock(e.target.checked)}
-                className="rounded border-zinc-600"
-              />
-              Programme live (mock)
-            </label>
+            {hasLinkedAthlete && !programmePublishedLive ? (
+              <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-400 transition hover:border-zinc-600">
+                <input
+                  type="checkbox"
+                  checked={useMockPreview}
+                  onChange={(e) => setProgrammePublishedMock(e.target.checked)}
+                  className="rounded border-zinc-600"
+                />
+                Programme live (mock preview)
+              </label>
+            ) : null}
           </div>
         </div>
         {navVisible ? <AthleteAppNav variant="desktop" /> : null}
@@ -48,9 +56,9 @@ export function AthletePortalShell({
 }
 
 export function AthletePortalGate({ children }: { children: React.ReactNode }) {
-  const { programmePublishedMock } = useAthletePortal();
+  const { programmeHubLive } = useAthletePortal();
 
-  if (!programmePublishedMock) {
+  if (!programmeHubLive) {
     return <PreviewGateCard />;
   }
 

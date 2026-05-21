@@ -12,12 +12,24 @@ import { AthletePortalShell } from "@/components/athlete-command-centre/AthleteP
 import HyroxTeamDashboardView from "./HyroxTeamDashboardView";
 
 export default function DashboardPageClient() {
-  const { programmePublishedMock, setProgrammePublishedMock } = useAthletePortal();
+  const {
+    setProgrammePublishedMock,
+    programmePublishedLive,
+    programmeHubLive,
+    programmeVisibility,
+    hasLinkedAthlete,
+    useMockPreview,
+    portalAthlete,
+  } = useAthletePortal();
 
-  if (programmePublishedMock) {
+  if (programmeHubLive) {
     return (
       <AthletePortalShell>
-        <HyroxTeamDashboardView programmePublishedMock />
+        <HyroxTeamDashboardView
+          programmePublishedMock={useMockPreview}
+          programmePublishedLive={programmePublishedLive}
+          portalAthleteName={portalAthlete?.name}
+        />
       </AthletePortalShell>
     );
   }
@@ -34,19 +46,25 @@ export default function DashboardPageClient() {
               is published.
             </HyroxLead>
           </div>
-          <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-xs font-semibold text-zinc-400">
-            <input
-              type="checkbox"
-              checked={programmePublishedMock}
-              onChange={(e) => setProgrammePublishedMock(e.target.checked)}
-              className="rounded border-zinc-600"
-            />
-            Programme live (mock)
-          </label>
+          {hasLinkedAthlete && !programmePublishedLive ? (
+            <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-xs font-semibold text-zinc-400">
+              <input
+                type="checkbox"
+                checked={useMockPreview}
+                onChange={(e) => setProgrammePublishedMock(e.target.checked)}
+                className="rounded border-zinc-600"
+              />
+              Programme live (mock preview)
+            </label>
+          ) : null}
         </div>
       </HyroxSection>
 
-      <HyroxTeamDashboardView programmePublishedMock={false} />
+      <HyroxTeamDashboardView
+        programmePublishedMock={false}
+        programmePublishedLive={false}
+        programmeVisibility={programmeVisibility}
+      />
     </HyroxPageShell>
   );
 }

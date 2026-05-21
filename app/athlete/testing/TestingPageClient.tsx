@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   HyroxCard,
   HyroxEyebrow,
@@ -10,6 +11,7 @@ import {
   HyroxPrimaryButton,
   HyroxSection,
 } from "@/components/hyrox-team/HyroxTeamUi";
+import { CORE_TEST_IDS } from "@/app/lib/hyroxTestingPayload";
 import { BenchmarkSubmitModal, RoxFitRaceModal } from "./TestingModals";
 import {
   formatBenchmarkSummary,
@@ -338,6 +340,8 @@ export default function TestingPageClient() {
   const [raceSubmission, setRaceSubmission] = useState<HyroxRaceSplitSubmission | null>(null);
   const [benchmarkModalId, setBenchmarkModalId] = useState<BenchmarkTestId | null>(null);
   const [roxfitOpen, setRoxfitOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const allTests = useMemo(() => [...coreTests, ...optionalTests], [coreTests, optionalTests]);
 
@@ -347,6 +351,9 @@ export default function TestingPageClient() {
   );
 
   const submittedCount = allTests.filter((t) => t.status === "submitted").length;
+  const coreSubmittedCount = coreTests.filter((t) => t.status === "submitted").length;
+  const optionalSubmittedCount = optionalTests.filter((t) => t.status === "submitted").length;
+  const coreComplete = coreSubmittedCount >= CORE_TEST_IDS.length || Boolean(raceSubmission);
 
   function updateTest(id: BenchmarkTestId, patch: Partial<BaselineTest>) {
     const updater = (prev: BaselineTest[]) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t));
@@ -357,22 +364,123 @@ export default function TestingPageClient() {
     }
   }
 
-  function handleSaveBenchmark(id: BenchmarkTestId, data: BenchmarkSubmission) {
-    updateTest(id, {
-      status: "submitted",
-      submission: data,
-      submittedAt: new Date().toISOString(),
-    });
-    setBenchmarkModalId(null);
+  const applyLoadedBenchmarks = useCallback(
+    (benchmarks: Record<string, { submission: BenchmarkSubmission; submittedAt: string }>) => {
+      const apply = (defs: BaselineTestDef[]) =>
+        defs.map((def) => {
+          const hit = benchmarks[def.id];
+          if (!hit?.submission) {
+            return { ...def, status: "not_submitted" as const };
+          }
+          return {
+            ...def,
+            status: "submitted" as const,
+            submission: hit.submission,
+            submittedAt: hit.submittedAt,
+          };
+        });
+      setCoreTests(apply(CORE_TESTS));
+      setOptionalTests(apply(OPTIONAL_TESTS));
+    },
+    []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/hyrox/athlete/testing");
+        const data = await res.json();
+        if (!res.ok || cancelled) return;
+        if (data.benchmarks) {
+          applyLoadedBenchmarks(data.benchmarks);
+        }
+        if (data.race) {
+          setRaceSubmission(data.race as HyroxRaceSplitSubmission);
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyLoadedBenchmarks]);
+
+  async function handleSaveBenchmark(id: BenchmarkTestId, data: BenchmarkSubmission) {
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/hyrox/athlete/testing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "benchmark", testId: id, submission: data }),
+      });
+      const json = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        detail?: string;
+      };
+      if (!res.ok || !json.success) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[athlete/testing] benchmark save failed", json);
+        }
+        const detail =
+          process.env.NODE_ENV === "development" && json.detail
+            ? `${json.error ?? "TESTING_SAVE_FAILED"}: ${json.detail}`
+            : json.error === "TESTING_SAVE_FAILED"
+              ? "Could not save test result. Please try again."
+              : (json.error ?? "Could not save test result.");
+        setSaveError(detail);
+        return;
+      }
+      updateTest(id, {
+        status: "submitted",
+        submission: data,
+        submittedAt: new Date().toISOString(),
+      });
+      setBenchmarkModalId(null);
+    } catch {
+      setSaveError("Network error saving test.");
+    }
   }
 
-  function handleSaveRoxFit(data: Omit<HyroxRaceSplitSubmission, "id" | "submittedAt">) {
-    setRaceSubmission({
-      ...data,
-      id: raceSubmission?.id ?? `race-${Date.now()}`,
-      submittedAt: new Date().toISOString(),
-    });
-    setRoxfitOpen(false);
+  async function handleSaveRoxFit(data: Omit<HyroxRaceSplitSubmission, "id" | "submittedAt">) {
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/hyrox/athlete/testing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "race", race: data }),
+      });
+      const json = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        detail?: string;
+      };
+      if (!res.ok || !json.success) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[athlete/testing] race save failed", json);
+        }
+        const detail =
+          process.env.NODE_ENV === "development" && json.detail
+            ? `${json.error ?? "TESTING_SAVE_FAILED"}: ${json.detail}`
+            : json.error === "TESTING_SAVE_FAILED"
+              ? "Could not save race result. Please try again."
+              : (json.error ?? "Could not save race result.");
+        setSaveError(detail);
+        return;
+      }
+      setRaceSubmission({
+        ...data,
+        id: raceSubmission?.id ?? `race-${Date.now()}`,
+        submittedAt: new Date().toISOString(),
+      });
+      setRoxfitOpen(false);
+    } catch {
+      setSaveError("Network error saving race result.");
+    }
   }
 
   return (
@@ -385,9 +493,14 @@ export default function TestingPageClient() {
           test — core erg/run trials plus RoxFit splits usually give us enough to personalise your block.
         </HyroxLead>
         <p className="mt-4 text-sm text-zinc-500">
-          {submittedCount} of {allTests.length} tests logged (mock)
+          {loading
+            ? "Loading saved results…"
+            : `${submittedCount} of ${allTests.length} tests saved`}
           {raceSubmission ? " · Recent HYROX race data on file" : ""}
         </p>
+        {saveError ? (
+          <p className="mt-2 text-sm text-red-300">{saveError}</p>
+        ) : null}
       </HyroxSection>
 
       <HyroxCard className="mb-8 border-[#f4d23c]/20 bg-zinc-950/80">
@@ -440,7 +553,7 @@ export default function TestingPageClient() {
               ))}
             </ul>
             <p className="m-0 mt-2 text-[10px] text-zinc-600">
-              Submitted {new Date(raceSubmission.submittedAt).toLocaleDateString()} (mock local state)
+              Submitted {new Date(raceSubmission.submittedAt).toLocaleDateString()}
             </p>
             <button
               type="button"
@@ -482,6 +595,59 @@ export default function TestingPageClient() {
           onSave={handleSaveRoxFit}
         />
       ) : null}
+
+      <HyroxSection clean>
+        <HyroxCard className="border-zinc-700/80 bg-zinc-950/90">
+          <h2 className="m-0 text-lg font-black uppercase tracking-[-0.04em] text-white">Testing progress</h2>
+          <ul className="m-0 mt-4 space-y-2 text-sm text-zinc-400">
+            <li>
+              Core tests saved:{" "}
+              <span className="font-semibold text-zinc-200">
+                {coreSubmittedCount} of {CORE_TEST_IDS.length}
+              </span>
+            </li>
+            <li>
+              Optional tests saved:{" "}
+              <span className="font-semibold text-zinc-200">
+                {optionalSubmittedCount} of {optionalTests.length}
+              </span>
+            </li>
+            <li>
+              Recent HYROX / RoxFit submitted:{" "}
+              <span className="font-semibold text-zinc-200">{raceSubmission ? "Yes" : "No"}</span>
+            </li>
+          </ul>
+          <p className="m-0 mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500">
+            You can return to this page and add more results later. Your saved results stay on your athlete profile.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            {coreComplete ? (
+              <>
+                <p className="m-0 w-full text-sm font-bold text-[#f4d23c]">
+                  Core testing complete — coach review next
+                </p>
+                <HyroxPrimaryButton href="/athlete/dashboard">Go to dashboard</HyroxPrimaryButton>
+                <Link
+                  href="/athlete/onboarding"
+                  className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.04] px-6 text-center text-sm font-black text-[#f6f6f6] transition hover:bg-white/[0.07]"
+                >
+                  View onboarding status
+                </Link>
+              </>
+            ) : (
+              <>
+                <HyroxPrimaryButton href="/athlete/dashboard">Go to dashboard</HyroxPrimaryButton>
+                <Link
+                  href="/athlete/onboarding"
+                  className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 px-6 text-center text-sm font-black text-zinc-300 transition hover:border-zinc-600"
+                >
+                  Return later
+                </Link>
+              </>
+            )}
+          </div>
+        </HyroxCard>
+      </HyroxSection>
     </HyroxPageShell>
   );
 }

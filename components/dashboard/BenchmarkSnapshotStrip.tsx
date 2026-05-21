@@ -5,9 +5,10 @@ import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
 type Props = {
   items: BenchmarkSnapshotItem[];
   compact?: boolean;
+  testingHref?: string;
 };
 
-export function BenchmarkSnapshotStrip({ items, compact }: Props) {
+export function BenchmarkSnapshotStrip({ items, compact, testingHref = "/dashboard/testing" }: Props) {
   const anyLogged = items.some((b) => b.logged);
 
   return (
@@ -20,7 +21,7 @@ export function BenchmarkSnapshotStrip({ items, compact }: Props) {
           </h3>
         </div>
         <Link
-          href="/dashboard/testing"
+          href={testingHref}
           className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-yellow-400 hover:text-yellow-300"
         >
           {anyLogged ? "Update tests" : "Add baseline tests"}

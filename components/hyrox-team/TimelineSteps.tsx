@@ -1,10 +1,10 @@
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, Circle, Lock } from "lucide-react";
 
 export type TimelineStep = {
   n: number;
   title: string;
   description?: string;
-  status?: "complete" | "current" | "upcoming";
+  status?: "complete" | "current" | "upcoming" | "locked";
 };
 
 export function TimelineSteps({
@@ -59,6 +59,10 @@ export function TimelineSteps({
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f4d23c] text-sm font-black text-[#050505] ring-2 ring-[#f4d23c]/50">
                   {step.n}
                 </div>
+              ) : status === "locked" ? (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-600">
+                  <Lock className="h-3.5 w-3.5" />
+                </div>
               ) : (
                 <div className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-sm font-bold text-zinc-500">
                   <Circle className="h-4 w-4" />
@@ -71,7 +75,14 @@ export function TimelineSteps({
               </p>
               <h3 className="mt-0.5 text-base font-bold text-white sm:text-lg">{step.title}</h3>
               {step.description ? (
-                <p className="mt-1 text-sm leading-relaxed text-zinc-500">{step.description}</p>
+                <p
+                  className={`mt-1 text-sm leading-relaxed ${
+                    status === "locked" ? "text-zinc-600" : "text-zinc-500"
+                  }`}
+                >
+                  {step.description}
+                  {status === "locked" ? " · Waiting" : ""}
+                </p>
               ) : null}
             </div>
           </li>

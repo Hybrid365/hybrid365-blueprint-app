@@ -108,6 +108,7 @@ export type HyroxApplicationRow = {
   documentation_interest: boolean;
   status: HyroxApplicationStatus;
   coach_notes: string | null;
+  raw_payload?: HyroxJson | null;
 };
 
 export type HyroxApplicationInsert = Omit<
@@ -117,6 +118,7 @@ export type HyroxApplicationInsert = Omit<
   id?: string;
   status?: HyroxApplicationStatus;
   coach_notes?: string | null;
+  raw_payload?: HyroxJson;
 };
 
 export type HyroxAthleteRow = {
@@ -150,6 +152,14 @@ export type HyroxAthleteInsert = Omit<
   current_week?: number;
   programme_status?: string;
   payment_status?: HyroxAthletePaymentStatus;
+};
+
+/** Coach roster list item with onboarding flags */
+export type HyroxAthleteListItem = HyroxAthleteRow & {
+  hasAssessment: boolean;
+  hasTesting: boolean;
+  hasRaceResult?: boolean;
+  userLinked: boolean;
 };
 
 export type HyroxAssessmentRow = {

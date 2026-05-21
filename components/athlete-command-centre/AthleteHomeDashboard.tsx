@@ -28,11 +28,14 @@ import {
 import { BenchmarkSnapshotStrip } from "@/components/dashboard/BenchmarkSnapshotStrip";
 import { HyroxThisWeekTrackingCard } from "@/components/hyrox-team/HyroxThisWeekTrackingCard";
 import { sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
+import { sessionDetailFromHyroxSession } from "@/app/lib/hyroxAthleteDashboardLive";
+import { ChartDataPlaceholder } from "./ChartDataPlaceholder";
+import { ThresholdProgressionChart } from "./DashboardCharts";
 import { CommandCentreHeader } from "./CommandCentreHeader";
 import { HomeStickyActions } from "./HomeStickyActions";
 import { HubLinkCard } from "./HubLinkCard";
 import { SessionDrawer } from "./SessionDrawer";
-import { ThresholdProgressionChart } from "./DashboardCharts";
+import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import {
   BtnPrimary,
   BtnLinkSecondary,
@@ -47,6 +50,7 @@ import {
   athleteCardPadding,
   eyebrowClass,
 } from "./athleteUi";
+import { useAthletePortal } from "./athletePortalContext";
 
 function HomePriorityTile({
   label,
@@ -75,22 +79,71 @@ function HomePriorityTile({
   );
 }
 
-export function AthleteHomeDashboard() {
+export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProgramme?: boolean }) {
   const router = useRouter();
+  const { portalAthlete } = useAthletePortal();
+  const { dashboardLive } = useAthleteDashboardLive();
+  const useLive = useLiveProgramme && Boolean(dashboardLive);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionTitle, setSessionTitle] = useState<string | undefined>();
-  const a = MOCK_ATHLETE;
-  const next = MOCK_NEXT_SESSION;
-  const stats = MOCK_PROGRESS_STATS;
-  const m = MOCK_PERFORMANCE_METRICS;
-  const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
-  const upcoming = MOCK_WEEK_SESSIONS.filter((s) => s.status === "upcoming").slice(0, 2);
-  const checkInDue = MOCK_CHECK_IN.status === "Due";
+  const [sessionDetailOverride, setSessionDetailOverride] = useState<
+    ReturnType<typeof sessionDetailFromHyroxSession> | null
+  >(null);
 
-  const openSession = useCallback((id: string, title?: string) => {
-    setSessionId(id);
-    setSessionTitle(title);
-  }, []);
+  const a = useLive && dashboardLive
+    ? {
+        ...MOCK_ATHLETE,
+        name: dashboardLive.athleteName,
+        blockId: dashboardLive.blockId,
+        currentWeek: dashboardLive.currentWeek,
+        totalWeeks: dashboardLive.totalWeeks,
+      }
+    : portalAthlete
+      ? { ...MOCK_ATHLETE, name: portalAthlete.name }
+      : MOCK_ATHLETE;
+
+  const weekRationale = useLive && dashboardLive ? dashboardLive.weekRationale : MOCK_WEEK_RATIONALE;
+  const weekSessions = useLive && dashboardLive ? dashboardLive.sortedSessions : MOCK_WEEK_SESSIONS;
+  const next = useLive && dashboardLive?.nextSession
+    ? dashboardLive.nextSession
+    : MOCK_NEXT_SESSION;
+  const stats = useLive && dashboardLive
+    ? {
+        weeklyCompletionPct: dashboardLive.weeklyCompletionPct,
+        sessionsCompleted: dashboardLive.sessionsCompleted,
+        sessionsPlanned: dashboardLive.sessionsPlanned,
+      }
+    : MOCK_PROGRESS_STATS;
+  const m = useLive && dashboardLive
+    ? {
+        raceReadiness: {
+          value: dashboardLive.raceReadiness.awaiting ? 0 : dashboardLive.weeklyCompletionPct,
+          delta: dashboardLive.raceReadiness.sub ?? "",
+        },
+        consistency: { value: dashboardLive.weeklyCompletionPct, delta: dashboardLive.consistency.sub ?? "" },
+      }
+    : MOCK_PERFORMANCE_METRICS;
+  const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
+  const upcoming = useLive && dashboardLive
+    ? dashboardLive.upcomingThisWeek
+    : weekSessions.filter((s) => s.status === "upcoming").slice(0, 2);
+  const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : MOCK_CHECK_IN.status === "Due";
+  const checkInStatus = useLive && dashboardLive ? dashboardLive.checkInStatus : MOCK_CHECK_IN.status;
+  const checkInSub = useLive && dashboardLive ? dashboardLive.checkInSub : `Due ${MOCK_CHECK_IN.dueLabel}`;
+  const benchmarkItems = useLive && dashboardLive ? dashboardLive.benchmarkSnapshot : MOCK_BENCHMARK_SNAPSHOT;
+  const benchmarksLoading = useLive && dashboardLive ? dashboardLive.benchmarksLoading : false;
+  const benchmarksError = useLive && dashboardLive ? dashboardLive.benchmarksError : null;
+  const coachFocus = useLive && dashboardLive ? dashboardLive.coachingFocus : MOCK_COACH_NOTES.currentFocus;
+
+  const openSession = useCallback(
+    (id: string, title?: string) => {
+      setSessionId(id);
+      setSessionTitle(title);
+      const session = weekSessions.find((s) => s.id === id);
+      setSessionDetailOverride(session ? sessionDetailFromHyroxSession(session) : null);
+    },
+    [weekSessions]
+  );
 
   return (
     <PageContent width="full" className="!max-w-none">
@@ -105,20 +158,24 @@ export function AthleteHomeDashboard() {
         />
         <HomePriorityTile
           label="Check-in"
-          value={MOCK_CHECK_IN.status}
-          sub={`Due ${MOCK_CHECK_IN.dueLabel}`}
+          value={checkInStatus}
+          sub={checkInSub}
           href="/athlete/check-in"
           warn={checkInDue}
         />
         <HomePriorityTile
           label="Weekly focus"
-          value={MOCK_WEEK_RATIONALE.weekRole}
+          value={weekRationale.weekRole}
           sub={`Block ${a.blockId} · Week ${a.currentWeek}`}
           href="/athlete/coach-notes"
         />
         <HomePriorityTile
           label="Race readiness"
-          value={`${m.raceReadiness.value}%`}
+          value={
+            useLive && dashboardLive?.raceReadiness.awaiting
+              ? dashboardLive.raceReadiness.value
+              : `${m.raceReadiness.value}%`
+          }
           sub={m.raceReadiness.delta}
           href="/athlete/progress"
         />
@@ -132,10 +189,10 @@ export function AthleteHomeDashboard() {
                 <p className={eyebrowClass}>Next session</p>
                 <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">{next.name}</h2>
                 <p className="mt-1 text-sm text-zinc-500">
-                  {next.day} · {next.duration} · RPE {next.rpeTarget}
+                  {next.dateLabel ?? next.day} · {next.duration} · RPE {next.rpeTarget}
                 </p>
                 <span className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-xs ${sessionTypeStyle(next.type)}`}>
-                  Key session
+                  {next.priority === "Optional" ? "Optional" : "Key session"}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -150,14 +207,22 @@ export function AthleteHomeDashboard() {
           </div>
 
           <div className={`${athleteCard} ${athleteCardPadding}`}>
-            <p className={eyebrowClass}>{MOCK_WEEK_RATIONALE.weekRole}</p>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-300">{MOCK_WEEK_RATIONALE.whyMatters}</p>
+            <p className={eyebrowClass}>{weekRationale.weekRole}</p>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-300">{weekRationale.whyMatters}</p>
             <p className="mt-3 text-xs text-zinc-500">
               Block {a.blockId} · {block.name} · Week {a.currentWeek}/{a.totalWeeks}
             </p>
           </div>
 
-          <HyroxThisWeekTrackingCard onCompleteCheckIn={() => router.push("/athlete/check-in")} />
+          {useLive && dashboardLive ? (
+            <HyroxThisWeekTrackingCard
+              live={dashboardLive.weekTracking}
+              benchmarks={dashboardLive.benchmarkSnapshot}
+              benchmarksLoading={dashboardLive.benchmarksLoading}
+              benchmarksError={dashboardLive.benchmarksError}
+              onCompleteCheckIn={() => router.push("/athlete/check-in")}
+            />
+          ) : null}
 
           {upcoming.length > 0 ? (
             <SnapshotPanel title="Still this week" href="/athlete/programme">
@@ -167,7 +232,7 @@ export function AthleteHomeDashboard() {
                     key={s.id}
                     className="list-none rounded-xl border border-zinc-800/80 bg-zinc-950/50 px-4 py-3 transition hover:border-zinc-700"
                   >
-                    <p className="text-xs font-medium text-yellow-400/80">{s.day}</p>
+                    <p className="text-xs font-medium text-yellow-400/80">{s.dateLabel ?? s.day}</p>
                     <p className="font-medium text-white">{s.name}</p>
                   </li>
                 ))}
@@ -180,7 +245,11 @@ export function AthleteHomeDashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Race readiness</p>
-                  <p className="text-2xl font-bold text-yellow-400">{m.raceReadiness.value}%</p>
+                  <p className="text-2xl font-bold text-yellow-400">
+                    {useLive && dashboardLive?.raceReadiness.awaiting
+                      ? dashboardLive.raceReadiness.value
+                      : `${m.raceReadiness.value}%`}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Consistency</p>
@@ -188,13 +257,34 @@ export function AthleteHomeDashboard() {
                 </div>
               </div>
               <div className="mt-4 h-36">
-                <ThresholdProgressionChart />
+                {useLive && dashboardLive && !dashboardLive.chartsAvailable ? (
+                  <ChartDataPlaceholder className="h-full" />
+                ) : (
+                  <ThresholdProgressionChart />
+                )}
               </div>
             </SnapshotPanel>
 
             <div className="space-y-4">
               <SnapshotPanel title="Benchmarks" href="/athlete/benchmarks" linkLabel="All tests →">
-                <BenchmarkSnapshotStrip items={MOCK_BENCHMARK_SNAPSHOT} compact />
+                {useLive && benchmarksLoading ? (
+                  <p className="text-sm text-zinc-500">Loading benchmark results…</p>
+                ) : useLive && benchmarksError ? (
+                  <p className="text-sm text-amber-300/90">{benchmarksError}</p>
+                ) : useLive && benchmarkItems.length === 0 ? (
+                  <p className="text-sm text-zinc-500">
+                    No tests logged yet.{" "}
+                    <a href="/athlete/testing" className="font-semibold text-yellow-400 hover:underline">
+                      Submit tests
+                    </a>
+                  </p>
+                ) : (
+                  <BenchmarkSnapshotStrip
+                    items={benchmarkItems}
+                    compact
+                    testingHref="/athlete/testing"
+                  />
+                )}
               </SnapshotPanel>
 
               <SnapshotPanel
@@ -204,9 +294,9 @@ export function AthleteHomeDashboard() {
                 highlight={checkInDue}
               >
                 <div className="flex items-center gap-2">
-                  <StatusBadge tone={checkInDue ? "warn" : "neutral"}>{MOCK_CHECK_IN.status}</StatusBadge>
+                  <StatusBadge tone={checkInDue ? "warn" : "neutral"}>{checkInStatus}</StatusBadge>
                 </div>
-                <p className="mt-2 text-sm text-zinc-500">Due {MOCK_CHECK_IN.dueLabel}</p>
+                <p className="mt-2 text-sm text-zinc-500">{checkInSub}</p>
                 {checkInDue ? (
                   <Link
                     href="/athlete/check-in"
@@ -219,7 +309,7 @@ export function AthleteHomeDashboard() {
 
               <div className={`${athleteCardHighlight} ${athleteCardPadding}`}>
                 <p className={eyebrowClass}>Coach note</p>
-                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-300">{MOCK_COACH_NOTES.currentFocus}</p>
+                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-300">{coachFocus}</p>
                 <LinkCta href="/athlete/coach-notes" className="mt-3 text-xs">
                   Read more →
                 </LinkCta>
@@ -256,7 +346,7 @@ export function AthleteHomeDashboard() {
                 title="Check-In"
                 description="Recovery, load and availability for your coach"
                 icon={ClipboardCheck}
-                meta={MOCK_CHECK_IN.status}
+                meta={checkInStatus}
               />
               <HubLinkCard
                 href="/athlete/coach-notes"
@@ -287,7 +377,15 @@ export function AthleteHomeDashboard() {
         />
       </div>
 
-      <SessionDrawer sessionId={sessionId} sessionTitle={sessionTitle} onClose={() => setSessionId(null)} />
+      <SessionDrawer
+        sessionId={sessionId}
+        sessionTitle={sessionTitle}
+        sessionDetail={sessionDetailOverride}
+        onClose={() => {
+          setSessionId(null);
+          setSessionDetailOverride(null);
+        }}
+      />
     </PageContent>
   );
 }

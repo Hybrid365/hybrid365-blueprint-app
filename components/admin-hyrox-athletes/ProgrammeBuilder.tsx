@@ -28,6 +28,7 @@ import { WeeklySummaryPanel } from "@/components/admin-hyrox-athletes/WeeklySumm
 import { AthleteWeekPreviewModal } from "@/components/admin-hyrox-athletes/AthleteWeekPreviewModal";
 import { ProgrammeStatusBadge } from "@/components/admin-hyrox-athletes/StatusBadge";
 import { WeeklyRationalePanel } from "@/components/admin-hyrox-athletes/WeeklyRationalePanel";
+import type { LiveProgrammePersistenceProps } from "@/components/admin-hyrox-athletes/CoachAthleteDashboard";
 
 type MoveState = {
   dayIndex: number;
@@ -46,6 +47,7 @@ export function ProgrammeBuilder({
   draftInjectionKey = 0,
   assessmentMappingBanner = null,
   onClearAssessmentMappingBanner,
+  livePersistence,
 }: {
   athlete: CoachAthlete;
   programmeStatus: CoachProgrammeStatus;
@@ -63,10 +65,13 @@ export function ProgrammeBuilder({
   draftInjectionKey?: number;
   assessmentMappingBanner?: { bullets: string[] } | null;
   onClearAssessmentMappingBanner?: () => void;
+  livePersistence?: LiveProgrammePersistenceProps;
 }) {
   const [draft, setDraft] = useState<CoachDraftWeek>(() => generateCoachDraftWeek(athlete));
   const [status, setStatus] = useState(programmeStatus);
   const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const isLive = Boolean(livePersistence);
   const [addTarget, setAddTarget] = useState<{ day: WeekdayName; slot: SandboxTimeOfDay } | null>({
     day: "Mon",
     slot: "Main",
@@ -107,13 +112,71 @@ export function ProgrammeBuilder({
   }, [athlete.id, draft.block, draft.week, draft.generatedAt]);
 
   useEffect(() => {
+    setStatus(programmeStatus);
+  }, [programmeStatus]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" && isLive) {
+      console.log("Live programme draft id", livePersistence?.draftId ?? null);
+    }
+  }, [isLive, livePersistence?.draftId]);
+
+  useEffect(() => {
     if (injectedDraft && draftInjectionKey > 0) {
       setDraft(injectedDraft);
       rationaleTouched.current = false;
-      setStatus("generated_draft");
-      onStatusChange("generated_draft");
+      if (!isLive) {
+        setStatus("generated_draft");
+        onStatusChange("generated_draft");
+      }
     }
-  }, [injectedDraft, draftInjectionKey, onStatusChange]);
+  }, [injectedDraft, draftInjectionKey, isLive, onStatusChange]);
+
+  const persistDraft = useCallback(
+    async (nextStatus: CoachProgrammeStatus) => {
+      if (!livePersistence?.draftId) {
+        showToast("No live draft found. Generate programme draft first.");
+        return false;
+      }
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/hyrox/programme-drafts/${livePersistence.draftId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            draft,
+            effective_profile: livePersistence.effectiveProfile,
+            coach_note: coachNotes.weeklyCoachNote,
+            athlete_facing_note: coachNotes.athleteFacingNote,
+            coach_status: nextStatus,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          const detail =
+            process.env.NODE_ENV === "development" && data.detail
+              ? `${data.error}: ${data.detail}`
+              : (data.error ?? "Could not save draft.");
+          showToast(detail);
+          return false;
+        }
+        if (data.draft?.id) {
+          livePersistence.onDraftIdChange(data.draft.id);
+        }
+        if (data.coachStatus) {
+          setStatus(data.coachStatus);
+          onStatusChange(data.coachStatus);
+        }
+        return true;
+      } catch {
+        showToast("Network error saving draft.");
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [coachNotes.athleteFacingNote, coachNotes.weeklyCoachNote, draft, livePersistence, onStatusChange]
+  );
 
   const athletePreview = useMemo(
     () => buildAthleteWeekPreview(athlete, draft, coachNotes),
@@ -175,6 +238,20 @@ export function ProgrammeBuilder({
               <li key={b}>{b}</li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {isLive ? (
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-400/5 px-4 py-3 text-sm">
+          <p className="font-bold text-emerald-200">Live draft from Supabase</p>
+          <p className="mt-1 text-xs text-zinc-400">
+            Needs coach review — athlete cannot see this until you publish an approved draft.
+          </p>
+          {livePersistence?.draftId ? (
+            <p className="mt-1 font-mono text-[10px] text-zinc-600">Draft id: {livePersistence.draftId}</p>
+          ) : (
+            <p className="mt-1 text-xs text-amber-300/90">No saved draft yet — generate from Profile Review.</p>
+          )}
         </div>
       ) : null}
 
@@ -265,18 +342,106 @@ export function ProgrammeBuilder({
           />
           <PublishPanel
             status={status}
+            isLive={isLive}
+            saving={saving}
+            approveDisabled={isLive && !livePersistence?.draftId}
+            publishDisabled={isLive && status !== "approved"}
             onPreview={() => setPreviewOpen(true)}
-            onSaveDraft={() => {
+            onSaveDraft={async () => {
+              if (isLive) {
+                const ok = await persistDraft("edited_draft");
+                if (!ok) return;
+                setStatus("edited_draft");
+                onStatusChange("edited_draft");
+                showToast("Draft saved to Supabase");
+                void livePersistence?.onReload();
+                return;
+              }
               setStatus("coach_reviewing");
               onStatusChange("coach_reviewing");
               showToast("Draft saved (local)");
             }}
-            onApprove={() => {
+            onApprove={async () => {
+              if (isLive) {
+                if (!livePersistence?.draftId) {
+                  showToast("No live draft found. Generate programme draft first.");
+                  return;
+                }
+                const ok = await persistDraft("edited_draft");
+                if (!ok) return;
+                setSaving(true);
+                try {
+                  const draftId = livePersistence.draftId;
+                  const res = await fetch(`/api/hyrox/programme-drafts/${draftId}/approve`, {
+                    method: "POST",
+                  });
+                  const data = await res.json();
+                  if (!res.ok || !data.success) {
+                    const detail =
+                      process.env.NODE_ENV === "development" && data.detail
+                        ? `${data.error}: ${data.detail}`
+                        : (data.error ?? "Approve failed.");
+                    showToast(detail);
+                    return;
+                  }
+                  if (data.draft?.id) {
+                    livePersistence.onDraftIdChange(data.draft.id);
+                  }
+                  const next = (data.coachStatus as CoachProgrammeStatus) ?? "approved";
+                  setStatus(next);
+                  onStatusChange(next);
+                  showToast("Week approved — ready to publish");
+                } finally {
+                  setSaving(false);
+                }
+                return;
+              }
               setStatus("approved");
               onStatusChange("approved");
               showToast("Week approved");
             }}
-            onPublish={() => {
+            onPublish={async () => {
+              if (isLive) {
+                if (!livePersistence?.draftId) {
+                  showToast("No draft to publish.");
+                  return;
+                }
+                if (status !== "approved") {
+                  showToast("Approve the week before publishing.");
+                  return;
+                }
+                setSaving(true);
+                try {
+                  const res = await fetch(
+                    `/api/hyrox/programme-drafts/${livePersistence.draftId}/publish`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ weekly_focus: coachNotes.keyFocus }),
+                    }
+                  );
+                  const data = await res.json();
+                  if (!res.ok || !data.success) {
+                    const detail =
+                      process.env.NODE_ENV === "development" && data.detail
+                        ? `${data.error}: ${data.detail}`
+                        : (data.error ?? "Publish failed.");
+                    showToast(detail);
+                    return;
+                  }
+                  setStatus("published");
+                  onStatusChange("published");
+                  showToast(
+                    data.sessionCount != null
+                      ? `Published ${data.sessionCount} session(s) to athlete dashboard.`
+                      : "Programme published to athlete dashboard."
+                  );
+                  livePersistence.onPublished();
+                } finally {
+                  setSaving(false);
+                }
+                return;
+              }
               setStatus("published");
               onStatusChange("published");
               showToast("Published to athlete dashboard (mock)");
@@ -368,21 +533,31 @@ export function ProgrammeBuilder({
 
 function PublishPanel({
   status,
+  isLive,
+  saving,
+  approveDisabled,
+  publishDisabled,
   onPreview,
   onSaveDraft,
   onApprove,
   onPublish,
 }: {
   status: CoachProgrammeStatus;
+  isLive?: boolean;
+  saving?: boolean;
+  approveDisabled?: boolean;
+  publishDisabled?: boolean;
   onPreview: () => void;
-  onSaveDraft: () => void;
-  onApprove: () => void;
-  onPublish: () => void;
+  onSaveDraft: () => void | Promise<void>;
+  onApprove: () => void | Promise<void>;
+  onPublish: () => void | Promise<void>;
 }) {
   return (
     <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
       <h2 className="text-sm font-bold text-white">Publish</h2>
-      <p className="mt-1 text-[11px] text-zinc-500">Local mock state only</p>
+      <p className="mt-1 text-[11px] text-zinc-500">
+        {isLive ? "Saves to Supabase — athlete sees only published weeks." : "Local mock state only"}
+      </p>
       <div className="mt-3 flex flex-col gap-2">
         <button
           type="button"
@@ -393,27 +568,37 @@ function PublishPanel({
         </button>
         <button
           type="button"
-          onClick={onSaveDraft}
-          className="rounded-full border border-zinc-600 py-2 text-xs font-semibold text-zinc-200"
+          disabled={saving}
+          onClick={() => void onSaveDraft()}
+          className="rounded-full border border-zinc-600 py-2 text-xs font-semibold text-zinc-200 disabled:opacity-50"
         >
-          Save draft
+          {saving ? "Saving…" : "Save draft"}
         </button>
         <button
           type="button"
-          onClick={onApprove}
-          className="rounded-full border border-emerald-500/40 bg-emerald-400/10 py-2 text-xs font-bold text-emerald-200"
+          disabled={saving || approveDisabled}
+          onClick={() => void onApprove()}
+          className="rounded-full border border-emerald-500/40 bg-emerald-400/10 py-2 text-xs font-bold text-emerald-200 disabled:opacity-50"
+          title={approveDisabled ? "Generate programme draft first" : undefined}
         >
           Approve week
         </button>
         <button
           type="button"
-          onClick={onPublish}
-          className="rounded-full bg-yellow-400 py-2 text-xs font-black text-zinc-950"
+          disabled={saving || publishDisabled}
+          onClick={() => void onPublish()}
+          className="rounded-full bg-yellow-400 py-2 text-xs font-black text-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
+          title={publishDisabled ? "Approve the week before publishing" : undefined}
         >
           Publish to athlete dashboard
         </button>
       </div>
       <p className="mt-2 text-[10px] text-zinc-600">Status: {status.replace(/_/g, " ")}</p>
+      {approveDisabled ? (
+        <p className="mt-1 text-[10px] text-amber-400/80">Generate programme draft first.</p>
+      ) : publishDisabled ? (
+        <p className="mt-1 text-[10px] text-amber-400/80">Publish unlocks after approval.</p>
+      ) : null}
     </section>
   );
 }

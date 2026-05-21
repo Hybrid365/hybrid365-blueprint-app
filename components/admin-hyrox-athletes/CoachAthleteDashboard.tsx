@@ -1,6 +1,6 @@
 "use client";
 
-import type { HyroxAssessmentInput } from "@/app/lib/hyroxAthleteProfileTypes";
+import type { HyroxAssessmentInput, HyroxAthleteProfile } from "@/app/lib/hyroxAthleteProfileTypes";
 import type { ProfileReviewOverrides } from "@/app/lib/hyroxAthleteProfileTypes";
 import type { CoachDraftWeek, CoachProgrammeStatus } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
@@ -34,6 +34,18 @@ export type ProfileReviewPanelProps = {
   onGenerateProgrammeDraft: () => void;
   generateSuccess?: boolean;
   draftExists?: boolean;
+  mappedProfileSaved?: boolean;
+  isLive?: boolean;
+};
+
+export type LiveProgrammePersistenceProps = {
+  athleteId: string;
+  draftId: string | null;
+  effectiveProfile?: HyroxAthleteProfile;
+  mappedProfileSaved: boolean;
+  onDraftIdChange: (id: string | null) => void;
+  onReload: () => Promise<void>;
+  onPublished: () => void;
 };
 
 export type ProgrammeWorkflowInjectProps = {
@@ -41,6 +53,7 @@ export type ProgrammeWorkflowInjectProps = {
   draftInjectionKey: number;
   assessmentMappingBanner: { bullets: string[] } | null;
   onClearAssessmentMappingBanner: () => void;
+  livePersistence?: LiveProgrammePersistenceProps;
 };
 
 export type AthleteTab = (typeof TABS)[number];
@@ -109,6 +122,8 @@ export function CoachAthleteDashboard({
           onGenerateDraft={profileReview.onGenerateProgrammeDraft}
           generateSuccess={profileReview.generateSuccess}
           draftExists={profileReview.draftExists}
+          mappedProfileSaved={profileReview.mappedProfileSaved}
+          isLive={profileReview.isLive}
         />
       )}
       {tab === "Programme Builder" && (
@@ -122,6 +137,7 @@ export function CoachAthleteDashboard({
           draftInjectionKey={programmeWorkflowInject.draftInjectionKey}
           assessmentMappingBanner={programmeWorkflowInject.assessmentMappingBanner}
           onClearAssessmentMappingBanner={programmeWorkflowInject.onClearAssessmentMappingBanner}
+          livePersistence={programmeWorkflowInject.livePersistence}
         />
       )}
       {tab === "Check-Ins" && <CheckInsTab athlete={athlete} />}

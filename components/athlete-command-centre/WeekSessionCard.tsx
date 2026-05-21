@@ -30,9 +30,11 @@ type Props = {
 
 export function WeekSessionCard({ session, onView, onLog }: Props) {
   const done = session.status === "complete";
-  const detail = getSessionDetail(session.id);
+  const mockDetail = getSessionDetail(session.id);
   const tags = sessionTags(session);
-  const coachPreview = detail.coachNote.slice(0, 120) + (detail.coachNote.length > 120 ? "…" : "");
+  const coachNote = session.coachNote?.trim() || mockDetail.coachNote;
+  const coachPreview = coachNote.slice(0, 120) + (coachNote.length > 120 ? "…" : "");
+  const hrZone = mockDetail.hrZone !== "—" ? mockDetail.hrZone : null;
 
   return (
     <article
@@ -54,13 +56,17 @@ export function WeekSessionCard({ session, onView, onLog }: Props) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              {session.day} · {session.dateLabel}
+              {session.dateLabel}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <h4 className="text-base font-bold text-white sm:text-lg">{session.name}</h4>
               {session.priority === "Key" ? (
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${priorityStyle("Key")}`}>
                   Key session
+                </span>
+              ) : session.priority === "Optional" ? (
+                <span className="rounded-full border border-zinc-600 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                  Optional add-on
                 </span>
               ) : null}
               <SessionStatusBadge status={session.status} />
@@ -81,10 +87,10 @@ export function WeekSessionCard({ session, onView, onLog }: Props) {
                 {session.duration}
               </span>
               <span>RPE {session.rpeTarget}</span>
-              {detail.hrZone !== "—" ? (
+              {hrZone ? (
                 <span className="inline-flex items-center gap-1">
                   <Heart className="h-3.5 w-3.5 text-red-400/80" />
-                  {detail.hrZone}
+                  {hrZone}
                 </span>
               ) : null}
             </div>
@@ -100,17 +106,19 @@ export function WeekSessionCard({ session, onView, onLog }: Props) {
         <button
           type="button"
           onClick={onView}
-          className={`${btnSecondaryClass} flex-1 !min-h-0 py-2.5 text-xs`}
-        >
-          View
-        </button>
-        <button
-          type="button"
-          onClick={onLog ?? onView}
           className={`${btnPrimaryClass} flex-1 !min-h-0 py-2.5 text-xs`}
         >
-          Log result
+          View session
         </button>
+        {onLog ? (
+          <button
+            type="button"
+            onClick={onLog}
+            className={`${btnSecondaryClass} flex-1 !min-h-0 py-2.5 text-xs`}
+          >
+            Log result
+          </button>
+        ) : null}
       </div>
     </article>
   );

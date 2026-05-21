@@ -352,29 +352,57 @@ export async function claimPendingWhopMembershipForUser(
 /**
  * Find auth user id by primary email (case-insensitive). Paginates admin listUsers.
  */
-export async function findAuthUserIdByEmail(
+export type AuthUserSummary = { id: string; email: string; createdAt: string | null };
+
+/** All auth.users with matching primary email (case-insensitive). */
+export async function listAuthUsersByEmail(
   admin: SupabaseClient,
   email: string
-): Promise<AuthLookupResult> {
+): Promise<{ users: AuthUserSummary[]; listError?: string }> {
   const target = normalizeWhopEmail(email);
-  if (!target) return { ok: false, userId: null };
+  if (!target) return { users: [] };
 
+  const matches: AuthUserSummary[] = [];
   let page = 1;
   const perPage = 1000;
 
   while (page <= MAX_USER_LIST_PAGES) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
     if (error) {
-      return { ok: false, userId: null, listError: error.message };
+      return { users: matches, listError: error.message };
     }
     const users = data?.users ?? [];
-    const hit = users.find((u) => normalizeWhopEmail(u.email ?? "") === target);
-    if (hit?.id) return { ok: true, userId: hit.id };
+    for (const u of users) {
+      if (normalizeWhopEmail(u.email ?? "") === target && u.id) {
+        matches.push({
+          id: u.id,
+          email: u.email ?? "",
+          createdAt: u.created_at ?? null,
+        });
+      }
+    }
     if (users.length < perPage) break;
     page += 1;
   }
 
-  return { ok: false, userId: null };
+  return { users: matches };
+}
+
+export async function findAuthUserIdByEmail(
+  admin: SupabaseClient,
+  email: string
+): Promise<AuthLookupResult> {
+  const { users, listError } = await listAuthUsersByEmail(admin, email);
+  if (listError) {
+    return { ok: false, userId: null, listError };
+  }
+  if (users.length === 0) return { ok: false, userId: null };
+  const newest = [...users].sort((a, b) => {
+    const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+    const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+    return tb - ta;
+  })[0]!;
+  return { ok: true, userId: newest.id };
 }
 
 export function buildWhopMembershipFields(params: {
