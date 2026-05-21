@@ -68,6 +68,7 @@ type AthleteAssessmentRow = {
   id: string;
   completed_at: string | null;
   first_name?: string | null;
+  max_heart_rate?: number | null;
 };
 
 type BenchmarkTestRow = BenchmarkTestLike & {
@@ -79,7 +80,11 @@ export default async function DashboardPage() {
 
   const [{ data: profileRow }, { data: assessGlobal }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-    supabase.from("athlete_assessments").select("id, completed_at, first_name").eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("athlete_assessments")
+      .select("id, completed_at, first_name, max_heart_rate")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
   const typedAssessGlobal = assessGlobal as AthleteAssessmentRow | null;
   const assessmentCompleted = Boolean(typedAssessGlobal?.completed_at);
@@ -95,6 +100,14 @@ export default async function DashboardPage() {
     .eq("user_id", user.id);
   const typedAllTests = (allCoreTests ?? []) as BenchmarkTestRow[];
   const coreTestsLogged = countCoreBaselineAreas(typedAllTests);
+  const maxHeartRate =
+    typedAssessGlobal?.max_heart_rate != null && Number.isFinite(typedAssessGlobal.max_heart_rate)
+      ? typedAssessGlobal.max_heart_rate
+      : null;
+  const hasEngineBenchmark = typedAllTests.some((t) => {
+    const ty = String(t.test_type ?? "").toLowerCase();
+    return ty.includes("ski") || ty.includes("row");
+  });
 
   const { data: instance } = await supabase
     .from("programme_instances")
@@ -252,6 +265,8 @@ export default async function DashboardPage() {
       habitLogs={habitLogs}
       benchmarkTests={benchmarkTests}
       challengeTracking={challengeTracking}
+      maxHeartRate={maxHeartRate}
+      hasEngineBenchmark={hasEngineBenchmark}
     />
   );
 }

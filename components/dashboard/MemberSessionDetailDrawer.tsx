@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, Clock, Gauge, Heart, Share2, Timer, X } from "lucide-react";
+import { CheckCircle2, Clock, Gauge, Share2, Timer, X } from "lucide-react";
+import { RunIntensityGuide } from "@/components/dashboard/RunIntensityGuide";
 import type { MemberSessionLogRecord } from "@/app/lib/memberSessionLog";
 import type { MemberSessionDrawerSession } from "@/app/lib/memberSessionTypes";
 
@@ -94,48 +95,12 @@ export function MemberSessionDetailDrawer({
             </div>
           </div>
 
-          {(session.category === "Run" || session.category === "Hybrid") && session.runPrescription ? (
-            <div className="mt-6 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-zinc-900/80 p-5 sm:p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-yellow-400/90">
-                Your intensity guide
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                {session.runPrescription.effort_description}
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {session.runPrescription.pace_range ? (
-                  <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Target pace</p>
-                    <p className="mt-1 text-base font-semibold text-white">{session.runPrescription.pace_range}</p>
-                  </div>
-                ) : null}
-                {session.runPrescription.hr_range ? (
-                  <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
-                    <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                      <Heart className="h-3.5 w-3.5" />
-                      HR guide
-                    </p>
-                    <p className="mt-1 text-base font-semibold text-white">{session.runPrescription.hr_range}</p>
-                  </div>
-                ) : null}
-                <div
-                  className={`rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3${
-                    !session.runPrescription.pace_range && !session.runPrescription.hr_range ? " sm:col-span-2" : ""
-                  }`}
-                >
-                  <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    <Gauge className="h-3.5 w-3.5" />
-                    RPE
-                  </p>
-                  <p className="mt-1 text-base font-semibold text-white">{session.runPrescription.rpe}</p>
-                </div>
-              </div>
-              {session.runPrescription.coach_note ? (
-                <p className="mt-4 border-t border-zinc-800/80 pt-4 text-sm leading-relaxed text-zinc-300">
-                  {session.runPrescription.coach_note}
-                </p>
-              ) : null}
-            </div>
+          {session.runPrescription ? (
+            <RunIntensityGuide
+              runPrescription={session.runPrescription}
+              ergGuide={session.ergIntensityGuide}
+              showRegenerateHint={session.runGuideRebuilt}
+            />
           ) : null}
 
           {[

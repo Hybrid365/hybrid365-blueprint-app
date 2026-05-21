@@ -3,7 +3,16 @@
  * Keeps parity with AthleteDashboardClient session mapping without modifying /athlete routes.
  */
 
-import type { RunPrescription } from "./runPrescription";
+import type { PaceGuidance } from "./paceGuidance";
+import type { GoalFocus } from "./sessionLibrary";
+import {
+  buildErgIntensityGuide,
+  enrichRunPrescription,
+  resolveRunPrescriptionForSession,
+  sessionHasErgThresholdComponent,
+  type ErgIntensityGuide,
+  type RunPrescription,
+} from "./runPrescription";
 
 export type DoubleSessionSummary = {
   label: string;
@@ -40,6 +49,18 @@ export type MemberSessionDetail = {
   doubleSession?: DoubleSessionSummary;
   /** Run-only: individualised pace / HR / RPE from programme generation */
   runPrescription?: RunPrescription;
+  /** Ski/Row/Bike threshold when applicable (no fake splits without benchmark). */
+  ergIntensityGuide?: ErgIntensityGuide;
+  /** True when pace guide was rebuilt from plan pace_guidance (stored session lacked run_prescription). */
+  runGuideRebuilt?: boolean;
+};
+
+export type NormalizeScheduleOptions = {
+  paceGuidance?: PaceGuidance | null;
+  maxHeartRate?: number | null;
+  goalFocus?: GoalFocus;
+  hyroxTrack?: boolean;
+  hasEngineBenchmark?: boolean;
 };
 
 function slugify(value: string): string {
@@ -107,15 +128,49 @@ function parseRunPrescription(raw: unknown): RunPrescription | undefined {
       ? p.effort_description.trim()
       : null;
   if (!rpe && !coach_note && !effort_description) return undefined;
-  return {
-    pace_range:
-      typeof p.pace_range === "string" && p.pace_range.trim() ? p.pace_range.trim() : null,
+  const pace_range =
+    typeof p.pace_range === "string" && p.pace_range.trim() ? p.pace_range.trim() : null;
+  const rx: RunPrescription = {
+    pace_range,
+    treadmill_speed_range:
+      typeof p.treadmill_speed_range === "string" && p.treadmill_speed_range.trim()
+        ? p.treadmill_speed_range.trim()
+        : null,
     hr_range:
       typeof p.hr_range === "string" && p.hr_range.trim() ? p.hr_range.trim() : null,
     rpe: rpe ?? "Use session guidance",
     effort_description: effort_description ?? "",
     coach_note: coach_note ?? "",
+    personalization_line:
+      typeof p.personalization_line === "string" && p.personalization_line.trim()
+        ? p.personalization_line.trim()
+        : null,
+    intensity_label:
+      typeof p.intensity_label === "string" && p.intensity_label.trim()
+        ? p.intensity_label.trim()
+        : null,
+    pace_unavailable_note:
+      typeof p.pace_unavailable_note === "string" && p.pace_unavailable_note.trim()
+        ? p.pace_unavailable_note.trim()
+        : null,
+    hr_add_note:
+      typeof p.hr_add_note === "string" && p.hr_add_note.trim() ? p.hr_add_note.trim() : null,
   };
+  return enrichRunPrescription(rx);
+}
+
+/** Read week-level pace zones from stored plan_json (for display-time prescription rebuild). */
+export function extractPaceGuidanceFromPlanJson(planJson: unknown): PaceGuidance | null {
+  if (!planJson || typeof planJson !== "object") return null;
+  const profile = (planJson as Record<string, unknown>).profile;
+  if (!profile || typeof profile !== "object") return null;
+  const pg = (profile as Record<string, unknown>).pace_guidance;
+  if (!pg || typeof pg !== "object") return null;
+  const z = (pg as Record<string, unknown>).zones;
+  if (!z || typeof z !== "object") return null;
+  const zones = z as Record<string, unknown>;
+  if (typeof zones.easy !== "string") return null;
+  return pg as PaceGuidance;
 }
 
 function parseSessionPriority(raw: unknown): Pick<
@@ -162,7 +217,10 @@ export function extractScheduleFromPlanJson(planJson: unknown): unknown[] | null
   return schedule;
 }
 
-export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetail[] {
+export function normalizeMemberSchedule(
+  schedule: unknown[],
+  options?: NormalizeScheduleOptions
+): MemberSessionDetail[] {
   return schedule.map((item) => {
     const row = item as Record<string, unknown>;
     const session = (row?.session as Record<string, unknown>) || {};
@@ -172,9 +230,26 @@ export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetai
     const tagArr = asArray(row?.tags);
     const category = mapCategory(title, tagArr);
     const priority = parseSessionPriority(row?.priority);
-    const runPrescription = parseRunPrescription(row?.run_prescription);
-    const showRunPrescription =
-      runPrescription && (category === "Run" || category === "Hybrid");
+    const progressionFamily =
+      typeof row?.progression_family === "string" ? row.progression_family : null;
+    const storedRx = parseRunPrescription(row?.run_prescription);
+    const runPrescription = resolveRunPrescriptionForSession({
+      stored: storedRx,
+      tags: tagArr,
+      title,
+      paceGuidance: options?.paceGuidance ?? null,
+      maxHeartRate: options?.maxHeartRate ?? null,
+      goalFocus: options?.goalFocus,
+      hyroxTrack: options?.hyroxTrack,
+    });
+    const runGuideRebuilt = Boolean(runPrescription && !storedRx);
+    const ergIntensityGuide = sessionHasErgThresholdComponent(tagArr, title, progressionFamily)
+      ? buildErgIntensityGuide({
+          maxHeartRate: options?.maxHeartRate ?? null,
+          hasEngineBenchmark: options?.hasEngineBenchmark ?? false,
+        })
+      : undefined;
+    const showRunPrescription = Boolean(runPrescription);
 
     // Parse double_session if present
     let doubleSession: DoubleSessionSummary | undefined;
@@ -218,7 +293,10 @@ export function normalizeMemberSchedule(schedule: unknown[]): MemberSessionDetai
           ),
       ...priority,
       ...(doubleSession ? { doubleSession } : {}),
-      ...(showRunPrescription ? { runPrescription } : {}),
+      ...(showRunPrescription && runPrescription
+        ? { runPrescription, ...(runGuideRebuilt ? { runGuideRebuilt: true } : {}) }
+        : {}),
+      ...(ergIntensityGuide ? { ergIntensityGuide } : {}),
     };
   });
 }

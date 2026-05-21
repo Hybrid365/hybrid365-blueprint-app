@@ -77,6 +77,8 @@ type Props = {
   checkInsByWeek: Record<number, boolean>;
   programmeRationale: ExtractedProgrammeRationale | null;
   programmeIntelligence: ExtractedProgrammeIntelligence | null;
+  maxHeartRate: number | null;
+  hasEngineBenchmark: boolean;
 };
 
 function blockIdForWeek(week: number): 1 | 2 | 3 {
@@ -119,6 +121,8 @@ export default function ProgrammeClient({
   checkInsByWeek,
   programmeRationale,
   programmeIntelligence,
+  maxHeartRate,
+  hasEngineBenchmark,
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(defaultSelectedWeek);
   const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
@@ -155,8 +159,11 @@ export default function ProgrammeClient({
 
   const sessions = useMemo(() => {
     if (!unlocked || !weekRow?.plan_json) return [];
-    return normalizeProgrammeScheduleForWeek(selectedWeek, weekRow.plan_json);
-  }, [unlocked, weekRow?.plan_json, selectedWeek]);
+    return normalizeProgrammeScheduleForWeek(selectedWeek, weekRow.plan_json, {
+      maxHeartRate,
+      hasEngineBenchmark,
+    });
+  }, [unlocked, weekRow?.plan_json, selectedWeek, maxHeartRate, hasEngineBenchmark]);
 
   const currentBlock = PROGRAMME_BLOCKS.find((b) => b.id === blockIdForWeek(selectedWeek))!;
 
@@ -530,6 +537,14 @@ export default function ProgrammeClient({
                                 </div>
                                 <p className="mt-1 font-semibold text-white">{session.title}</p>
                                 <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{session.intent}</p>
+                                {session.runPrescription?.pace_range ? (
+                                  <p className="mt-2 text-xs font-semibold text-yellow-300/95">
+                                    Target pace: {session.runPrescription.pace_range}
+                                    {session.runPrescription.treadmill_speed_range
+                                      ? ` · Treadmill ${session.runPrescription.treadmill_speed_range}`
+                                      : ""}
+                                  </p>
+                                ) : null}
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   <span
                                     className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${priorityStyle(session.priorityRank)}`}

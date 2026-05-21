@@ -46,17 +46,30 @@ type WeeklyCheckInRow = {
 
 type AthleteAssessmentRow = {
   completed_at: string | null;
+  max_heart_rate?: number | null;
 };
 
 export default async function ProgrammePage() {
   const { supabase, user } = await getDashboardSession("/dashboard/programme");
 
-  const { data: assess } = await supabase
-    .from("athlete_assessments")
-    .select("completed_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const assessmentCompleted = Boolean((assess as AthleteAssessmentRow | null)?.completed_at);
+  const [{ data: assess }, { data: benchTests }] = await Promise.all([
+    supabase
+      .from("athlete_assessments")
+      .select("completed_at, max_heart_rate")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase.from("benchmark_tests").select("test_type").eq("user_id", user.id),
+  ]);
+  const typedAssess = assess as AthleteAssessmentRow | null;
+  const assessmentCompleted = Boolean(typedAssess?.completed_at);
+  const maxHeartRate =
+    typedAssess?.max_heart_rate != null && Number.isFinite(typedAssess.max_heart_rate)
+      ? typedAssess.max_heart_rate
+      : null;
+  const hasEngineBenchmark = (benchTests ?? []).some((t) => {
+    const ty = String((t as { test_type?: string }).test_type ?? "").toLowerCase();
+    return ty.includes("ski") || ty.includes("row");
+  });
 
   const { data: instance } = await supabase
     .from("programme_instances")
@@ -156,6 +169,8 @@ export default async function ProgrammePage() {
       checkInsByWeek={checkInsByWeek}
       programmeRationale={programmeRationale}
       programmeIntelligence={programmeIntelligence}
+      maxHeartRate={maxHeartRate}
+      hasEngineBenchmark={hasEngineBenchmark}
     />
   );
 }

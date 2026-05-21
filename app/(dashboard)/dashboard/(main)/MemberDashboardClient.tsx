@@ -39,6 +39,7 @@ import {
   extractProgrammeIntelligence,
   extractProgrammeRationale,
   extractWeekRationale,
+  extractPaceGuidanceFromPlanJson,
   extractScheduleFromPlanJson,
   normalizeMemberSchedule,
   type MemberSessionDetail,
@@ -105,6 +106,8 @@ export type MemberDashboardClientProps = {
   habitLogs: DailyHabitLogRow[];
   benchmarkTests: BenchmarkTestLike[];
   challengeTracking: ChallengeTrackingSummary | null;
+  maxHeartRate: number | null;
+  hasEngineBenchmark: boolean;
 };
 
 type SessionLogRecord = {
@@ -327,6 +330,8 @@ export default function MemberDashboardClient({
   habitLogs,
   benchmarkTests,
   challengeTracking,
+  maxHeartRate,
+  hasEngineBenchmark,
 }: MemberDashboardClientProps) {
   const router = useRouter();
   const [generatingProgramme, setGeneratingProgramme] = useState(false);
@@ -467,9 +472,18 @@ export default function MemberDashboardClient({
     allWeeks.find((w) => w.week_number === effectiveCurrentWeek) ?? allWeeks[0];
 
   const scheduleRaw = extractScheduleFromPlanJson(selectedPayload?.plan_json);
+  const scheduleNormalizeOptions = useMemo(
+    () => ({
+      paceGuidance: extractPaceGuidanceFromPlanJson(selectedPayload?.plan_json),
+      maxHeartRate,
+      hasEngineBenchmark,
+    }),
+    [selectedPayload?.plan_json, maxHeartRate, hasEngineBenchmark]
+  );
+
   const sessions = useMemo(() => {
     if (!scheduleRaw) return [];
-    return normalizeMemberSchedule(scheduleRaw).map((session, index) => ({
+    return normalizeMemberSchedule(scheduleRaw, scheduleNormalizeOptions).map((session, index) => ({
       ...session,
       weekNumber: selectedWeek,
       scheduleIndex: index,
@@ -480,7 +494,7 @@ export default function MemberDashboardClient({
         title: session.title,
       }),
     }));
-  }, [scheduleRaw, selectedWeek]);
+  }, [scheduleRaw, selectedWeek, scheduleNormalizeOptions]);
   const hasPlanForSelectedWeek = Boolean(scheduleRaw && scheduleRaw.length > 0);
   const weekUnlocked = selectedWeekUnlocked;
 

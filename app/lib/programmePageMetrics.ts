@@ -2,11 +2,14 @@
  * Pure helpers for /dashboard/programme (12-week journey view).
  */
 
+import type { PaceGuidance } from "./paceGuidance";
 import {
   buildSessionKey,
+  extractPaceGuidanceFromPlanJson,
   extractPlanInsights,
   extractScheduleFromPlanJson,
   normalizeMemberSchedule,
+  type NormalizeScheduleOptions,
 } from "./memberDashboardSchedule";
 import { buildTwelveProgrammeWeeks, clampWeekNumber, type ProgrammeWeekLike } from "./progressMetrics";
 
@@ -103,10 +106,24 @@ export function extractWeekOverviewFromPlan(planJson: unknown): WeekOverviewFrom
 export type SessionWithKey = ReturnType<typeof normalizeProgrammeScheduleForWeek>[number];
 
 /** Only call for unlocked weeks with a schedule (caller gates). */
-export function normalizeProgrammeScheduleForWeek(weekNumber: number, planJson: unknown) {
+export function normalizeProgrammeScheduleForWeek(
+  weekNumber: number,
+  planJson: unknown,
+  displayOptions?: Omit<NormalizeScheduleOptions, "paceGuidance"> & {
+    paceGuidance?: PaceGuidance | null;
+  }
+) {
   const raw = extractScheduleFromPlanJson(planJson);
   if (!raw?.length) return [];
-  const normalized = normalizeMemberSchedule(raw);
+  const paceGuidance =
+    displayOptions?.paceGuidance ?? extractPaceGuidanceFromPlanJson(planJson);
+  const normalized = normalizeMemberSchedule(raw, {
+    paceGuidance,
+    maxHeartRate: displayOptions?.maxHeartRate ?? null,
+    goalFocus: displayOptions?.goalFocus,
+    hyroxTrack: displayOptions?.hyroxTrack,
+    hasEngineBenchmark: displayOptions?.hasEngineBenchmark,
+  });
   return normalized.map((session, index) => ({
     ...session,
     weekNumber,

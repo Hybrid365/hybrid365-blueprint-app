@@ -64,7 +64,8 @@ export function computePaceGuidanceFromFiveKSeconds(seconds: number): PaceGuidan
     units: "min/km",
     five_k_pace: formatPacePerKm(baseSecPerKm),
     zones: {
-      easy: zoneRangeSecPerKm(baseSecPerKm, 1.3, 1.5),
+      /** Conservative easy band — effort matters more than hitting the top of the range. */
+      easy: zoneRangeSecPerKm(baseSecPerKm, 1.32, 1.55),
       steady: zoneRangeSecPerKm(baseSecPerKm, 1.12, 1.22),
       tempo: zoneRangeSecPerKm(baseSecPerKm, 1.06, 1.12),
       threshold: zoneRangeSecPerKm(baseSecPerKm, 1.02, 1.08),
@@ -79,6 +80,36 @@ export function computePaceGuidanceFromFiveKSeconds(seconds: number): PaceGuidan
  * Short run-only coaching line for plan JSON (non-library, additive).
  * `sessionType` is SessionTemplate.type from the session library.
  */
+/** Parse "M:SS–M:SS/km" (or hyphen) into sec/km bounds (faster = lower seconds). */
+export function parsePaceRangeToSecBounds(
+  paceRange: string
+): { fastSec: number; slowSec: number } | null {
+  const m = paceRange.trim().match(/(\d+):(\d{2})\s*[–-]\s*(\d+):(\d{2})\s*\/\s*km/i);
+  if (!m) return null;
+  const a = Number(m[1]) * 60 + Number(m[2]);
+  const b = Number(m[3]) * 60 + Number(m[4]);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a < 60 || b < 60) return null;
+  return { fastSec: Math.min(a, b), slowSec: Math.max(a, b) };
+}
+
+/** Convert pace (sec/km) to treadmill speed (km/h), rounded to 0.1. */
+export function paceSecPerKmToTreadmillKmh(secPerKm: number): number {
+  if (!Number.isFinite(secPerKm) || secPerKm <= 0) return 0;
+  return Math.round((3600 / secPerKm) * 10) / 10;
+}
+
+/** Display treadmill range from a pace range string, e.g. "12.0–12.6 km/h". */
+export function treadmillSpeedRangeFromPaceRange(paceRange: string | null | undefined): string | null {
+  if (!paceRange?.trim()) return null;
+  const bounds = parsePaceRangeToSecBounds(paceRange);
+  if (!bounds) return null;
+  const fastKmh = paceSecPerKmToTreadmillKmh(bounds.fastSec);
+  const slowKmh = paceSecPerKmToTreadmillKmh(bounds.slowSec);
+  const low = Math.min(fastKmh, slowKmh);
+  const high = Math.max(fastKmh, slowKmh);
+  return `${low.toFixed(1)}–${high.toFixed(1)} km/h`;
+}
+
 export function runSessionPaceNote(sessionType: string, g: PaceGuidance): string | null {
   switch (sessionType) {
     case "aerobic_run":
