@@ -84,11 +84,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     ? mergeProfileIntoCoachAthlete(stub, body.effective_profile)
     : stub;
 
-  const coachStatus =
-    body.coach_status ??
-    draftDbToCoachStatus(
-      draftRow.status === "draft_generated" ? "draft_generated" : draftRow.status
-    );
+  const coachStatus = body.coach_status;
 
   try {
     const saved = await updateProgrammeDraft(supabase, {

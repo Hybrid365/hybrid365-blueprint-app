@@ -306,7 +306,7 @@ export default function HyroxAthleteCoachClient({ athleteId }: { athleteId: stri
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           effective_profile: effectiveProfile,
-          draft: d,
+          generate_block: true,
           coach_note: notes.weeklyCoachNote,
           athlete_facing_note: notes.athleteFacingNote,
         }),

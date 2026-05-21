@@ -163,6 +163,56 @@ export async function fetchLatestProgrammeDraft(
   return (data as HyroxProgrammeDraftRow | null) ?? null;
 }
 
+export async function fetchBlockProgrammeDrafts(
+  supabase: SupabaseClient,
+  athleteId: string,
+  blockNumber: number
+): Promise<HyroxProgrammeDraftRow[]> {
+  const weekNumbers = [1, 2, 3, 4].map((cycle) =>
+    globalWeekForBlock(blockNumber as 1 | 2 | 3, cycle as 1 | 2 | 3 | 4)
+  );
+  const { data, error } = await supabase
+    .from("hyrox_programme_drafts")
+    .select(DRAFT_SELECT)
+    .eq("athlete_id", athleteId)
+    .eq("block_number", blockNumber)
+    .in("week_number", weekNumbers)
+    .neq("status", "archived")
+    .order("week_number", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data as HyroxProgrammeDraftRow[]) ?? [];
+}
+
+export async function approveProgrammeBlockDrafts(
+  supabase: SupabaseClient,
+  params: {
+    athleteRow: HyroxAthleteRow;
+    blockNumber: number;
+    changedBy: string | null;
+  }
+): Promise<{ approved: number; draftIds: string[] }> {
+  const rows = await fetchBlockProgrammeDrafts(supabase, params.athleteRow.id, params.blockNumber);
+  const draftIds: string[] = [];
+  let approved = 0;
+
+  for (const row of rows) {
+    if (row.status === "published" || row.status === "approved") {
+      if (row.status === "approved") draftIds.push(row.id);
+      continue;
+    }
+    const saved = await approveProgrammeDraft(supabase, {
+      draftId: row.id,
+      athleteRow: params.athleteRow,
+      changedBy: params.changedBy,
+    });
+    draftIds.push(saved.id);
+    approved += 1;
+  }
+
+  return { approved, draftIds };
+}
+
 export async function fetchProgrammeDraftById(
   supabase: SupabaseClient,
   draftId: string
@@ -278,39 +328,49 @@ export async function updateProgrammeDraft(
     draft: CoachDraftWeek;
     coachNote: string;
     athleteFacingNote: string;
-    coachStatus: CoachProgrammeStatus;
+    coachStatus?: CoachProgrammeStatus;
     changedBy: string | null;
   }
 ): Promise<HyroxProgrammeDraftRow> {
   const summary = computeWeeklySummary(params.draft, params.athlete);
   const validation = validateCoachDraft(params.draft, params.athlete);
-  const dbStatus = coachStatusToDraftDb(params.coachStatus);
+  const dbStatus = params.coachStatus ? coachStatusToDraftDb(params.coachStatus) : null;
+
+  const updatePayload: Record<string, unknown> = {
+    draft_data: params.draft as unknown as HyroxJson,
+    weekly_summary: summary as unknown as HyroxJson,
+    validation_warnings: {
+      warnings: validation.warnings,
+      positives: validation.positives,
+    } as unknown as HyroxJson,
+    coach_note: params.coachNote || null,
+    athlete_facing_note: params.athleteFacingNote || null,
+    block_number: params.draft.block,
+    week_number: params.draft.week,
+  };
+
+  if (dbStatus) {
+    updatePayload.status = dbStatus === "draft_generated" ? "edited" : dbStatus;
+  }
 
   const { data, error } = await supabase
     .from("hyrox_programme_drafts")
-    .update({
-      draft_data: params.draft as unknown as HyroxJson,
-      weekly_summary: summary as unknown as HyroxJson,
-      validation_warnings: {
-        warnings: validation.warnings,
-        positives: validation.positives,
-      } as unknown as HyroxJson,
-      coach_note: params.coachNote || null,
-      athlete_facing_note: params.athleteFacingNote || null,
-      status: dbStatus === "draft_generated" ? "edited" : dbStatus,
-      block_number: params.draft.block,
-      week_number: params.draft.week,
-    })
+    .update(updatePayload)
     .eq("id", params.draftId)
     .select(DRAFT_SELECT)
     .single();
 
   if (error) throw new Error(error.message);
 
-  const programmeStatus =
-    dbStatus === "draft_generated" ? "edited" : dbStatus === "coach_reviewing" ? "edited" : dbStatus;
+  const programmeStatus = dbStatus
+    ? dbStatus === "draft_generated"
+      ? "edited"
+      : dbStatus === "coach_reviewing"
+        ? "edited"
+        : dbStatus
+    : null;
 
-  if (params.athleteRow.programme_status !== programmeStatus) {
+  if (programmeStatus && params.athleteRow.programme_status !== programmeStatus) {
     await supabase
       .from("hyrox_athletes")
       .update({ programme_status: programmeStatus })

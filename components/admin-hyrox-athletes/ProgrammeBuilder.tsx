@@ -3,16 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildAthleteWeekPreview } from "@/app/lib/buildAthleteWeekPreview";
 import { generateWeeklyRationale } from "@/app/lib/generateWeeklyRationale";
+import { BLOCK_WEEK_FOCUS_LABELS } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import type { CoachLibraryEntry } from "@/app/lib/hyroxCoachSessionLibrary";
 import {
   applyEditConfigToSession,
   computeWeeklySummary,
   duplicateAsOptional,
-  generateCoachDraftWeek,
   sessionFromLibrary,
   validateCoachDraft,
-  WEEKDAYS,
   type CoachDraftSession,
   type CoachDraftWeek,
   type CoachProgrammeStatus,
@@ -29,6 +28,11 @@ import { AthleteWeekPreviewModal } from "@/components/admin-hyrox-athletes/Athle
 import { ProgrammeStatusBadge } from "@/components/admin-hyrox-athletes/StatusBadge";
 import { WeeklyRationalePanel } from "@/components/admin-hyrox-athletes/WeeklyRationalePanel";
 import type { LiveProgrammePersistenceProps } from "@/components/admin-hyrox-athletes/CoachAthleteDashboard";
+import { CoachBlockWeekTabs } from "@/components/admin-hyrox-athletes/CoachBlockWeekTabs";
+import { CoachGenerationScopeControl } from "@/components/admin-hyrox-athletes/CoachGenerationScopeControl";
+import { CoachPublishPanel } from "@/components/admin-hyrox-athletes/CoachPublishPanel";
+import { CoachWeekSessionPreviewList } from "@/components/admin-hyrox-athletes/CoachWeekSessionPreviewList";
+import { useCoachBlockProgramme } from "@/components/admin-hyrox-athletes/useCoachBlockProgramme";
 
 type MoveState = {
   dayIndex: number;
@@ -60,18 +64,46 @@ export function ProgrammeBuilder({
     athleteFacingNote: string;
   };
   onCoachNotesChange: (patch: Partial<typeof coachNotes>) => void;
-  /** When set with a bumped `draftInjectionKey`, replaces the local week from Profile Review generation. */
   injectedDraft?: CoachDraftWeek | null;
   draftInjectionKey?: number;
   assessmentMappingBanner?: { bullets: string[] } | null;
   onClearAssessmentMappingBanner?: () => void;
   livePersistence?: LiveProgrammePersistenceProps;
 }) {
-  const [draft, setDraft] = useState<CoachDraftWeek>(() => generateCoachDraftWeek(athlete));
-  const [status, setStatus] = useState(programmeStatus);
-  const [toast, setToast] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const isLive = Boolean(livePersistence);
+  const block = useCoachBlockProgramme({
+    athlete,
+    livePersistence,
+    coachNotes: {
+      weeklyCoachNote: coachNotes.weeklyCoachNote,
+      athleteFacingNote: coachNotes.athleteFacingNote,
+    },
+    initialDraft: injectedDraft,
+    programmeStatus,
+    onStatusChange,
+  });
+
+  const {
+    generationScope,
+    setGenerationScope,
+    selectedCycle,
+    selectCycle,
+    effectiveBlockWeeks,
+    draft,
+    setDraft,
+    status,
+    saving,
+    loadingBlock,
+    blockLoadError,
+    toast,
+    generate,
+    approveSelectedWeek,
+    approveFullBlock,
+    publish,
+    publishReadiness,
+    persistDraft,
+    isLive,
+  } = block;
+
   const [addTarget, setAddTarget] = useState<{ day: WeekdayName; slot: SandboxTimeOfDay } | null>({
     day: "Mon",
     slot: "Main",
@@ -92,17 +124,12 @@ export function ProgrammeBuilder({
   const summary = useMemo(() => computeWeeklySummary(draft, athlete), [draft, athlete]);
   const validation = useMemo(() => validateCoachDraft(draft, athlete), [draft, athlete]);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3500);
-  };
-
   const applyAutoRationale = useCallback(() => {
     const text = generateWeeklyRationale(athlete, draft);
     onCoachNotesChange({ weekRationale: text });
     setRationaleAutoFilled(true);
-    showToast("Weekly note auto-filled from programme");
-  }, [athlete, draft, onCoachNotesChange]);
+    block.showToast("Weekly note auto-filled from programme");
+  }, [athlete, block, draft, onCoachNotesChange]);
 
   useEffect(() => {
     if (rationaleTouched.current || coachNotes.weekRationale.trim()) return;
@@ -110,73 +137,6 @@ export function ProgrammeBuilder({
     setRationaleAutoFilled(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial auto-fill per draft generation
   }, [athlete.id, draft.block, draft.week, draft.generatedAt]);
-
-  useEffect(() => {
-    setStatus(programmeStatus);
-  }, [programmeStatus]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development" && isLive) {
-      console.log("Live programme draft id", livePersistence?.draftId ?? null);
-    }
-  }, [isLive, livePersistence?.draftId]);
-
-  useEffect(() => {
-    if (injectedDraft && draftInjectionKey > 0) {
-      setDraft(injectedDraft);
-      rationaleTouched.current = false;
-      if (!isLive) {
-        setStatus("generated_draft");
-        onStatusChange("generated_draft");
-      }
-    }
-  }, [injectedDraft, draftInjectionKey, isLive, onStatusChange]);
-
-  const persistDraft = useCallback(
-    async (nextStatus: CoachProgrammeStatus) => {
-      if (!livePersistence?.draftId) {
-        showToast("No live draft found. Generate programme draft first.");
-        return false;
-      }
-      setSaving(true);
-      try {
-        const res = await fetch(`/api/hyrox/programme-drafts/${livePersistence.draftId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            draft,
-            effective_profile: livePersistence.effectiveProfile,
-            coach_note: coachNotes.weeklyCoachNote,
-            athlete_facing_note: coachNotes.athleteFacingNote,
-            coach_status: nextStatus,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          const detail =
-            process.env.NODE_ENV === "development" && data.detail
-              ? `${data.error}: ${data.detail}`
-              : (data.error ?? "Could not save draft.");
-          showToast(detail);
-          return false;
-        }
-        if (data.draft?.id) {
-          livePersistence.onDraftIdChange(data.draft.id);
-        }
-        if (data.coachStatus) {
-          setStatus(data.coachStatus);
-          onStatusChange(data.coachStatus);
-        }
-        return true;
-      } catch {
-        showToast("Network error saving draft.");
-        return false;
-      } finally {
-        setSaving(false);
-      }
-    },
-    [coachNotes.athleteFacingNote, coachNotes.weeklyCoachNote, draft, livePersistence, onStatusChange]
-  );
 
   const athletePreview = useMemo(
     () => buildAthleteWeekPreview(athlete, draft, coachNotes),
@@ -191,8 +151,10 @@ export function ProgrammeBuilder({
           i === dayIndex ? { ...d, sessions: updater(d.sessions) } : d
         ),
       }));
+      onStatusChange("edited_draft");
+      block.setStatus("edited_draft");
     },
-    []
+    [block, onStatusChange, setDraft]
   );
 
   const handleAdd = (entry: CoachLibraryEntry) => {
@@ -202,9 +164,7 @@ export function ProgrammeBuilder({
     const dayIndex = draft.days.findIndex((d) => d.day === addTarget.day);
     if (dayIndex < 0) return;
     updateDay(dayIndex, (s) => [...s, session]);
-    showToast(`Added ${entry.name} to ${addTarget.day} ${addTarget.slot}`);
-    setStatus("edited_draft");
-    onStatusChange("edited_draft");
+    block.showToast(`Added ${entry.name} to ${addTarget.day} ${addTarget.slot}`);
   };
 
   const handleLibraryAddForReplace = (entry: CoachLibraryEntry) => {
@@ -215,14 +175,14 @@ export function ProgrammeBuilder({
       sessions.map((s, i) => (i === replaceTarget.sessionIndex ? session : s))
     );
     setReplaceTarget(null);
-    showToast(`Replaced with ${entry.name}`);
-    setStatus("edited_draft");
-    onStatusChange("edited_draft");
+    block.showToast(`Replaced with ${entry.name}`);
   };
 
   const editSession = editTarget
     ? draft.days[editTarget.dayIndex]?.sessions[editTarget.sessionIndex]
     : null;
+
+  const weekRole = BLOCK_WEEK_FOCUS_LABELS[selectedCycle];
 
   return (
     <div className="space-y-4">
@@ -232,8 +192,7 @@ export function ProgrammeBuilder({
           <p className="mt-1 text-xs text-zinc-400">
             Status: Needs coach review — athlete dashboard unchanged until you publish.
           </p>
-          <p className="mt-2 text-[11px] font-semibold uppercase text-zinc-500">Generated from</p>
-          <ul className="mt-1 list-inside list-disc text-xs text-zinc-300">
+          <ul className="mt-2 list-inside list-disc text-xs text-zinc-300">
             {assessmentMappingBanner.bullets.map((b) => (
               <li key={b}>{b}</li>
             ))}
@@ -245,39 +204,58 @@ export function ProgrammeBuilder({
         <div className="rounded-2xl border border-emerald-500/25 bg-emerald-400/5 px-4 py-3 text-sm">
           <p className="font-bold text-emerald-200">Live draft from Supabase</p>
           <p className="mt-1 text-xs text-zinc-400">
-            Needs coach review — athlete cannot see this until you publish an approved draft.
+            Publish uses your generation scope. Default publishes the full 4-week block to the
+            athlete.
           </p>
-          {livePersistence?.draftId ? (
-            <p className="mt-1 font-mono text-[10px] text-zinc-600">Draft id: {livePersistence.draftId}</p>
-          ) : (
-            <p className="mt-1 text-xs text-amber-300/90">No saved draft yet — generate from Profile Review.</p>
-          )}
         </div>
       ) : null}
 
+      <CoachGenerationScopeControl value={generationScope} onChange={setGenerationScope} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-zinc-400">
-          Block {draft.block} · Week {draft.week} · generated{" "}
-          {new Date(draft.generatedAt).toLocaleString()}
-        </p>
+        <div>
+          <p className="text-sm text-zinc-400">
+            Block {draft.block} · Week {draft.week} (W{selectedCycle} · {weekRole})
+          </p>
+          <p className="text-[11px] text-zinc-600">
+            Generated {new Date(draft.generatedAt).toLocaleString()}
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <ProgrammeStatusBadge status={status} />
           <button
             type="button"
-            onClick={() => {
-              setDraft(generateCoachDraftWeek(athlete));
-              rationaleTouched.current = false;
-              onClearAssessmentMappingBanner?.();
-              showToast("Regenerated from methodology");
-              setStatus("generated_draft");
-              onStatusChange("generated_draft");
-            }}
-            className="rounded-full border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300"
+            disabled={saving}
+            onClick={() => void generate()}
+            className="rounded-full border border-yellow-500/40 bg-yellow-400/10 px-3 py-1.5 text-xs font-bold text-yellow-200 disabled:opacity-50"
           >
-            Regenerate draft
+            {saving
+              ? "Generating…"
+              : generationScope === "block_4"
+                ? "Generate 4-week block"
+                : "Generate selected week"}
           </button>
         </div>
       </div>
+
+      <CoachBlockWeekTabs
+        weeks={effectiveBlockWeeks}
+        selectedCycle={selectedCycle}
+        onSelect={selectCycle}
+        loading={loadingBlock}
+      />
+
+      {blockLoadError ? (
+        <p className="rounded-lg border border-red-500/30 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+          {blockLoadError}
+        </p>
+      ) : null}
+
+      <CoachWeekSessionPreviewList
+        draft={draft}
+        weekLabel={`W${selectedCycle}`}
+        role={weekRole}
+      />
 
       {toast ? (
         <p className="rounded-lg border border-yellow-500/30 bg-yellow-400/10 px-3 py-2 text-sm text-yellow-200">
@@ -307,15 +285,13 @@ export function ProgrammeBuilder({
           onReplace={(di, si) => setReplaceTarget({ dayIndex: di, sessionIndex: si })}
           onRemove={(di, si) => {
             updateDay(di, (s) => s.filter((_, i) => i !== si));
-            showToast("Session removed");
-            setStatus("edited_draft");
-            onStatusChange("edited_draft");
+            block.showToast("Session removed");
           }}
           onDuplicate={(di, si) => {
             const src = draft.days[di]?.sessions[si];
             if (!src) return;
             updateDay(di, (s) => [...s, duplicateAsOptional(src)]);
-            showToast("Duplicated as optional add-on");
+            block.showToast("Duplicated as optional add-on");
           }}
           onViewDetail={(di, si) => {
             updateDay(di, (s) =>
@@ -340,112 +316,21 @@ export function ProgrammeBuilder({
             onRegenerate={applyAutoRationale}
             autoFilled={rationaleAutoFilled}
           />
-          <PublishPanel
+          <CoachPublishPanel
             status={status}
             isLive={isLive}
             saving={saving}
-            approveDisabled={isLive && !livePersistence?.draftId}
-            publishDisabled={isLive && status !== "approved"}
+            generationScope={generationScope}
+            publishReadiness={publishReadiness}
+            approveDisabled={isLive && !block.activeDraftId}
             onPreview={() => setPreviewOpen(true)}
             onSaveDraft={async () => {
-              if (isLive) {
-                const ok = await persistDraft("edited_draft");
-                if (!ok) return;
-                setStatus("edited_draft");
-                onStatusChange("edited_draft");
-                showToast("Draft saved to Supabase");
-                void livePersistence?.onReload();
-                return;
-              }
-              setStatus("coach_reviewing");
-              onStatusChange("coach_reviewing");
-              showToast("Draft saved (local)");
+              const ok = await persistDraft({ coachStatus: "edited_draft" });
+              if (ok) block.showToast(isLive ? "Draft saved to Supabase" : "Draft saved (local)");
             }}
-            onApprove={async () => {
-              if (isLive) {
-                if (!livePersistence?.draftId) {
-                  showToast("No live draft found. Generate programme draft first.");
-                  return;
-                }
-                const ok = await persistDraft("edited_draft");
-                if (!ok) return;
-                setSaving(true);
-                try {
-                  const draftId = livePersistence.draftId;
-                  const res = await fetch(`/api/hyrox/programme-drafts/${draftId}/approve`, {
-                    method: "POST",
-                  });
-                  const data = await res.json();
-                  if (!res.ok || !data.success) {
-                    const detail =
-                      process.env.NODE_ENV === "development" && data.detail
-                        ? `${data.error}: ${data.detail}`
-                        : (data.error ?? "Approve failed.");
-                    showToast(detail);
-                    return;
-                  }
-                  if (data.draft?.id) {
-                    livePersistence.onDraftIdChange(data.draft.id);
-                  }
-                  const next = (data.coachStatus as CoachProgrammeStatus) ?? "approved";
-                  setStatus(next);
-                  onStatusChange(next);
-                  showToast("Week approved — ready to publish");
-                } finally {
-                  setSaving(false);
-                }
-                return;
-              }
-              setStatus("approved");
-              onStatusChange("approved");
-              showToast("Week approved");
-            }}
-            onPublish={async () => {
-              if (isLive) {
-                if (!livePersistence?.draftId) {
-                  showToast("No draft to publish.");
-                  return;
-                }
-                if (status !== "approved") {
-                  showToast("Approve the week before publishing.");
-                  return;
-                }
-                setSaving(true);
-                try {
-                  const res = await fetch(
-                    `/api/hyrox/programme-drafts/${livePersistence.draftId}/publish`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ weekly_focus: coachNotes.keyFocus }),
-                    }
-                  );
-                  const data = await res.json();
-                  if (!res.ok || !data.success) {
-                    const detail =
-                      process.env.NODE_ENV === "development" && data.detail
-                        ? `${data.error}: ${data.detail}`
-                        : (data.error ?? "Publish failed.");
-                    showToast(detail);
-                    return;
-                  }
-                  setStatus("published");
-                  onStatusChange("published");
-                  showToast(
-                    data.sessionCount != null
-                      ? `Published ${data.sessionCount} session(s) to athlete dashboard.`
-                      : "Programme published to athlete dashboard."
-                  );
-                  livePersistence.onPublished();
-                } finally {
-                  setSaving(false);
-                }
-                return;
-              }
-              setStatus("published");
-              onStatusChange("published");
-              showToast("Published to athlete dashboard (mock)");
-            }}
+            onApproveWeek={() => void approveSelectedWeek()}
+            onApproveBlock={() => void approveFullBlock()}
+            onPublish={() => void publish()}
           />
           <CoachNotesPanel notes={coachNotes} onChange={onCoachNotesChange} />
         </aside>
@@ -465,9 +350,7 @@ export function ProgrammeBuilder({
             })
           );
           setEditTarget(null);
-          setStatus("edited_draft");
-          onStatusChange("edited_draft");
-          showToast("Session updated");
+          block.showToast("Session updated");
         }}
       />
 
@@ -501,10 +384,10 @@ export function ProgrammeBuilder({
                 return d;
               }),
             }));
-            setMoveState(null);
-            showToast(`Moved to ${targetDay} ${targetSlot}`);
-            setStatus("edited_draft");
             onStatusChange("edited_draft");
+            block.setStatus("edited_draft");
+            setMoveState(null);
+            block.showToast(`Moved to ${targetDay} ${targetSlot}`);
           }}
         />
       ) : null}
@@ -517,7 +400,7 @@ export function ProgrammeBuilder({
 
       {replaceTarget ? (
         <p className="text-center text-xs text-sky-300">
-          Replace mode — pick a session from the library (left panel), then selection applies.
+          Replace mode — pick a session from the library (left panel).
           <button
             type="button"
             className="ml-2 underline"
@@ -528,78 +411,6 @@ export function ProgrammeBuilder({
         </p>
       ) : null}
     </div>
-  );
-}
-
-function PublishPanel({
-  status,
-  isLive,
-  saving,
-  approveDisabled,
-  publishDisabled,
-  onPreview,
-  onSaveDraft,
-  onApprove,
-  onPublish,
-}: {
-  status: CoachProgrammeStatus;
-  isLive?: boolean;
-  saving?: boolean;
-  approveDisabled?: boolean;
-  publishDisabled?: boolean;
-  onPreview: () => void;
-  onSaveDraft: () => void | Promise<void>;
-  onApprove: () => void | Promise<void>;
-  onPublish: () => void | Promise<void>;
-}) {
-  return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
-      <h2 className="text-sm font-bold text-white">Publish</h2>
-      <p className="mt-1 text-[11px] text-zinc-500">
-        {isLive ? "Saves to Supabase — athlete sees only published weeks." : "Local mock state only"}
-      </p>
-      <div className="mt-3 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={onPreview}
-          className="rounded-full border border-yellow-500/40 bg-yellow-400/10 py-2 text-xs font-bold text-yellow-200"
-        >
-          Preview as athlete
-        </button>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => void onSaveDraft()}
-          className="rounded-full border border-zinc-600 py-2 text-xs font-semibold text-zinc-200 disabled:opacity-50"
-        >
-          {saving ? "Saving…" : "Save draft"}
-        </button>
-        <button
-          type="button"
-          disabled={saving || approveDisabled}
-          onClick={() => void onApprove()}
-          className="rounded-full border border-emerald-500/40 bg-emerald-400/10 py-2 text-xs font-bold text-emerald-200 disabled:opacity-50"
-          title={approveDisabled ? "Generate programme draft first" : undefined}
-        >
-          Approve week
-        </button>
-        <button
-          type="button"
-          disabled={saving || publishDisabled}
-          onClick={() => void onPublish()}
-          className="rounded-full bg-yellow-400 py-2 text-xs font-black text-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
-          title={publishDisabled ? "Approve the week before publishing" : undefined}
-        >
-          Publish to athlete dashboard
-        </button>
-      </div>
-      <p className="mt-2 text-[10px] text-zinc-600">Status: {status.replace(/_/g, " ")}</p>
-      {approveDisabled ? (
-        <p className="mt-1 text-[10px] text-amber-400/80">Generate programme draft first.</p>
-      ) : publishDisabled ? (
-        <p className="mt-1 text-[10px] text-amber-400/80">Publish unlocks after approval.</p>
-      ) : null}
-    </section>
   );
 }
 
@@ -677,7 +488,7 @@ function MoveModal({
               onChange={(e) => setDay(e.target.value as WeekdayName)}
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-2 text-sm text-white"
             >
-              {WEEKDAYS.map((d) => (
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
                 <option key={d} value={d}>
                   {d}
                 </option>
