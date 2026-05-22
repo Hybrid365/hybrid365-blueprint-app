@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isHyroxAthleteMockPreviewAllowed, readHyroxMockPreviewEnabled } from "@/app/lib/hyroxAthletePortalMock";
 import { buildAthletePortalDebugSnapshot } from "@/app/lib/hyroxAthletePortalResolve";
-import { createApiRouteSupabase, hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
+import {
+  createApiRouteSupabase,
+  hyroxAthleteApiJson,
+} from "@/app/lib/supabase/apiRoute";
 
 /** Development-only portal resolution diagnostics. */
 export async function GET(request: NextRequest) {
@@ -9,27 +12,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Not available" }, { status: 404 });
   }
 
-  const requestCookies = request.cookies.getAll();
-  const hasAuthCookie = hasSupabaseAuthCookieNames(requestCookies);
-  const { supabase, withAuthCookies } = createApiRouteSupabase(request);
+  const { supabase, withAuthCookies, authDebug } =
+    await createApiRouteSupabase(request);
+
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
+  authDebug.getUserSucceeded = Boolean(user);
+  authDebug.userError = userError?.message ?? null;
+
   if (!user) {
-    return withAuthCookies(
-      NextResponse.json(
-        {
-          error: "Not signed in",
-          reason: "NO_AUTH_SESSION",
-          authEmail: null,
-          hasAuthCookie,
-          layoutAuthEmail: null,
-          apiAuthEmail: null,
-        },
-        { status: 401 }
-      )
-    );
+    return hyroxAthleteApiJson(withAuthCookies, {
+      error: "Not signed in",
+      reason: "NO_AUTH_SESSION",
+      authEmail: null,
+      apiAuthEmail: null,
+      authDebug,
+    }, 401);
   }
 
   const mockPreviewEnabled =
@@ -40,12 +41,10 @@ export async function GET(request: NextRequest) {
     mockPreviewEnabled,
   });
 
-  return withAuthCookies(
-    NextResponse.json({
-      success: true,
-      ...snapshot,
-      hasAuthCookie,
-      apiAuthEmail: user.email?.trim().toLowerCase() ?? "",
-    })
-  );
+  return hyroxAthleteApiJson(withAuthCookies, {
+    success: true,
+    ...snapshot,
+    apiAuthEmail: user.email?.trim().toLowerCase() ?? "",
+    authDebug,
+  });
 }

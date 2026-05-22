@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
+import { hyroxAthleteApiJson } from "@/app/lib/supabase/apiRoute";
 import {
   fetchLatestHyroxAssessment,
   saveHyroxAssessmentSubmission,
@@ -30,16 +31,14 @@ export async function GET(request: NextRequest) {
   const { assessment, error } = await fetchLatestHyroxAssessment(athlete.id);
 
   if (error) {
-    return withAuthCookies(NextResponse.json({ error }, { status: 500 }));
+    return hyroxAthleteApiJson(withAuthCookies, { error }, 500);
   }
 
-  return withAuthCookies(
-    NextResponse.json({
-      submitted: Boolean(assessment),
-      assessment: assessment ?? null,
-      athleteStatus: athlete.status,
-    })
-  );
+  return hyroxAthleteApiJson(withAuthCookies, {
+    submitted: Boolean(assessment),
+    assessment: assessment ?? null,
+    athleteStatus: athlete.status,
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -83,13 +82,11 @@ export async function POST(request: NextRequest) {
     console.error("Hyrox assessment status sync failed", message);
   }
 
-  return withAuthCookies(
-    NextResponse.json({
-      success: true,
-      id: inserted.id,
-      assessment: inserted as HyroxAssessmentRow,
-      nextStatus,
-      message: "Assessment submitted. Next step: complete your baseline testing.",
-    })
-  );
+  return hyroxAthleteApiJson(withAuthCookies, {
+    success: true,
+    id: inserted.id,
+    assessment: inserted as HyroxAssessmentRow,
+    nextStatus,
+    message: "Assessment submitted. Next step: complete your baseline testing.",
+  });
 }

@@ -12,6 +12,8 @@ type Props = {
   programmePublishedLive?: boolean;
   programmeVisibility?: AthleteProgrammeVisibility;
   portalAthleteName?: string | null;
+  /** Server-loaded progress (same session as layout) — avoids client-only API auth mismatch. */
+  initialProgress?: AthleteOnboardingProgress | null;
 };
 
 const DEFAULT_PROGRESS: AthleteOnboardingProgress = {
@@ -34,15 +36,19 @@ export default function HyroxTeamDashboardView({
   programmePublishedLive = false,
   programmeVisibility,
   portalAthleteName,
+  initialProgress = null,
 }: Props) {
-  const [pipeline, setPipeline] = useState<AthleteOnboardingProgress>({
-    ...DEFAULT_PROGRESS,
-    programmeVisibility: programmeVisibility ?? "coach_reviewing",
-  });
+  const [pipeline, setPipeline] = useState<AthleteOnboardingProgress>(
+    initialProgress ?? {
+      ...DEFAULT_PROGRESS,
+      programmeVisibility: programmeVisibility ?? "coach_reviewing",
+    }
+  );
   const [apiLoadError, setApiLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (programmePublishedMock || programmePublishedLive) return;
+    if (initialProgress) return;
     (async () => {
       setApiLoadError(null);
       try {
@@ -92,7 +98,7 @@ export default function HyroxTeamDashboardView({
         setApiLoadError("Network error loading athlete status.");
       }
     })();
-  }, [programmePublishedMock, programmePublishedLive, programmeVisibility]);
+  }, [programmePublishedMock, programmePublishedLive, programmeVisibility, initialProgress]);
 
   if (programmePublishedMock || programmePublishedLive) {
     return <HyroxTeamDashboardActive useLiveProgramme={programmePublishedLive} />;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { AthletePortalDebugSnapshot } from "@/app/lib/hyroxAthletePortalResolve";
+import type { ApiRouteAuthDebug } from "@/app/lib/supabase/apiRoute";
 import { readHyroxMockPreviewEnabled } from "@/app/lib/hyroxAthletePortalMock";
 import { useAthletePortal } from "./athletePortalContext";
 
@@ -20,7 +21,10 @@ const HYROX_ATHLETE_FETCH: RequestInit = { credentials: "include" };
 export function HyroxAthletePortalDebugPanel() {
   const { layoutAuth, portalAthlete } = useAthletePortal();
   const [snapshot, setSnapshot] = useState<
-    (AthletePortalDebugSnapshot & { apiAuthEmail?: string; hasAuthCookie?: boolean }) | null
+    (AthletePortalDebugSnapshot & {
+      apiAuthEmail?: string;
+      authDebug?: ApiRouteAuthDebug;
+    }) | null
   >(null);
   const [apiChecks, setApiChecks] = useState<ApiCheck[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -36,7 +40,7 @@ export function HyroxAthletePortalDebugPanel() {
           error?: string;
           reason?: string;
           apiAuthEmail?: string;
-          hasAuthCookie?: boolean;
+          authDebug?: ApiRouteAuthDebug;
         };
         if (!res.ok) {
           setLoadError(
@@ -112,11 +116,41 @@ export function HyroxAthletePortalDebugPanel() {
           value={layoutAuth.hasSupabaseAuthCookie ? "yes (request)" : "no"}
         />
         <Row
-          label="API sees auth cookie"
+          label="API getUser() succeeded"
           value={
-            snapshot?.hasAuthCookie === undefined
+            snapshot?.authDebug?.getUserSucceeded === undefined
               ? "—"
-              : snapshot.hasAuthCookie
+              : snapshot.authDebug.getUserSucceeded
+                ? "yes"
+                : "no"
+          }
+        />
+        <Row
+          label="API auth cookie (header store)"
+          value={
+            snapshot?.authDebug?.hasAuthCookieInHeaderStore === undefined
+              ? "—"
+              : snapshot.authDebug.hasAuthCookieInHeaderStore
+                ? "yes"
+                : "no"
+          }
+        />
+        <Row
+          label="API auth cookie (raw request)"
+          value={
+            snapshot?.authDebug?.hasAuthCookieOnRequest === undefined
+              ? "—"
+              : snapshot.authDebug.hasAuthCookieOnRequest
+                ? "yes"
+                : "no"
+          }
+        />
+        <Row
+          label="Set-Cookie refresh on API"
+          value={
+            snapshot?.authDebug?.cookiesRefreshed === undefined
+              ? "—"
+              : snapshot.authDebug.cookiesRefreshed
                 ? "yes"
                 : "no"
           }
