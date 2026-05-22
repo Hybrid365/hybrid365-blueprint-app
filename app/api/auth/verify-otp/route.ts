@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     body = (await request.json()) as typeof body;
   } catch {
     console.log("[auth otp] verify failed", { reason: "invalid_json" });
-    return NextResponse.json({ success: false, error: "Invalid request." }, { status: 400 });
+    return NextResponse.json({ ok: false, success: false, error: "Invalid request." }, { status: 400 });
   }
 
   const email = body.email?.trim().toLowerCase() ?? "";
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     console.log("[auth otp] verify failed", { reason: "invalid_email" });
     return NextResponse.json(
-      { success: false, error: "Enter a valid email address." },
+      { ok: false, success: false, error: "Enter a valid email address." },
       { status: 400 }
     );
   }
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   if (token.length < 6) {
     console.log("[auth otp] verify failed", { reason: "invalid_token" });
     return NextResponse.json(
-      { success: false, error: "Enter the 6-digit code from your email." },
+      { ok: false, success: false, error: "Enter the 6-digit code from your email." },
       { status: 400 }
     );
   }
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       error.message?.includes("expired") || error.message?.includes("invalid")
         ? "That code expired or was already used. Request a new code and use the latest one."
         : error.message || "Check the code and try again.";
-    return NextResponse.json({ success: false, error: detail }, { status: 401 });
+    return NextResponse.json({ ok: false, success: false, error: detail }, { status: 401 });
   }
 
   if (data.session) {
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
   if (!user) {
     console.log("[auth otp] verify failed", { reason: "no_session_after_verify" });
     return NextResponse.json(
-      { success: false, error: "Could not establish a session. Try again." },
+      { ok: false, success: false, error: "Could not establish a session. Try again." },
       { status: 500 }
     );
   }
@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(
       {
+        ok: false,
         success: false,
         error: "Session could not be saved. Try again or use the email link.",
       },
@@ -127,18 +128,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const origin = new URL(request.url).origin;
-  const absoluteRedirect = redirectTo.startsWith("/")
-    ? `${origin}${redirectTo}`
-    : redirectTo;
-
-  /** Athlete portal: redirect response so the browser stores Set-Cookie before navigation. */
-  if (portal === "athlete") {
-    const redirectResponse = NextResponse.redirect(absoluteRedirect, { status: 303 });
-    return withAuthCookies(redirectResponse);
-  }
-
+  /**
+   * JSON + Set-Cookie (not 303). fetch(redirect:"manual") often hides Location on 303,
+   * so the client uses redirectTo + window.location.assign after cookies are set.
+   */
   return withAuthCookies(
-    NextResponse.json({ success: true, redirectTo, authCookiesSet: true })
+    NextResponse.json({
+      ok: true,
+      success: true,
+      redirectTo,
+      authCookiesSet: true,
+    })
   );
 }

@@ -49,6 +49,85 @@ function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string)
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 }
 
+type VerifyOtpApiResponse = {
+  ok?: boolean;
+  success?: boolean;
+  error?: string;
+  redirectTo?: string;
+};
+
+type VerifyOtpClientResult =
+  | { status: "ok"; redirectTo: string }
+  | { status: "error"; message: string };
+
+/** POST /api/auth/verify-otp — JSON body + Set-Cookie; client navigates via redirectTo. */
+async function verifyOtpViaApi(input: {
+  email: string;
+  token: string;
+  next: string;
+  portal: "athlete" | "community";
+}): Promise<VerifyOtpClientResult> {
+  const res = await withTimeout(
+    fetch("/api/auth/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        email: input.email,
+        token: input.token,
+        next: input.next,
+        portal: input.portal,
+      }),
+    }),
+    OTP_TIMEOUT_MS,
+    "Verification timed out. Try again."
+  );
+
+  let data: VerifyOtpApiResponse = {};
+  try {
+    data = (await res.json()) as VerifyOtpApiResponse;
+  } catch {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[auth otp client] non-JSON response", {
+        status: res.status,
+        type: res.type,
+      });
+    }
+    return {
+      status: "error",
+      message: "Unexpected response from server. Try again.",
+    };
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[auth otp client] verify response", {
+      status: res.status,
+      type: res.type,
+      ok: data.ok ?? data.success,
+      redirectTo: data.redirectTo ?? null,
+      error: data.error ?? null,
+    });
+  }
+
+  const verified = res.ok && (data.ok === true || data.success === true);
+  if (!verified) {
+    return {
+      status: "error",
+      message: data.error ?? "Check the code and try again.",
+    };
+  }
+
+  const redirectTo = data.redirectTo?.trim();
+  if (!redirectTo) {
+    return {
+      status: "error",
+      message: "Login succeeded but no redirect path was returned. Try again.",
+    };
+  }
+
+  return { status: "ok", redirectTo };
+}
+
 async function athleteAutoLinkAfterLogin(): Promise<{
   linked: boolean;
   message: string | null;
@@ -208,41 +287,31 @@ function CommunityEmailCodeLogin({
 
     setSubmitting(true);
     setBanner(null);
+    let navigating = false;
     try {
-      const res = await withTimeout(
-        fetch("/api/auth/verify-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            email: trimmedEmail,
-            token,
-            next,
-            portal: "community",
-          }),
-        }),
-        OTP_TIMEOUT_MS,
-        "Verification timed out. Try again."
-      );
+      const result = await verifyOtpViaApi({
+        email: trimmedEmail,
+        token,
+        next,
+        portal: "community",
+      });
 
-      const data = (await res.json()) as { success?: boolean; error?: string; redirectTo?: string };
-
-      if (!res.ok || !data.success) {
+      if (result.status === "error") {
         setBanner({
           kind: "otp",
           headline: "Code didn’t work",
-          detail: data.error ?? "Check the code and try again.",
+          detail: result.message,
         });
         return;
       }
 
-      const destination = sanitizeNext(data.redirectTo ?? next);
-      window.location.assign(destination);
+      navigating = true;
+      window.location.assign(sanitizeNext(result.redirectTo));
     } catch (unknown) {
       const err = unknown instanceof Error ? unknown : new Error(String(unknown));
       setBanner({ kind: "otp", headline: "Code didn’t work", detail: err.message });
     } finally {
-      setSubmitting(false);
+      if (!navigating) setSubmitting(false);
     }
   }
 
@@ -585,79 +654,45 @@ export function AuthOtpForm({
 
     setSubmitting(true);
     setBanner(null);
+    let navigating = false;
     try {
-      const res = await withTimeout(
-        fetch("/api/auth/verify-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          redirect: "manual",
-          body: JSON.stringify({
-            email: trimmedEmail,
-            token,
-            next,
-            portal: variant === "athlete" ? "athlete" : "community",
-          }),
-        }),
-        OTP_TIMEOUT_MS,
-        "Verification timed out. Try again."
-      );
+      const result = await verifyOtpViaApi({
+        email: trimmedEmail,
+        token,
+        next,
+        portal: variant === "athlete" ? "athlete" : "community",
+      });
 
-      /** Athlete verify-otp returns 303 + Set-Cookie — follow with full page navigation. */
-      if (variant === "athlete" && res.status >= 300 && res.status < 400) {
-        const location = res.headers.get("Location");
-        if (location) {
-          if (process.env.NODE_ENV === "development") {
-            console.log("[athlete login] OTP verified — redirect response to", location);
-          }
-          const { message } = await athleteAutoLinkAfterLogin();
-          if (message) {
-            try {
-              sessionStorage.setItem("hyrox_auto_link_notice", message);
-            } catch {
-              /* ignore */
-            }
-          }
-          window.location.assign(location);
-          return;
-        }
-      }
-
-      let data: { success?: boolean; error?: string; redirectTo?: string };
-      try {
-        data = (await res.json()) as typeof data;
-      } catch {
-        if (variant === "athlete" && res.ok) {
-          window.location.assign(sanitizeNext(next));
-          return;
-        }
+      if (result.status === "error") {
         setBanner({
           kind: "otp",
           headline: "Code didn’t work",
-          detail: "Unexpected response from server. Try again.",
+          detail: result.message,
         });
         return;
       }
 
-      if (!res.ok || !data.success) {
-        setBanner({
-          kind: "otp",
-          headline: "Code didn’t work",
-          detail: data.error ?? "Check the code and try again.",
-        });
-        return;
-      }
+      const destination = sanitizeNext(result.redirectTo);
 
       if (variant === "athlete") {
-        const destination = sanitizeNext(data.redirectTo ?? next);
         if (process.env.NODE_ENV === "development") {
-          console.log("[athlete login] OTP verified — redirecting to", destination);
+          console.log("[athlete login] OTP verified — navigating to", destination);
         }
+        const { message } = await athleteAutoLinkAfterLogin();
+        if (message) {
+          try {
+            sessionStorage.setItem("hyrox_auto_link_notice", message);
+          } catch {
+            /* ignore */
+          }
+        }
+        navigating = true;
         window.location.assign(destination);
         return;
       }
 
-      await finishLogin();
+      navigating = true;
+      window.location.assign(sanitizeNext(result.redirectTo));
     } catch (unknown) {
       const err = unknown instanceof Error ? unknown : new Error(String(unknown));
       setBanner({
@@ -666,7 +701,7 @@ export function AuthOtpForm({
         detail: err.message,
       });
     } finally {
-      setSubmitting(false);
+      if (!navigating) setSubmitting(false);
     }
   }
 
