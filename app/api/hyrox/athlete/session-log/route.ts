@@ -17,6 +17,7 @@ type SessionLogBody = {
   notes?: string | null;
   modifications?: string | null;
   score?: string | null;
+  expectedAthleteId?: string | null;
 };
 
 function feedbackFromBody(body: SessionLogBody): HyroxAthleteSessionFeedback | undefined {
@@ -35,20 +36,19 @@ function feedbackFromBody(body: SessionLogBody): HyroxAthleteSessionFeedback | u
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireCurrentHyroxAthleteForApi(request);
-  if (auth.error) return auth.error;
-
-  const { withAuthCookies } = auth;
-
   let body: SessionLogBody;
   try {
     body = (await request.json()) as SessionLogBody;
   } catch {
-    return hyroxAthleteApiJson(withAuthCookies, {
-      success: false,
-      error: "Invalid JSON body.",
-    }, 400);
+    return NextResponse.json({ success: false, error: "Invalid JSON body." }, { status: 400 });
   }
+
+  const auth = await requireCurrentHyroxAthleteForApi(request, {
+    expectedAthleteId: body.expectedAthleteId ?? null,
+  });
+  if (auth.error) return auth.error;
+
+  const { withAuthCookies } = auth;
 
   const input: HyroxSessionLogInput = {
     programmeSessionId: body.programmeSessionId?.trim() ?? "",

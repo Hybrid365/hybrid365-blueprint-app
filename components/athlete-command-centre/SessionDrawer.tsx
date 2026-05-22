@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getSessionDetail, type SessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
+import { useAthletePortal } from "./athletePortalContext";
 import {
   useHyroxSessionLog,
   type HyroxSessionLogForm,
@@ -49,7 +50,17 @@ export function SessionDrawer({
 }: Props) {
   const open = Boolean(sessionId);
   const d = sessionDetail ?? (sessionId ? getSessionDetail(sessionId) : null);
-  const { saving, error, successMessage, clearMessages, saveSessionLog } = useHyroxSessionLog();
+  const {
+    saving,
+    error,
+    successMessage,
+    clearMessages,
+    saveSessionLog,
+    lastVia,
+    attemptDebug,
+    serverAuthDebug,
+  } = useHyroxSessionLog();
+  const { serverAuthConfirmed, portalAthlete } = useAthletePortal();
   const [showLogForm, setShowLogForm] = useState(initialShowLogForm);
   const [form, setForm] = useState<HyroxSessionLogForm>(() => formFromSession(session));
 
@@ -296,7 +307,39 @@ export function SessionDrawer({
           {successMessage ? (
             <p className="rounded-lg border border-emerald-500/35 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
               {successMessage}
+              {lastVia ? (
+                <span className="mt-1 block text-[10px] text-emerald-300/80">
+                  Saved via {lastVia === "server" ? "server action" : "API"}.
+                </span>
+              ) : null}
             </p>
+          ) : null}
+
+          {process.env.NODE_ENV === "development" ? (
+            <div className="rounded-lg border border-violet-500/30 bg-violet-950/25 px-3 py-2 text-[10px] text-violet-100/90">
+              <p className="font-semibold text-violet-300">Dev — session log</p>
+              <p>sessionId: {sessionId ?? "—"}</p>
+              <p>loggingEnabled: {loggingEnabled ? "yes" : "no"}</p>
+              <p>blocked: {blockedReason ?? "—"}</p>
+              <p>portalAthleteId: {portalAthlete?.id ?? "—"}</p>
+              <p>serverAuthConfirmed: {serverAuthConfirmed ? "yes" : "no"}</p>
+              <p>lastVia: {attemptDebug.lastLogAttemptVia}</p>
+              <p>
+                server: {attemptDebug.serverActionResult}
+                {attemptDebug.serverError ? ` — ${attemptDebug.serverError}` : ""}
+              </p>
+              <p>
+                api: {attemptDebug.apiResult}
+                {attemptDebug.apiError ? ` — ${attemptDebug.apiError}` : ""}
+              </p>
+              {serverAuthDebug ? (
+                <p>
+                  cookies: {serverAuthDebug.hasAuthCookie ? "yes" : "no"} · refresh:{" "}
+                  {serverAuthDebug.refreshAttempted ? "yes" : "no"} · getUser:{" "}
+                  {serverAuthDebug.getUserSucceeded ? "yes" : "no"}
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           <button

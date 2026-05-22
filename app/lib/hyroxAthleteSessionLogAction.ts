@@ -1,14 +1,15 @@
 "use server";
 
-import { resolveLinkedHyroxAthleteForServer } from "@/app/lib/hyroxAthletePortalServerAuth";
+import { revalidatePath } from "next/cache";
+import { resolveAthleteForHyroxMutation } from "@/app/lib/hyroxAthleteMutationAuth";
 import {
   HyroxSessionLogError,
   upsertHyroxAthleteSessionLog,
   type HyroxSessionLogInput,
 } from "@/app/lib/hyroxAthleteSessionLogServer";
 import { mapPublishedSessionsToAthleteUi } from "@/app/lib/hyroxProgrammeServer";
-import { createClient } from "@/app/lib/supabase/server";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
+import type { HyroxMutationAuthDebug } from "@/app/lib/hyroxAthleteMutationAuth";
 
 export type HyroxSessionLogActionBody = {
   programmeSessionId: string;
@@ -18,6 +19,8 @@ export type HyroxSessionLogActionBody = {
   notes?: string | null;
   modifications?: string | null;
   score?: string | null;
+  /** Portal context athlete id — fallback when strict linked resolve fails but layout rendered. */
+  expectedAthleteId?: string | null;
 };
 
 export type HyroxSessionLogActionResult = {
@@ -27,6 +30,7 @@ export type HyroxSessionLogActionResult = {
   message?: string;
   session?: HyroxSession | null;
   via?: "server";
+  authDebug?: HyroxMutationAuthDebug;
 };
 
 function feedbackFromBody(
@@ -46,21 +50,18 @@ function feedbackFromBody(
   };
 }
 
-/**
- * Session log mutation via Server Action — same Supabase cookies as layout.
- * Prefer this over client fetch when Route Handler cookie merge is unreliable.
- */
 export async function saveHyroxAthleteSessionLogAction(
   body: HyroxSessionLogActionBody
 ): Promise<HyroxSessionLogActionResult> {
-  const linked = await resolveLinkedHyroxAthleteForServer();
-  if (!linked) {
+  const auth = await resolveAthleteForHyroxMutation(body.expectedAthleteId ?? null);
+
+  if (!auth.ok) {
     return {
       success: false,
-      error:
-        "Could not verify your athlete session. Reload the page and try again.",
-      code: "NO_AUTH",
+      error: `[server action · ${auth.code}] ${auth.error}`,
+      code: auth.code === "NO_USER" ? "NO_AUTH" : auth.code,
       via: "server",
+      authDebug: auth.debug,
     };
   }
 
@@ -71,15 +72,16 @@ export async function saveHyroxAthleteSessionLogAction(
     feedback: feedbackFromBody(body),
   };
 
-  const supabase = await createClient();
-
   try {
     const { session } = await upsertHyroxAthleteSessionLog(
-      supabase,
-      linked.athlete,
+      auth.supabase,
+      auth.athlete,
       input
     );
     const [uiSession] = mapPublishedSessionsToAthleteUi([session]);
+
+    revalidatePath("/athlete/dashboard");
+    revalidatePath("/athlete/programme");
 
     return {
       success: true,
@@ -88,17 +90,25 @@ export async function saveHyroxAthleteSessionLogAction(
         ? "Session marked complete."
         : "Session log saved.",
       via: "server",
+      authDebug: auth.debug,
     };
   } catch (e) {
     if (e instanceof HyroxSessionLogError) {
       return {
         success: false,
-        error: e.message,
+        error: `[server action · ${e.code}] ${e.message}`,
         code: e.code,
         via: "server",
+        authDebug: auth.debug,
       };
     }
     const message = e instanceof Error ? e.message : "Could not save session log.";
-    return { success: false, error: message, code: "UNKNOWN", via: "server" };
+    return {
+      success: false,
+      error: `[server action] ${message}`,
+      code: "UNKNOWN",
+      via: "server",
+      authDebug: auth.debug,
+    };
   }
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { saveHyroxAthleteSessionLogAction } from "@/app/lib/hyroxAthleteSessionLogAction";
+import type { HyroxMutationAuthDebug } from "@/app/lib/hyroxAthleteMutationAuth";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 import { useAthletePortal } from "./athletePortalContext";
 
@@ -25,19 +26,45 @@ type SaveResponse = {
   code?: string;
   message?: string;
   session?: HyroxSession;
+  source?: string;
+  reason?: string;
 };
 
-function authFailureMessage(serverAuthConfirmed: boolean, detail?: string): string {
-  if (serverAuthConfirmed) {
+export type SessionLogAttemptDebug = {
+  lastLogAttemptVia: "server" | "api" | "none";
+  serverActionResult: "success" | "error" | "no-auth" | "not-attempted";
+  apiResult: "success" | "error" | "no-auth" | "not-attempted";
+  serverError?: string;
+  apiError?: string;
+  sessionId?: string;
+};
+
+function formatSaveError(
+  via: "server" | "api",
+  serverAuthConfirmed: boolean,
+  portalAthleteId: string | null,
+  detail?: string,
+  code?: string
+): string {
+  const prefix = via === "server" ? "Server action" : "API";
+  if (serverAuthConfirmed && portalAthleteId) {
     return (
-      detail ??
-      "Could not save — your portal session is active but the save request failed. Reload and try again."
+      `${prefix} could not save (portal shows athlete ${portalAthleteId.slice(0, 8)}…). ` +
+      (detail ?? "Auth/session mismatch.") +
+      (code ? ` [${code}]` : "") +
+      " Try reloading the page."
     );
   }
-  return detail ?? "Not signed in";
+  if (detail?.includes("Not signed in")) {
+    return `${prefix}: not signed in${code ? ` (${code})` : ""}.`;
+  }
+  return detail ?? `${prefix}: could not save session log.`;
 }
 
-async function saveViaApi(params: HyroxSessionLogSaveParams): Promise<SaveResponse> {
+async function saveViaApi(
+  params: HyroxSessionLogSaveParams,
+  expectedAthleteId: string | null
+): Promise<SaveResponse> {
   const res = await fetch("/api/hyrox/athlete/session-log", {
     credentials: "include",
     method: "POST",
@@ -49,17 +76,30 @@ async function saveViaApi(params: HyroxSessionLogSaveParams): Promise<SaveRespon
       notes: params.feedback?.notes,
       modifications: params.feedback?.modifications,
       score: params.feedback?.score,
+      expectedAthleteId,
     }),
   });
-  return (await res.json()) as SaveResponse;
+  const json = (await res.json()) as SaveResponse;
+  if (!res.ok && !json.error) {
+    return { success: false, error: `HTTP ${res.status}`, code: "HTTP_ERROR", source: "api" };
+  }
+  return { ...json, source: "api" };
 }
 
 export function useHyroxSessionLog() {
-  const { serverAuthConfirmed } = useAthletePortal();
+  const { serverAuthConfirmed, portalAthlete } = useAthletePortal();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [lastVia, setLastVia] = useState<"server" | "api" | null>(null);
+  const [attemptDebug, setAttemptDebug] = useState<SessionLogAttemptDebug>({
+    lastLogAttemptVia: "none",
+    serverActionResult: "not-attempted",
+    apiResult: "not-attempted",
+  });
+  const [serverAuthDebug, setServerAuthDebug] = useState<HyroxMutationAuthDebug | null>(
+    null
+  );
 
   const clearMessages = useCallback(() => {
     setError(null);
@@ -73,14 +113,61 @@ export function useHyroxSessionLog() {
       setSuccessMessage(null);
       setLastVia(null);
 
-      const applyApiFallback = async (serverError?: string) => {
-        const apiJson = await saveViaApi(params);
+      const debugBase: SessionLogAttemptDebug = {
+        lastLogAttemptVia: "none",
+        serverActionResult: "not-attempted",
+        apiResult: "not-attempted",
+        sessionId: params.programmeSessionId,
+      };
+
+      const runApiFallback = async (
+        serverError?: string,
+        serverCode?: string
+      ): Promise<HyroxSession | null> => {
+        const apiJson = await saveViaApi(params, portalAthlete?.id ?? null);
         if (apiJson.success) {
           setLastVia("api");
+          setAttemptDebug({
+            ...debugBase,
+            lastLogAttemptVia: "api",
+            serverActionResult:
+              serverCode === "NO_AUTH" || serverCode === "NO_USER"
+                ? "no-auth"
+                : "error",
+            apiResult: "success",
+            serverError,
+            apiError: undefined,
+          });
           setSuccessMessage(apiJson.message ?? "Saved.");
           return apiJson.session ?? null;
         }
-        setError(authFailureMessage(serverAuthConfirmed, apiJson.error ?? serverError));
+
+        const apiIsAuth =
+          apiJson.code === "NO_AUTH" ||
+          apiJson.reason === "NO_AUTH_SESSION" ||
+          apiJson.error === "Not signed in";
+
+        setAttemptDebug({
+          ...debugBase,
+          lastLogAttemptVia: "api",
+          serverActionResult:
+            serverCode === "NO_AUTH" || serverCode === "NO_USER"
+              ? "no-auth"
+              : "error",
+          apiResult: apiIsAuth ? "no-auth" : "error",
+          serverError,
+          apiError: apiJson.error,
+        });
+
+        setError(
+          formatSaveError(
+            "api",
+            serverAuthConfirmed,
+            portalAthlete?.id ?? null,
+            apiJson.error ?? serverError,
+            apiJson.code ?? apiJson.reason
+          )
+        );
         return null;
       };
 
@@ -92,36 +179,58 @@ export function useHyroxSessionLog() {
           notes: params.feedback?.notes,
           modifications: params.feedback?.modifications,
           score: params.feedback?.score,
+          expectedAthleteId: portalAthlete?.id ?? null,
         });
+
+        setServerAuthDebug(serverResult.authDebug ?? null);
 
         if (serverResult.success) {
           setLastVia("server");
+          setAttemptDebug({
+            ...debugBase,
+            lastLogAttemptVia: "server",
+            serverActionResult: "success",
+            apiResult: "not-attempted",
+          });
           setSuccessMessage(serverResult.message ?? "Saved.");
           return serverResult.session ?? null;
         }
 
-        if (serverResult.code === "NO_AUTH" && serverAuthConfirmed) {
-          return applyApiFallback(serverResult.error);
+        const serverIsAuth =
+          serverResult.code === "NO_AUTH" ||
+          serverResult.code === "NO_USER" ||
+          serverResult.code === "NO_ATHLETE";
+
+        if (serverIsAuth || serverAuthConfirmed) {
+          return runApiFallback(serverResult.error, serverResult.code);
         }
 
+        setAttemptDebug({
+          ...debugBase,
+          lastLogAttemptVia: "server",
+          serverActionResult: "error",
+          serverError: serverResult.error,
+        });
         setError(serverResult.error ?? "Could not save session log.");
         return null;
-      } catch {
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Server action failed";
         if (serverAuthConfirmed) {
-          try {
-            return await applyApiFallback();
-          } catch {
-            setError("Network error — could not save. Try again.");
-            return null;
-          }
+          return runApiFallback(`[server action throw] ${message}`, "THROW");
         }
-        setError("Network error — could not save. Try again.");
+        setAttemptDebug({
+          ...debugBase,
+          lastLogAttemptVia: "none",
+          serverActionResult: "error",
+          serverError: message,
+        });
+        setError(`Server action failed: ${message}`);
         return null;
       } finally {
         setSaving(false);
       }
     },
-    [serverAuthConfirmed]
+    [serverAuthConfirmed, portalAthlete?.id]
   );
 
   return {
@@ -133,5 +242,7 @@ export function useHyroxSessionLog() {
     setSuccessMessage,
     setError,
     lastVia,
+    attemptDebug,
+    serverAuthDebug,
   };
 }

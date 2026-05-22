@@ -7,7 +7,7 @@ import {
   hyroxAthleteApiJson,
   type ApiRouteAuthDebug,
 } from "@/app/lib/supabase/apiRoute";
-import { resolveAuthUserWithSessionRetry } from "@/app/lib/supabase/resolveAuthUser";
+import { resolveAuthUserForMiddleware } from "@/app/lib/supabase/resolveAuthUser";
 
 function devFields(extra: Record<string, unknown>): Record<string, unknown> {
   if (process.env.NODE_ENV !== "development") return {};
@@ -36,7 +36,22 @@ function logApiResolutionFailure(
  * Athlete API guard — same resolution as app/athlete/layout.tsx.
  * Uses cookies() + request cookies (layout-aligned) and returns refreshed Set-Cookie headers.
  */
-export async function requireCurrentHyroxAthleteForApi(request: NextRequest) {
+function portalContextAthleteAllowed(
+  user: { id: string; email?: string | null },
+  athlete: HyroxAthleteRow,
+  expectedAthleteId: string
+): boolean {
+  if (athlete.id !== expectedAthleteId || athlete.payment_status !== "paid") return false;
+  if (athlete.user_id === user.id) return true;
+  const email = user.email?.trim().toLowerCase();
+  const athleteEmail = athlete.email?.trim().toLowerCase();
+  return Boolean(email && athleteEmail && email === athleteEmail);
+}
+
+export async function requireCurrentHyroxAthleteForApi(
+  request: NextRequest,
+  options?: { expectedAthleteId?: string | null }
+) {
   const { supabase, withAuthCookies, authDebug } =
     await createApiRouteSupabase(request);
 
@@ -44,7 +59,7 @@ export async function requireCurrentHyroxAthleteForApi(request: NextRequest) {
     authDebug.hasAuthCookieOnRequest || authDebug.hasAuthCookieInHeaderStore;
 
   const { user, error: userError, retriedWithSession } =
-    await resolveAuthUserWithSessionRetry(supabase, { hasAuthCookie });
+    await resolveAuthUserForMiddleware(supabase, hasAuthCookie);
 
   authDebug.getUserSucceeded = Boolean(user);
   authDebug.userError = userError?.message ?? null;
@@ -59,12 +74,13 @@ export async function requireCurrentHyroxAthleteForApi(request: NextRequest) {
     });
     return {
       error: hyroxAthleteApiJson(withAuthCookies, {
+        success: false,
         error: "Not signed in",
-        ...devFields({
-          reason: "NO_AUTH_SESSION",
-          authEmail: null,
-          authDebug,
-        }),
+        code: "NO_AUTH",
+        source: "api",
+        reason: "NO_AUTH_SESSION",
+        authEmail: null,
+        ...devFields({ authDebug }),
       }, 401),
     };
   }
@@ -103,7 +119,16 @@ export async function requireCurrentHyroxAthleteForApi(request: NextRequest) {
     portal.athlete?.payment_status === "paid" &&
     portal.athlete.user_id === user.id;
 
-  const athlete = linked ? portal.athlete : null;
+  let athlete = linked ? portal.athlete : null;
+
+  if (
+    !athlete &&
+    options?.expectedAthleteId &&
+    portal.athlete &&
+    portalContextAthleteAllowed(user, portal.athlete, options.expectedAthleteId)
+  ) {
+    athlete = portal.athlete;
+  }
 
   if (!athlete) {
     logApiResolutionFailure(authEmail, user.id, portal, authDebug);
