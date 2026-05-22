@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatAuthRelatedCookieEntries } from "@/app/lib/supabase/cookieProbe";
 import {
   probeHyroxPortalAuth,
   resolveHyroxAthletePortalSnapshot,
@@ -34,8 +35,17 @@ export default async function AthleteAuthDebugPage() {
 
   const merge = auth.cookieMerge;
   const mainAuth = auth.mainAuth;
+  const probe = auth.storageProbe;
 
   const rows: { label: string; value: string }[] = [
+    { label: "Storage interpretation", value: probe.storageInterpretation },
+    { label: "h365_probe present", value: probe.h365ProbePresent ? "yes" : "no" },
+    { label: "h365_probe value", value: probe.h365ProbeValue ?? "—" },
+    {
+      label: "h365_auth_probe present",
+      value: probe.h365AuthProbePresent ? "yes" : "no",
+    },
+    { label: "h365_auth_probe value", value: probe.h365AuthProbeValue ?? "—" },
     { label: "Auth cookies present", value: auth.authCookiesPresent ? "yes" : "no" },
     {
       label: "Raw Cookie header names",
@@ -43,6 +53,10 @@ export default async function AthleteAuthDebugPage() {
         mainAuth.rawCookieHeaderNames.length > 0
           ? mainAuth.rawCookieHeaderNames.join(", ")
           : "—",
+    },
+    {
+      label: "Raw Cookie header chars",
+      value: String(merge.rawHeaderChars),
     },
     {
       label: "Main auth-token exists",
@@ -53,12 +67,16 @@ export default async function AthleteAuthDebugPage() {
       value: `${mainAuth.mainAuthTokenValueLength} B`,
     },
     {
-      label: "Empty main auth-token duplicate",
-      value: mainAuth.emptyMainAuthDuplicateDetected ? "yes" : "no",
+      label: "Code-verifier present",
+      value: mainAuth.codeVerifierCookiePresent ? "yes" : "no",
     },
     {
-      label: "Code-verifier cookie present",
-      value: mainAuth.codeVerifierCookiePresent ? "yes" : "no",
+      label: "Auth-related cookies (names / lengths)",
+      value: formatAuthRelatedCookieEntries(probe.authRelatedCookieEntries),
+    },
+    {
+      label: "Empty main auth-token duplicate",
+      value: mainAuth.emptyMainAuthDuplicateDetected ? "yes" : "no",
     },
     {
       label: "Code-verifier cookie names",
@@ -76,10 +94,6 @@ export default async function AthleteAuthDebugPage() {
     {
       label: "cookies() auth total chars",
       value: String(merge.cookiesStoreAuthTotalChars),
-    },
-    {
-      label: "Raw Cookie header chars",
-      value: String(merge.rawHeaderChars),
     },
     {
       label: "Raw header auth total chars",
@@ -121,33 +135,54 @@ export default async function AthleteAuthDebugPage() {
   ];
 
   if (merge.duplicateNames.length > 0) {
-    rows.splice(3, 0, {
+    rows.splice(12, 0, {
       label: "Duplicate names",
       value: merge.duplicateNames.join(", "),
     });
   }
+
+  const noCookiesAtAll =
+    merge.rawHeaderChars === 0 &&
+    !probe.h365ProbePresent &&
+    !probe.h365AuthProbePresent &&
+    !mainAuth.mainAuthTokenExists;
 
   return (
     <div className="min-h-screen bg-zinc-950 px-4 py-10 text-white">
       <div className="mx-auto max-w-2xl">
         <h1 className="text-xl font-semibold">Athlete auth debug</h1>
         <p className="mt-2 text-sm text-zinc-400">
-          Server reads merged cookies from next/headers cookies() and the raw Cookie request
-          header. Longest non-empty value wins when names collide.
+          Compare <span className="font-mono">h365_probe</span> (from{" "}
+          <span className="font-mono">/api/auth/cookie-probe</span>) and{" "}
+          <span className="font-mono">h365_auth_probe</span> (from verify-otp) with the Supabase{" "}
+          <span className="font-mono">sb-*-auth-token</span> cookie.
         </p>
 
-        {!auth.authCookiesPresent && !auth.rawCookieHeaderPresent ? (
+        {noCookiesAtAll ? (
           <div
             className="mt-4 rounded-xl border border-red-500/45 bg-red-950/35 px-4 py-3 text-sm text-red-100"
             role="alert"
           >
             <p className="font-semibold text-red-200">No cookies reached server</p>
             <p className="mt-1 text-red-100/90">
-              Login did not persist session. After OTP, check Network →{" "}
-              <span className="font-mono">/api/auth/verify-otp</span> for{" "}
-              <span className="font-mono">Set-Cookie</span> and{" "}
-              <span className="font-mono">debug.setCookieHeaderPresent</span> /{" "}
-              <span className="font-mono">hasLargeAuthCookie</span> in the response body.
+              Login did not persist session. Run the isolated probe: visit{" "}
+              <span className="font-mono">/api/auth/cookie-probe</span> then reload this page. If{" "}
+              <span className="font-mono">h365_probe</span> is still missing, the browser is not
+              storing cookies from this app (Secure / SameSite / domain).
+            </p>
+          </div>
+        ) : null}
+
+        {probe.h365AuthProbePresent && !mainAuth.mainAuthTokenExists ? (
+          <div
+            className="mt-4 rounded-xl border border-amber-500/45 bg-amber-950/35 px-4 py-3 text-sm text-amber-100"
+            role="alert"
+          >
+            <p className="font-semibold text-amber-200">Probe OK, Supabase session missing</p>
+            <p className="mt-1 text-amber-100/90">
+              <span className="font-mono">h365_auth_probe</span> reached the server but{" "}
+              <span className="font-mono">{mainAuth.mainAuthTokenName}</span> did not. The browser
+              accepts small app cookies but rejected or dropped the Supabase auth cookie.
             </p>
           </div>
         ) : null}
@@ -161,10 +196,7 @@ export default async function AthleteAuthDebugPage() {
             <p className="mt-1 text-amber-100/90">
               The browser sent{" "}
               <span className="font-mono">{mainAuth.mainAuthTokenName}</span> but with no session
-              value. This usually means a deletion Set-Cookie overwrote the large session cookie.
-              Re-login and check verify-otp for{" "}
-              <span className="font-mono">duplicateMainAuthTokenNames</span> /{" "}
-              <span className="font-mono">emptyMainAuthTokenSetCookie</span> in the response debug.
+              value. Check verify-otp for duplicate or empty main auth-token Set-Cookie headers.
             </p>
           </div>
         ) : null}
@@ -182,6 +214,12 @@ export default async function AthleteAuthDebugPage() {
 
         <div className="mt-6 flex flex-wrap gap-3 text-sm">
           <Link
+            href="/athlete/cookie-probe"
+            className="rounded-full border border-zinc-600 px-4 py-2 text-zinc-200"
+          >
+            Cookie probe guide
+          </Link>
+          <Link
             href="/athlete/login?next=/athlete/auth-debug"
             className="rounded-full bg-yellow-400 px-4 py-2 font-semibold text-black"
           >
@@ -192,12 +230,6 @@ export default async function AthleteAuthDebugPage() {
             className="rounded-full border border-zinc-600 px-4 py-2 text-zinc-200"
           >
             Dashboard
-          </Link>
-          <Link
-            href="/athlete/programme"
-            className="rounded-full border border-zinc-600 px-4 py-2 text-zinc-200"
-          >
-            Programme
           </Link>
         </div>
       </div>

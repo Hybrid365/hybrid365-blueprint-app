@@ -2,9 +2,15 @@ import { cookies, headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { isSupabaseAuthCookieName } from "@/app/lib/supabase/apiRoute";
 import {
+  buildCookieStorageProbeReadDebug,
+  type CookieStorageProbeReadDebug,
+} from "@/app/lib/supabase/cookieProbe";
+import {
   getSupabaseAuthStorageKey,
   isSupabasePkceCodeVerifierCookieName,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
+
+export type { CookieStorageProbeReadDebug };
 
 export type MergedCookieEntry = { name: string; value: string };
 
@@ -192,6 +198,7 @@ export async function readAthletePortalCookies(): Promise<{
   cookies: MergedCookieEntry[];
   debug: MergedCookieDebug;
   mainAuth: MainAuthCookieReadDebug;
+  storageProbe: CookieStorageProbeReadDebug;
 }> {
   const cookieStore = await cookies();
   const headerStore = await headers();
@@ -200,9 +207,11 @@ export async function readAthletePortalCookies(): Promise<{
     cookieStore: cookieStore.getAll(),
     rawCookieHeader,
   });
+  const mainAuth = buildMainAuthCookieReadDebug(merged.cookies, merged.debug, rawCookieHeader);
   return {
     ...merged,
-    mainAuth: buildMainAuthCookieReadDebug(merged.cookies, merged.debug, rawCookieHeader),
+    mainAuth,
+    storageProbe: buildCookieStorageProbeReadDebug(merged.cookies, mainAuth),
   };
 }
 

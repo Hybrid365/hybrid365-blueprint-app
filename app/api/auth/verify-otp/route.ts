@@ -5,6 +5,12 @@ import {
   createAuthRouteHandlerSupabase,
 } from "@/app/lib/supabase/authRouteHandler";
 import {
+  attachH365OtpAuthProbe,
+  copySetCookieHeaders,
+  H365_OTP_AUTH_PROBE_NAME,
+  H365_OTP_AUTH_PROBE_VALUE,
+} from "@/app/lib/supabase/cookieProbe";
+import {
   MAIN_AUTH_COOKIE_OVERWRITE_ERROR,
   type ResponseSetCookieDebug,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
@@ -33,6 +39,9 @@ type VerifyOtpDebug = {
   pendingTotalValueChars: number;
   pendingHasValidSession: boolean;
   responseStatus: number;
+  h365AuthProbeSet: boolean;
+  h365AuthProbeCookie: string | null;
+  h365AuthProbeValue: string | null;
 } & ResponseSetCookieDebug;
 
 function buildVerifyOtpDebug(
@@ -45,6 +54,7 @@ function buildVerifyOtpDebug(
     verifyOtpSuccess: boolean;
     responseStatus: number;
     setCookie?: ResponseSetCookieDebug;
+    h365AuthProbeSet?: boolean;
   }
 ): VerifyOtpDebug {
   const pending = auth.getPendingAuthCookieDebug();
@@ -76,6 +86,12 @@ function buildVerifyOtpDebug(
     emptyMainAuthTokenSetCookie: extra.setCookie?.emptyMainAuthTokenSetCookie ?? false,
     finalMainAuthTokenValueLength: extra.setCookie?.finalMainAuthTokenValueLength ?? 0,
     codeVerifierDeletionNames: extra.setCookie?.codeVerifierDeletionNames ?? [],
+    maxSetCookieValueLength: extra.setCookie?.maxSetCookieValueLength ?? 0,
+    sessionChunkSetCookieCount: extra.setCookie?.sessionChunkSetCookieCount ?? 0,
+    setCookieExceedsSafeLimit: extra.setCookie?.setCookieExceedsSafeLimit ?? false,
+    h365AuthProbeSet: extra.h365AuthProbeSet ?? false,
+    h365AuthProbeCookie: extra.h365AuthProbeSet ? H365_OTP_AUTH_PROBE_NAME : null,
+    h365AuthProbeValue: extra.h365AuthProbeSet ? H365_OTP_AUTH_PROBE_VALUE : null,
   };
 }
 
@@ -222,17 +238,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.json(
-    {
-      ok: true,
-      success: true,
-      redirectTo,
-      authCookiesSet: true,
-      ...(includeDebug ? { debug: fullDebug } : {}),
-    },
-    { status: 200 }
-  );
+  const response = NextResponse.json({
+    ok: true,
+    success: true,
+    redirectTo,
+    authCookiesSet: true,
+  });
   auth.attachSessionCookiesToResponse(response);
+  attachH365OtpAuthProbe(response);
 
   const returnedInspect = auth.inspectResponseSetCookies(response);
   if (!auth.responseAuthCookiesAreValid(response)) {
@@ -261,12 +274,42 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (includeDebug) {
+    const withDebug = NextResponse.json({
+      ok: true,
+      success: true,
+      redirectTo,
+      authCookiesSet: true,
+      debug: {
+        ...buildVerifyOtpDebug(data, auth, {
+          verifyOtpSuccess: true,
+          responseStatus: 200,
+          setCookie: returnedInspect,
+          h365AuthProbeSet: true,
+        }),
+        h365AuthProbeCookie: H365_OTP_AUTH_PROBE_NAME,
+        h365AuthProbeValue: H365_OTP_AUTH_PROBE_VALUE,
+      },
+    });
+    copySetCookieHeaders(response, withDebug);
+    console.log("[auth otp] verify success", {
+      userId: sessionUser.userId.slice(0, 8),
+      emailHint: emailLogHint(email),
+      redirectTo,
+      setCookie: returnedInspect,
+      pending: auth.getPendingAuthCookieDebug(),
+      h365AuthProbe: H365_OTP_AUTH_PROBE_NAME,
+    });
+    return withDebug;
+  }
+
   console.log("[auth otp] verify success", {
     userId: sessionUser.userId.slice(0, 8),
     emailHint: emailLogHint(email),
     redirectTo,
     setCookie: returnedInspect,
     pending: auth.getPendingAuthCookieDebug(),
+    h365AuthProbe: H365_OTP_AUTH_PROBE_NAME,
   });
 
   return response;
