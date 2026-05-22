@@ -2,10 +2,19 @@
 
 import { AthletePortalGate, AthletePortalShell } from "./AthletePortalShell";
 
-export function ActiveAthletePage({ children }: { children: React.ReactNode }) {
+export function ActiveAthletePage({
+  children,
+  allowLinkedProgrammeAccess = false,
+}: {
+  children: React.ReactNode;
+  /** Linked athletes can open /athlete/programme without client API setting programmeHubLive first. */
+  allowLinkedProgrammeAccess?: boolean;
+}) {
   return (
-    <AthletePortalShell>
-      <AthletePortalGate>{children}</AthletePortalGate>
+    <AthletePortalShell showNavWhenLinked={allowLinkedProgrammeAccess}>
+      <AthletePortalGate allowLinkedProgrammeAccess={allowLinkedProgrammeAccess}>
+        {children}
+      </AthletePortalGate>
     </AthletePortalShell>
   );
 }

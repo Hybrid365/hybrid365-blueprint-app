@@ -17,9 +17,12 @@ function MockPreviewBanner() {
 export function AthletePortalShell({
   children,
   showNav = true,
+  showNavWhenLinked = false,
 }: {
   children: React.ReactNode;
   showNav?: boolean;
+  /** Show portal nav for linked athletes on programme page before client programme API resolves. */
+  showNavWhenLinked?: boolean;
 }) {
   const {
     setProgrammePublishedMock,
@@ -29,7 +32,8 @@ export function AthletePortalShell({
     programmePublishedLive,
     useMockPreview,
   } = useAthletePortal();
-  const navVisible = showNav && programmeHubLive;
+  const navVisible =
+    showNav && (programmeHubLive || (showNavWhenLinked && hasLinkedAthlete));
 
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
@@ -74,11 +78,21 @@ export function AthletePortalShell({
   );
 }
 
-export function AthletePortalGate({ children }: { children: React.ReactNode }) {
+export function AthletePortalGate({
+  children,
+  allowLinkedProgrammeAccess = false,
+}: {
+  children: React.ReactNode;
+  allowLinkedProgrammeAccess?: boolean;
+}) {
   const { programmeHubLive, programmePublishedLive, hasLinkedAthlete, allowMockPreview } =
     useAthletePortal();
 
-  if (programmePublishedLive || programmeHubLive) {
+  if (
+    programmePublishedLive ||
+    programmeHubLive ||
+    (allowLinkedProgrammeAccess && hasLinkedAthlete)
+  ) {
     return <>{children}</>;
   }
 

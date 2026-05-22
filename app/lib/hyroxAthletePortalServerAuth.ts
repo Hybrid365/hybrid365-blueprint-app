@@ -1,19 +1,32 @@
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
 import { createClient } from "@/app/lib/supabase/server";
+import type { User } from "@supabase/supabase-js";
 
-/** Linked paid athlete for server pages — same rules as layout + athlete APIs. */
-export async function resolveLinkedHyroxAthleteForServer(): Promise<{
-  user: { id: string; email?: string | null };
-  athlete: HyroxAthleteRow;
-} | null> {
+async function getLayoutUser(): Promise<User | null> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (user) return user;
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return session?.user ?? null;
+}
+
+/** Linked paid athlete for server pages — same rules as layout + athlete APIs. */
+export async function resolveLinkedHyroxAthleteForServer(): Promise<{
+  user: User;
+  athlete: HyroxAthleteRow;
+} | null> {
+  const user = await getLayoutUser();
   if (!user) return null;
 
+  const supabase = await createClient();
   const portal = await resolveHyroxPortalAthlete({
     user,
     supabase,

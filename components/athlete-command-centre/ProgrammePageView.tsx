@@ -29,6 +29,7 @@ import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { useAthletePortal } from "./athletePortalContext";
 import { resolveDefaultProgrammeWeekNumber } from "@/app/lib/hyroxAthleteProgrammeCalendar";
 import type { AthleteWeekCalendarStatus } from "@/app/lib/hyroxAthleteProgrammeTypes";
+import type { AthleteLiveProgrammePayload } from "./useAthleteLiveProgramme";
 
 type WeekTabMode = "active" | "upcoming" | "past" | "not_generated" | "locked";
 
@@ -66,7 +67,11 @@ function upcomingSubcopy(mode: WeekTabMode): string {
   return PLANNED_COPY;
 }
 
-export function ProgrammePageView() {
+export function ProgrammePageView({
+  serverProgramme = null,
+}: {
+  serverProgramme?: AthleteLiveProgrammePayload | null;
+}) {
   const {
     programmePublishedLive,
     liveProgramme,
@@ -77,7 +82,11 @@ export function ProgrammePageView() {
     reloadLiveProgramme,
   } = useAthletePortal();
   const { dashboardLive } = useAthleteDashboardLive();
-  const useLive = programmePublishedLive && !useMockPreview;
+
+  const effectiveProgramme = liveProgramme ?? serverProgramme;
+  const effectivePublished =
+    programmePublishedLive || Boolean(serverProgramme?.published);
+  const useLive = effectivePublished && !useMockPreview;
   const useMock = useMockPreview;
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -90,16 +99,16 @@ export function ProgrammePageView() {
 
   const blockId = useLive && dashboardLive ? dashboardLive.blockId : MOCK_ATHLETE.blockId;
   const block = HYROX_BLOCKS.find((b) => b.id === blockId)!;
-  const programmeStartDate = useLive ? liveProgramme?.programmeStartDate ?? null : null;
+  const programmeStartDate = useLive ? effectiveProgramme?.programmeStartDate ?? null : null;
   const liveGlobalWeek = useLive
-    ? liveProgramme?.liveGlobalWeek ?? liveProgramme?.athlete.current_week ?? 1
+    ? effectiveProgramme?.liveGlobalWeek ?? effectiveProgramme?.athlete.current_week ?? 1
     : MOCK_ATHLETE.currentWeek;
 
   const weekTabs: WeekTab[] = useMemo(() => {
     return block.weeks.map((globalWeek, i) => {
       const cycle = (i + 1) as 1 | 2 | 3 | 4;
       const bundle = useLive
-        ? liveProgramme?.programmeWeeks?.find((b) => b.weekNumber === globalWeek)
+        ? effectiveProgramme?.programmeWeeks?.find((b) => b.weekNumber === globalWeek)
         : null;
       const generated = Boolean(bundle?.generated && bundle.sessions.length > 0);
       const subtitle = bundle?.weekRole ?? BLOCK_WEEK_FOCUS_LABELS[cycle];
@@ -125,11 +134,11 @@ export function ProgrammePageView() {
         generated,
       };
     });
-  }, [block.weeks, useLive, useMock, liveProgramme?.programmeWeeks]);
+  }, [block.weeks, useLive, useMock, effectiveProgramme?.programmeWeeks]);
 
   const defaultTab = useLive
     ? resolveDefaultProgrammeWeekNumber(
-        liveProgramme?.programmeWeeks ?? [],
+        effectiveProgramme?.programmeWeeks ?? [],
         [...block.weeks]
       )
     : weekTabs.find((t) => t.mode === "active")?.globalWeek ??
@@ -145,7 +154,7 @@ export function ProgrammePageView() {
 
   const selectedTab = weekTabs.find((t) => t.globalWeek === selectedWeek) ?? weekTabs[0];
   const selectedBundle = useLive
-    ? liveProgramme?.programmeWeeks?.find((b) => b.weekNumber === selectedWeek)
+    ? effectiveProgramme?.programmeWeeks?.find((b) => b.weekNumber === selectedWeek)
     : null;
 
   const sessions = useLive && selectedBundle?.generated
@@ -168,20 +177,20 @@ export function ProgrammePageView() {
           weekRole: selectedBundle.weekRole,
           whyMatters:
             selectedBundle.week?.athlete_facing_note ??
-            liveProgramme?.weekRationale?.whyMatters ??
+            effectiveProgramme?.weekRationale?.whyMatters ??
             "",
-          prioritise: liveProgramme?.weekRationale?.prioritise ?? [],
+          prioritise: effectiveProgramme?.weekRationale?.prioritise ?? [],
           coachNote:
-            selectedBundle.week?.coach_note ?? liveProgramme?.weekRationale?.coachNote ?? "",
+            selectedBundle.week?.coach_note ?? effectiveProgramme?.weekRationale?.coachNote ?? "",
         }
-      : useLive && liveProgramme?.weekRationale
-        ? liveProgramme.weekRationale
+      : useLive && effectiveProgramme?.weekRationale
+        ? effectiveProgramme.weekRationale
         : MOCK_WEEK_RATIONALE;
 
   const completed = sessions.filter((s) => s.status === "complete").length;
   const meta = ATHLETE_PAGE_META.programme;
   const athleteName = useLive
-    ? liveProgramme?.athlete.name?.trim() || portalAthleteDisplayName(portalAthlete)
+    ? effectiveProgramme?.athlete.name?.trim() || portalAthleteDisplayName(portalAthlete)
     : useMock
       ? MOCK_ATHLETE.name
       : portalAthleteDisplayName(portalAthlete);
@@ -215,14 +224,15 @@ export function ProgrammePageView() {
         setDrawerSession(updated);
         setSessionDetailOverride(sessionDetailFromHyroxSession(updated));
       }
-      if (programmePublishedLive && !useMockPreview) {
+      if (effectivePublished && !useMockPreview) {
         await reloadLiveProgramme();
       }
     },
-    [programmePublishedLive, useMockPreview, reloadLiveProgramme]
+    [effectivePublished, useMockPreview, reloadLiveProgramme]
   );
 
-  const programmeVisible = programmeHubLive;
+  const programmeVisible =
+    programmeHubLive || Boolean(serverProgramme?.published) || (useLive && Boolean(effectiveProgramme));
   const showMockWeek = useMock && !useLive;
   const showWeekSessions = (useLive && selectedTab?.generated) || showMockWeek;
   const missingStartDateWarning = useLive && programmeVisible && !programmeStartDate;
@@ -252,7 +262,7 @@ export function ProgrammePageView() {
         </p>
       ) : null}
 
-      {liveProgrammeLoading && useLive ? (
+      {liveProgrammeLoading && useLive && !serverProgramme ? (
         <p className="text-sm text-zinc-500">Loading programme…</p>
       ) : null}
 

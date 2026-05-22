@@ -33,9 +33,16 @@ export default async function AthleteLayout({ children }: { children: React.Reac
   const hasSupabaseAuthCookie = hasSupabaseAuthCookieNames(cookieStore.getAll());
 
   const supabase = await createClient();
-  const {
+  let {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user && hasSupabaseAuthCookie) {
+    await supabase.auth.getSession();
+    ({
+      data: { user },
+    } = await supabase.auth.getUser());
+  }
 
   const layoutAuth: PortalLayoutAuth = {
     hasSession: Boolean(user),
