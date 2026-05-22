@@ -6,6 +6,23 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function formatAuthCookies(summaries: {
+  name: string;
+  cookiesStoreLength: number;
+  rawHeaderLength: number;
+  mergedLength: number;
+  chosenSource: string;
+  startsWithBase64: boolean;
+}[]): string {
+  if (summaries.length === 0) return "—";
+  return summaries
+    .map(
+      (c) =>
+        `${c.name}: merged ${c.mergedLength} B (${c.chosenSource}, store ${c.cookiesStoreLength} B, header ${c.rawHeaderLength} B${c.startsWithBase64 ? ", base64" : ""})`
+    )
+    .join("; ");
+}
+
 export default async function AthleteAuthDebugPage() {
   const { auth, user } = await probeHyroxPortalAuth("/athlete/auth-debug");
   const snapshot = user
@@ -15,20 +32,36 @@ export default async function AthleteAuthDebugPage() {
       })
     : null;
 
-  const authCookieSummary =
-    auth.authCookieNames.length > 0
-      ? auth.authCookieNames
-          .map((name, i) => `${name} (${auth.authCookieValueLengths[i] ?? 0} B)`)
-          .join(", ")
-      : "—";
+  const merge = auth.cookieMerge;
 
   const rows: { label: string; value: string }[] = [
     { label: "Auth cookies present", value: auth.authCookiesPresent ? "yes" : "no" },
+    { label: "Valid session cookies", value: auth.validSessionCookiesPresent ? "yes" : "no" },
+    { label: "Duplicate cookie names", value: merge.duplicateNamesDetected ? "yes" : "no" },
     {
-      label: "Valid session cookies",
-      value: auth.validSessionCookiesPresent ? "yes" : "no",
+      label: "Primary auth-token source",
+      value: merge.primaryAuthTokenChosenSource,
     },
-    { label: "Auth cookie names (sizes)", value: authCookieSummary },
+    {
+      label: "cookies() auth total chars",
+      value: String(merge.cookiesStoreAuthTotalChars),
+    },
+    {
+      label: "Raw Cookie header chars",
+      value: String(merge.rawHeaderChars),
+    },
+    {
+      label: "Raw header auth total chars",
+      value: String(merge.rawHeaderAuthTotalChars),
+    },
+    {
+      label: "Merged auth total chars",
+      value: String(merge.mergedAuthTotalChars),
+    },
+    {
+      label: "Auth cookies (sizes / source)",
+      value: formatAuthCookies(auth.authCookieSummaries),
+    },
     { label: "Raw cookie header present", value: auth.rawCookieHeaderPresent ? "yes" : "no" },
     { label: "getSession succeeded", value: auth.getSessionSucceeded ? "yes" : "no" },
     { label: "getSession error", value: auth.getSessionError ?? "—" },
@@ -56,19 +89,27 @@ export default async function AthleteAuthDebugPage() {
     },
   ];
 
+  if (merge.duplicateNames.length > 0) {
+    rows.splice(3, 0, {
+      label: "Duplicate names",
+      value: merge.duplicateNames.join(", "),
+    });
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 px-4 py-10 text-white">
-      <div className="mx-auto max-w-lg">
+      <div className="mx-auto max-w-2xl">
         <h1 className="text-xl font-semibold">Athlete auth debug</h1>
         <p className="mt-2 text-sm text-zinc-400">
-          Temporary check that Supabase session cookies are stored and readable by the server.
+          Server reads merged cookies from next/headers cookies() and the raw Cookie request
+          header. Longest non-empty value wins when names collide.
         </p>
 
         <dl className="mt-6 space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 text-sm">
           {rows.map((row) => (
             <div key={row.label} className="flex flex-col gap-1 sm:flex-row sm:justify-between">
-              <dt className="text-zinc-400">{row.label}</dt>
-              <dd className="font-mono text-left text-zinc-100 sm:text-right sm:max-w-[60%] break-all">
+              <dt className="shrink-0 text-zinc-400">{row.label}</dt>
+              <dd className="font-mono text-left text-zinc-100 sm:max-w-[65%] break-all sm:text-right">
                 {row.value}
               </dd>
             </div>

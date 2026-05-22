@@ -3,9 +3,9 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  hasSupabaseAuthCookieNames,
   hasValidSupabaseSessionCookies,
 } from "@/app/lib/supabase/apiRoute";
+import { readAthleteRouteHandlerCookies } from "@/app/lib/supabase/mergedAthleteCookies";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
@@ -25,7 +25,7 @@ function totalCookieValueLength(batch: CookieToSet[]): number {
  */
 export async function createAuthRouteHandlerSupabase(request: NextRequest) {
   const cookieStore = await cookies();
-  const requestCookieList = request.cookies.getAll();
+  const { cookies: mergedRequestCookies } = await readAthleteRouteHandlerCookies(request);
   let pendingCookies: CookieToSet[] = [];
 
   const supabase = createServerClient(
@@ -34,10 +34,7 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          const merged = new Map<string, { name: string; value: string }>();
-          for (const c of requestCookieList) merged.set(c.name, c);
-          for (const c of cookieStore.getAll()) merged.set(c.name, c);
-          return Array.from(merged.values());
+          return mergedRequestCookies;
         },
         setAll(cookiesToSet) {
           const incomingTotal = totalCookieValueLength(cookiesToSet);

@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readAthleteRouteHandlerCookies } from "@/app/lib/supabase/mergedAthleteCookies";
 
 type CookieToSet = { name: string; value: string; options?: Record<string, unknown> };
 
@@ -62,6 +63,7 @@ export async function createApiRouteSupabase(
 ): Promise<ApiRouteSupabase> {
   const cookieStore = await cookies();
   const requestCookieList = request.cookies.getAll();
+  const { cookies: mergedRequestCookies } = await readAthleteRouteHandlerCookies(request);
   let pendingCookies: CookieToSet[] = [];
 
   const supabase = createServerClient(
@@ -70,11 +72,7 @@ export async function createApiRouteSupabase(
     {
       cookies: {
         getAll() {
-          // Merge request + next/headers (layout uses headers store; middleware updates both).
-          const merged = new Map<string, { name: string; value: string }>();
-          for (const c of requestCookieList) merged.set(c.name, c);
-          for (const c of cookieStore.getAll()) merged.set(c.name, c);
-          return Array.from(merged.values());
+          return mergedRequestCookies;
         },
         setAll(cookiesToSet) {
           pendingCookies = cookiesToSet;

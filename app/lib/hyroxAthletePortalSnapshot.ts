@@ -6,10 +6,7 @@ import {
   type ProgrammePageRenderDecision,
 } from "@/app/lib/hyroxAthleteProgrammePageGate";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
-import {
-  hasValidSupabaseSessionCookies,
-  isSupabaseAuthCookieName,
-} from "@/app/lib/supabase/apiRoute";
+import { hasValidSupabaseSessionCookies } from "@/app/lib/supabase/apiRoute";
 import {
   HYROX_MW_COOKIE_HEADER,
   HYROX_MW_INTERNAL_NAV_HEADER,
@@ -19,6 +16,11 @@ import {
   probeAthleteAuthMarkers,
 } from "@/app/lib/supabase/athleteAuthGate";
 import { createAthleteServerSupabase } from "@/app/lib/supabase/athleteServerClient";
+import {
+  readAthletePortalCookies,
+  type AuthCookieSummary,
+  type MergedCookieDebug,
+} from "@/app/lib/supabase/mergedAthleteCookies";
 import {
   resolveAuthUserForMiddleware,
   resolveAuthUserWithSessionRetry,
@@ -44,6 +46,8 @@ export type HyroxPortalSnapshotAuthProbe = {
   validSessionCookiesPresent: boolean;
   authCookieNames: string[];
   authCookieValueLengths: number[];
+  cookieMerge: MergedCookieDebug;
+  authCookieSummaries: AuthCookieSummary[];
   getSessionError: string | null;
   getUserError: string | null;
   userSource: "supabase" | "middleware-forwarded" | "none";
@@ -89,6 +93,7 @@ export async function probeHyroxPortalAuth(
 }> {
   const headerStore = await headers();
   const cookieStore = await cookies();
+  const { cookies: mergedCookies, debug: cookieMerge } = await readAthletePortalCookies();
   const authMarkers = probeAthleteAuthMarkers(cookieStore, headerStore);
   const middlewareAuth = middlewareForwardedAthleteAuth(headerStore);
   const mwIdentity = middlewareForwardedAthleteIdentity(headerStore);
@@ -98,23 +103,15 @@ export async function probeHyroxPortalAuth(
     (headerStore.get("x-pathname") ?? routePath).split("?")[0] ?? routePath;
   const currentUrl = headerStore.get("x-pathname") ?? routePath;
 
+  const validSessionCookiesPresent = hasValidSupabaseSessionCookies(mergedCookies);
+  const authCookieSummaries = cookieMerge.authCookieSummaries;
+
   const supabase = await createAthleteServerSupabase();
 
   const {
     data: { session },
     error: sessionError,
   } = await supabase.auth.getSession();
-
-  const mergedCookies = [
-    ...cookieStore.getAll(),
-    ...authMarkers.fromCookieHeader
-      ? parseCookieHeaderForProbe(headerStore.get("cookie") ?? "")
-      : [],
-  ];
-  const authCookieEntries = mergedCookies.filter((c) => isSupabaseAuthCookieName(c.name));
-  const validSessionCookiesPresent = hasValidSupabaseSessionCookies(
-    cookieStore.getAll().length > 0 ? cookieStore.getAll() : mergedCookies
-  );
 
   const { user: userFirst, error: userFirstError } = await resolveAuthUserForMiddleware(
     supabase,
@@ -153,8 +150,10 @@ export async function probeHyroxPortalAuth(
     getUserSucceeded: Boolean(userFirst),
     getUserAfterRetrySucceeded: Boolean(userAfterRetry),
     validSessionCookiesPresent,
-    authCookieNames: authCookieEntries.map((c) => c.name),
-    authCookieValueLengths: authCookieEntries.map((c) => c.value?.length ?? 0),
+    authCookieNames: authCookieSummaries.map((c) => c.name),
+    authCookieValueLengths: authCookieSummaries.map((c) => c.mergedLength),
+    cookieMerge,
+    authCookieSummaries,
     getSessionError: sessionError?.message ?? null,
     getUserError: userRetryError?.message ?? userFirstError?.message ?? null,
     userSource,
@@ -164,16 +163,6 @@ export async function probeHyroxPortalAuth(
   };
 
   return { auth, user, supabase };
-}
-
-function parseCookieHeaderForProbe(raw: string): { name: string; value: string }[] {
-  if (!raw.trim()) return [];
-  return raw.split(";").flatMap((part) => {
-    const trimmed = part.trim();
-    const eq = trimmed.indexOf("=");
-    if (eq < 1) return [];
-    return [{ name: trimmed.slice(0, eq).trim(), value: trimmed.slice(eq + 1).trim() }];
-  });
 }
 
 export async function resolveHyroxAthletePortalSnapshot(options?: {

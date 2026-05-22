@@ -28,6 +28,7 @@ import {
   resolveHyroxCoachAccess,
 } from "@/app/lib/hyroxAccess";
 import type { ProfileRole } from "@/app/lib/hyroxRoles";
+import { mergeAthleteRequestCookies } from "@/app/lib/supabase/mergedAthleteCookies";
 
 type CookieToSet = { name: string; value: string; options?: Record<string, unknown> };
 
@@ -57,6 +58,10 @@ function metaWithAuthUser(
 export function createMiddlewareClient(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
   let pendingCookies: CookieToSet[] = [];
+  const { cookies: mergedRequestCookies } = mergeAthleteRequestCookies({
+    requestCookies: request.cookies.getAll(),
+    rawCookieHeader: request.headers.get("cookie") ?? "",
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,7 +69,7 @@ export function createMiddlewareClient(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll();
+          return mergedRequestCookies;
         },
         setAll(cookiesToSet) {
           pendingCookies = cookiesToSet;
