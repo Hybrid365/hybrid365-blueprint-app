@@ -28,7 +28,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const ATHLETE_PUBLIC_PATHS = new Set(["/athlete/login", "/athlete/no-access"]);
+const ATHLETE_PUBLIC_PATHS = new Set([
+  "/athlete/login",
+  "/athlete/no-access",
+  "/athlete/auth-debug",
+]);
 
 /** Auth: middleware. Payment + link gates before portal content. */
 export default async function AthleteLayout({ children }: { children: React.ReactNode }) {

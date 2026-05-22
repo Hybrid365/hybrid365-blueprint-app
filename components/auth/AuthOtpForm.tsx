@@ -591,6 +591,7 @@ export function AuthOtpForm({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
+          redirect: "manual",
           body: JSON.stringify({
             email: trimmedEmail,
             token,
@@ -602,11 +603,41 @@ export function AuthOtpForm({
         "Verification timed out. Try again."
       );
 
-      const data = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        redirectTo?: string;
-      };
+      /** Athlete verify-otp returns 303 + Set-Cookie — follow with full page navigation. */
+      if (variant === "athlete" && res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("Location");
+        if (location) {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[athlete login] OTP verified — redirect response to", location);
+          }
+          const { message } = await athleteAutoLinkAfterLogin();
+          if (message) {
+            try {
+              sessionStorage.setItem("hyrox_auto_link_notice", message);
+            } catch {
+              /* ignore */
+            }
+          }
+          window.location.assign(location);
+          return;
+        }
+      }
+
+      let data: { success?: boolean; error?: string; redirectTo?: string };
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        if (variant === "athlete" && res.ok) {
+          window.location.assign(sanitizeNext(next));
+          return;
+        }
+        setBanner({
+          kind: "otp",
+          headline: "Code didn’t work",
+          detail: "Unexpected response from server. Try again.",
+        });
+        return;
+      }
 
       if (!res.ok || !data.success) {
         setBanner({
@@ -621,14 +652,6 @@ export function AuthOtpForm({
         const destination = sanitizeNext(data.redirectTo ?? next);
         if (process.env.NODE_ENV === "development") {
           console.log("[athlete login] OTP verified — redirecting to", destination);
-        }
-        const { message } = await athleteAutoLinkAfterLogin();
-        if (message) {
-          try {
-            sessionStorage.setItem("hyrox_auto_link_notice", message);
-          } catch {
-            /* ignore */
-          }
         }
         window.location.assign(destination);
         return;

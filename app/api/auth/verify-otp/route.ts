@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveVerifyOtpRedirect } from "@/app/lib/authRedirectUrl";
-import { createRouteHandlerSupabase } from "@/app/lib/supabase/routeHandler";
+import { createAuthRouteHandlerSupabase } from "@/app/lib/supabase/authRouteHandler";
+import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
 
 function emailLogHint(email: string): string {
   const at = email.indexOf("@");
@@ -52,8 +53,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.json({ success: true, redirectTo });
-  const supabase = createRouteHandlerSupabase(request, response);
+  const { supabase, withAuthCookies, getPendingAuthCookieNames } =
+    await createAuthRouteHandlerSupabase(request);
 
   const { data, error } = await supabase.auth.verifyOtp({
     email,
@@ -74,6 +75,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: detail }, { status: 401 });
   }
 
+  if (data.session) {
+    const { error: setSessionError } = await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+    if (setSessionError) {
+      console.log("[auth otp] setSession failed", {
+        code: setSessionError.code ?? null,
+        message: setSessionError.message?.slice(0, 120) ?? null,
+      });
+    }
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -86,12 +100,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const cookieNames = getPendingAuthCookieNames();
+  const hasAuthCookies = hasSupabaseAuthCookieNames(
+    cookieNames.map((name) => ({ name }))
+  );
+
   console.log("[auth otp] verify success", {
     userId: user.id.slice(0, 8),
     emailHint: emailLogHint(email),
     redirectTo,
     hasSession: Boolean(data.session),
+    authCookieNames: cookieNames,
+    authCookiesPending: hasAuthCookies,
   });
 
-  return response;
+  if (!hasAuthCookies) {
+    console.error("[auth otp] verify succeeded but no Supabase auth cookies were set", {
+      cookieNames,
+    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Session could not be saved. Try again or use the email link.",
+      },
+      { status: 500 }
+    );
+  }
+
+  const origin = new URL(request.url).origin;
+  const absoluteRedirect = redirectTo.startsWith("/")
+    ? `${origin}${redirectTo}`
+    : redirectTo;
+
+  /** Athlete portal: redirect response so the browser stores Set-Cookie before navigation. */
+  if (portal === "athlete") {
+    const redirectResponse = NextResponse.redirect(absoluteRedirect, { status: 303 });
+    return withAuthCookies(redirectResponse);
+  }
+
+  return withAuthCookies(
+    NextResponse.json({ success: true, redirectTo, authCookiesSet: true })
+  );
 }

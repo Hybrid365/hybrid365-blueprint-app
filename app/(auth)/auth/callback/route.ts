@@ -1,4 +1,3 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   getRequestOrigin,
@@ -8,6 +7,8 @@ import {
   sanitizeAuthNextPath,
 } from "@/app/lib/authRedirectUrl";
 import { autoLinkHyroxAthleteByEmail } from "@/app/lib/hyroxAthleteAutoLink";
+import { createAuthRouteHandlerSupabase } from "@/app/lib/supabase/authRouteHandler";
+import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 function log(message: string, extra?: Record<string, unknown>) {
@@ -89,26 +90,8 @@ export async function GET(request: NextRequest) {
   }
 
   const successUrl = `${origin}${next}`;
-  let response = NextResponse.redirect(successUrl);
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
-  const hasAuthPayload = Boolean(code || tokenHash);
+  const { supabase, withAuthCookies, getPendingAuthCookieNames } =
+    await createAuthRouteHandlerSupabase(request);
 
   async function tryAthleteAutoLink() {
     if (!next.startsWith("/athlete/")) return;
@@ -120,15 +103,38 @@ export async function GET(request: NextRequest) {
     log("[auth callback] athlete auto-link", linkResult);
   }
 
+  function finishSuccessRedirect(stage: string, userId: string | null) {
+    const cookieNames = getPendingAuthCookieNames();
+    const hasAuthCookies = hasSupabaseAuthCookieNames(
+      cookieNames.map((name) => ({ name }))
+    );
+    log("[auth callback] success", {
+      stage,
+      userId,
+      next,
+      authCookieNames: cookieNames,
+      authCookiesPending: hasAuthCookies,
+    });
+    if (!hasAuthCookies) {
+      log("[auth callback] warning — no auth cookies set on redirect", { cookieNames });
+    }
+    return withAuthCookies(NextResponse.redirect(successUrl));
+  }
+
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      if (data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      log("[auth callback] exchange success", { userId: user?.id ?? null, next });
       await tryAthleteAutoLink();
-      return response;
+      return finishSuccessRedirect("exchange", user?.id ?? null);
     }
 
     log("[auth callback] exchange failed", {
@@ -143,22 +149,23 @@ export async function GET(request: NextRequest) {
 
   if (tokenHash) {
     const otpType = otpTypeFromParam(typeParam) ?? "email";
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: otpType,
     });
 
     if (!error) {
+      if (data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      log("[auth callback] verifyOtp (token_hash) success", {
-        type: otpType,
-        userId: user?.id ?? null,
-        next,
-      });
       await tryAthleteAutoLink();
-      return response;
+      return finishSuccessRedirect("token_hash", user?.id ?? null);
     }
 
     log("[auth callback] verifyOtp failed", {
@@ -171,19 +178,17 @@ export async function GET(request: NextRequest) {
     return loginErrorRedirect(origin, reason, rawNext, portal);
   }
 
-  if (!hasAuthPayload) {
-    const {
-      data: { user: existingUser },
-    } = await supabase.auth.getUser();
+  const {
+    data: { user: existingUser },
+  } = await supabase.auth.getUser();
 
-    if (existingUser) {
-      log("[auth callback] existing session — redirecting", {
-        userId: existingUser.id,
-        next,
-      });
-      await tryAthleteAutoLink();
-      return response;
-    }
+  if (existingUser) {
+    log("[auth callback] existing session — redirecting", {
+      userId: existingUser.id,
+      next,
+    });
+    await tryAthleteAutoLink();
+    return finishSuccessRedirect("existing-session", existingUser.id);
   }
 
   log("[auth callback] no code or token_hash — redirecting to login");

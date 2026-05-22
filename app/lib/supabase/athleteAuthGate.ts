@@ -14,7 +14,11 @@ export const HYROX_MW_REDIRECT_TARGET_HEADER = "x-hyrox-redirect-target";
 export const HYROX_MW_INTERNAL_NAV_HEADER = "x-hyrox-internal-nav";
 export const HYROX_MW_PATH_HEADER = "x-hyrox-path";
 
-const ATHLETE_PUBLIC_PATHS = new Set(["/athlete/login", "/athlete/no-access"]);
+const ATHLETE_PUBLIC_PATHS = new Set([
+  "/athlete/login",
+  "/athlete/no-access",
+  "/athlete/auth-debug",
+]);
 
 export function isAthletePublicPath(pathname: string): boolean {
   return ATHLETE_PUBLIC_PATHS.has(pathname);

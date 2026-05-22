@@ -4,7 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { athleteProgrammePrefetchDisabled } from "./athleteNav";
 
-const ATHLETE_PUBLIC_PATHS = ["/athlete/login", "/athlete/no-access"];
+const ATHLETE_PUBLIC_PATHS = [
+  "/athlete/login",
+  "/athlete/no-access",
+  "/athlete/auth-debug",
+];
 
 /**
  * Inside the authenticated athlete portal, use full document navigation between

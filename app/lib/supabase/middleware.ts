@@ -200,7 +200,11 @@ function athleteLoginRedirect(
   );
 }
 
-const ATHLETE_PUBLIC_PATHS = new Set(["/athlete/login", "/athlete/no-access"]);
+const ATHLETE_PUBLIC_PATHS = new Set([
+  "/athlete/login",
+  "/athlete/no-access",
+  "/athlete/auth-debug",
+]);
 
 /** Community dashboard — refresh session cookies; auth gate in dashboard layout. */
 export async function updateSession(request: NextRequest) {
