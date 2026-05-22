@@ -3,7 +3,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { AuthOtpForm, AuthOtpFormFallback } from "@/components/auth/AuthOtpForm";
-import { sanitizeAthleteAuthNextPath } from "@/app/lib/authRedirectUrl";
+import {
+  AUTH_ATHLETE_DEFAULT_NEXT,
+  sanitizeAthleteAuthNextPath,
+} from "@/app/lib/authRedirectUrl";
 
 function AthleteLoginInfoCard() {
   return (
@@ -36,7 +39,9 @@ export default function AthleteLoginPage() {
         <Suspense fallback={<AuthOtpFormFallback />}>
           <AuthOtpForm
             variant="athlete"
-            sanitizeNext={sanitizeAthleteAuthNextPath}
+            sanitizeNext={(value) =>
+              sanitizeAthleteAuthNextPath(value ?? AUTH_ATHLETE_DEFAULT_NEXT)
+            }
             defaultMode="email_code"
             showModeTabs={false}
             emailCodeSubmitLabel="Send login code"

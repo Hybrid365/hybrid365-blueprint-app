@@ -214,7 +214,12 @@ function CommunityEmailCodeLogin({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ email: trimmedEmail, token, next }),
+          body: JSON.stringify({
+            email: trimmedEmail,
+            token,
+            next,
+            portal: "community",
+          }),
         }),
         OTP_TIMEOUT_MS,
         "Verification timed out. Try again."
@@ -231,7 +236,7 @@ function CommunityEmailCodeLogin({
         return;
       }
 
-      const destination = data.redirectTo ?? next;
+      const destination = sanitizeNext(data.redirectTo ?? next);
       window.location.assign(destination);
     } catch (unknown) {
       const err = unknown instanceof Error ? unknown : new Error(String(unknown));
@@ -570,7 +575,12 @@ export function AuthOtpForm({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ email: trimmedEmail, token, next }),
+          body: JSON.stringify({
+            email: trimmedEmail,
+            token,
+            next,
+            portal: variant === "athlete" ? "athlete" : "community",
+          }),
         }),
         OTP_TIMEOUT_MS,
         "Verification timed out. Try again."
@@ -592,6 +602,10 @@ export function AuthOtpForm({
       }
 
       if (variant === "athlete") {
+        const destination = sanitizeNext(data.redirectTo ?? next);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[athlete login] OTP verified — redirecting to", destination);
+        }
         const { message } = await athleteAutoLinkAfterLogin();
         if (message) {
           try {
@@ -600,7 +614,7 @@ export function AuthOtpForm({
             /* ignore */
           }
         }
-        window.location.assign(data.redirectTo ?? next);
+        window.location.assign(destination);
         return;
       }
 

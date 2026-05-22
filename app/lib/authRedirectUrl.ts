@@ -7,7 +7,7 @@
 export const AUTH_DEFAULT_NEXT = "/dashboard";
 
 /** Default post-login destination for Hyrox Team athlete login (no ?next=). */
-export const AUTH_ATHLETE_DEFAULT_NEXT = "/athlete/onboarding";
+export const AUTH_ATHLETE_DEFAULT_NEXT = "/athlete/dashboard";
 
 const ATHLETE_LOGIN_PATH = "/athlete/login";
 
@@ -52,6 +52,21 @@ export function sanitizeAthleteAuthNextPath(next: string | null | undefined): st
 export function buildAthleteLoginNextFromRequest(pathname: string, search = ""): string {
   if (pathname === ATHLETE_LOGIN_PATH) return AUTH_ATHLETE_DEFAULT_NEXT;
   return sanitizeAthleteAuthNextPath(`${pathname}${search}`);
+}
+
+/**
+ * Post-OTP redirect for verify-otp API.
+ * Athlete portal paths must never fall through to community /dashboard.
+ */
+export function resolveVerifyOtpRedirect(
+  next: string | null | undefined,
+  portal?: "athlete" | "community"
+): string {
+  const raw = (next ?? "").trim();
+  if (portal === "athlete" || raw.startsWith("/athlete/")) {
+    return sanitizeAthleteAuthNextPath(raw || null);
+  }
+  return sanitizeAuthNextPath(next);
 }
 
 /** Post-auth redirect target from /auth/callback ?next= (athlete vs community). */

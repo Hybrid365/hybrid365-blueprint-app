@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { sanitizeAuthNextPath } from "@/app/lib/authRedirectUrl";
+import { resolveVerifyOtpRedirect } from "@/app/lib/authRedirectUrl";
 import { createRouteHandlerSupabase } from "@/app/lib/supabase/routeHandler";
 
 function emailLogHint(email: string): string {
@@ -9,7 +9,7 @@ function emailLogHint(email: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { email?: string; token?: string; next?: string };
+  let body: { email?: string; token?: string; next?: string; portal?: "athlete" | "community" };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -19,12 +19,14 @@ export async function POST(request: NextRequest) {
 
   const email = body.email?.trim().toLowerCase() ?? "";
   const token = body.token?.trim().replace(/\s/g, "") ?? "";
-  const redirectTo = sanitizeAuthNextPath(body.next);
+  const redirectTo = resolveVerifyOtpRedirect(body.next, body.portal);
 
   console.log("[auth otp] verify requested", {
     emailHint: emailLogHint(email),
     tokenLength: token.length,
-    next: redirectTo,
+    portal: body.portal ?? (body.next?.trim().startsWith("/athlete/") ? "athlete" : "community"),
+    nextRaw: body.next ?? null,
+    redirectTo,
   });
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
   console.log("[auth otp] verify success", {
     userId: user.id.slice(0, 8),
     emailHint: emailLogHint(email),
-    next: redirectTo,
+    redirectTo,
     hasSession: Boolean(data.session),
   });
 
