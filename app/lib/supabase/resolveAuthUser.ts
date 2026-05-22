@@ -57,3 +57,67 @@ export async function resolveAuthUserWithSessionRetry(
 export function authCookiesPresent(cookies: { name: string }[]): boolean {
   return hasSupabaseAuthCookieNames(cookies);
 }
+
+/**
+ * Middleware-optimised auth: refresh session first, then resolve user.
+ * Avoids redirecting on expired access tokens when a refresh token is still valid.
+ */
+export async function resolveAuthUserForMiddleware(
+  supabase: SupabaseClient,
+  hasAuthCookie: boolean
+): Promise<AuthUserResolution> {
+  let retriedWithSession = false;
+
+  if (hasAuthCookie) {
+    await supabase.auth.getSession();
+    retriedWithSession = true;
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    return { user, error, retriedWithSession };
+  }
+
+  if (!hasAuthCookie) {
+    return { user: null, error, retriedWithSession: false };
+  }
+
+  if (!retriedWithSession) {
+    await supabase.auth.getSession();
+    retriedWithSession = true;
+    const retry = await supabase.auth.getUser();
+    if (retry.data.user) {
+      return { user: retry.data.user, error: retry.error, retriedWithSession: true };
+    }
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return {
+    user: session?.user ?? null,
+    error,
+    retriedWithSession: true,
+  };
+}
+
+export function isNextRouterPrefetch(request: { headers: Headers }): boolean {
+  return (
+    request.headers.get("Next-Router-Prefetch") === "1" ||
+    request.headers.get("Purpose") === "prefetch" ||
+    request.headers.get("x-middleware-prefetch") === "1" ||
+    request.headers.get("RSC") === "1"
+  );
+}
+
+export function shouldExposeHyroxMiddlewareDebug(): boolean {
+  return (
+    process.env.NODE_ENV === "development" ||
+    process.env.HYROX_MIDDLEWARE_DEBUG === "1"
+  );
+}

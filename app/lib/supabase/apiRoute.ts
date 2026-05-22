@@ -25,11 +25,13 @@ export type ApiRouteSupabase = {
 export function hasSupabaseAuthCookieNames(
   cookies: { name: string }[]
 ): boolean {
-  return cookies.some(
-    (c) =>
-      c.name.includes("-auth-token") ||
-      (c.name.startsWith("sb-") && c.name.includes("auth"))
-  );
+  return cookies.some((c) => {
+    const name = c.name;
+    return (
+      name.includes("-auth-token") ||
+      (name.startsWith("sb-") && (name.includes("auth") || name.includes("refresh")))
+    );
+  });
 }
 
 /**

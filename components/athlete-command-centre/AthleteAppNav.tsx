@@ -21,6 +21,7 @@ function NavLink({ item, active, onClick }: { item: AthleteNavItem; active: bool
   return (
     <Link
       href={item.href}
+      prefetch={false}
       onClick={onClick}
       className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition ${
         active
@@ -73,6 +74,7 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
                 <Link
                   key={item.id}
                   href={item.href}
+                  prefetch={false}
                   className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-semibold ${
                     active ? "text-yellow-400" : "text-zinc-500"
                   }`}
