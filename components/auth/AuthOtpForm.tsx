@@ -49,16 +49,27 @@ function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string)
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 }
 
+type VerifyOtpApiDebug = {
+  setCookieHeaderPresent?: boolean;
+  hasLargeAuthCookie?: boolean;
+  setCookieHeaderCount?: number;
+  setCookieHeaderCharLength?: number;
+  accessTokenLength?: number;
+  refreshTokenLength?: number;
+  dataSessionExists?: boolean;
+};
+
 type VerifyOtpApiResponse = {
   ok?: boolean;
   success?: boolean;
   error?: string;
   redirectTo?: string;
+  debug?: VerifyOtpApiDebug;
 };
 
 type VerifyOtpClientResult =
-  | { status: "ok"; redirectTo: string }
-  | { status: "error"; message: string };
+  | { status: "ok"; redirectTo: string; debug?: VerifyOtpApiDebug }
+  | { status: "error"; message: string; debug?: VerifyOtpApiDebug };
 
 /** POST /api/auth/verify-otp — JSON body + Set-Cookie; client navigates via redirectTo. */
 async function verifyOtpViaApi(input: {
@@ -99,6 +110,8 @@ async function verifyOtpViaApi(input: {
     };
   }
 
+  const debug = data.debug;
+
   if (process.env.NODE_ENV === "development") {
     console.log("[auth otp client] verify response", {
       status: res.status,
@@ -106,14 +119,38 @@ async function verifyOtpViaApi(input: {
       ok: data.ok ?? data.success,
       redirectTo: data.redirectTo ?? null,
       error: data.error ?? null,
+      setCookieHeaderPresent: debug?.setCookieHeaderPresent ?? null,
+      hasLargeAuthCookie: debug?.hasLargeAuthCookie ?? null,
+      setCookieHeaderCount: debug?.setCookieHeaderCount ?? null,
+      accessTokenLength: debug?.accessTokenLength ?? null,
+      dataSessionExists: debug?.dataSessionExists ?? null,
     });
   }
 
   const verified = res.ok && (data.ok === true || data.success === true);
   if (!verified) {
+    const detail =
+      data.error ??
+      (debug && !debug.setCookieHeaderPresent
+        ? "OTP verified but auth cookies were not attached to response."
+        : "Check the code and try again.");
     return {
       status: "error",
-      message: data.error ?? "Check the code and try again.",
+      message: detail,
+      debug,
+    };
+  }
+
+  if (
+    input.portal === "athlete" &&
+    debug &&
+    (!debug.setCookieHeaderPresent || !debug.hasLargeAuthCookie)
+  ) {
+    return {
+      status: "error",
+      message:
+        "Login succeeded on the server but session cookies were not set. Open Network → verify-otp and check Set-Cookie.",
+      debug,
     };
   }
 
@@ -122,10 +159,23 @@ async function verifyOtpViaApi(input: {
     return {
       status: "error",
       message: "Login succeeded but no redirect path was returned. Try again.",
+      debug,
     };
   }
 
-  return { status: "ok", redirectTo };
+  return { status: "ok", redirectTo, debug };
+}
+
+function formatVerifyOtpDevDetail(debug?: VerifyOtpApiDebug): string | null {
+  if (process.env.NODE_ENV !== "development" || !debug) return null;
+  return [
+    `setCookie: ${debug.setCookieHeaderPresent ? "yes" : "no"}`,
+    `large auth cookie: ${debug.hasLargeAuthCookie ? "yes" : "no"}`,
+    debug.setCookieHeaderCount != null ? `count ${debug.setCookieHeaderCount}` : null,
+    debug.accessTokenLength != null ? `access ${debug.accessTokenLength} chars` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 async function athleteAutoLinkAfterLogin(): Promise<{
@@ -664,10 +714,11 @@ export function AuthOtpForm({
       });
 
       if (result.status === "error") {
+        const devDetail = formatVerifyOtpDevDetail(result.debug);
         setBanner({
           kind: "otp",
           headline: "Code didn’t work",
-          detail: result.message,
+          detail: devDetail ? `${result.message} (${devDetail})` : result.message,
         });
         return;
       }
@@ -676,7 +727,10 @@ export function AuthOtpForm({
 
       if (variant === "athlete") {
         if (process.env.NODE_ENV === "development") {
-          console.log("[athlete login] OTP verified — navigating to", destination);
+          console.log("[athlete login] OTP verified — navigating to", destination, {
+            setCookieHeaderPresent: result.debug?.setCookieHeaderPresent,
+            hasLargeAuthCookie: result.debug?.hasLargeAuthCookie,
+          });
         }
         const { message } = await athleteAutoLinkAfterLogin();
         if (message) {

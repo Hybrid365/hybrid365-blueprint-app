@@ -105,6 +105,22 @@ export default async function AthleteAuthDebugPage() {
           header. Longest non-empty value wins when names collide.
         </p>
 
+        {!auth.authCookiesPresent && !auth.rawCookieHeaderPresent ? (
+          <div
+            className="mt-4 rounded-xl border border-red-500/45 bg-red-950/35 px-4 py-3 text-sm text-red-100"
+            role="alert"
+          >
+            <p className="font-semibold text-red-200">No cookies reached server</p>
+            <p className="mt-1 text-red-100/90">
+              Login did not persist session. After OTP, check Network →{" "}
+              <span className="font-mono">/api/auth/verify-otp</span> for{" "}
+              <span className="font-mono">Set-Cookie</span> and{" "}
+              <span className="font-mono">debug.setCookieHeaderPresent</span> /{" "}
+              <span className="font-mono">hasLargeAuthCookie</span> in the response body.
+            </p>
+          </div>
+        ) : null}
+
         <dl className="mt-6 space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 text-sm">
           {rows.map((row) => (
             <div key={row.label} className="flex flex-col gap-1 sm:flex-row sm:justify-between">

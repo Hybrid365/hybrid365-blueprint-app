@@ -7,6 +7,7 @@ import { readAthleteRouteHandlerCookies } from "@/app/lib/supabase/mergedAthlete
 import {
   buildSessionCookiesToSet,
   debugPendingSessionCookies,
+  inspectResponseSetCookieHeaders,
   type SessionCookieToSet,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
@@ -114,7 +115,8 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
       applyToHandlers(pendingCookies);
     },
 
-    withAuthCookies(response: NextResponse) {
+    /** Deterministic write of pending session cookies onto the response (no async setAll). */
+    attachSessionCookiesToResponse(response: NextResponse) {
       pendingCookies.forEach(({ name, value, options }) => {
         if (!value) {
           response.cookies.delete(name);
@@ -125,6 +127,10 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
       return response;
     },
 
+    withAuthCookies(response: NextResponse) {
+      return this.attachSessionCookiesToResponse(response);
+    },
+
     getPendingAuthCookieDebug() {
       return debugPendingSessionCookies(pendingCookies);
     },
@@ -133,17 +139,8 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
       return debugPendingSessionCookies(pendingCookies).hasValidSession;
     },
 
-    getSetCookieHeaderDebug(response: NextResponse) {
-      const headers = response.headers.getSetCookie?.() ?? [];
-      return {
-        count: headers.length,
-        valueLengths: headers.map((h) => {
-          const valuePart = h.split(";")[0] ?? "";
-          const eq = valuePart.indexOf("=");
-          return eq >= 0 ? valuePart.slice(eq + 1).length : 0;
-        }),
-        hasMaxAgeZero: headers.some((h) => /Max-Age=0/i.test(h)),
-      };
+    inspectResponseSetCookies(response: NextResponse) {
+      return inspectResponseSetCookieHeaders(response);
     },
   };
 }

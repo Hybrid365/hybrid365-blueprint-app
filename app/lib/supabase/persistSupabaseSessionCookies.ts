@@ -3,6 +3,7 @@ import { stringToBase64URL } from "@supabase/ssr/dist/module/utils/base64url";
 import { DEFAULT_COOKIE_OPTIONS } from "@supabase/ssr/dist/module/utils/constants";
 import type { CookieOptions } from "@supabase/ssr";
 import type { Session } from "@supabase/supabase-js";
+import type { NextResponse } from "next/server";
 import { isSupabaseAuthCookieName } from "@/app/lib/supabase/apiRoute";
 
 const BASE64_PREFIX = "base64-";
@@ -94,6 +95,46 @@ export type PendingSessionCookieDebug = {
   hasValueOver500: boolean;
   hasValidSession: boolean;
 };
+
+export type ResponseSetCookieDebug = {
+  setCookieHeaderPresent: boolean;
+  setCookieHeaderCount: number;
+  setCookieHeaderCharLength: number;
+  setCookieCookieNames: string[];
+  setCookieValueLengths: number[];
+  hasLargeAuthCookie: boolean;
+};
+
+function parseSetCookieHeaderLine(header: string): { name: string; valueLength: number } {
+  const valuePart = header.split(";")[0] ?? "";
+  const eq = valuePart.indexOf("=");
+  if (eq < 0) return { name: valuePart.trim(), valueLength: 0 };
+  return {
+    name: valuePart.slice(0, eq).trim(),
+    valueLength: valuePart.slice(eq + 1).length,
+  };
+}
+
+/** Inspect Set-Cookie on the exact NextResponse returned to the browser. */
+export function inspectResponseSetCookieHeaders(response: NextResponse): ResponseSetCookieDebug {
+  const headers = response.headers.getSetCookie?.() ?? [];
+  const parsed = headers.map(parseSetCookieHeaderLine);
+  const setCookieCookieNames = parsed.map((p) => p.name);
+  const setCookieValueLengths = parsed.map((p) => p.valueLength);
+  const setCookieHeaderCharLength = headers.reduce((n, h) => n + h.length, 0);
+  const hasLargeAuthCookie = parsed.some(
+    (p) => isSupabaseAuthCookieName(p.name) && p.valueLength > 500
+  );
+
+  return {
+    setCookieHeaderPresent: headers.length > 0,
+    setCookieHeaderCount: headers.length,
+    setCookieHeaderCharLength,
+    setCookieCookieNames,
+    setCookieValueLengths,
+    hasLargeAuthCookie,
+  };
+}
 
 export function debugPendingSessionCookies(
   cookies: SessionCookieToSet[]

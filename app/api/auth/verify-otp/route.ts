@@ -4,6 +4,10 @@ import {
   assertAuthRouteSession,
   createAuthRouteHandlerSupabase,
 } from "@/app/lib/supabase/authRouteHandler";
+import type { ResponseSetCookieDebug } from "@/app/lib/supabase/persistSupabaseSessionCookies";
+
+const COOKIE_ATTACH_ERROR =
+  "OTP verified but auth cookies were not attached to response";
 
 function emailLogHint(email: string): string {
   const at = email.indexOf("@");
@@ -11,22 +15,39 @@ function emailLogHint(email: string): string {
   return `${email[0] ?? "?"}***@${email.slice(at + 1)}`;
 }
 
+type VerifyOtpDebug = {
+  ok: boolean;
+  verifyOtpSuccess: boolean;
+  dataSessionExists: boolean;
+  dataUserExists: boolean;
+  accessTokenLength: number;
+  refreshTokenLength: number;
+  pendingCookieBatchCount: number;
+  pendingCookieNames: string[];
+  pendingCookieValueLengths: number[];
+  pendingHasMaxAgeZero: boolean[];
+  pendingHasValueOver500: boolean;
+  pendingTotalValueChars: number;
+  pendingHasValidSession: boolean;
+  responseStatus: number;
+} & ResponseSetCookieDebug;
+
 function buildVerifyOtpDebug(
   data: {
     session: { access_token?: string; refresh_token?: string } | null;
     user: { id?: string; email?: string } | null;
   } | null,
   auth: Awaited<ReturnType<typeof createAuthRouteHandlerSupabase>>,
-  extra?: {
-    verifyOtpSuccess?: boolean;
-    setCookieHeader?: ReturnType<typeof auth.getSetCookieHeaderDebug>;
-    responseStatus?: number;
+  extra: {
+    verifyOtpSuccess: boolean;
+    responseStatus: number;
+    setCookie?: ResponseSetCookieDebug;
   }
-) {
+): VerifyOtpDebug {
   const pending = auth.getPendingAuthCookieDebug();
   return {
-    ok: extra?.verifyOtpSuccess ?? false,
-    verifyOtpSuccess: extra?.verifyOtpSuccess ?? false,
+    ok: extra.verifyOtpSuccess && (extra.setCookie?.setCookieHeaderPresent ?? false),
+    verifyOtpSuccess: extra.verifyOtpSuccess,
     dataSessionExists: Boolean(data?.session),
     dataUserExists: Boolean(data?.user),
     accessTokenLength: data?.session?.access_token?.length ?? 0,
@@ -38,10 +59,13 @@ function buildVerifyOtpDebug(
     pendingHasValueOver500: pending.hasValueOver500,
     pendingTotalValueChars: pending.totalValueChars,
     pendingHasValidSession: pending.hasValidSession,
-    finalSetCookieCount: extra?.setCookieHeader?.count ?? 0,
-    finalSetCookieValueLengths: extra?.setCookieHeader?.valueLengths ?? [],
-    finalSetCookieHasMaxAgeZero: extra?.setCookieHeader?.hasMaxAgeZero ?? false,
-    responseStatus: extra?.responseStatus ?? 200,
+    responseStatus: extra.responseStatus,
+    setCookieHeaderPresent: extra.setCookie?.setCookieHeaderPresent ?? false,
+    setCookieHeaderCount: extra.setCookie?.setCookieHeaderCount ?? 0,
+    setCookieHeaderCharLength: extra.setCookie?.setCookieHeaderCharLength ?? 0,
+    setCookieCookieNames: extra.setCookie?.setCookieCookieNames ?? [],
+    setCookieValueLengths: extra.setCookie?.setCookieValueLengths ?? [],
+    hasLargeAuthCookie: extra.setCookie?.hasLargeAuthCookie ?? false,
   };
 }
 
@@ -97,7 +121,10 @@ export async function POST(request: NextRequest) {
           : error.message || "Check the code and try again.",
     };
     if (includeDebug) {
-      failBody.debug = buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: false, responseStatus: 401 });
+      failBody.debug = buildVerifyOtpDebug(data, auth, {
+        verifyOtpSuccess: false,
+        responseStatus: 401,
+      });
     }
     return NextResponse.json(failBody, { status: 401 });
   }
@@ -109,7 +136,10 @@ export async function POST(request: NextRequest) {
       error: "Verification succeeded but no session was returned. Request a new code.",
     };
     if (includeDebug) {
-      failBody.debug = buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: true, responseStatus: 500 });
+      failBody.debug = buildVerifyOtpDebug(data, auth, {
+        verifyOtpSuccess: true,
+        responseStatus: 500,
+      });
     }
     return NextResponse.json(failBody, { status: 500 });
   }
@@ -123,7 +153,10 @@ export async function POST(request: NextRequest) {
       error: "Session could not be saved. Try again or use the email link.",
     };
     if (includeDebug) {
-      failBody.debug = buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: true, responseStatus: 500 });
+      failBody.debug = buildVerifyOtpDebug(data, auth, {
+        verifyOtpSuccess: true,
+        responseStatus: 500,
+      });
     }
     return NextResponse.json(failBody, { status: 500 });
   }
@@ -136,29 +169,89 @@ export async function POST(request: NextRequest) {
       error: "Could not establish a session. Try again.",
     };
     if (includeDebug) {
-      failBody.debug = buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: true, responseStatus: 500 });
+      failBody.debug = buildVerifyOtpDebug(data, auth, {
+        verifyOtpSuccess: true,
+        responseStatus: 500,
+      });
     }
     return NextResponse.json(failBody, { status: 500 });
   }
 
-  const jsonBody: Record<string, unknown> = {
-    ok: true,
-    success: true,
-    redirectTo,
-    authCookiesSet: true,
-  };
+  const cookieProbe = new NextResponse(null, { status: 200 });
+  auth.attachSessionCookiesToResponse(cookieProbe);
+  const setCookieInspect = auth.inspectResponseSetCookies(cookieProbe);
 
-  if (includeDebug) {
-    jsonBody.debug = buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: true, responseStatus: 200 });
+  const fullDebug = buildVerifyOtpDebug(data, auth, {
+    verifyOtpSuccess: true,
+    responseStatus: 200,
+    setCookie: setCookieInspect,
+  });
+
+  if (!setCookieInspect.setCookieHeaderPresent || !setCookieInspect.hasLargeAuthCookie) {
+    console.error("[auth otp] verify cookie attach failed", {
+      userId: sessionUser.userId.slice(0, 8),
+      emailHint: emailLogHint(email),
+      pending: auth.getPendingAuthCookieDebug(),
+      setCookie: setCookieInspect,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        success: false,
+        error: COOKIE_ATTACH_ERROR,
+        ...(includeDebug ? { debug: fullDebug } : {}),
+      },
+      { status: 500 }
+    );
   }
 
-  const response = auth.withAuthCookies(NextResponse.json(jsonBody, { status: 200 }));
+  const response = NextResponse.json(
+    {
+      ok: true,
+      success: true,
+      redirectTo,
+      authCookiesSet: true,
+      ...(includeDebug ? { debug: fullDebug } : {}),
+    },
+    { status: 200 }
+  );
+  auth.attachSessionCookiesToResponse(response);
+
+  const returnedInspect = auth.inspectResponseSetCookies(response);
+  if (
+    !returnedInspect.setCookieHeaderPresent ||
+    !returnedInspect.hasLargeAuthCookie
+  ) {
+    console.error("[auth otp] returned response missing Set-Cookie", {
+      userId: sessionUser.userId.slice(0, 8),
+      emailHint: emailLogHint(email),
+      probe: setCookieInspect,
+      returned: returnedInspect,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        success: false,
+        error: COOKIE_ATTACH_ERROR,
+        ...(includeDebug
+          ? {
+              debug: buildVerifyOtpDebug(data, auth, {
+                verifyOtpSuccess: true,
+                responseStatus: 500,
+                setCookie: returnedInspect,
+              }),
+            }
+          : {}),
+      },
+      { status: 500 }
+    );
+  }
 
   console.log("[auth otp] verify success", {
     userId: sessionUser.userId.slice(0, 8),
     emailHint: emailLogHint(email),
     redirectTo,
-    setCookie: auth.getSetCookieHeaderDebug(response),
+    setCookie: returnedInspect,
     pending: auth.getPendingAuthCookieDebug(),
   });
 
