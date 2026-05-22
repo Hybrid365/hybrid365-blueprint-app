@@ -14,6 +14,7 @@ import { createClient } from "@/app/lib/supabase/server";
 import { AthletePaymentPendingNotice } from "@/components/athlete-command-centre/AthletePaymentPendingNotice";
 import { AthleteUnlinkedNotice } from "@/components/athlete-command-centre/AthleteUnlinkedNotice";
 import { buildHyroxPortalServerAuth } from "@/app/lib/hyroxAthletePortalContract";
+import { createHyroxPortalMutationToken } from "@/app/lib/hyroxPortalMutationToken";
 import {
   AthletePortalProvider,
   type PortalAthleteSummary,
@@ -143,6 +144,14 @@ export default async function AthleteLayout({ children }: { children: React.Reac
     portalMatchSource: portalResolved.matchSource,
   });
 
+  const portalMutationToken = serverAuth.serverAuthConfirmed
+    ? createHyroxPortalMutationToken({
+        athleteId: resolvedAthlete.id,
+        authUserId: user.id,
+        email: user.email,
+      })
+    : null;
+
   return (
     <AthletePortalProvider
       hasLinkedAthlete={serverAuth.hasLinkedAthlete}
@@ -150,6 +159,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       portalMatchSource={serverAuth.portalMatchSource}
       layoutAuth={serverAuth.layoutAuth}
       serverAuthConfirmed={serverAuth.serverAuthConfirmed}
+      portalMutationToken={portalMutationToken}
     >
       {children}
     </AthletePortalProvider>

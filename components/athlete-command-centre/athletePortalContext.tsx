@@ -53,6 +53,8 @@ type AthletePortalContextValue = {
   programmeHubLive: boolean;
   reloadLiveProgramme: () => Promise<void>;
   layoutAuth: PortalLayoutAuth;
+  /** Short-lived server-signed token for mutations when cookie auth fails (Hyrox only). */
+  portalMutationToken: string | null;
 };
 
 const AthletePortalContext = createContext<AthletePortalContextValue | null>(null);
@@ -72,6 +74,7 @@ export function AthletePortalProvider({
   layoutAuth = EMPTY_LAYOUT_AUTH,
   serverAuthConfirmed = false,
   serverProgrammePublishedSeed = false,
+  portalMutationToken = null,
 }: {
   children: React.ReactNode;
   hasLinkedAthlete?: boolean;
@@ -80,6 +83,7 @@ export function AthletePortalProvider({
   layoutAuth?: PortalLayoutAuth;
   serverAuthConfirmed?: boolean;
   serverProgrammePublishedSeed?: boolean;
+  portalMutationToken?: string | null;
 }) {
   const allowMockPreview = isHyroxAthleteMockPreviewAllowed();
   const [programmePublishedMock, setProgrammePublishedMockState] = useState(false);
@@ -189,6 +193,7 @@ export function AthletePortalProvider({
       programmeHubLive,
       reloadLiveProgramme,
       layoutAuth,
+      portalMutationToken,
     }),
     [
       hydrated,
@@ -211,6 +216,7 @@ export function AthletePortalProvider({
       programmeHubLive,
       reloadLiveProgramme,
       layoutAuth,
+      portalMutationToken,
     ]
   );
 

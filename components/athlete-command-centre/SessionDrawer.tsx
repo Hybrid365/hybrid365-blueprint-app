@@ -60,7 +60,7 @@ export function SessionDrawer({
     attemptDebug,
     serverAuthDebug,
   } = useHyroxSessionLog();
-  const { serverAuthConfirmed, portalAthlete } = useAthletePortal();
+  const { serverAuthConfirmed, portalAthlete, portalMutationToken } = useAthletePortal();
   const [showLogForm, setShowLogForm] = useState(initialShowLogForm);
   const [form, setForm] = useState<HyroxSessionLogForm>(() => formFromSession(session));
 
@@ -323,20 +323,27 @@ export function SessionDrawer({
               <p>blocked: {blockedReason ?? "—"}</p>
               <p>portalAthleteId: {portalAthlete?.id ?? "—"}</p>
               <p>serverAuthConfirmed: {serverAuthConfirmed ? "yes" : "no"}</p>
-              <p>lastVia: {attemptDebug.lastLogAttemptVia}</p>
+              <p>portalMutationToken: {portalMutationToken ? "present" : "missing"}</p>
+              <p>lastVia: {lastVia}</p>
+              <p>cookieAuth: {attemptDebug.cookieAuth}</p>
+              <p>tokenAuth: {attemptDebug.tokenAuth}</p>
+              <p>
+                sessionBelongsToAthlete:{" "}
+                {attemptDebug.sessionBelongsToAthlete === undefined
+                  ? "—"
+                  : attemptDebug.sessionBelongsToAthlete
+                    ? "yes"
+                    : "no"}
+              </p>
               <p>
                 server: {attemptDebug.serverActionResult}
                 {attemptDebug.serverError ? ` — ${attemptDebug.serverError}` : ""}
               </p>
-              <p>
-                api: {attemptDebug.apiResult}
-                {attemptDebug.apiError ? ` — ${attemptDebug.apiError}` : ""}
-              </p>
+              {attemptDebug.apiError ? <p>api: {attemptDebug.apiError}</p> : null}
               {serverAuthDebug ? (
                 <p>
-                  cookies: {serverAuthDebug.hasAuthCookie ? "yes" : "no"} · refresh:{" "}
-                  {serverAuthDebug.refreshAttempted ? "yes" : "no"} · getUser:{" "}
-                  {serverAuthDebug.getUserSucceeded ? "yes" : "no"}
+                  server action cookies: {serverAuthDebug.hasAuthCookie ? "yes" : "no"} ·
+                  getUser: {serverAuthDebug.getUserSucceeded ? "yes" : "no"}
                 </p>
               ) : null}
             </div>
