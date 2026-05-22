@@ -28,7 +28,8 @@ export function hasSupabaseAuthCookieNames(
   return cookies.some((c) => {
     const name = c.name;
     return (
-      name.includes("-auth-token") ||
+      name.includes("auth-token") ||
+      name.includes("refresh-token") ||
       (name.startsWith("sb-") && (name.includes("auth") || name.includes("refresh")))
     );
   });

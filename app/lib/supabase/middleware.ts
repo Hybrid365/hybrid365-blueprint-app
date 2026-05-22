@@ -65,26 +65,34 @@ function applyPendingCookies(response: NextResponse, pendingCookies: CookieToSet
 function attachHyroxMiddlewareDebugHeaders(
   response: NextResponse,
   path: string,
-  meta: HyroxMiddlewareDebugMeta
+  meta: HyroxMiddlewareDebugMeta,
+  options?: { redirectSource?: "middleware" | "layout" | "other" }
 ): NextResponse {
   const programmeRoute = isHyroxProgrammeRoute(path);
-  const expose =
-    programmeRoute || (shouldExposeHyroxMiddlewareDebug() && path.startsWith("/athlete"));
+  const athleteRoute = path.startsWith("/athlete");
+  const exposeDebug =
+    programmeRoute || (shouldExposeHyroxMiddlewareDebug() && athleteRoute);
 
-  if (!expose) return response;
+  if (athleteRoute) {
+    response.headers.set("x-hyrox-path", path);
+    response.headers.set("x-hyrox-middleware-stage", meta.stage);
+    response.headers.set("x-hyrox-cookie-present", meta.cookiePresent ? "yes" : "no");
+    response.headers.set("x-hyrox-user-present", meta.userPresent ? "yes" : "no");
+    if (meta.redirectTarget) {
+      response.headers.set("x-hyrox-redirect-target", meta.redirectTarget);
+    }
+    if (options?.redirectSource) {
+      response.headers.set("x-hyrox-redirect-source", options.redirectSource);
+    }
+    if (programmeRoute) {
+      response.headers.set("x-hyrox-programme-route-hit", "1");
+    }
+  }
 
-  response.headers.set("x-hyrox-path", path);
-  response.headers.set("x-hyrox-middleware-stage", meta.stage);
+  if (!exposeDebug) return response;
+
   response.headers.set("x-hyrox-auth-stage", meta.stage);
-  response.headers.set("x-hyrox-cookie-present", meta.cookiePresent ? "yes" : "no");
   response.headers.set("x-hyrox-refresh-attempted", meta.refreshAttempted ? "yes" : "no");
-  response.headers.set("x-hyrox-user-present", meta.userPresent ? "yes" : "no");
-  if (meta.redirectTarget) {
-    response.headers.set("x-hyrox-redirect-target", meta.redirectTarget);
-  }
-  if (programmeRoute) {
-    response.headers.set("x-hyrox-programme-route-hit", "1");
-  }
   return response;
 }
 
@@ -134,12 +142,24 @@ function athleteLoginRedirect(
   loginUrl.searchParams.set("next", safeNext);
   const response = NextResponse.redirect(loginUrl);
   applyPendingCookies(response, pendingCookies);
-  return attachHyroxMiddlewareDebugHeaders(response, path, {
-    ...meta,
-    stage: meta.stage || "redirect-login-no-user",
-    userPresent: false,
-    redirectTarget: loginUrl.pathname,
-  });
+  if (isHyroxProgrammeRoute(path)) {
+    console.log("[hyrox-programme-route] middleware redirect login", {
+      path,
+      next: safeNext,
+      cookiePresent: meta.cookiePresent,
+    });
+  }
+  return attachHyroxMiddlewareDebugHeaders(
+    response,
+    path,
+    {
+      ...meta,
+      stage: meta.stage || "redirect-login-no-user",
+      userPresent: false,
+      redirectTarget: `${loginUrl.pathname}?next=${encodeURIComponent(safeNext)}`,
+    },
+    { redirectSource: "middleware" }
+  );
 }
 
 const ATHLETE_PUBLIC_PATHS = new Set(["/athlete/login", "/athlete/no-access"]);

@@ -1,7 +1,4 @@
 import { headers, cookies } from "next/headers";
-import { redirect } from "next/navigation";
-
-export const dynamic = "force-dynamic";
 import {
   buildAthleteAccessDebug,
   evaluateAthleteEmailAccess,
@@ -9,8 +6,11 @@ import {
 import { getHyroxAccessContext } from "@/app/lib/hyroxAccess";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
-import { buildAthleteLoginNextFromRequest } from "@/app/lib/authRedirectUrl";
-import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
+import {
+  middlewareForwardedAthleteAuth,
+  probeAthleteAuthMarkers,
+  shouldAthleteLayoutRedirectToLogin,
+} from "@/app/lib/supabase/athleteAuthGate";
 import {
   isAthleteServerPrefetch,
   isHyroxProgrammeRoute,
@@ -27,6 +27,8 @@ import {
   type PortalLayoutAuth,
 } from "@/components/athlete-command-centre/athletePortalContext";
 
+export const dynamic = "force-dynamic";
+
 const ATHLETE_PUBLIC_PATHS = new Set(["/athlete/login", "/athlete/no-access"]);
 
 /** Auth: middleware. Payment + link gates before portal content. */
@@ -35,7 +37,9 @@ export default async function AthleteLayout({ children }: { children: React.Reac
   const pathname =
     (headerStore.get("x-pathname") ?? "/athlete").split("?")[0] ?? "/athlete";
   const cookieStore = await cookies();
-  const hasSupabaseAuthCookie = hasSupabaseAuthCookieNames(cookieStore.getAll());
+  const authMarkers = probeAthleteAuthMarkers(cookieStore, headerStore);
+  const middlewareForwardedAuth = middlewareForwardedAthleteAuth(headerStore);
+  const hasSupabaseAuthCookie = authMarkers.present;
   const isPrefetch = isAthleteServerPrefetch(headerStore);
   const programmeRoute = isHyroxProgrammeRoute(pathname);
 
@@ -53,24 +57,35 @@ export default async function AthleteLayout({ children }: { children: React.Reac
     console.log("[hyrox-programme-route] layout", {
       pathname,
       hasUser: Boolean(user),
-      hasSupabaseAuthCookie,
+      authMarkers,
+      middlewareForwardedAuth,
       isPrefetch,
       isPublicPath: ATHLETE_PUBLIC_PATHS.has(pathname),
     });
   }
 
   if (!user) {
-    if (!ATHLETE_PUBLIC_PATHS.has(pathname)) {
-      /** Match middleware: cookies or prefetch → render page in-page debug, not login redirect. */
-      const allowThrough = hasSupabaseAuthCookie || isPrefetch;
-      if (!allowThrough) {
-        const next = buildAthleteLoginNextFromRequest(pathname, "");
-        if (programmeRoute) {
-          console.log("[hyrox-programme-route] layout redirect login", { pathname, next });
-        }
-        redirect(`/athlete/login?next=${encodeURIComponent(next)}`);
-      }
+    const wouldRedirect = shouldAthleteLayoutRedirectToLogin({
+      pathname,
+      userPresent: false,
+      authMarkers,
+      middlewareForwardedAuth,
+      isPrefetch,
+    });
+
+    if (wouldRedirect) {
+      /**
+       * Login redirect is middleware-only (sets x-hyrox-redirect-source: middleware).
+       * Layout must not send users to /athlete/login?next=… when cookies() is empty but
+       * middleware already forwarded x-hyrox-cookie-present: yes on the same request.
+       */
+      console.warn("[hyrox-athlete-layout] unauthenticated render (middleware should redirect)", {
+        pathname,
+        authMarkers,
+        middlewareForwardedAuth,
+      });
     }
+
     return (
       <AthletePortalProvider hasLinkedAthlete={false} portalAthlete={null} layoutAuth={layoutAuth}>
         {children}
