@@ -45,12 +45,28 @@ export function createMiddlewareClient(request: NextRequest) {
   return { supabase, supabaseResponse, getPendingCookies: () => pendingCookies };
 }
 
+function attachHyroxMiddlewareDebugHeaders(
+  response: NextResponse,
+  path: string,
+  stage: string,
+  userPresent: boolean
+): NextResponse {
+  if (process.env.NODE_ENV !== "development") return response;
+  if (!path.startsWith("/athlete")) return response;
+  response.headers.set("x-hyrox-path", path);
+  response.headers.set("x-hyrox-auth-user-present", userPresent ? "yes" : "no");
+  response.headers.set("x-hyrox-auth-stage", stage);
+  return response;
+}
+
 /** Apply refreshed Supabase cookies and forward pathname to server layouts. */
 function finalizeMiddlewareResponse(
   request: NextRequest,
   supabaseResponse: NextResponse,
-  pendingCookies: CookieToSet[]
+  pendingCookies: CookieToSet[],
+  debug?: { stage: string; userPresent: boolean }
 ): NextResponse {
+  const path = request.nextUrl.pathname;
   const response = NextResponse.next({ request });
   pendingCookies.forEach(({ name, value, options }) =>
     response.cookies.set(name, value, options)
@@ -59,7 +75,12 @@ function finalizeMiddlewareResponse(
     "x-pathname",
     `${request.nextUrl.pathname}${request.nextUrl.search}`
   );
-  return response;
+  return attachHyroxMiddlewareDebugHeaders(
+    response,
+    path,
+    debug?.stage ?? "ok",
+    debug?.userPresent ?? true
+  );
 }
 
 function communityLoginRedirect(request: NextRequest) {
@@ -73,13 +94,17 @@ function communityLoginRedirect(request: NextRequest) {
 }
 
 function athleteLoginRedirect(request: NextRequest) {
-  const safeNext = buildAthleteLoginNextFromRequest(
-    request.nextUrl.pathname,
-    request.nextUrl.search
-  );
+  const path = request.nextUrl.pathname;
+  const safeNext = buildAthleteLoginNextFromRequest(path, request.nextUrl.search);
   const loginUrl = new URL("/athlete/login", request.url);
   loginUrl.searchParams.set("next", safeNext);
-  return NextResponse.redirect(loginUrl);
+  const response = NextResponse.redirect(loginUrl);
+  return attachHyroxMiddlewareDebugHeaders(
+    response,
+    path,
+    "redirect-login-no-user",
+    false
+  );
 }
 
 /** Community dashboard — refresh session cookies; auth gate in dashboard layout. */
@@ -185,12 +210,18 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
 
   /** Athlete JSON APIs — refresh session cookies only; route handlers return 401/403. */
   if (path.startsWith("/api/hyrox/athlete")) {
-    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies(), {
+      stage: "api-cookie-refresh",
+      userPresent: Boolean(user),
+    });
   }
 
   if (!user) {
     if (path === "/athlete/login") {
-      return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
+      return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies(), {
+        stage: "login-public",
+        userPresent: false,
+      });
     }
     if (path.startsWith("/athlete")) {
       return athleteLoginRedirect(request);
@@ -199,11 +230,17 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
   }
 
   if (path === "/athlete/login") {
-    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies(), {
+      stage: "login-authed",
+      userPresent: true,
+    });
   }
 
   if (path === "/admin/no-access" || path === "/athlete/no-access") {
-    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies(), {
+      stage: "no-access",
+      userPresent: true,
+    });
   }
 
   const access = await fetchHyroxAccessForMiddleware(supabase, user.id, user.email);
@@ -214,7 +251,10 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
       denied.pathname = "/admin/no-access";
       return NextResponse.redirect(denied);
     }
-    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies(), {
+      stage: "admin-ok",
+      userPresent: true,
+    });
   }
 
   if (path.startsWith("/athlete")) {
@@ -227,10 +267,22 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
       });
       const denied = request.nextUrl.clone();
       denied.pathname = "/athlete/no-access";
-      return NextResponse.redirect(denied);
+      const response = NextResponse.redirect(denied);
+      return attachHyroxMiddlewareDebugHeaders(
+        response,
+        path,
+        "redirect-no-access",
+        true
+      );
     }
-    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
+    return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies(), {
+      stage: "athlete-ok",
+      userPresent: true,
+    });
   }
 
-  return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies());
+  return finalizeMiddlewareResponse(request, supabaseResponse, getPendingCookies(), {
+    stage: "fallback-ok",
+    userPresent: true,
+  });
 }

@@ -1,12 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { buildAthleteLoginNextFromRequest } from "@/app/lib/authRedirectUrl";
-import { fetchAthleteLiveProgrammeForServer } from "@/app/lib/hyroxAthleteProgrammeServer";
-import {
-  getAthleteLayoutSessionUser,
-  resolveLinkedHyroxAthleteForServer,
-} from "@/app/lib/hyroxAthletePortalServerAuth";
-import { AthletePortalSeedProvider } from "@/components/athlete-command-centre/athletePortalContext";
+import { loadAthleteProgrammePageServer } from "@/app/lib/hyroxAthleteProgrammePageServer";
 import ProgrammePageClient from "./ProgrammePageClient";
 
 export const metadata: Metadata = {
@@ -14,27 +7,19 @@ export const metadata: Metadata = {
   description: "Your weekly Hybrid365 Hyrox training programme.",
 };
 
+/**
+ * Auth gate: app/athlete/layout.tsx only (redirect to login when no session).
+ * This page never calls redirect("/athlete/login") — avoids RSC/prefetch false negatives.
+ */
 export default async function AthleteProgrammePage() {
-  const user = await getAthleteLayoutSessionUser();
-  if (!user) {
-    const next = buildAthleteLoginNextFromRequest("/athlete/programme", "");
-    redirect(`/athlete/login?next=${encodeURIComponent(next)}`);
-  }
-
-  const linked = await resolveLinkedHyroxAthleteForServer();
-  const initialProgramme = linked
-    ? await fetchAthleteLiveProgrammeForServer(linked.athlete, linked.user.email)
-    : null;
-
-  const serverProgrammePublished =
-    Boolean(initialProgramme?.published) || initialProgramme?.state === "published";
+  const payload = await loadAthleteProgrammePageServer();
 
   return (
-    <AthletePortalSeedProvider
-      serverProgrammePublished={serverProgrammePublished}
-      serverProgramme={initialProgramme}
-    >
-      <ProgrammePageClient initialProgramme={initialProgramme} />
-    </AthletePortalSeedProvider>
+    <ProgrammePageClient
+      variant={payload.variant}
+      serverDebug={payload.debug}
+      initialProgramme={payload.initialProgramme}
+      serverProgrammePublished={payload.serverProgrammePublished}
+    />
   );
 }
