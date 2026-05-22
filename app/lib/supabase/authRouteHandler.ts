@@ -46,7 +46,9 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
 
   const appendSafePostCommitCookieOps = (batch: CookieToSet[]) => {
     for (const { name, value, options } of batch) {
-      if (isMainSupabaseAuthStorageKey(name, storageKey)) continue;
+      if (isMainSupabaseAuthStorageKey(name, storageKey)) {
+        continue;
+      }
       if (isSupabaseAuthChunkCookieName(name, storageKey) && (value?.length ?? 0) > 0) {
         continue;
       }
@@ -125,11 +127,18 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
           else if (!pendingValid && incomingWipe) shouldReplacePending = false;
 
           if (shouldReplacePending) {
-            pendingCookies = cookiesToSet.map(({ name, value, options }) => ({
-              name,
-              value,
-              options: passthroughCookieOptions(options),
-            }));
+            pendingCookies = cookiesToSet
+              .filter(({ name, value, options }) => {
+                if (!isMainSupabaseAuthStorageKey(name, storageKey)) return true;
+                const len = value?.length ?? 0;
+                if (len === 0 || options?.maxAge === 0) return false;
+                return len >= 80;
+              })
+              .map(({ name, value, options }) => ({
+                name,
+                value,
+                options: passthroughCookieOptions(options),
+              }));
           }
 
           if (shouldReplacePending || incomingValid) {
@@ -156,7 +165,13 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
 
     /** Deterministic write: session sets first, then safe removals (chunks / code-verifier only). */
     attachSessionCookiesToResponse(response: NextResponse) {
-      const sets = pendingCookies.filter((c) => (c.value?.length ?? 0) > 0);
+      const sets = pendingCookies.filter((c) => {
+        const len = c.value?.length ?? 0;
+        if (len === 0) return false;
+        if (isMainSupabaseAuthStorageKey(c.name, storageKey) && len < 80) return false;
+        return true;
+      });
+
       const removals = pendingCookies.filter(
         (c) =>
           (!c.value || c.options?.maxAge === 0) &&
@@ -168,8 +183,11 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
       for (const { name, value, options } of sets) {
         response.cookies.set(name, value, passthroughCookieOptions(options));
       }
-      for (const { name } of removals) {
-        response.cookies.delete(name);
+      for (const { name, options } of removals) {
+        response.cookies.set(name, "", {
+          ...passthroughCookieOptions(options),
+          maxAge: 0,
+        });
       }
       return response;
     },

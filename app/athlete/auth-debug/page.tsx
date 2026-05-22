@@ -67,6 +67,17 @@ export default async function AthleteAuthDebugPage() {
       value: `${mainAuth.mainAuthTokenValueLength} B`,
     },
     {
+      label: "Session chunk cookie names",
+      value:
+        mainAuth.sessionChunkCookieNames.length > 0
+          ? mainAuth.sessionChunkCookieNames.join(", ")
+          : "—",
+    },
+    {
+      label: "Session chunk total chars",
+      value: String(mainAuth.sessionChunkTotalChars),
+    },
+    {
       label: "Code-verifier present",
       value: mainAuth.codeVerifierCookiePresent ? "yes" : "no",
     },
@@ -192,11 +203,16 @@ export default async function AthleteAuthDebugPage() {
             className="mt-4 rounded-xl border border-amber-500/45 bg-amber-950/35 px-4 py-3 text-sm text-amber-100"
             role="alert"
           >
-            <p className="font-semibold text-amber-200">Main auth-token cookie is empty (0 B)</p>
+            <p className="font-semibold text-amber-200">Main auth-token exists but is empty (0 B)</p>
             <p className="mt-1 text-amber-100/90">
-              The browser sent{" "}
-              <span className="font-mono">{mainAuth.mainAuthTokenName}</span> but with no session
-              value. Check verify-otp for duplicate or empty main auth-token Set-Cookie headers.
+              Main auth-token exists but is empty. Check verify-otp response for empty/deletion
+              Set-Cookie on the main storage key{" "}
+              <span className="font-mono">{mainAuth.mainAuthTokenName}</span>. This often happens
+              when the session was sent as one oversized cookie instead of chunked{" "}
+              <span className="font-mono">.0</span> / <span className="font-mono">.1</span> cookies.
+              {mainAuth.sessionChunkTotalChars > 0
+                ? ` Chunk data present (${mainAuth.sessionChunkTotalChars} B) — server should read chunks.`
+                : " No chunk cookies detected in the request."}
             </p>
           </div>
         ) : null}

@@ -3,6 +3,7 @@ import type { AuthPortal } from "@/app/lib/authRedirectUrl";
 import { attachH365OtpAuthProbe } from "@/app/lib/supabase/cookieProbe";
 import {
   MAIN_AUTH_COOKIE_OVERWRITE_ERROR,
+  REFUSE_MAIN_AUTH_EMPTY_ERROR,
   type ResponseSetCookieDebug,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 import type { createAuthRouteHandlerSupabase } from "@/app/lib/supabase/authRouteHandler";
@@ -85,7 +86,10 @@ export function athleteVerifyOtpErrorRedirect(
 }
 
 export function cookieAttachFailureMessage(inspect: ResponseSetCookieDebug): string {
-  if (inspect.duplicateMainAuthTokenNames || inspect.emptyMainAuthTokenSetCookie) {
+  if (inspect.refusedBecauseMainCookieEmpty || inspect.emptyMainAuthTokenSetCookie) {
+    return REFUSE_MAIN_AUTH_EMPTY_ERROR;
+  }
+  if (inspect.duplicateMainAuthTokenNames) {
     return MAIN_AUTH_COOKIE_OVERWRITE_ERROR;
   }
   return "OTP verified but auth cookies were not attached to response";

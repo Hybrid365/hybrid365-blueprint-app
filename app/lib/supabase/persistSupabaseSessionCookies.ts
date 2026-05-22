@@ -9,6 +9,15 @@ import { isSupabaseAuthCookieName } from "@/app/lib/supabase/apiRoute";
 
 const BASE64_PREFIX = "base64-";
 
+/**
+ * Per-cookie payload limit for createChunks (URI-encoded length).
+ * Browsers often reject a single Set-Cookie > ~4KB and store the name with an empty value.
+ */
+export const AUTH_SESSION_CHUNK_SIZE = 2400;
+
+export const REFUSE_MAIN_AUTH_EMPTY_ERROR =
+  "Refusing login: main auth cookie would be empty/deleted";
+
 export type SessionCookieToSet = {
   name: string;
   value: string;
@@ -66,7 +75,12 @@ export function buildSessionCookiesToSet(
   const encoded =
     BASE64_PREFIX + stringToBase64URL(serializeSupabaseSessionForStorage(session));
 
-  const chunks = createChunks(storageKey, encoded);
+  let chunks = createChunks(storageKey, encoded, AUTH_SESSION_CHUNK_SIZE);
+
+  const single = chunks.length === 1 && chunks[0]?.name === storageKey;
+  if (single && (chunks[0]?.value?.length ?? 0) > 3600) {
+    chunks = createChunks(storageKey, encoded, 1800);
+  }
 
   const secure =
     process.env.NODE_ENV === "production" ? true : (DEFAULT_COOKIE_OPTIONS.secure ?? false);
@@ -97,11 +111,17 @@ export function buildSessionCookiesToSet(
       options: removeCookieOptions,
     }));
 
-  const sets = chunks.map(({ name, value }) => ({
-    name,
-    value,
-    options: setCookieOptions,
-  }));
+  const sets = chunks
+    .filter(({ name, value }) => {
+      if ((value?.length ?? 0) === 0) return false;
+      if (name === storageKey && (value?.length ?? 0) < 80) return false;
+      return true;
+    })
+    .map(({ name, value }) => ({
+      name,
+      value,
+      options: setCookieOptions,
+    }));
 
   return [...sets, ...removals];
 }
@@ -142,6 +162,17 @@ export type ResponseSetCookieDebug = {
   maxSetCookieValueLength: number;
   sessionChunkSetCookieCount: number;
   setCookieExceedsSafeLimit: boolean;
+  mainStorageKey: string;
+  responseSetCookieNames: string[];
+  responseSetCookieValueLengths: number[];
+  responseSetCookieDeleteFlags: boolean[];
+  mainAuthCookieSetCount: number;
+  mainAuthCookieLargestValueLength: number;
+  mainAuthCookieEmptySetCount: number;
+  chunkCookieNames: string[];
+  codeVerifierCookieNames: string[];
+  refusedBecauseMainCookieEmpty: boolean;
+  usesChunkedSessionCookies: boolean;
 };
 
 export const MAIN_AUTH_COOKIE_OVERWRITE_ERROR =
@@ -181,12 +212,34 @@ export function inspectResponseSetCookieHeaders(response: NextResponse): Respons
   const maxSetCookieValueLength = Math.max(0, ...parsed.map((p) => p.valueLength));
   const sessionChunkSetCookieCount = chunkEntries.filter((p) => p.valueLength > 0).length;
 
-  const emptyMainAuthTokenSetCookie = mainEntries.some(
-    (p) =>
-      p.valueLength === 0 ||
-      p.maxAgeZero ||
-      p.expiresDelete
+  const mainAuthCookieEmptySetCount = mainEntries.filter(
+    (p) => p.valueLength === 0 || p.maxAgeZero || p.expiresDelete
+  ).length;
+
+  const emptyMainAuthTokenSetCookie = mainAuthCookieEmptySetCount > 0;
+
+  const mainAuthCookieLargestValueLength = Math.max(
+    0,
+    ...mainEntries.filter((p) => !p.maxAgeZero && !p.expiresDelete).map((p) => p.valueLength)
   );
+
+  const chunkCookieNames = parsed
+    .filter((p) => isSupabaseAuthChunkCookieName(p.name, storageKey))
+    .map((p) => p.name);
+
+  const codeVerifierCookieNames = parsed
+    .filter((p) => isSupabasePkceCodeVerifierCookieName(p.name))
+    .map((p) => p.name);
+
+  const usesChunkedSessionCookies = chunkCookieNames.some((n) =>
+    parsed.some((p) => p.name === n && p.valueLength > 80)
+  );
+
+  const responseSetCookieDeleteFlags = parsed.map(
+    (p) => p.maxAgeZero || p.expiresDelete
+  );
+
+  const refusedBecauseMainCookieEmpty = emptyMainAuthTokenSetCookie;
 
   return {
     setCookieHeaderPresent: headers.length > 0,
@@ -211,17 +264,36 @@ export function inspectResponseSetCookieHeaders(response: NextResponse): Respons
     maxSetCookieValueLength,
     sessionChunkSetCookieCount,
     setCookieExceedsSafeLimit: maxSetCookieValueLength > BROWSER_COOKIE_VALUE_SAFE_MAX,
+    mainStorageKey: storageKey,
+    responseSetCookieNames: setCookieCookieNames,
+    responseSetCookieValueLengths: setCookieValueLengths,
+    responseSetCookieDeleteFlags,
+    mainAuthCookieSetCount: mainEntries.length,
+    mainAuthCookieLargestValueLength,
+    mainAuthCookieEmptySetCount,
+    chunkCookieNames,
+    codeVerifierCookieNames,
+    refusedBecauseMainCookieEmpty,
+    usesChunkedSessionCookies,
   };
 }
 
 export function responseAuthSetCookiesAreValid(debug: ResponseSetCookieDebug): boolean {
+  if (debug.refusedBecauseMainCookieEmpty) return false;
   if (!debug.setCookieHeaderPresent || !debug.hasLargeAuthCookie) return false;
   if (debug.duplicateMainAuthTokenNames) return false;
   if (debug.emptyMainAuthTokenSetCookie) return false;
   if (debug.setCookieExceedsSafeLimit) return false;
-  const mainOk = debug.finalMainAuthTokenValueLength > 500;
-  const chunkedOk = debug.sessionChunkSetCookieCount > 0 && debug.hasLargeAuthCookie;
+  const mainOk = debug.mainAuthCookieLargestValueLength > 500;
+  const chunkedOk = debug.usesChunkedSessionCookies && debug.hasLargeAuthCookie;
   if (!mainOk && !chunkedOk) return false;
+  if (
+    debug.mainAuthCookieSetCount > 0 &&
+    debug.mainAuthCookieLargestValueLength < 80 &&
+    !chunkedOk
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -233,11 +305,18 @@ export function debugPendingSessionCookies(
   const maxAgeZero = cookies.map((c) => c.options?.maxAge === 0);
   const totalValueChars = valueLengths.reduce((n, l) => n + l, 0);
 
+  const storageKey = getSupabaseAuthStorageKey();
   const setCookies = cookies.filter((c) => (c.value?.length ?? 0) > 0);
   const maxPendingCookieValueLength = Math.max(0, ...valueLengths);
   const sessionChunkCount = setCookies.filter((c) =>
-    isSupabaseAuthChunkCookieName(c.name)
+    isSupabaseAuthChunkCookieName(c.name, storageKey)
   ).length;
+  const hasChunkPayload = setCookies.some(
+    (c) => isSupabaseAuthChunkCookieName(c.name, storageKey) && (c.value?.length ?? 0) >= 80
+  );
+  const hasMainPayload = setCookies.some(
+    (c) => isMainSupabaseAuthStorageKey(c.name, storageKey) && (c.value?.length ?? 0) >= 80
+  );
 
   return {
     names: cookies.map((c) => c.name),
@@ -246,11 +325,13 @@ export function debugPendingSessionCookies(
     totalValueChars,
     hasValueOver500: valueLengths.some((l) => l > 500),
     hasValidSession:
+      (hasMainPayload || hasChunkPayload) &&
       authCookies.some(
         (c) =>
           (c.value?.length ?? 0) >= 80 &&
           (c.value?.startsWith(BASE64_PREFIX) || (c.value?.length ?? 0) >= 200)
-      ) && totalValueChars >= 120,
+      ) &&
+      totalValueChars >= 120,
     sessionChunkCount,
     maxPendingCookieValueLength,
     pendingCookieExceedsSafeLimit: maxPendingCookieValueLength > BROWSER_COOKIE_VALUE_SAFE_MAX,

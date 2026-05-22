@@ -7,6 +7,7 @@ import {
 } from "@/app/lib/supabase/cookieProbe";
 import {
   getSupabaseAuthStorageKey,
+  isSupabaseAuthChunkCookieName,
   isSupabasePkceCodeVerifierCookieName,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
@@ -220,6 +221,8 @@ export type MainAuthCookieReadDebug = {
   mainAuthTokenName: string;
   mainAuthTokenExists: boolean;
   mainAuthTokenValueLength: number;
+  sessionChunkCookieNames: string[];
+  sessionChunkTotalChars: number;
   emptyMainAuthDuplicateDetected: boolean;
   codeVerifierCookiePresent: boolean;
   codeVerifierCookieNames: string[];
@@ -250,11 +253,20 @@ export function buildMainAuthCookieReadDebug(
     .filter((c) => isSupabasePkceCodeVerifierCookieName(c.name))
     .map((c) => c.name);
 
+  const sessionChunkCookies = cookies.filter((c) =>
+    isSupabaseAuthChunkCookieName(c.name, mainAuthTokenName)
+  );
+
   return {
     rawCookieHeaderNames: rawNames,
     mainAuthTokenName,
     mainAuthTokenExists: Boolean(mainEntry),
     mainAuthTokenValueLength: mergedLen,
+    sessionChunkCookieNames: sessionChunkCookies.map((c) => c.name),
+    sessionChunkTotalChars: sessionChunkCookies.reduce(
+      (n, c) => n + (c.value?.length ?? 0),
+      0
+    ),
     emptyMainAuthDuplicateDetected,
     codeVerifierCookiePresent: codeVerifierCookieNames.length > 0,
     codeVerifierCookieNames,
