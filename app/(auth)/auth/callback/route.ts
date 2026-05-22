@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   getRequestOrigin,
+  isAthletePortalParam,
   resolveAuthCallbackNext,
   sanitizeAthleteAuthNextPath,
   sanitizeAuthNextPath,
@@ -32,22 +33,26 @@ function otpTypeFromParam(type: string | null): EmailOtpType | null {
 function loginErrorRedirect(
   origin: string,
   reason: string,
-  rawNext: string | null
+  rawNext: string | null,
+  portal: string | null
 ): NextResponse {
   const params = new URLSearchParams({
     error: "auth",
     reason,
   });
+  const athletePortal =
+    isAthletePortalParam(portal) || (rawNext?.trim().startsWith("/athlete/") ?? false);
+
   if (rawNext) {
     const trimmed = rawNext.trim();
-    const nextParam = trimmed.startsWith("/athlete/")
+    const nextParam = athletePortal
       ? sanitizeAthleteAuthNextPath(trimmed)
       : sanitizeAuthNextPath(trimmed);
     params.set("next", nextParam);
-    const loginPath = trimmed.startsWith("/athlete/") ? "/athlete/login" : "/login";
-    return NextResponse.redirect(`${origin}${loginPath}?${params.toString()}`);
   }
-  return NextResponse.redirect(`${origin}/login?${params.toString()}`);
+
+  const loginPath = athletePortal ? "/athlete/login" : "/login";
+  return NextResponse.redirect(`${origin}${loginPath}?${params.toString()}`);
 }
 
 export async function GET(request: NextRequest) {
@@ -55,8 +60,9 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code");
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const typeParam = requestUrl.searchParams.get("type");
+  const portal = requestUrl.searchParams.get("portal");
   const rawNext = requestUrl.searchParams.get("next");
-  const next = resolveAuthCallbackNext(rawNext);
+  const next = resolveAuthCallbackNext(rawNext, { portal });
   const origin = getRequestOrigin(request);
   const errorDescription = requestUrl.searchParams.get("error_description");
 
@@ -64,6 +70,7 @@ export async function GET(request: NextRequest) {
     hasCode: Boolean(code),
     hasTokenHash: Boolean(tokenHash),
     type: typeParam,
+    portal,
     rawNext,
     next,
     errorDescription: errorDescription ?? undefined,
@@ -76,7 +83,8 @@ export async function GET(request: NextRequest) {
     return loginErrorRedirect(
       origin,
       encodeURIComponent(errorDescription.slice(0, 120)),
-      rawNext
+      rawNext,
+      portal
     );
   }
 
@@ -130,7 +138,7 @@ export async function GET(request: NextRequest) {
     });
 
     const reason = encodeURIComponent(error.code ?? error.message ?? "exchange_failed");
-    return loginErrorRedirect(origin, reason, rawNext);
+    return loginErrorRedirect(origin, reason, rawNext, portal);
   }
 
   if (tokenHash) {
@@ -160,7 +168,7 @@ export async function GET(request: NextRequest) {
     });
 
     const reason = encodeURIComponent(error.code ?? error.message ?? "verify_failed");
-    return loginErrorRedirect(origin, reason, rawNext);
+    return loginErrorRedirect(origin, reason, rawNext, portal);
   }
 
   if (!hasAuthPayload) {
@@ -179,5 +187,5 @@ export async function GET(request: NextRequest) {
   }
 
   log("[auth callback] no code or token_hash — redirecting to login");
-  return loginErrorRedirect(origin, "missing_code", rawNext);
+  return loginErrorRedirect(origin, "missing_code", rawNext, portal);
 }

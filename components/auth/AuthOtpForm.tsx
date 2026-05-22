@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { buildAthleteEmailRedirectTo, buildEmailRedirectTo } from "@/app/lib/authRedirectUrl";
+import { buildAthleteAuthCallbackUrl, buildEmailRedirectTo } from "@/app/lib/authRedirectUrl";
 import {
   ATHLETE_EMAIL_CODE_SUCCESS_COPY,
   CALLBACK_ERROR_HEADLINE,
@@ -469,6 +469,25 @@ export function AuthOtpForm({
   async function sendOtpEmail(trimmed: string) {
     const supabase = createClient();
 
+    /** Hyrox athlete: always pass athlete callback so email links never fall back to Site URL (/free-week). */
+    if (variant === "athlete") {
+      const athleteCallback = buildAthleteAuthCallbackUrl(next);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[athlete login] signInWithOtp emailRedirectTo", athleteCallback);
+      }
+      return withTimeout(
+        supabase.auth.signInWithOtp({
+          email: trimmed,
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: athleteCallback,
+          },
+        }),
+        OTP_TIMEOUT_MS,
+        "Request timed out. Check your connection and try again."
+      );
+    }
+
     if (mode === "email_code") {
       return withTimeout(
         supabase.auth.signInWithOtp({
@@ -485,10 +504,7 @@ export function AuthOtpForm({
         email: trimmed,
         options: {
           shouldCreateUser: true,
-          emailRedirectTo:
-            variant === "athlete"
-              ? buildAthleteEmailRedirectTo(next)
-              : buildEmailRedirectTo(next),
+          emailRedirectTo: buildEmailRedirectTo(next),
         },
       }),
       OTP_TIMEOUT_MS,
@@ -714,15 +730,6 @@ export function AuthOtpForm({
           >
             Use a different email
           </button>
-          {variant === "athlete" ? (
-            <button
-              type="button"
-              onClick={() => switchMode(mode === "email_code" ? "magic_link" : "email_code")}
-              className="w-full text-center text-xs text-[#F4D23C]/90 hover:text-[#F4D23C]"
-            >
-              {mode === "email_code" ? "Use magic link instead" : "Use 6-digit code instead"}
-            </button>
-          ) : null}
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
@@ -802,24 +809,6 @@ export function AuthOtpForm({
 
           <p className="text-center text-[11px] leading-relaxed text-zinc-500">{footerHelp}</p>
 
-          {variant === "athlete" && mode === "email_code" ? (
-            <button
-              type="button"
-              onClick={() => switchMode("magic_link")}
-              className="w-full text-center text-xs text-zinc-500 hover:text-[#F4D23C]/90"
-            >
-              Use magic link instead
-            </button>
-          ) : null}
-          {variant === "athlete" && mode === "magic_link" ? (
-            <button
-              type="button"
-              onClick={() => switchMode("email_code")}
-              className="w-full text-center text-xs text-zinc-500 hover:text-[#F4D23C]/90"
-            >
-              Use 6-digit code instead
-            </button>
-          ) : null}
         </form>
       )}
     </div>

@@ -19,12 +19,19 @@ export async function POST(request: NextRequest) {
 
   const email = body.email?.trim().toLowerCase() ?? "";
   const token = body.token?.trim().replace(/\s/g, "") ?? "";
-  const redirectTo = resolveVerifyOtpRedirect(body.next, body.portal);
+  const referer = request.headers.get("referer") ?? "";
+  const portalFromReferer = referer.includes("/athlete/login") ? "athlete" : undefined;
+  const portal =
+    body.portal ??
+    portalFromReferer ??
+    (body.next?.trim().startsWith("/athlete/") ? "athlete" : "community");
+
+  const redirectTo = resolveVerifyOtpRedirect(body.next, portal);
 
   console.log("[auth otp] verify requested", {
     emailHint: emailLogHint(email),
     tokenLength: token.length,
-    portal: body.portal ?? (body.next?.trim().startsWith("/athlete/") ? "athlete" : "community"),
+    portal,
     nextRaw: body.next ?? null,
     redirectTo,
   });
