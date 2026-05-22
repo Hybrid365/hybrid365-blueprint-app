@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveVerifyOtpRedirect } from "@/app/lib/authRedirectUrl";
-import { createAuthRouteHandlerSupabase } from "@/app/lib/supabase/authRouteHandler";
-import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
+import {
+  assertAuthRouteSession,
+  createAuthRouteHandlerSupabase,
+} from "@/app/lib/supabase/authRouteHandler";
 
 function emailLogHint(email: string): string {
   const at = email.indexOf("@");
@@ -53,10 +55,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { supabase, withAuthCookies, getPendingAuthCookieNames } =
-    await createAuthRouteHandlerSupabase(request);
+  const auth = await createAuthRouteHandlerSupabase(request);
 
-  const { data, error } = await supabase.auth.verifyOtp({
+  const { data, error } = await auth.supabase.auth.verifyOtp({
     email,
     token,
     type: "email",
@@ -75,69 +76,80 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, success: false, error: detail }, { status: 401 });
   }
 
-  if (data.session) {
-    const { error: setSessionError } = await supabase.auth.setSession({
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
+  const cookiesReady = await auth.waitForSessionCookies();
+  const sessionUser = await assertAuthRouteSession(auth.supabase, auth);
+  const cookieDebug = auth.getPendingAuthCookieDebug();
+
+  const devDebug =
+    process.env.NODE_ENV === "development"
+      ? {
+          verifyReturnedSession: Boolean(data.session),
+          sessionHasAccessToken: Boolean(data.session?.access_token),
+          sessionHasRefreshToken: Boolean(data.session?.refresh_token),
+          userEmail: sessionUser?.email ?? null,
+          cookiesReady,
+          cookieNames: cookieDebug.names,
+          cookieValueLengths: cookieDebug.valueLengths,
+          pendingCookieCount: cookieDebug.names.length,
+        }
+      : undefined;
+
+  if (!sessionUser) {
+    console.log("[auth otp] verify failed", {
+      reason: "no_session_after_verify",
+      cookieDebug,
+      cookiesReady,
     });
-    if (setSessionError) {
-      console.log("[auth otp] setSession failed", {
-        code: setSessionError.code ?? null,
-        message: setSessionError.message?.slice(0, 120) ?? null,
-      });
-    }
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    console.log("[auth otp] verify failed", { reason: "no_session_after_verify" });
     return NextResponse.json(
-      { ok: false, success: false, error: "Could not establish a session. Try again." },
+      {
+        ok: false,
+        success: false,
+        error: "Could not establish a session. Try again.",
+        debug: devDebug,
+      },
       { status: 500 }
     );
   }
 
-  const cookieNames = getPendingAuthCookieNames();
-  const hasAuthCookies = hasSupabaseAuthCookieNames(
-    cookieNames.map((name) => ({ name }))
-  );
-
-  console.log("[auth otp] verify success", {
-    userId: user.id.slice(0, 8),
-    emailHint: emailLogHint(email),
-    redirectTo,
-    hasSession: Boolean(data.session),
-    authCookieNames: cookieNames,
-    authCookiesPending: hasAuthCookies,
-  });
-
-  if (!hasAuthCookies) {
-    console.error("[auth otp] verify succeeded but no Supabase auth cookies were set", {
-      cookieNames,
+  if (!auth.hasValidPendingSessionCookies()) {
+    console.error("[auth otp] verify succeeded but session cookies are invalid/too small", {
+      cookieDebug,
+      cookiesReady,
     });
     return NextResponse.json(
       {
         ok: false,
         success: false,
         error: "Session could not be saved. Try again or use the email link.",
+        debug: devDebug,
       },
       { status: 500 }
     );
   }
 
-  /**
-   * JSON + Set-Cookie (not 303). fetch(redirect:"manual") often hides Location on 303,
-   * so the client uses redirectTo + window.location.assign after cookies are set.
-   */
-  return withAuthCookies(
-    NextResponse.json({
-      ok: true,
-      success: true,
-      redirectTo,
-      authCookiesSet: true,
-    })
-  );
+  console.log("[auth otp] verify success", {
+    userId: sessionUser.userId.slice(0, 8),
+    emailHint: emailLogHint(email),
+    redirectTo,
+    cookieDebug,
+    cookiesReady,
+  });
+
+  const jsonBody: Record<string, unknown> = {
+    ok: true,
+    success: true,
+    redirectTo,
+    authCookiesSet: true,
+  };
+  if (devDebug) jsonBody.debug = devDebug;
+
+  const response = NextResponse.json(jsonBody);
+  const final = auth.withAuthCookies(response);
+  const setCookieCount = final.headers.getSetCookie?.()?.length ?? 0;
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[auth otp] response Set-Cookie count", setCookieCount);
+  }
+
+  return final;
 }

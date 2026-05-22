@@ -7,6 +7,10 @@ import {
 } from "@/app/lib/hyroxAthleteProgrammePageGate";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import {
+  hasValidSupabaseSessionCookies,
+  isSupabaseAuthCookieName,
+} from "@/app/lib/supabase/apiRoute";
+import {
   HYROX_MW_COOKIE_HEADER,
   HYROX_MW_INTERNAL_NAV_HEADER,
   HYROX_MW_USER_HEADER,
@@ -37,6 +41,11 @@ export type HyroxPortalSnapshotAuthProbe = {
   getSessionSucceeded: boolean;
   getUserSucceeded: boolean;
   getUserAfterRetrySucceeded: boolean;
+  validSessionCookiesPresent: boolean;
+  authCookieNames: string[];
+  authCookieValueLengths: number[];
+  getSessionError: string | null;
+  getUserError: string | null;
   userSource: "supabase" | "middleware-forwarded" | "none";
   authUserId: string | null;
   authUserEmail: string | null;
@@ -93,12 +102,28 @@ export async function probeHyroxPortalAuth(
 
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession();
 
-  const { user: userFirst } = await resolveAuthUserForMiddleware(supabase, hasAuthCookie);
-  const { user: userAfterRetry } = await resolveAuthUserWithSessionRetry(supabase, {
-    hasAuthCookie,
-  });
+  const mergedCookies = [
+    ...cookieStore.getAll(),
+    ...authMarkers.fromCookieHeader
+      ? parseCookieHeaderForProbe(headerStore.get("cookie") ?? "")
+      : [],
+  ];
+  const authCookieEntries = mergedCookies.filter((c) => isSupabaseAuthCookieName(c.name));
+  const validSessionCookiesPresent = hasValidSupabaseSessionCookies(
+    cookieStore.getAll().length > 0 ? cookieStore.getAll() : mergedCookies
+  );
+
+  const { user: userFirst, error: userFirstError } = await resolveAuthUserForMiddleware(
+    supabase,
+    hasAuthCookie
+  );
+  const { user: userAfterRetry, error: userRetryError } =
+    await resolveAuthUserWithSessionRetry(supabase, {
+      hasAuthCookie,
+    });
 
   let user: User | null = userAfterRetry ?? userFirst;
   let userSource: HyroxPortalSnapshotAuthProbe["userSource"] = user ? "supabase" : "none";
@@ -127,6 +152,11 @@ export async function probeHyroxPortalAuth(
     getSessionSucceeded: Boolean(session?.user),
     getUserSucceeded: Boolean(userFirst),
     getUserAfterRetrySucceeded: Boolean(userAfterRetry),
+    validSessionCookiesPresent,
+    authCookieNames: authCookieEntries.map((c) => c.name),
+    authCookieValueLengths: authCookieEntries.map((c) => c.value?.length ?? 0),
+    getSessionError: sessionError?.message ?? null,
+    getUserError: userRetryError?.message ?? userFirstError?.message ?? null,
     userSource,
     authUserId: user?.id ?? null,
     authUserEmail: user?.email?.trim().toLowerCase() ?? null,
@@ -134,6 +164,16 @@ export async function probeHyroxPortalAuth(
   };
 
   return { auth, user, supabase };
+}
+
+function parseCookieHeaderForProbe(raw: string): { name: string; value: string }[] {
+  if (!raw.trim()) return [];
+  return raw.split(";").flatMap((part) => {
+    const trimmed = part.trim();
+    const eq = trimmed.indexOf("=");
+    if (eq < 1) return [];
+    return [{ name: trimmed.slice(0, eq).trim(), value: trimmed.slice(eq + 1).trim() }];
+  });
 }
 
 export async function resolveHyroxAthletePortalSnapshot(options?: {

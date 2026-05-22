@@ -15,11 +15,25 @@ export default async function AthleteAuthDebugPage() {
       })
     : null;
 
+  const authCookieSummary =
+    auth.authCookieNames.length > 0
+      ? auth.authCookieNames
+          .map((name, i) => `${name} (${auth.authCookieValueLengths[i] ?? 0} B)`)
+          .join(", ")
+      : "—";
+
   const rows: { label: string; value: string }[] = [
     { label: "Auth cookies present", value: auth.authCookiesPresent ? "yes" : "no" },
+    {
+      label: "Valid session cookies",
+      value: auth.validSessionCookiesPresent ? "yes" : "no",
+    },
+    { label: "Auth cookie names (sizes)", value: authCookieSummary },
     { label: "Raw cookie header present", value: auth.rawCookieHeaderPresent ? "yes" : "no" },
     { label: "getSession succeeded", value: auth.getSessionSucceeded ? "yes" : "no" },
+    { label: "getSession error", value: auth.getSessionError ?? "—" },
     { label: "getUser succeeded", value: auth.getUserSucceeded ? "yes" : "no" },
+    { label: "getUser error", value: auth.getUserError ?? "—" },
     { label: "getUser after retry succeeded", value: auth.getUserAfterRetrySucceeded ? "yes" : "no" },
     { label: "User source", value: auth.userSource },
     { label: "Auth email", value: auth.authUserEmail ?? "—" },
@@ -52,9 +66,11 @@ export default async function AthleteAuthDebugPage() {
 
         <dl className="mt-6 space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 text-sm">
           {rows.map((row) => (
-            <div key={row.label} className="flex justify-between gap-4">
+            <div key={row.label} className="flex flex-col gap-1 sm:flex-row sm:justify-between">
               <dt className="text-zinc-400">{row.label}</dt>
-              <dd className="font-mono text-right text-zinc-100">{row.value}</dd>
+              <dd className="font-mono text-left text-zinc-100 sm:text-right sm:max-w-[60%] break-all">
+                {row.value}
+              </dd>
             </div>
           ))}
         </dl>

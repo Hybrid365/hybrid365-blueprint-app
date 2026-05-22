@@ -22,17 +22,35 @@ export type ApiRouteSupabase = {
   authDebug: ApiRouteAuthDebug;
 };
 
+export function isSupabaseAuthCookieName(name: string): boolean {
+  return (
+    name.includes("auth-token") ||
+    name.includes("refresh-token") ||
+    (name.startsWith("sb-") && (name.includes("auth") || name.includes("refresh")))
+  );
+}
+
 export function hasSupabaseAuthCookieNames(
   cookies: { name: string }[]
 ): boolean {
-  return cookies.some((c) => {
-    const name = c.name;
-    return (
-      name.includes("auth-token") ||
-      name.includes("refresh-token") ||
-      (name.startsWith("sb-") && (name.includes("auth") || name.includes("refresh")))
-    );
-  });
+  return cookies.some((c) => isSupabaseAuthCookieName(c.name));
+}
+
+/** Auth cookie names present is not enough — values must hold a real encoded session chunk. */
+export function hasValidSupabaseSessionCookies(
+  cookies: { name: string; value?: string }[]
+): boolean {
+  const authCookies = cookies.filter((c) => isSupabaseAuthCookieName(c.name));
+  if (authCookies.length === 0) return false;
+
+  const totalValue = authCookies.reduce((n, c) => n + (c.value?.length ?? 0), 0);
+  if (totalValue < 80) return false;
+
+  return authCookies.some(
+    (c) =>
+      (c.value?.length ?? 0) >= 80 &&
+      (c.value?.startsWith("base64-") || (c.value?.length ?? 0) >= 200)
+  );
 }
 
 /**
