@@ -108,9 +108,11 @@ function ProgrammePageClientDebug({
 export function ProgrammePageView({
   serverProgramme = null,
   serverLoadVariant = "ready",
+  serverRenderDecision = "programme",
 }: {
   serverProgramme?: AthleteLiveProgrammePayload | null;
   serverLoadVariant?: "ready" | "no-session" | "not-linked";
+  serverRenderDecision?: string;
 }) {
   const {
     programmePublishedLive,
@@ -304,10 +306,13 @@ export function ProgrammePageView({
   );
 
   const programmeVisible =
+    serverRenderDecision === "programme" ||
+    serverRenderDecision === "published-empty" ||
     programmeHubLive ||
     serverProgrammePublishedSeed ||
     Boolean(serverProgramme?.published) ||
-    (useLive && Boolean(effectiveProgramme));
+    (useLive && Boolean(effectiveProgramme)) ||
+    countProgrammeSessions(serverProgramme) > 0;
   const showMockWeek = useMock && !useLive;
   const showWeekSessions = (useLive && selectedTab?.generated) || showMockWeek;
   const missingStartDateWarning = useLive && programmeVisible && !programmeStartDate;

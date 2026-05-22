@@ -22,6 +22,7 @@ export default async function AthleteProgrammePage() {
       serverDebug={payload.debug}
       initialProgramme={payload.initialProgramme}
       serverProgrammePublished={payload.serverProgrammePublished}
+      serverPortalAthlete={payload.serverPortalAthlete}
     />
   );
 }

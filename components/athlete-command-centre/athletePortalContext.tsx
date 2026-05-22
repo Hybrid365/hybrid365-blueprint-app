@@ -240,10 +240,13 @@ export function AthletePortalSeedProvider({
   children,
   serverProgrammePublished = false,
   serverProgramme = null,
+  serverPortalAthlete = null,
 }: {
   children: React.ReactNode;
   serverProgrammePublished?: boolean;
   serverProgramme?: AthleteLiveProgrammePayload | null;
+  /** Programme page server loader — unlocks portal gate when layout auth is uncertain. */
+  serverPortalAthlete?: PortalAthleteSummary | null;
 }) {
   const parent = useAthletePortal();
 
@@ -254,14 +257,19 @@ export function AthletePortalSeedProvider({
       serverProgramme?.state === "published";
     const programmePublishedLive = parent.programmePublishedLive || serverPublished;
     const liveProgramme = parent.liveProgramme ?? serverProgramme ?? null;
+    const portalAthlete = parent.portalAthlete ?? serverPortalAthlete ?? null;
+    const hasLinkedAthlete = parent.hasLinkedAthlete || Boolean(serverPortalAthlete?.id);
     const programmeHubLive =
       programmePublishedLive ||
       parent.useMockPreview ||
       parent.programmeHubLive ||
-      (parent.serverAuthConfirmed && serverPublished);
+      (parent.serverAuthConfirmed && serverPublished) ||
+      Boolean(serverProgramme && serverPortalAthlete?.id);
 
     return {
       ...parent,
+      portalAthlete,
+      hasLinkedAthlete,
       serverProgrammePublishedSeed:
         serverPublished || parent.serverProgrammePublishedSeed,
       programmePublishedLive,
@@ -271,7 +279,7 @@ export function AthletePortalSeedProvider({
       programmeState: liveProgramme?.state ?? parent.programmeState,
       programmeVisibility: liveProgramme?.visibility ?? parent.programmeVisibility,
     };
-  }, [parent, serverProgrammePublished, serverProgramme]);
+  }, [parent, serverProgrammePublished, serverProgramme, serverPortalAthlete]);
 
   return <AthletePortalContext.Provider value={value}>{children}</AthletePortalContext.Provider>;
 }

@@ -6,7 +6,12 @@ import {
   ProgrammePageServerDebugPanel,
 } from "@/components/athlete-command-centre/ProgrammePageServerDebug";
 import { ProgrammePageView } from "@/components/athlete-command-centre/ProgrammePageView";
-import { AthletePortalSeedProvider, useAthletePortal } from "@/components/athlete-command-centre/athletePortalContext";
+import {
+  AthletePortalSeedProvider,
+  useAthletePortal,
+  type PortalAthleteSummary,
+} from "@/components/athlete-command-centre/athletePortalContext";
+import { resolveProgrammePageRenderGate } from "@/app/lib/hyroxAthleteProgrammePageGate";
 import type { ProgrammePageServerDebug } from "@/app/lib/hyroxAthleteProgrammePageServer";
 import type { AthleteLiveProgrammePayload } from "@/components/athlete-command-centre/useAthleteLiveProgramme";
 
@@ -17,20 +22,33 @@ function ProgrammePageInner({
   serverDebug,
   initialProgramme,
   serverProgrammePublished,
+  serverPortalAthlete,
 }: {
   variant: Variant;
   serverDebug: ProgrammePageServerDebug;
   initialProgramme: AthleteLiveProgrammePayload | null;
   serverProgrammePublished: boolean;
+  serverPortalAthlete: PortalAthleteSummary | null;
 }) {
   const { serverAuthConfirmed, portalAthlete } = useAthletePortal();
-  const layoutTrustsAthlete = serverAuthConfirmed && Boolean(portalAthlete?.id);
-  const serverVariantFailed = variant !== "ready";
 
-  if (serverVariantFailed && !layoutTrustsAthlete) {
+  const gate = resolveProgrammePageRenderGate({
+    variant,
+    debug: serverDebug,
+    initialProgramme,
+    serverProgrammePublished,
+    layoutServerAuthConfirmed: serverAuthConfirmed,
+    portalAthleteId: portalAthlete?.id ?? null,
+  });
+
+  if (gate.showAuthNotice) {
     return (
       <div className="min-h-[50vh] px-4 py-10 sm:px-6">
-        <ProgrammePageResolveNotice variant={variant} debug={serverDebug} />
+        <ProgrammePageResolveNotice
+          variant={gate.decision === "not-linked" ? "not-linked" : "no-session"}
+          debug={serverDebug}
+          gate={gate}
+        />
       </div>
     );
   }
@@ -39,17 +57,31 @@ function ProgrammePageInner({
     <AthletePortalSeedProvider
       serverProgrammePublished={serverProgrammePublished}
       serverProgramme={initialProgramme}
+      serverPortalAthlete={serverPortalAthlete}
     >
       <ActiveAthletePage allowLinkedProgrammeAccess>
         <ProgrammePageServerDebugPanel
           debug={serverDebug}
           variant={variant}
-          layoutTrustsAthlete={layoutTrustsAthlete}
-          serverVariantFailed={serverVariantFailed}
+          layoutServerAuthConfirmed={serverAuthConfirmed}
+          gate={gate}
         />
+        {gate.layoutAuthUncertainButServerOk ? (
+          <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
+            Layout auth uncertain, but programme server resolver succeeded — showing your
+            programme from server data.
+          </p>
+        ) : null}
+        {gate.decision === "published-empty" ? (
+          <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-sm text-amber-100/90">
+            Programme is marked published but no sessions were found. Ask your coach to publish
+            week sessions, or reload after a few minutes.
+          </p>
+        ) : null}
         <ProgrammePageView
           serverProgramme={initialProgramme}
           serverLoadVariant={variant}
+          serverRenderDecision={gate.decision}
         />
       </ActiveAthletePage>
     </AthletePortalSeedProvider>
@@ -61,6 +93,7 @@ export default function ProgrammePageClient(props: {
   serverDebug: ProgrammePageServerDebug;
   initialProgramme?: AthleteLiveProgrammePayload | null;
   serverProgrammePublished?: boolean;
+  serverPortalAthlete?: PortalAthleteSummary | null;
 }) {
   return (
     <ProgrammePageInner
@@ -68,6 +101,7 @@ export default function ProgrammePageClient(props: {
       serverDebug={props.serverDebug}
       initialProgramme={props.initialProgramme ?? null}
       serverProgrammePublished={props.serverProgrammePublished ?? false}
+      serverPortalAthlete={props.serverPortalAthlete ?? null}
     />
   );
 }

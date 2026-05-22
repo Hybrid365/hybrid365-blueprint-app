@@ -87,13 +87,24 @@ export function AthletePortalGate({
   children: React.ReactNode;
   allowLinkedProgrammeAccess?: boolean;
 }) {
-  const { programmeHubLive, programmePublishedLive, hasLinkedAthlete, allowMockPreview } =
-    useAthletePortal();
+  const {
+    programmeHubLive,
+    programmePublishedLive,
+    hasLinkedAthlete,
+    allowMockPreview,
+    serverProgrammePublishedSeed,
+    liveProgramme,
+  } = useAthletePortal();
+
+  const serverProgrammeGate =
+    allowLinkedProgrammeAccess &&
+    (serverProgrammePublishedSeed || Boolean(liveProgramme?.programmeWeeks?.length));
 
   if (
     programmePublishedLive ||
     programmeHubLive ||
-    (allowLinkedProgrammeAccess && hasLinkedAthlete)
+    (allowLinkedProgrammeAccess && hasLinkedAthlete) ||
+    serverProgrammeGate
   ) {
     return <>{children}</>;
   }

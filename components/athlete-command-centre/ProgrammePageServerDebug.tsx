@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import type { ProgrammePageRenderGateResult } from "@/app/lib/hyroxAthleteProgrammePageGate";
+
+export type { ProgrammePageRenderGateResult };
 import type { ProgrammePageServerDebug } from "@/app/lib/hyroxAthleteProgrammePageServer";
 
 export function ProgrammePageServerDebugPanel({
   debug,
   variant,
-  layoutTrustsAthlete = false,
-  serverVariantFailed = false,
+  layoutServerAuthConfirmed = false,
+  gate,
 }: {
   debug: ProgrammePageServerDebug;
   variant: string;
-  layoutTrustsAthlete?: boolean;
-  serverVariantFailed?: boolean;
+  layoutServerAuthConfirmed?: boolean;
+  gate?: ProgrammePageRenderGateResult;
 }) {
   if (process.env.NODE_ENV !== "development") return null;
 
@@ -24,16 +27,30 @@ export function ProgrammePageServerDebugPanel({
       <dl className="mt-3 grid gap-1.5 sm:grid-cols-2">
         <Row label="Page route" value="/athlete/programme" />
         <Row label="Server variant" value={variant} />
-        <Row label="Layout trusts athlete" value={layoutTrustsAthlete ? "yes" : "no"} />
         <Row
-          label="Recovered via layout"
-          value={serverVariantFailed && layoutTrustsAthlete ? "yes" : "no"}
+          label="layoutServerAuthConfirmed"
+          value={layoutServerAuthConfirmed ? "yes" : "no"}
         />
-        <Row label="Auth user email" value={debug.authUserEmail ?? "—"} />
+        <Row
+          label="programmeServerResolvedAthleteId"
+          value={debug.linkedAthleteId ?? "—"}
+        />
+        <Row
+          label="programmeServerResolvedEmail"
+          value={debug.linkedAthleteEmail ?? debug.authUserEmail ?? "—"}
+        />
+        <Row
+          label="programmeServerPublished"
+          value={debug.programmePublished ? "yes" : "no"}
+        />
+        <Row label="programmeWeeksCount" value={String(gate?.programmeWeeksCount ?? debug.publishedWeekCount)} />
+        <Row
+          label="programmeSessionsCount"
+          value={String(gate?.programmeSessionsCount ?? debug.publishedSessionsCount)}
+        />
+        <Row label="finalRenderDecision" value={gate?.decision ?? debug.finalRenderDecision} />
+        <Row label="reason" value={gate?.reason ?? debug.renderReason} />
         <Row label="Auth user id" value={debug.authUserId ?? "—"} />
-        <Row label="Linked athlete id" value={debug.linkedAthleteId ?? "—"} />
-        <Row label="Programme published (server)" value={debug.programmePublished ? "yes" : "no"} />
-        <Row label="Published week count" value={String(debug.publishedWeekCount)} />
         <Row label="Link failure reason" value={debug.linkFailureReason ?? "—"} />
       </dl>
     </div>
@@ -43,9 +60,11 @@ export function ProgrammePageServerDebugPanel({
 export function ProgrammePageResolveNotice({
   variant,
   debug,
+  gate,
 }: {
   variant: "no-session" | "not-linked";
   debug: ProgrammePageServerDebug;
+  gate?: ProgrammePageRenderGateResult;
 }) {
   const title =
     variant === "no-session"
@@ -54,7 +73,8 @@ export function ProgrammePageResolveNotice({
 
   const copy =
     variant === "no-session"
-      ? "The portal layout did not confirm your athlete session for this page load. Reload or sign in again."
+      ? gate?.reason ??
+        "The programme page could not resolve your Supabase session. Reload or sign in again."
       : `Your sign-in is active but this page could not resolve a linked Hyrox athlete (${debug.linkFailureReason ?? "unknown"}).`;
 
   return (
@@ -84,7 +104,12 @@ export function ProgrammePageResolveNotice({
           </Link>
         )}
       </div>
-      <ProgrammePageServerDebugPanel debug={debug} variant={variant} />
+      <ProgrammePageServerDebugPanel
+        debug={debug}
+        variant={variant}
+        layoutServerAuthConfirmed={false}
+        gate={gate}
+      />
     </div>
   );
 }
