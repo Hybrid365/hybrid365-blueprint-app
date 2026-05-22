@@ -163,13 +163,18 @@ export function buildSessionCookiesToSet(
     chunks = createChunks(storageKey, encoded, 1200);
   }
 
-  const removals = existingCookieNames
-    .filter((name) => isSupabaseAuthChunkCookieName(name, storageKey))
-    .map((name) => ({
-      name,
-      value: "",
-      options: removalCookieOptions(),
-    }));
+  const hasStaleChunkCookies = existingCookieNames.some((name) =>
+    isSupabaseAuthChunkCookieName(name, storageKey)
+  );
+  const removals = hasStaleChunkCookies
+    ? existingCookieNames
+        .filter((name) => isSupabaseAuthChunkCookieName(name, storageKey))
+        .map((name) => ({
+          name,
+          value: "",
+          options: removalCookieOptions(),
+        }))
+    : [];
 
   const setOpts = sessionCookieOptions();
   const sets = chunks
@@ -355,10 +360,15 @@ export function inspectResponseSetCookieHeaders(response: NextResponse): Respons
 
   const refusedBecauseMainCookieEmpty = emptyMainAuthTokenSetCookie;
 
-  const totalAuthChunkValueLength = chunkCookieNames.reduce((sum, chunkName) => {
-    const idx = setCookieCookieNames.indexOf(chunkName);
-    return sum + (idx >= 0 ? (setCookieValueLengths[idx] ?? 0) : 0);
-  }, 0);
+  const totalAuthChunkValueLength = parsed
+    .filter(
+      (p) =>
+        isSupabaseAuthChunkCookieName(p.name, storageKey) &&
+        p.valueLength > 0 &&
+        !p.maxAgeZero &&
+        !p.expiresDelete
+    )
+    .reduce((sum, p) => sum + p.valueLength, 0);
 
   const hasH365AuthProbeInResponse = setCookieCookieNames.includes(H365_OTP_AUTH_PROBE_NAME);
 
@@ -375,7 +385,7 @@ export function inspectResponseSetCookieHeaders(response: NextResponse): Respons
 
   const anyEmptyAuthCookie = parsed.some(
     (p) =>
-      isSupabaseAuthCookieName(p.name) &&
+      isMainSupabaseAuthStorageKey(p.name, storageKey) &&
       (p.valueLength === 0 || p.maxAgeZero || p.expiresDelete)
   );
 
@@ -423,13 +433,17 @@ export function inspectResponseSetCookieHeaders(response: NextResponse): Respons
   };
 }
 
-/** True when response Set-Cookie includes a usable Supabase session (main or chunks). */
-export function sessionAuthCookiesAttachedOnResponse(debug: ResponseSetCookieDebug): boolean {
+/** Usable sb-* session on response (main >500 B or chunk total >500 B). */
+export function supabaseSessionAuthOnResponse(debug: ResponseSetCookieDebug): boolean {
   if (debug.refusedBecauseMainCookieEmpty || debug.anyEmptyAuthCookie) return false;
   if (debug.mainAuthCookieLargestValueLength > 500) return true;
   if (debug.totalAuthChunkValueLength > 500) return true;
-  if (debug.hasAuthTokenChunk0InResponse) return true;
   return false;
+}
+
+/** True when response Set-Cookie includes a usable Supabase session (main or chunks). */
+export function sessionAuthCookiesAttachedOnResponse(debug: ResponseSetCookieDebug): boolean {
+  return supabaseSessionAuthOnResponse(debug);
 }
 
 export function responseAuthSetCookiesAreValid(debug: ResponseSetCookieDebug): boolean {

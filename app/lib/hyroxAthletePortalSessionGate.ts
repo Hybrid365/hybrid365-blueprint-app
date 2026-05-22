@@ -7,12 +7,18 @@ export function athletePortalHasValidServerSession(input: {
   serverAuthConfirmed: boolean;
   authProbe?: Pick<
     HyroxPortalSnapshotAuthProbe,
-    "validSessionCookiesPresent" | "getSessionSucceeded" | "getUserSucceeded"
+    | "validSessionCookiesPresent"
+    | "athleteSessionCookieValid"
+    | "getSessionSucceeded"
+    | "getUserSucceeded"
   > | null;
 }): boolean {
   if (!input.layoutAuth.hasSession || !input.layoutAuth.userId) return false;
   if (!input.serverAuthConfirmed) return false;
   if (input.authProbe) {
+    if (input.authProbe.athleteSessionCookieValid) {
+      return input.authProbe.getUserSucceeded;
+    }
     return (
       input.authProbe.validSessionCookiesPresent &&
       (input.authProbe.getSessionSucceeded || input.authProbe.getUserSucceeded)

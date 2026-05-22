@@ -17,6 +17,10 @@ import {
 } from "@/app/lib/supabase/athleteAuthGate";
 import { createAthleteServerSupabase } from "@/app/lib/supabase/athleteServerClient";
 import {
+  readAthleteSessionCookieFromEntries,
+  resolveSupabaseUserFromAthleteSession,
+} from "@/app/lib/supabase/hyroxAthleteSessionCookie";
+import {
   readAthletePortalCookies,
   type AuthCookieSummary,
   type CookieStorageProbeReadDebug,
@@ -46,6 +50,8 @@ export type HyroxPortalSnapshotAuthProbe = {
   getUserSucceeded: boolean;
   getUserAfterRetrySucceeded: boolean;
   validSessionCookiesPresent: boolean;
+  athleteSessionCookiePresent: boolean;
+  athleteSessionCookieValid: boolean;
   authCookieNames: string[];
   authCookieValueLengths: number[];
   cookieMerge: MergedCookieDebug;
@@ -54,7 +60,7 @@ export type HyroxPortalSnapshotAuthProbe = {
   storageProbe: CookieStorageProbeReadDebug;
   getSessionError: string | null;
   getUserError: string | null;
-  userSource: "supabase" | "middleware-forwarded" | "none";
+  userSource: "supabase" | "middleware-forwarded" | "h365-athlete-session" | "none";
   authUserId: string | null;
   authUserEmail: string | null;
   sessionUserId: string | null;
@@ -113,6 +119,9 @@ export async function probeHyroxPortalAuth(
   const currentUrl = headerStore.get("x-pathname") ?? routePath;
 
   const validSessionCookiesPresent = hasValidSupabaseSessionCookies(mergedCookies);
+  const athleteSessionPayload = readAthleteSessionCookieFromEntries(mergedCookies);
+  const athleteSessionCookiePresent = Boolean(athleteSessionPayload);
+  const athleteSessionCookieValid = Boolean(athleteSessionPayload);
   const authCookieSummaries = cookieMerge.authCookieSummaries;
 
   const supabase = await createAthleteServerSupabase();
@@ -145,6 +154,16 @@ export async function probeHyroxPortalAuth(
     userSource = "middleware-forwarded";
   }
 
+  if (!user && athleteSessionPayload) {
+    const fromAthleteSession = await resolveSupabaseUserFromAthleteSession(
+      athleteSessionPayload
+    );
+    if (fromAthleteSession) {
+      user = fromAthleteSession;
+      userSource = "h365-athlete-session";
+    }
+  }
+
   const auth: HyroxPortalSnapshotAuthProbe = {
     routePath: pathname,
     currentUrl,
@@ -159,6 +178,8 @@ export async function probeHyroxPortalAuth(
     getUserSucceeded: Boolean(userFirst),
     getUserAfterRetrySucceeded: Boolean(userAfterRetry),
     validSessionCookiesPresent,
+    athleteSessionCookiePresent,
+    athleteSessionCookieValid,
     authCookieNames: authCookieSummaries.map((c) => c.name),
     authCookieValueLengths: authCookieSummaries.map((c) => c.mergedLength),
     cookieMerge,

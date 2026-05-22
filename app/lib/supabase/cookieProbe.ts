@@ -1,5 +1,8 @@
 import type { NextResponse } from "next/server";
 import { isSupabaseAuthCookieName } from "@/app/lib/supabase/apiRoute";
+
+/** Compact signed athlete-portal session (no Supabase sb-* JSON in cookies). */
+export const H365_ATHLETE_SESSION_COOKIE = "h365_athlete_session";
 import type { MergedCookieEntry } from "@/app/lib/supabase/mergedAthleteCookies";
 import { appendSetCookieLine } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
@@ -61,7 +64,8 @@ export function listAuthRelatedCookieEntries(
       (c) =>
         isSupabaseAuthCookieName(c.name) ||
         c.name === H365_COOKIE_PROBE_NAME ||
-        c.name === H365_OTP_AUTH_PROBE_NAME
+        c.name === H365_OTP_AUTH_PROBE_NAME ||
+        c.name === H365_ATHLETE_SESSION_COOKIE
     )
     .map((c) => ({ name: c.name, valueLength: c.value?.length ?? 0 }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -72,6 +76,8 @@ export type CookieStorageProbeReadDebug = {
   h365ProbeValue: string | null;
   h365AuthProbePresent: boolean;
   h365AuthProbeValue: string | null;
+  h365AthleteSessionPresent: boolean;
+  h365AthleteSessionValueLength: number;
   authRelatedCookieEntries: AuthRelatedCookieEntry[];
   storageInterpretation: string;
 };
@@ -86,8 +92,11 @@ export function buildCookieStorageProbeReadDebug(
 ): CookieStorageProbeReadDebug {
   const h365Probe = cookies.find((c) => c.name === H365_COOKIE_PROBE_NAME);
   const h365AuthProbe = cookies.find((c) => c.name === H365_OTP_AUTH_PROBE_NAME);
+  const h365AthleteSession = cookies.find((c) => c.name === H365_ATHLETE_SESSION_COOKIE);
   const h365ProbePresent = Boolean(h365Probe?.value);
   const h365AuthProbePresent = Boolean(h365AuthProbe?.value);
+  const h365AthleteSessionPresent = Boolean(h365AthleteSession?.value);
+  const h365AthleteSessionValueLength = h365AthleteSession?.value?.length ?? 0;
 
   let storageInterpretation: string;
   if (!h365ProbePresent && !h365AuthProbePresent && !mainAuth.mainAuthTokenExists) {
@@ -96,6 +105,9 @@ export function buildCookieStorageProbeReadDebug(
   } else if (h365ProbePresent && !h365AuthProbePresent && !mainAuth.mainAuthTokenExists) {
     storageInterpretation =
       "Isolated cookie-probe works; verify-otp probe and Supabase session were not stored.";
+  } else if (h365AthleteSessionPresent && !mainAuth.mainAuthTokenExists) {
+    storageInterpretation =
+      "h365_athlete_session present; Supabase sb chunks absent — portal uses compact app session.";
   } else if (h365AuthProbePresent && !mainAuth.mainAuthTokenExists) {
     storageInterpretation =
       "App probe cookies persist; Supabase sb auth-token is missing or rejected (size/format/delete collision).";
@@ -117,6 +129,8 @@ export function buildCookieStorageProbeReadDebug(
     h365ProbeValue: h365Probe?.value ?? null,
     h365AuthProbePresent,
     h365AuthProbeValue: h365AuthProbe?.value ?? null,
+    h365AthleteSessionPresent,
+    h365AthleteSessionValueLength,
     authRelatedCookieEntries: listAuthRelatedCookieEntries(cookies),
     storageInterpretation,
   };

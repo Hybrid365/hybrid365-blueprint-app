@@ -55,7 +55,10 @@ export default async function AthleteDashboardPage() {
 
   const serverAuthConfirmed = athletePortalHasValidServerSession({
     layoutAuth,
-    serverAuthConfirmed: Boolean(user && auth.validSessionCookiesPresent),
+    serverAuthConfirmed: Boolean(
+      user &&
+        (auth.validSessionCookiesPresent || auth.athleteSessionCookieValid)
+    ),
     authProbe: auth,
   });
 

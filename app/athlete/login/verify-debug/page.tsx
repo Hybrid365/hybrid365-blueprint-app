@@ -106,6 +106,10 @@ export default async function VerifyOtpCookieDebugPage({
                 value={String(debug.finalRedirectSetCookieCount)}
               />
               <Row label="session auth attached" value={debug.sessionAuthAttached ? "yes" : "no"} />
+              <Row
+                label="h365_athlete_session on response"
+                value={debug.hasH365AthleteSessionInResponse ? "yes" : "no"}
+              />
             </dl>
           </>
         )}

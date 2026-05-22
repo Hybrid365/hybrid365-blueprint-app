@@ -255,7 +255,8 @@ export async function POST(request: NextRequest) {
     const { setCookie: setCookieInspect, attachDebug } = attachVerifiedSessionCookies(
       auth,
       response,
-      data
+      data,
+      sessionUser
     );
 
     if (!verifyOtpSessionCookiesOk(setCookieInspect, attachDebug)) {
@@ -296,7 +297,8 @@ export async function POST(request: NextRequest) {
   const { setCookie: setCookieInspect, attachDebug } = attachVerifiedSessionCookies(
     auth,
     response,
-    data
+    data,
+    sessionUser
   );
 
   if (!verifyOtpSessionCookiesOk(setCookieInspect, attachDebug)) {

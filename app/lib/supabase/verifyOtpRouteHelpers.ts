@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { AuthPortal } from "@/app/lib/authRedirectUrl";
 import { attachH365OtpAuthProbe } from "@/app/lib/supabase/cookieProbe";
+import { attachH365AthleteSessionCookie } from "@/app/lib/supabase/hyroxAthleteSessionCookie";
 import {
   REFUSE_MAIN_AUTH_EMPTY_ERROR,
-  responseAuthSetCookiesAreValid,
-  sessionAuthCookiesAttachedOnResponse,
+  supabaseSessionAuthOnResponse,
   SUPABASE_SESSION_NOT_ATTACHED_ERROR,
   type ResponseSetCookieDebug,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
@@ -131,10 +131,15 @@ type AuthHandler = Awaited<ReturnType<typeof createAuthRouteHandlerSupabase>>;
 export function attachVerifiedSessionCookies(
   auth: AuthHandler,
   response: NextResponse,
-  data: { session: Session | null } | null
+  data: { session: Session | null } | null,
+  sessionUser: { userId: string; email: string | null }
 ): { setCookie: ResponseSetCookieDebug; attachDebug: VerifyOtpAttachDebug } {
   auth.attachSessionCookiesToResponse(response);
   attachH365OtpAuthProbe(response);
+  attachH365AthleteSessionCookie(response, {
+    userId: sessionUser.userId,
+    email: sessionUser.email,
+  });
   const setCookie = auth.inspectResponseSetCookies(response);
   const attachDebug = buildVerifyOtpAttachDebug(
     data,
@@ -148,7 +153,14 @@ export function verifyOtpSessionCookiesOk(
   setCookie: ResponseSetCookieDebug,
   attachDebug: VerifyOtpAttachDebug
 ): boolean {
-  return responseAuthSetCookiesAreValid(setCookie) && attachDebug.sessionAuthAttached;
+  if (!setCookie.setCookieHeaderPresent) return false;
+  if (setCookie.duplicateMainAuthTokenNames) return false;
+  if (setCookie.anyCookieOver3800Chars) return false;
+  if (setCookie.refusedBecauseMainCookieEmpty || setCookie.anyEmptyAuthCookie) {
+    return attachDebug.hasH365AthleteSessionInResponse;
+  }
+  if (supabaseSessionAuthOnResponse(setCookie)) return true;
+  return attachDebug.hasH365AthleteSessionInResponse;
 }
 
 export function logAndFailAttach(

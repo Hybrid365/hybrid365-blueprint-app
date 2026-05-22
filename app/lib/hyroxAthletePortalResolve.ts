@@ -10,7 +10,6 @@ import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
-import { createClient } from "@/app/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 
@@ -129,16 +128,14 @@ export async function resolveHyroxPortalAthlete(params: {
   supabase?: SupabaseClient;
   attemptAutoLink?: boolean;
 }): Promise<ResolvedPortalAthlete> {
-  const supabase = params.supabase ?? (await createClient());
   const email = params.user.email?.trim() ?? "";
   const normalizedEmail = email ? normalizeEmail(email) : "";
 
-  const byUserId = await fetchAthleteByUserId(supabase, params.user.id);
+  const { client: coachClient } = await createCoachServerClient();
+  const byUserId = await fetchAthleteByUserId(coachClient, params.user.id);
 
   let duplicateEmailAthletes: HyroxAthleteRow[] = [];
   let emailPick: { athlete: HyroxAthleteRow; reason: "user_id" | "email" } | null = null;
-
-  const { client: coachClient } = await createCoachServerClient();
 
   if (normalizedEmail) {
     const { athletes, error } = await fetchHyroxAthletesByEmail(coachClient, normalizedEmail);
@@ -160,7 +157,6 @@ export async function resolveHyroxPortalAthlete(params: {
       };
     }
     duplicateEmailAthletes = athletes;
-    const coach = await createCoachServerClient();
     emailPick = await pickBestPaidAthleteForLogin(coachClient, athletes, params.user.id);
   }
 
@@ -232,7 +228,7 @@ export async function resolveHyroxPortalAthlete(params: {
     });
     autoLinked = linkResult.linked;
     if (autoLinked) {
-      const refreshed = await fetchAthleteByUserId(supabase, params.user.id);
+      const refreshed = await fetchAthleteByUserId(coachClient, params.user.id);
       if (refreshed) {
         athlete = refreshed;
         matchSource = "user_id";

@@ -46,6 +46,18 @@ export default async function AthleteAuthDebugPage() {
       value: probe.h365AuthProbePresent ? "yes" : "no",
     },
     { label: "h365_auth_probe value", value: probe.h365AuthProbeValue ?? "—" },
+    {
+      label: "h365_athlete_session present",
+      value: probe.h365AthleteSessionPresent ? "yes" : "no",
+    },
+    {
+      label: "h365_athlete_session length",
+      value: `${probe.h365AthleteSessionValueLength} B`,
+    },
+    {
+      label: "Athlete session cookie valid",
+      value: auth.athleteSessionCookieValid ? "yes" : "no",
+    },
     { label: "Auth cookies present", value: auth.authCookiesPresent ? "yes" : "no" },
     {
       label: "Raw Cookie header names",
