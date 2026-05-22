@@ -205,14 +205,16 @@ export default async function AthleteAuthDebugPage() {
           >
             <p className="font-semibold text-amber-200">Main auth-token exists but is empty (0 B)</p>
             <p className="mt-1 text-amber-100/90">
-              Main auth-token exists but is empty. Check verify-otp response for empty/deletion
-              Set-Cookie on the main storage key{" "}
-              <span className="font-mono">{mainAuth.mainAuthTokenName}</span>. This often happens
-              when the session was sent as one oversized cookie instead of chunked{" "}
-              <span className="font-mono">.0</span> / <span className="font-mono">.1</span> cookies.
+              Main auth-token exists but is empty. Check verify-otp Network → Response Cookies for
+              empty/deletion Set-Cookie on{" "}
+              <span className="font-mono">{mainAuth.mainAuthTokenName}</span>. If only{" "}
+              <span className="font-mono">h365_auth_probe</span> appears, large sb session cookies
+              may have been dropped by the CDN — you should see{" "}
+              <span className="font-mono">.0</span> / <span className="font-mono">.1</span> chunk
+              names instead.
               {mainAuth.sessionChunkTotalChars > 0
-                ? ` Chunk data present (${mainAuth.sessionChunkTotalChars} B) — server should read chunks.`
-                : " No chunk cookies detected in the request."}
+                ? ` Chunk data present (${mainAuth.sessionChunkTotalChars} B).`
+                : " No chunk cookies in this request."}
             </p>
           </div>
         ) : null}

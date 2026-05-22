@@ -5,6 +5,7 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { hasValidSupabaseSessionCookies } from "@/app/lib/supabase/apiRoute";
 import { readAthleteRouteHandlerCookies } from "@/app/lib/supabase/mergedAthleteCookies";
 import {
+  attachSessionCookiesToResponseHeaders,
   buildSessionCookiesToSet,
   debugPendingSessionCookies,
   getSupabaseAuthStorageKey,
@@ -14,6 +15,7 @@ import {
   isSupabasePkceCodeVerifierCookieName,
   responseAuthSetCookiesAreValid,
   type SessionCookieToSet,
+  type SessionCookiesBuildDebug,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
 type CookieToSet = SessionCookieToSet;
@@ -42,6 +44,7 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
   let mergedRequestCookies = [...initialMerged];
   let pendingCookies: CookieToSet[] = [];
   let sessionCommitted = false;
+  let lastCookiesBuildDebug: SessionCookiesBuildDebug | null = null;
   const storageKey = getSupabaseAuthStorageKey();
 
   const appendSafePostCommitCookieOps = (batch: CookieToSet[]) => {
@@ -159,36 +162,19 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
     commitSessionCookies(session: Session) {
       sessionCommitted = true;
       const existingNames = mergedRequestCookies.map((c) => c.name);
-      pendingCookies = buildSessionCookiesToSet(session, existingNames);
+      const built = buildSessionCookiesToSet(session, existingNames);
+      pendingCookies = built.cookies;
+      lastCookiesBuildDebug = built.buildDebug;
       applyToHandlers(pendingCookies);
     },
 
-    /** Deterministic write: session sets first, then safe removals (chunks / code-verifier only). */
+    getLastCookiesBuildDebug() {
+      return lastCookiesBuildDebug;
+    },
+
+    /** Raw Set-Cookie headers — reliable on redirect responses (Next.js cookies jar can drop large values). */
     attachSessionCookiesToResponse(response: NextResponse) {
-      const sets = pendingCookies.filter((c) => {
-        const len = c.value?.length ?? 0;
-        if (len === 0) return false;
-        if (isMainSupabaseAuthStorageKey(c.name, storageKey) && len < 80) return false;
-        return true;
-      });
-
-      const removals = pendingCookies.filter(
-        (c) =>
-          (!c.value || c.options?.maxAge === 0) &&
-          !isMainSupabaseAuthStorageKey(c.name, storageKey) &&
-          (isSupabasePkceCodeVerifierCookieName(c.name) ||
-            isSupabaseAuthChunkCookieName(c.name, storageKey))
-      );
-
-      for (const { name, value, options } of sets) {
-        response.cookies.set(name, value, passthroughCookieOptions(options));
-      }
-      for (const { name, options } of removals) {
-        response.cookies.set(name, "", {
-          ...passthroughCookieOptions(options),
-          maxAge: 0,
-        });
-      }
+      attachSessionCookiesToResponseHeaders(response, pendingCookies, storageKey);
       return response;
     },
 

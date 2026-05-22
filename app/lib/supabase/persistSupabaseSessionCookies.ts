@@ -1,10 +1,11 @@
-import { createChunks, isChunkLike, MAX_CHUNK_SIZE } from "@supabase/ssr/dist/module/utils/chunker";
-import { BROWSER_COOKIE_VALUE_SAFE_MAX } from "@/app/lib/supabase/cookieProbe";
+import { createChunks, isChunkLike } from "@supabase/ssr/dist/module/utils/chunker";
+import { BROWSER_COOKIE_VALUE_SAFE_MAX, H365_OTP_AUTH_PROBE_NAME } from "@/app/lib/supabase/cookieProbe";
 import { stringToBase64URL } from "@supabase/ssr/dist/module/utils/base64url";
 import { DEFAULT_COOKIE_OPTIONS } from "@supabase/ssr/dist/module/utils/constants";
 import type { CookieOptions } from "@supabase/ssr";
 import type { Session } from "@supabase/supabase-js";
 import type { NextResponse } from "next/server";
+import { serialize } from "cookie";
 import { isSupabaseAuthCookieName } from "@/app/lib/supabase/apiRoute";
 
 const BASE64_PREFIX = "base64-";
@@ -13,10 +14,16 @@ const BASE64_PREFIX = "base64-";
  * Per-cookie payload limit for createChunks (URI-encoded length).
  * Browsers often reject a single Set-Cookie > ~4KB and store the name with an empty value.
  */
-export const AUTH_SESSION_CHUNK_SIZE = 2400;
+/** URI-encoded chunk budget — keep each Set-Cookie wire size under proxy/browser limits. */
+export const AUTH_SESSION_CHUNK_SIZE = 1800;
 
 export const REFUSE_MAIN_AUTH_EMPTY_ERROR =
   "Refusing login: main auth cookie would be empty/deleted";
+
+export const SUPABASE_SESSION_NOT_ATTACHED_ERROR =
+  "OTP verified but Supabase session cookies were not attached.";
+
+const WIRE_COOKIE_SAFE_MAX = 3800;
 
 export type SessionCookieToSet = {
   name: string;
@@ -53,14 +60,88 @@ export function getSupabaseAuthStorageKey(): string {
 
 /** JSON payload stored inside the auth-token cookie (matches GoTrue / @supabase/ssr). */
 export function serializeSupabaseSessionForStorage(session: Session): string {
+  const user = session.user;
   return JSON.stringify({
     access_token: session.access_token,
     refresh_token: session.refresh_token,
     expires_in: session.expires_in,
     expires_at: session.expires_at,
     token_type: session.token_type,
-    user: session.user,
+    user: {
+      id: user.id,
+      aud: user.aud,
+      role: user.role,
+      email: user.email,
+      phone: user.phone ?? "",
+      confirmed_at: user.confirmed_at,
+      recovery_sent_at: user.recovery_sent_at,
+      last_sign_in_at: user.last_sign_in_at,
+      app_metadata: user.app_metadata ?? {},
+      user_metadata: user.user_metadata ?? {},
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      is_anonymous: user.is_anonymous ?? false,
+    },
   });
+}
+
+export type SessionCookiesBuildDebug = {
+  mainStorageKey: string;
+  encodedSessionLength: number;
+  chunkSize: number;
+  cookiesBuiltNames: string[];
+  cookiesBuiltValueLengths: number[];
+  usesChunkedSessionCookies: boolean;
+  totalAuthChunkValueLength: number;
+};
+
+export type SessionCookiesBuildResult = {
+  cookies: SessionCookieToSet[];
+  buildDebug: SessionCookiesBuildDebug;
+};
+
+function sessionCookieOptions(): CookieOptions {
+  const secure =
+    process.env.NODE_ENV === "production" ? true : (DEFAULT_COOKIE_OPTIONS.secure ?? false);
+  return {
+    path: DEFAULT_COOKIE_OPTIONS.path,
+    sameSite: DEFAULT_COOKIE_OPTIONS.sameSite ?? "lax",
+    httpOnly: DEFAULT_COOKIE_OPTIONS.httpOnly,
+    secure,
+    maxAge: DEFAULT_COOKIE_OPTIONS.maxAge,
+  };
+}
+
+function removalCookieOptions(): CookieOptions {
+  const secure =
+    process.env.NODE_ENV === "production" ? true : (DEFAULT_COOKIE_OPTIONS.secure ?? false);
+  return {
+    path: DEFAULT_COOKIE_OPTIONS.path,
+    sameSite: DEFAULT_COOKIE_OPTIONS.sameSite ?? "lax",
+    httpOnly: DEFAULT_COOKIE_OPTIONS.httpOnly,
+    secure,
+    maxAge: 0,
+  };
+}
+
+/** Append one Set-Cookie line directly (avoids Next.js cookies jar dropping large redirect cookies). */
+export function appendSetCookieLine(
+  response: NextResponse,
+  name: string,
+  value: string,
+  options?: CookieOptions
+) {
+  const opts = options ?? sessionCookieOptions();
+  response.headers.append(
+    "Set-Cookie",
+    serialize(name, value, {
+      path: opts.path ?? "/",
+      sameSite: (opts.sameSite as "lax" | "strict" | "none" | undefined) ?? "lax",
+      httpOnly: opts.httpOnly ?? false,
+      secure: opts.secure ?? false,
+      maxAge: opts.maxAge,
+    })
+  );
 }
 
 /**
@@ -70,7 +151,7 @@ export function serializeSupabaseSessionForStorage(session: Session): string {
 export function buildSessionCookiesToSet(
   session: Session,
   existingCookieNames: string[]
-): SessionCookieToSet[] {
+): SessionCookiesBuildResult {
   const storageKey = getSupabaseAuthStorageKey();
   const encoded =
     BASE64_PREFIX + stringToBase64URL(serializeSupabaseSessionForStorage(session));
@@ -78,39 +159,19 @@ export function buildSessionCookiesToSet(
   let chunks = createChunks(storageKey, encoded, AUTH_SESSION_CHUNK_SIZE);
 
   const single = chunks.length === 1 && chunks[0]?.name === storageKey;
-  if (single && (chunks[0]?.value?.length ?? 0) > 3600) {
-    chunks = createChunks(storageKey, encoded, 1800);
+  if (single && (chunks[0]?.value?.length ?? 0) > 3200) {
+    chunks = createChunks(storageKey, encoded, 1200);
   }
 
-  const secure =
-    process.env.NODE_ENV === "production" ? true : (DEFAULT_COOKIE_OPTIONS.secure ?? false);
-
-  const removeCookieOptions: CookieOptions = {
-    path: DEFAULT_COOKIE_OPTIONS.path,
-    sameSite: DEFAULT_COOKIE_OPTIONS.sameSite ?? "lax",
-    httpOnly: DEFAULT_COOKIE_OPTIONS.httpOnly,
-    secure,
-    maxAge: 0,
-  };
-
-  const setCookieOptions: CookieOptions = {
-    path: DEFAULT_COOKIE_OPTIONS.path,
-    sameSite: DEFAULT_COOKIE_OPTIONS.sameSite ?? "lax",
-    httpOnly: DEFAULT_COOKIE_OPTIONS.httpOnly,
-    secure,
-    maxAge: DEFAULT_COOKIE_OPTIONS.maxAge,
-  };
-
-  // Only remove orphan chunk cookies (.0, .1, …). Never emit Max-Age=0 for the main
-  // storage key in the same response as the session set — browsers can keep the empty cookie.
   const removals = existingCookieNames
     .filter((name) => isSupabaseAuthChunkCookieName(name, storageKey))
     .map((name) => ({
       name,
       value: "",
-      options: removeCookieOptions,
+      options: removalCookieOptions(),
     }));
 
+  const setOpts = sessionCookieOptions();
   const sets = chunks
     .filter(({ name, value }) => {
       if ((value?.length ?? 0) === 0) return false;
@@ -120,10 +181,56 @@ export function buildSessionCookiesToSet(
     .map(({ name, value }) => ({
       name,
       value,
-      options: setCookieOptions,
+      options: setOpts,
     }));
 
-  return [...sets, ...removals];
+  const cookies = [...sets, ...removals];
+  const setOnly = sets;
+  const usesChunks = setOnly.some((c) => isSupabaseAuthChunkCookieName(c.name, storageKey));
+
+  return {
+    cookies,
+    buildDebug: {
+      mainStorageKey: storageKey,
+      encodedSessionLength: encoded.length,
+      chunkSize: AUTH_SESSION_CHUNK_SIZE,
+      cookiesBuiltNames: cookies.map((c) => c.name),
+      cookiesBuiltValueLengths: cookies.map((c) => c.value?.length ?? 0),
+      usesChunkedSessionCookies: usesChunks,
+      totalAuthChunkValueLength: setOnly.reduce((n, c) => n + (c.value?.length ?? 0), 0),
+    },
+  };
+}
+
+/** Write pending session cookies onto the response via raw Set-Cookie headers. */
+export function attachSessionCookiesToResponseHeaders(
+  response: NextResponse,
+  pendingCookies: SessionCookieToSet[],
+  storageKey?: string
+) {
+  const key = storageKey ?? getSupabaseAuthStorageKey();
+
+  const sets = pendingCookies.filter((c) => {
+    const len = c.value?.length ?? 0;
+    if (len === 0) return false;
+    if (isMainSupabaseAuthStorageKey(c.name, key) && len < 80) return false;
+    return true;
+  });
+
+  const removals = pendingCookies.filter(
+    (c) =>
+      (!c.value || c.options?.maxAge === 0) &&
+      !isMainSupabaseAuthStorageKey(c.name, key) &&
+      (isSupabasePkceCodeVerifierCookieName(c.name) ||
+        isSupabaseAuthChunkCookieName(c.name, key))
+  );
+
+  for (const { name, value, options } of sets) {
+    appendSetCookieLine(response, name, value, options ?? sessionCookieOptions());
+  }
+  for (const { name, options } of removals) {
+    appendSetCookieLine(response, name, "", options ?? removalCookieOptions());
+  }
 }
 
 export type PendingSessionCookieDebug = {
@@ -173,6 +280,13 @@ export type ResponseSetCookieDebug = {
   codeVerifierCookieNames: string[];
   refusedBecauseMainCookieEmpty: boolean;
   usesChunkedSessionCookies: boolean;
+  totalAuthChunkValueLength: number;
+  hasH365AuthProbeInResponse: boolean;
+  hasMainAuthTokenInResponse: boolean;
+  hasAuthTokenChunk0InResponse: boolean;
+  anyCookieOver3800Chars: boolean;
+  anyEmptyAuthCookie: boolean;
+  finalRedirectSetCookieCount: number;
 };
 
 export const MAIN_AUTH_COOKIE_OVERWRITE_ERROR =
@@ -241,6 +355,30 @@ export function inspectResponseSetCookieHeaders(response: NextResponse): Respons
 
   const refusedBecauseMainCookieEmpty = emptyMainAuthTokenSetCookie;
 
+  const totalAuthChunkValueLength = chunkCookieNames.reduce((sum, chunkName) => {
+    const idx = setCookieCookieNames.indexOf(chunkName);
+    return sum + (idx >= 0 ? (setCookieValueLengths[idx] ?? 0) : 0);
+  }, 0);
+
+  const hasH365AuthProbeInResponse = setCookieCookieNames.includes(H365_OTP_AUTH_PROBE_NAME);
+
+  const hasMainAuthTokenInResponse = mainEntries.some(
+    (p) => p.valueLength > 80 && !p.maxAgeZero && !p.expiresDelete
+  );
+
+  const hasAuthTokenChunk0InResponse = parsed.some(
+    (p) =>
+      p.name === `${storageKey}.0` && p.valueLength > 80 && !p.maxAgeZero && !p.expiresDelete
+  );
+
+  const anyCookieOver3800Chars = setCookieValueLengths.some((l) => l > WIRE_COOKIE_SAFE_MAX);
+
+  const anyEmptyAuthCookie = parsed.some(
+    (p) =>
+      isSupabaseAuthCookieName(p.name) &&
+      (p.valueLength === 0 || p.maxAgeZero || p.expiresDelete)
+  );
+
   return {
     setCookieHeaderPresent: headers.length > 0,
     setCookieHeaderCount: headers.length,
@@ -275,26 +413,31 @@ export function inspectResponseSetCookieHeaders(response: NextResponse): Respons
     codeVerifierCookieNames,
     refusedBecauseMainCookieEmpty,
     usesChunkedSessionCookies,
+    totalAuthChunkValueLength,
+    hasH365AuthProbeInResponse,
+    hasMainAuthTokenInResponse,
+    hasAuthTokenChunk0InResponse,
+    anyCookieOver3800Chars,
+    anyEmptyAuthCookie,
+    finalRedirectSetCookieCount: headers.length,
   };
 }
 
+/** True when response Set-Cookie includes a usable Supabase session (main or chunks). */
+export function sessionAuthCookiesAttachedOnResponse(debug: ResponseSetCookieDebug): boolean {
+  if (debug.refusedBecauseMainCookieEmpty || debug.anyEmptyAuthCookie) return false;
+  if (debug.mainAuthCookieLargestValueLength > 500) return true;
+  if (debug.totalAuthChunkValueLength > 500) return true;
+  if (debug.hasAuthTokenChunk0InResponse) return true;
+  return false;
+}
+
 export function responseAuthSetCookiesAreValid(debug: ResponseSetCookieDebug): boolean {
-  if (debug.refusedBecauseMainCookieEmpty) return false;
-  if (!debug.setCookieHeaderPresent || !debug.hasLargeAuthCookie) return false;
+  if (!debug.setCookieHeaderPresent) return false;
   if (debug.duplicateMainAuthTokenNames) return false;
   if (debug.emptyMainAuthTokenSetCookie) return false;
-  if (debug.setCookieExceedsSafeLimit) return false;
-  const mainOk = debug.mainAuthCookieLargestValueLength > 500;
-  const chunkedOk = debug.usesChunkedSessionCookies && debug.hasLargeAuthCookie;
-  if (!mainOk && !chunkedOk) return false;
-  if (
-    debug.mainAuthCookieSetCount > 0 &&
-    debug.mainAuthCookieLargestValueLength < 80 &&
-    !chunkedOk
-  ) {
-    return false;
-  }
-  return true;
+  if (debug.anyCookieOver3800Chars) return false;
+  return sessionAuthCookiesAttachedOnResponse(debug);
 }
 
 export function debugPendingSessionCookies(

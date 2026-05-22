@@ -2,11 +2,21 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { AuthPortal } from "@/app/lib/authRedirectUrl";
 import { attachH365OtpAuthProbe } from "@/app/lib/supabase/cookieProbe";
 import {
-  MAIN_AUTH_COOKIE_OVERWRITE_ERROR,
   REFUSE_MAIN_AUTH_EMPTY_ERROR,
+  responseAuthSetCookiesAreValid,
+  sessionAuthCookiesAttachedOnResponse,
+  SUPABASE_SESSION_NOT_ATTACHED_ERROR,
   type ResponseSetCookieDebug,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
+import {
+  buildVerifyOtpAttachDebug,
+  logVerifyOtpAttachDebug,
+  type VerifyOtpAttachDebug,
+} from "@/app/lib/supabase/verifyOtpAttachDebug";
 import type { createAuthRouteHandlerSupabase } from "@/app/lib/supabase/authRouteHandler";
+import type { Session } from "@supabase/supabase-js";
+
+export type { VerifyOtpAttachDebug };
 
 export type VerifyOtpRequestBody = {
   email?: string;
@@ -45,7 +55,6 @@ export async function parseVerifyOtpRequestBody(
   return {};
 }
 
-/** JSON fetch (community) vs browser form POST (athlete document navigation). */
 export function wantsJsonVerifyOtpResponse(request: NextRequest): boolean {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) return true;
@@ -85,23 +94,67 @@ export function athleteVerifyOtpErrorRedirect(
   return NextResponse.redirect(url);
 }
 
-export function cookieAttachFailureMessage(inspect: ResponseSetCookieDebug): string {
-  if (inspect.refusedBecauseMainCookieEmpty || inspect.emptyMainAuthTokenSetCookie) {
+/** Visible debug page when session Set-Cookie attachment fails. */
+export function athleteVerifyOtpCookieDebugRedirect(
+  request: NextRequest,
+  attachDebug: VerifyOtpAttachDebug,
+  next: string
+): NextResponse {
+  const url = new URL("/athlete/login/verify-debug", request.url);
+  if (next) url.searchParams.set("next", next);
+  try {
+    const payload = Buffer.from(JSON.stringify(attachDebug), "utf8").toString("base64url");
+    if (payload.length < 6000) {
+      url.searchParams.set("d", payload);
+    }
+  } catch {
+    /* ignore */
+  }
+  return NextResponse.redirect(url);
+}
+
+export function cookieAttachFailureMessage(
+  inspect: ResponseSetCookieDebug,
+  attachDebug?: VerifyOtpAttachDebug
+): string {
+  if (attachDebug?.refuseReason?.includes("empty or deleted")) {
     return REFUSE_MAIN_AUTH_EMPTY_ERROR;
   }
-  if (inspect.duplicateMainAuthTokenNames) {
-    return MAIN_AUTH_COOKIE_OVERWRITE_ERROR;
+  if (inspect.refusedBecauseMainCookieEmpty || inspect.anyEmptyAuthCookie) {
+    return REFUSE_MAIN_AUTH_EMPTY_ERROR;
   }
-  return "OTP verified but auth cookies were not attached to response";
+  return SUPABASE_SESSION_NOT_ATTACHED_ERROR;
 }
 
 type AuthHandler = Awaited<ReturnType<typeof createAuthRouteHandlerSupabase>>;
 
 export function attachVerifiedSessionCookies(
   auth: AuthHandler,
-  response: NextResponse
-): ResponseSetCookieDebug {
+  response: NextResponse,
+  data: { session: Session | null } | null
+): { setCookie: ResponseSetCookieDebug; attachDebug: VerifyOtpAttachDebug } {
   auth.attachSessionCookiesToResponse(response);
   attachH365OtpAuthProbe(response);
-  return auth.inspectResponseSetCookies(response);
+  const setCookie = auth.inspectResponseSetCookies(response);
+  const attachDebug = buildVerifyOtpAttachDebug(
+    data,
+    auth.getLastCookiesBuildDebug(),
+    setCookie
+  );
+  return { setCookie, attachDebug };
+}
+
+export function verifyOtpSessionCookiesOk(
+  setCookie: ResponseSetCookieDebug,
+  attachDebug: VerifyOtpAttachDebug
+): boolean {
+  return responseAuthSetCookiesAreValid(setCookie) && attachDebug.sessionAuthAttached;
+}
+
+export function logAndFailAttach(
+  stage: string,
+  attachDebug: VerifyOtpAttachDebug,
+  extra?: Record<string, unknown>
+) {
+  logVerifyOtpAttachDebug(stage, attachDebug, extra);
 }

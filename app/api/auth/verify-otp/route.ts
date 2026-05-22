@@ -12,10 +12,13 @@ import {
 import type { ResponseSetCookieDebug } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 import {
   attachVerifiedSessionCookies,
+  athleteVerifyOtpCookieDebugRedirect,
   athleteVerifyOtpErrorRedirect,
   cookieAttachFailureMessage,
+  logAndFailAttach,
   parseVerifyOtpRequestBody,
   resolveVerifyOtpPortal,
+  verifyOtpSessionCookiesOk,
   wantsJsonVerifyOtpResponse,
 } from "@/app/lib/supabase/verifyOtpRouteHelpers";
 
@@ -107,6 +110,13 @@ function buildVerifyOtpDebug(
     codeVerifierCookieNames: setCookie?.codeVerifierCookieNames ?? [],
     refusedBecauseMainCookieEmpty: setCookie?.refusedBecauseMainCookieEmpty ?? false,
     usesChunkedSessionCookies: setCookie?.usesChunkedSessionCookies ?? false,
+    totalAuthChunkValueLength: setCookie?.totalAuthChunkValueLength ?? 0,
+    hasH365AuthProbeInResponse: setCookie?.hasH365AuthProbeInResponse ?? false,
+    hasMainAuthTokenInResponse: setCookie?.hasMainAuthTokenInResponse ?? false,
+    hasAuthTokenChunk0InResponse: setCookie?.hasAuthTokenChunk0InResponse ?? false,
+    anyCookieOver3800Chars: setCookie?.anyCookieOver3800Chars ?? false,
+    anyEmptyAuthCookie: setCookie?.anyEmptyAuthCookie ?? false,
+    finalRedirectSetCookieCount: setCookie?.finalRedirectSetCookieCount ?? 0,
     h365AuthProbeSet: extra.h365AuthProbeSet ?? false,
     h365AuthProbeCookie: extra.h365AuthProbeSet ? H365_OTP_AUTH_PROBE_NAME : null,
     h365AuthProbeValue: extra.h365AuthProbeSet ? H365_OTP_AUTH_PROBE_VALUE : null,
@@ -242,27 +252,26 @@ export async function POST(request: NextRequest) {
 
   if (portal === "athlete" && !useJsonResponse) {
     const response = NextResponse.redirect(new URL(redirectTo, request.url));
-    const setCookieInspect = attachVerifiedSessionCookies(auth, response);
+    const { setCookie: setCookieInspect, attachDebug } = attachVerifiedSessionCookies(
+      auth,
+      response,
+      data
+    );
 
-    if (!auth.responseAuthCookiesAreValid(response)) {
-      console.error("[auth otp] redirect cookie attach failed", {
+    if (!verifyOtpSessionCookiesOk(setCookieInspect, attachDebug)) {
+      logAndFailAttach("redirect cookie attach failed", attachDebug, {
         userId: sessionUser.userId.slice(0, 8),
         emailHint: emailLogHint(email),
-        setCookie: setCookieInspect,
         pending: auth.getPendingAuthCookieDebug(),
       });
-      return athleteVerifyOtpErrorRedirect(
-        request,
-        cookieAttachFailureMessage(setCookieInspect),
-        redirectTo
-      );
+      return athleteVerifyOtpCookieDebugRedirect(request, attachDebug, redirectTo);
     }
 
     console.log("[auth otp] verify redirect success", {
       userId: sessionUser.userId.slice(0, 8),
       emailHint: emailLogHint(email),
       redirectTo,
-      setCookie: setCookieInspect,
+      attachDebug,
       responseMode: "redirect",
     });
 
@@ -284,19 +293,23 @@ export async function POST(request: NextRequest) {
         }
       : {}),
   });
-  const setCookieInspect = attachVerifiedSessionCookies(auth, response);
+  const { setCookie: setCookieInspect, attachDebug } = attachVerifiedSessionCookies(
+    auth,
+    response,
+    data
+  );
 
-  if (!auth.responseAuthCookiesAreValid(response)) {
-    console.error("[auth otp] json cookie attach failed", {
+  if (!verifyOtpSessionCookiesOk(setCookieInspect, attachDebug)) {
+    logAndFailAttach("json cookie attach failed", attachDebug, {
       userId: sessionUser.userId.slice(0, 8),
       emailHint: emailLogHint(email),
-      setCookie: setCookieInspect,
     });
     return NextResponse.json(
       {
         ok: false,
         success: false,
-        error: cookieAttachFailureMessage(setCookieInspect),
+        error: cookieAttachFailureMessage(setCookieInspect, attachDebug),
+        attachDebug,
         ...(includeDebug
           ? {
               debug: buildVerifyOtpDebug(data, auth, {
@@ -313,11 +326,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (includeDebug) {
-    const withDebug = NextResponse.json({
+    return NextResponse.json({
       ok: true,
       success: true,
       redirectTo,
       authCookiesSet: true,
+      attachDebug,
       debug: buildVerifyOtpDebug(data, auth, {
         verifyOtpSuccess: true,
         responseStatus: 200,
@@ -326,15 +340,13 @@ export async function POST(request: NextRequest) {
         responseMode: "json",
       }),
     });
-    attachVerifiedSessionCookies(auth, withDebug);
-    return withDebug;
   }
 
   console.log("[auth otp] verify json success", {
     userId: sessionUser.userId.slice(0, 8),
     emailHint: emailLogHint(email),
     redirectTo,
-    setCookie: setCookieInspect,
+    attachDebug,
     responseMode: "json",
   });
 

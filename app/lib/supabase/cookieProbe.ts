@@ -1,6 +1,7 @@
 import type { NextResponse } from "next/server";
 import { isSupabaseAuthCookieName } from "@/app/lib/supabase/apiRoute";
 import type { MergedCookieEntry } from "@/app/lib/supabase/mergedAthleteCookies";
+import { appendSetCookieLine } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
 /** Small probe set by GET /api/auth/cookie-probe */
 export const H365_COOKIE_PROBE_NAME = "h365_probe";
@@ -32,7 +33,8 @@ export function attachH365CookieProbe(response: NextResponse) {
 }
 
 export function attachH365OtpAuthProbe(response: NextResponse) {
-  response.cookies.set(
+  appendSetCookieLine(
+    response,
     H365_OTP_AUTH_PROBE_NAME,
     H365_OTP_AUTH_PROBE_VALUE,
     getH365ProbeCookieOptions()
