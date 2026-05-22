@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AthletePortalNavLink } from "./AthletePortalNavLink";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import {
@@ -55,7 +56,6 @@ import {
   athleteCardPadding,
   eyebrowClass,
 } from "./athleteUi";
-import { athleteProgrammePrefetchDisabled } from "./athleteNav";
 import { useAthletePortal } from "./athletePortalContext";
 
 function HomePriorityTile({
@@ -71,12 +71,22 @@ function HomePriorityTile({
   href: string;
   warn?: boolean;
 }) {
+  const className = `${athleteCardInteractive} p-4 ${warn ? "border-amber-500/30 bg-amber-950/10" : ""}`;
+
+  if (href.startsWith("/athlete/")) {
+    return (
+      <AthletePortalNavLink href={href} className={className}>
+        <p className={`${eyebrowClass} !tracking-[0.15em]`}>{label}</p>
+        <p className={`mt-1.5 line-clamp-2 text-sm font-bold leading-snug ${warn ? "text-amber-200" : "text-white"}`}>
+          {value}
+        </p>
+        {sub ? <p className="mt-1 text-xs text-zinc-500">{sub}</p> : null}
+      </AthletePortalNavLink>
+    );
+  }
+
   return (
-    <Link
-      href={href}
-      prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
-      className={`${athleteCardInteractive} p-4 ${warn ? "border-amber-500/30 bg-amber-950/10" : ""}`}
-    >
+    <Link href={href} className={className}>
       <p className={`${eyebrowClass} !tracking-[0.15em]`}>{label}</p>
       <p className={`mt-1.5 line-clamp-2 text-sm font-bold leading-snug ${warn ? "text-amber-200" : "text-white"}`}>
         {value}

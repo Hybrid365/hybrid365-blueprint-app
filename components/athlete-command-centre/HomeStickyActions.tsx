@@ -2,6 +2,7 @@
 
 import { Play } from "lucide-react";
 import Link from "next/link";
+import { AthletePortalNavLink } from "./AthletePortalNavLink";
 import { MOCK_ATHLETE, MOCK_CHECK_IN, MOCK_NEXT_SESSION } from "@/app/lib/hyroxTeamDashboardMock";
 import { sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
 import {
@@ -73,9 +74,9 @@ export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
             <BtnSecondary className="w-full" disabled={!nextActionable} onClick={onLogResult}>
               Log result
             </BtnSecondary>
-            <Link href={ATHLETE_PROGRAMME_HREF} prefetch={false} className={`${btnGhostClass} w-full`}>
+            <AthletePortalNavLink href={ATHLETE_PROGRAMME_HREF} className={`${btnGhostClass} w-full`}>
               Full programme →
-            </Link>
+            </AthletePortalNavLink>
           </div>
         </div>
 

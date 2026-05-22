@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AthletePortalNavLink } from "./AthletePortalNavLink";
 import { athleteProgrammePrefetchDisabled } from "./athleteNav";
 import { Lock } from "lucide-react";
 
@@ -108,13 +109,22 @@ export function SnapshotPanel({
     <section className={`${shell} ${athleteCardPadding} ${className}`}>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="text-sm font-bold text-white">{title}</h2>
-        <Link
-          href={href}
-          prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
-          className="rounded-lg px-2 py-1 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400/10 hover:text-yellow-300"
-        >
-          {linkLabel}
-        </Link>
+        {href.startsWith("/athlete/") ? (
+          <AthletePortalNavLink
+            href={href}
+            className="rounded-lg px-2 py-1 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400/10 hover:text-yellow-300"
+          >
+            {linkLabel}
+          </AthletePortalNavLink>
+        ) : (
+          <Link
+            href={href}
+            prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
+            className="rounded-lg px-2 py-1 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400/10 hover:text-yellow-300"
+          >
+            {linkLabel}
+          </Link>
+        )}
       </div>
       {children}
     </section>
@@ -154,6 +164,14 @@ export function BtnLinkSecondary({
   children: React.ReactNode;
   className?: string;
 }) {
+  if (href.startsWith("/athlete/")) {
+    return (
+      <AthletePortalNavLink href={href} className={`${btnSecondaryClass} ${className}`}>
+        {children}
+      </AthletePortalNavLink>
+    );
+  }
+
   return (
     <Link
       href={href}

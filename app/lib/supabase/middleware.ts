@@ -5,7 +5,15 @@ import {
   buildLoginNextFromRequest,
 } from "@/app/lib/authRedirectUrl";
 import {
-  authCookiesPresent,
+  authCookiesPresentOnRequest,
+  HYROX_MW_AUTH_STAGE_HEADER,
+  HYROX_MW_INTERNAL_NAV_HEADER,
+  HYROX_MW_PATH_HEADER,
+  isAthletePortalInternalNavigation,
+  isAthletePublicPath,
+  isProtectedAthletePortalPath,
+} from "@/app/lib/supabase/athleteAuthGate";
+import {
   isHyroxProgrammeRoute,
   isNextRouterPrefetch,
   resolveAuthUserForMiddleware,
@@ -66,7 +74,10 @@ function attachHyroxMiddlewareDebugHeaders(
   response: NextResponse,
   path: string,
   meta: HyroxMiddlewareDebugMeta,
-  options?: { redirectSource?: "middleware" | "layout" | "other" }
+  options?: {
+    redirectSource?: "middleware" | "layout" | "client" | "other";
+    internalNav?: boolean;
+  }
 ): NextResponse {
   const programmeRoute = isHyroxProgrammeRoute(path);
   const athleteRoute = path.startsWith("/athlete");
@@ -74,8 +85,9 @@ function attachHyroxMiddlewareDebugHeaders(
     programmeRoute || (shouldExposeHyroxMiddlewareDebug() && athleteRoute);
 
   if (athleteRoute) {
-    response.headers.set("x-hyrox-path", path);
+    response.headers.set(HYROX_MW_PATH_HEADER, path);
     response.headers.set("x-hyrox-middleware-stage", meta.stage);
+    response.headers.set(HYROX_MW_AUTH_STAGE_HEADER, meta.stage);
     response.headers.set("x-hyrox-cookie-present", meta.cookiePresent ? "yes" : "no");
     response.headers.set("x-hyrox-user-present", meta.userPresent ? "yes" : "no");
     if (meta.redirectTarget) {
@@ -84,6 +96,9 @@ function attachHyroxMiddlewareDebugHeaders(
     if (options?.redirectSource) {
       response.headers.set("x-hyrox-redirect-source", options.redirectSource);
     }
+    if (options?.internalNav) {
+      response.headers.set(HYROX_MW_INTERNAL_NAV_HEADER, "1");
+    }
     if (programmeRoute) {
       response.headers.set("x-hyrox-programme-route-hit", "1");
     }
@@ -91,7 +106,6 @@ function attachHyroxMiddlewareDebugHeaders(
 
   if (!exposeDebug) return response;
 
-  response.headers.set("x-hyrox-auth-stage", meta.stage);
   response.headers.set("x-hyrox-refresh-attempted", meta.refreshAttempted ? "yes" : "no");
   return response;
 }
@@ -100,7 +114,8 @@ function attachHyroxMiddlewareDebugHeaders(
 function finalizeMiddlewareResponse(
   request: NextRequest,
   pendingCookies: CookieToSet[],
-  meta: HyroxMiddlewareDebugMeta
+  meta: HyroxMiddlewareDebugMeta,
+  options?: { internalNav?: boolean }
 ): NextResponse {
   const path = request.nextUrl.pathname;
   const response = NextResponse.next({ request });
@@ -109,7 +124,7 @@ function finalizeMiddlewareResponse(
     "x-pathname",
     `${request.nextUrl.pathname}${request.nextUrl.search}`
   );
-  return attachHyroxMiddlewareDebugHeaders(response, path, meta);
+  return attachHyroxMiddlewareDebugHeaders(response, path, meta, options);
 }
 
 function communityLoginRedirect(
@@ -188,7 +203,7 @@ export async function updateSession(request: NextRequest) {
     return communityLoginRedirect(request, getPendingCookies(), {
       stage: "redirect-login-no-user",
       userPresent: false,
-      cookiePresent: authCookiesPresent(request.cookies.getAll()),
+      cookiePresent: authCookiesPresentOnRequest(request),
       refreshAttempted: false,
     });
   }
@@ -262,9 +277,10 @@ async function fetchHyroxAccessForMiddleware(
 export async function updateHyroxProtectedSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const { supabase, getPendingCookies } = createMiddlewareClient(request);
-  const requestCookies = request.cookies.getAll();
-  const hasAuthCookie = authCookiesPresent(requestCookies);
+  const hasAuthCookie = authCookiesPresentOnRequest(request);
   const isPrefetch = isNextRouterPrefetch(request);
+  const internalNav =
+    isProtectedAthletePortalPath(path) && isAthletePortalInternalNavigation(request);
 
   const { user, error: userError, retriedWithSession } = await resolveAuthUserForMiddleware(
     supabase,
@@ -289,6 +305,7 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
     hasAuthCookie,
     retriedWithSession,
     isPrefetch,
+    internalNav,
   });
 
   if (isHyroxProgrammeRoute(path)) {
@@ -321,11 +338,12 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
     if (path.startsWith("/athlete")) {
       /** Prefetch must not cache a login redirect for protected athlete routes. */
       if (isPrefetch) {
-        return finalizeMiddlewareResponse(request, pendingCookies, {
-          ...baseMeta,
-          stage: "prefetch-pass-no-user",
-          userPresent: false,
-        });
+        return finalizeMiddlewareResponse(
+          request,
+          pendingCookies,
+          { ...baseMeta, stage: "prefetch-pass-no-user", userPresent: false },
+          { internalNav }
+        );
       }
 
       /**
@@ -333,14 +351,32 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
        * in-page debug instead of hiding behind a premature login redirect.
        */
       if (hasAuthCookie) {
-        return finalizeMiddlewareResponse(request, pendingCookies, {
-          ...baseMeta,
-          stage: "pass-auth-cookie-no-user",
-          userPresent: false,
-        });
+        return finalizeMiddlewareResponse(
+          request,
+          pendingCookies,
+          { ...baseMeta, stage: "pass-auth-cookie-no-user", userPresent: false },
+          { internalNav }
+        );
       }
 
-      if (ATHLETE_PUBLIC_PATHS.has(path)) {
+      /**
+       * Soft navigation between protected athlete pages (e.g. programme ↔ dashboard).
+       * RSC flights may omit parsed cookies even though the portal session is valid.
+       */
+      if (internalNav) {
+        console.log("[hyrox-athlete-nav] pass internal portal navigation", {
+          path,
+          referer: request.headers.get("referer"),
+        });
+        return finalizeMiddlewareResponse(
+          request,
+          pendingCookies,
+          { ...baseMeta, stage: "pass-internal-athlete-nav", userPresent: false },
+          { internalNav: true }
+        );
+      }
+
+      if (isAthletePublicPath(path)) {
         return finalizeMiddlewareResponse(request, pendingCookies, {
           ...baseMeta,
           stage: "athlete-public",

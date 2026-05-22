@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { MoreHorizontal, X } from "lucide-react";
+import { AthletePortalNavLink } from "./AthletePortalNavLink";
 import {
   ATHLETE_DESKTOP_NAV,
   ATHLETE_MOBILE_MORE,
@@ -19,9 +19,8 @@ function isActive(pathname: string, href: string) {
 function NavLink({ item, active, onClick }: { item: AthleteNavItem; active: boolean; onClick?: () => void }) {
   const Icon = item.icon;
   return (
-    <Link
+    <AthletePortalNavLink
       href={item.href}
-      prefetch={false}
       onClick={onClick}
       className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition ${
         active
@@ -31,7 +30,7 @@ function NavLink({ item, active, onClick }: { item: AthleteNavItem; active: bool
     >
       <Icon className="h-4 w-4 shrink-0" />
       {item.label}
-    </Link>
+    </AthletePortalNavLink>
   );
 }
 
@@ -71,17 +70,16 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
               return (
-                <Link
+                <AthletePortalNavLink
                   key={item.id}
                   href={item.href}
-                  prefetch={false}
                   className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-semibold ${
                     active ? "text-yellow-400" : "text-zinc-500"
                   }`}
                 >
                   <Icon className={`h-5 w-5 ${active ? "text-yellow-400" : ""}`} />
                   <span className="truncate">{item.label}</span>
-                </Link>
+                </AthletePortalNavLink>
               );
             })}
             <button
