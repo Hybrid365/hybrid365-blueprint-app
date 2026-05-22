@@ -138,7 +138,9 @@ export function resolveProgrammePageRenderGate(input: {
 
   return {
     decision: "auth-debug",
-    reason: "No Supabase user on programme page load and layout did not confirm session.",
+    reason:
+      input.debug.renderReason ||
+      "Programme page could not resolve athlete or programme on server load.",
     showMainProgramme: false,
     showAuthNotice: true,
     programmeServerResolved: false,

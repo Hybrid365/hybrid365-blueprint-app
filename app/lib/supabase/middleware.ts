@@ -7,6 +7,8 @@ import {
 import {
   authCookiesPresentOnRequest,
   HYROX_MW_AUTH_STAGE_HEADER,
+  HYROX_MW_AUTH_USER_EMAIL_HEADER,
+  HYROX_MW_AUTH_USER_ID_HEADER,
   HYROX_MW_INTERNAL_NAV_HEADER,
   HYROX_MW_PATH_HEADER,
   isAthletePortalInternalNavigation,
@@ -35,7 +37,22 @@ export type HyroxMiddlewareDebugMeta = {
   cookiePresent: boolean;
   refreshAttempted: boolean;
   redirectTarget?: string;
+  authUserId?: string | null;
+  authUserEmail?: string | null;
 };
+
+function metaWithAuthUser(
+  meta: HyroxMiddlewareDebugMeta,
+  user: { id: string; email?: string | null } | null
+): HyroxMiddlewareDebugMeta {
+  if (!user) return meta;
+  return {
+    ...meta,
+    userPresent: true,
+    authUserId: user.id,
+    authUserEmail: user.email?.trim().toLowerCase() ?? null,
+  };
+}
 
 export function createMiddlewareClient(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -90,6 +107,12 @@ function attachHyroxMiddlewareDebugHeaders(
     response.headers.set(HYROX_MW_AUTH_STAGE_HEADER, meta.stage);
     response.headers.set("x-hyrox-cookie-present", meta.cookiePresent ? "yes" : "no");
     response.headers.set("x-hyrox-user-present", meta.userPresent ? "yes" : "no");
+    if (meta.authUserId) {
+      response.headers.set(HYROX_MW_AUTH_USER_ID_HEADER, meta.authUserId);
+    }
+    if (meta.authUserEmail) {
+      response.headers.set(HYROX_MW_AUTH_USER_EMAIL_HEADER, meta.authUserEmail);
+    }
     if (meta.redirectTarget) {
       response.headers.set("x-hyrox-redirect-target", meta.redirectTarget);
     }
@@ -289,12 +312,15 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
 
   const pendingCookies = getPendingCookies();
 
-  const baseMeta: HyroxMiddlewareDebugMeta = {
-    stage: "pending",
-    userPresent: Boolean(user),
-    cookiePresent: hasAuthCookie,
-    refreshAttempted: retriedWithSession,
-  };
+  const baseMeta: HyroxMiddlewareDebugMeta = metaWithAuthUser(
+    {
+      stage: "pending",
+      userPresent: Boolean(user),
+      cookiePresent: hasAuthCookie,
+      refreshAttempted: retriedWithSession,
+    },
+    user
+  );
 
   logHyroxAuthDebug("middleware", {
     path,
@@ -397,19 +423,19 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
   }
 
   if (path === "/athlete/login") {
-    return finalizeMiddlewareResponse(request, pendingCookies, {
-      ...baseMeta,
-      stage: "login-authed",
-      userPresent: true,
-    });
+    return finalizeMiddlewareResponse(
+      request,
+      pendingCookies,
+      metaWithAuthUser({ ...baseMeta, stage: "login-authed" }, user)
+    );
   }
 
   if (path === "/admin/no-access" || path === "/athlete/no-access") {
-    return finalizeMiddlewareResponse(request, pendingCookies, {
-      ...baseMeta,
-      stage: "no-access",
-      userPresent: true,
-    });
+    return finalizeMiddlewareResponse(
+      request,
+      pendingCookies,
+      metaWithAuthUser({ ...baseMeta, stage: "no-access" }, user)
+    );
   }
 
   const access = await fetchHyroxAccessForMiddleware(supabase, user.id, user.email);
@@ -426,11 +452,11 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
         redirectTarget: denied.pathname,
       });
     }
-    return finalizeMiddlewareResponse(request, pendingCookies, {
-      ...baseMeta,
-      stage: "admin-ok",
-      userPresent: true,
-    });
+    return finalizeMiddlewareResponse(
+      request,
+      pendingCookies,
+      metaWithAuthUser({ ...baseMeta, stage: "admin-ok" }, user)
+    );
   }
 
   if (path.startsWith("/athlete")) {
@@ -452,16 +478,16 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
         redirectTarget: denied.pathname,
       });
     }
-    return finalizeMiddlewareResponse(request, pendingCookies, {
-      ...baseMeta,
-      stage: "athlete-ok",
-      userPresent: true,
-    });
+    return finalizeMiddlewareResponse(
+      request,
+      pendingCookies,
+      metaWithAuthUser({ ...baseMeta, stage: "athlete-ok" }, user)
+    );
   }
 
-  return finalizeMiddlewareResponse(request, pendingCookies, {
-    ...baseMeta,
-    stage: "fallback-ok",
-    userPresent: true,
-  });
+  return finalizeMiddlewareResponse(
+    request,
+    pendingCookies,
+    metaWithAuthUser({ ...baseMeta, stage: "fallback-ok" }, user)
+  );
 }

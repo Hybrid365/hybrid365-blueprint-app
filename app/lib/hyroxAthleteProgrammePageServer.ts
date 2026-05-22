@@ -1,22 +1,28 @@
-import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
-import { fetchAthleteLiveProgrammeForServer } from "@/app/lib/hyroxAthleteProgrammeServer";
 import {
-  countProgrammeWeeksGenerated,
-  countPublishedSessionsFromProgramme,
-  type ProgrammePageRenderDecision,
-} from "@/app/lib/hyroxAthleteProgrammePageGate";
-import {
-  getAthleteLayoutSessionUser,
-  resolveLinkedHyroxAthleteForServer,
-} from "@/app/lib/hyroxAthletePortalServerAuth";
-import { createClient } from "@/app/lib/supabase/server";
+  programmeRenderDecisionFromSnapshot,
+  resolveHyroxAthletePortalSnapshot,
+} from "@/app/lib/hyroxAthletePortalSnapshot";
+import type { ProgrammePageRenderDecision } from "@/app/lib/hyroxAthleteProgrammePageGate";
 import type { PortalAthleteSummary } from "@/components/athlete-command-centre/athletePortalContext";
 import type { AthleteLiveProgrammePayload } from "@/components/athlete-command-centre/useAthleteLiveProgramme";
 
 export type ProgrammePageServerDebug = {
   pageExecuted: boolean;
+  currentUrl: string;
+  authCookiesPresent: boolean;
+  rawCookieHeaderPresent: boolean;
+  middlewareCookiePresent: boolean;
+  middlewareUserPresent: boolean;
+  middlewareInternalNav: boolean;
+  getSessionSucceeded: boolean;
+  getUserSucceeded: boolean;
+  getUserAfterRetrySucceeded: boolean;
+  userSource: string;
   authUserEmail: string | null;
   authUserId: string | null;
+  sessionUserId: string | null;
+  middlewareAuthUserId: string | null;
+  middlewareAuthEmail: string | null;
   linkedAthleteId: string | null;
   linkedAthleteEmail: string | null;
   programmePublished: boolean;
@@ -37,29 +43,52 @@ export type ProgrammePageServerPayload = {
 };
 
 export async function loadAthleteProgrammePageServer(): Promise<ProgrammePageServerPayload> {
-  const user = await getAthleteLayoutSessionUser();
+  const snapshot = await resolveHyroxAthletePortalSnapshot({
+    routePath: "/athlete/programme",
+    loadProgramme: true,
+  });
 
-  const baseDebug: ProgrammePageServerDebug = {
+  const { auth, user, athlete, portalAthlete, programme } = snapshot;
+  const publishedWeekCount = snapshot.publishedWeekCount;
+  const publishedSessionsCount = snapshot.publishedSessionsCount;
+  const serverProgrammePublished = snapshot.serverProgrammePublished;
+
+  const baseDebug: Omit<ProgrammePageServerDebug, "finalRenderDecision" | "renderReason"> = {
     pageExecuted: true,
-    authUserEmail: user?.email?.trim().toLowerCase() ?? null,
-    authUserId: user?.id ?? null,
-    linkedAthleteId: null,
-    linkedAthleteEmail: null,
-    programmePublished: false,
-    publishedWeekCount: 0,
-    publishedSessionsCount: 0,
-    linkFailureReason: null,
-    wouldHaveRedirectedToLogin: !user,
-    finalRenderDecision: "auth-debug",
-    renderReason: "pending",
+    currentUrl: auth.currentUrl,
+    authCookiesPresent: auth.authCookiesPresent,
+    rawCookieHeaderPresent: auth.rawCookieHeaderPresent,
+    middlewareCookiePresent: auth.middlewareCookiePresent,
+    middlewareUserPresent: auth.middlewareUserPresent,
+    middlewareInternalNav: auth.middlewareInternalNav,
+    getSessionSucceeded: auth.getSessionSucceeded,
+    getUserSucceeded: auth.getUserSucceeded,
+    getUserAfterRetrySucceeded: auth.getUserAfterRetrySucceeded,
+    userSource: auth.userSource,
+    authUserEmail: auth.authUserEmail,
+    authUserId: auth.authUserId,
+    sessionUserId: auth.sessionUserId,
+    middlewareAuthUserId: auth.middlewareAuthUserId,
+    middlewareAuthEmail: auth.middlewareAuthEmail,
+    linkedAthleteId: athlete?.id ?? null,
+    linkedAthleteEmail: athlete?.email ?? auth.authUserEmail,
+    programmePublished: serverProgrammePublished,
+    publishedWeekCount,
+    publishedSessionsCount,
+    linkFailureReason: snapshot.linkFailureReason,
+    wouldHaveRedirectedToLogin: !user && !auth.authCookiesPresent,
   };
 
   if (!user) {
+    const finalRenderDecision: ProgrammePageRenderDecision = "auth-debug";
     return {
       debug: {
         ...baseDebug,
-        finalRenderDecision: "auth-debug",
-        renderReason: "No Supabase user resolved on programme page server load.",
+        finalRenderDecision,
+        renderReason:
+          auth.authCookiesPresent || auth.rawCookieHeaderPresent
+            ? "Auth cookies/markers present but no Supabase user after merged-cookie session retry."
+            : "No auth cookies, middleware identity, or Supabase user on programme page load.",
       },
       initialProgramme: null,
       serverProgrammePublished: false,
@@ -68,21 +97,13 @@ export async function loadAthleteProgrammePageServer(): Promise<ProgrammePageSer
     };
   }
 
-  const linked = await resolveLinkedHyroxAthleteForServer();
-  if (!linked) {
-    const supabase = await createClient();
-    const portal = await resolveHyroxPortalAthlete({
-      user,
-      supabase,
-      attemptAutoLink: true,
-    });
-
+  if (!athlete || !portalAthlete) {
+    const finalRenderDecision: ProgrammePageRenderDecision = "not-linked";
     return {
       debug: {
         ...baseDebug,
-        linkFailureReason: portal.accessReason ?? "LINKED_RESOLVE_FAILED",
-        finalRenderDecision: "not-linked",
-        renderReason: portal.accessReason ?? "LINKED_RESOLVE_FAILED",
+        finalRenderDecision,
+        renderReason: snapshot.linkFailureReason ?? "LINKED_RESOLVE_FAILED",
       },
       initialProgramme: null,
       serverProgrammePublished: false,
@@ -91,58 +112,30 @@ export async function loadAthleteProgrammePageServer(): Promise<ProgrammePageSer
     };
   }
 
-  const initialProgramme = await fetchAthleteLiveProgrammeForServer(
-    linked.athlete,
-    linked.user.email
-  );
-
-  const publishedWeekCount = countProgrammeWeeksGenerated(initialProgramme);
-  const publishedSessionsCount = countPublishedSessionsFromProgramme(initialProgramme);
-
-  const serverProgrammePublished =
-    Boolean(initialProgramme?.published) ||
-    initialProgramme?.state === "published" ||
-    publishedWeekCount > 0;
-
-  const serverPortalAthlete: PortalAthleteSummary = {
-    id: linked.athlete.id,
-    name:
-      linked.athlete.name?.trim() ||
-      linked.user.email?.split("@")[0]?.trim() ||
-      "Athlete",
-    email: linked.athlete.email ?? linked.user.email ?? null,
-    status: linked.athlete.status,
-  };
-
-  const finalRenderDecision: ProgrammePageRenderDecision = !serverProgrammePublished
-    ? "waiting"
-    : publishedSessionsCount === 0
-      ? "published-empty"
-      : "programme";
-
-  const debug: ProgrammePageServerDebug = {
-    ...baseDebug,
-    linkedAthleteId: linked.athlete.id,
-    linkedAthleteEmail: linked.athlete.email ?? linked.user.email ?? null,
-    programmePublished: serverProgrammePublished,
-    publishedWeekCount,
-    publishedSessionsCount,
-    linkFailureReason: null,
-    wouldHaveRedirectedToLogin: false,
-    finalRenderDecision,
-    renderReason:
-      finalRenderDecision === "programme"
-        ? "Linked athlete and published programme resolved on server."
-        : finalRenderDecision === "waiting"
-          ? "Linked athlete; programme not published yet."
-          : "Published programme flag set but zero sessions in server payload.",
-  };
+  const finalRenderDecision = programmeRenderDecisionFromSnapshot(snapshot);
+  const renderReason =
+    finalRenderDecision === "programme"
+      ? `Linked athlete ${athlete.id} and programme loaded via portal snapshot (${publishedWeekCount} weeks, ${publishedSessionsCount} sessions).`
+      : finalRenderDecision === "waiting"
+        ? "Linked athlete resolved; programme not published yet."
+        : "Published programme flag set but zero sessions in server payload.";
 
   return {
-    debug,
-    initialProgramme,
+    debug: {
+      ...baseDebug,
+      linkedAthleteId: athlete.id,
+      linkedAthleteEmail: athlete.email ?? user.email ?? null,
+      programmePublished: serverProgrammePublished,
+      publishedWeekCount,
+      publishedSessionsCount,
+      linkFailureReason: null,
+      wouldHaveRedirectedToLogin: false,
+      finalRenderDecision,
+      renderReason,
+    },
+    initialProgramme: programme,
     serverProgrammePublished,
-    serverPortalAthlete,
+    serverPortalAthlete: portalAthlete,
     variant: "ready",
   };
 }

@@ -4,6 +4,9 @@ import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
 /** Forwarded by middleware on every /athlete/* response so layout matches request.cookies. */
 export const HYROX_MW_COOKIE_HEADER = "x-hyrox-cookie-present";
 export const HYROX_MW_USER_HEADER = "x-hyrox-user-present";
+/** Set by middleware when Supabase user resolved — trusted for RSC when cookies() is empty. */
+export const HYROX_MW_AUTH_USER_ID_HEADER = "x-hyrox-auth-user-id";
+export const HYROX_MW_AUTH_USER_EMAIL_HEADER = "x-hyrox-auth-user-email";
 export const HYROX_MW_STAGE_HEADER = "x-hyrox-middleware-stage";
 export const HYROX_MW_AUTH_STAGE_HEADER = "x-hyrox-auth-stage";
 export const HYROX_MW_REDIRECT_SOURCE_HEADER = "x-hyrox-redirect-source";
@@ -67,6 +70,18 @@ export function middlewareForwardedAthleteAuth(headerStore: {
     headerStore.get(HYROX_MW_USER_HEADER) === "yes" ||
     headerStore.get(HYROX_MW_INTERNAL_NAV_HEADER) === "1"
   );
+}
+
+export function middlewareForwardedAthleteIdentity(headerStore: {
+  get(name: string): string | null;
+}): { userId: string | null; email: string | null } {
+  if (!middlewareForwardedAthleteAuth(headerStore)) {
+    return { userId: null, email: null };
+  }
+  const userId = headerStore.get(HYROX_MW_AUTH_USER_ID_HEADER)?.trim() || null;
+  const email =
+    headerStore.get(HYROX_MW_AUTH_USER_EMAIL_HEADER)?.trim().toLowerCase() || null;
+  return { userId, email };
 }
 
 /**

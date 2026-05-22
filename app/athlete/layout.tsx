@@ -11,12 +11,11 @@ import {
   probeAthleteAuthMarkers,
   shouldAthleteLayoutRedirectToLogin,
 } from "@/app/lib/supabase/athleteAuthGate";
+import { probeHyroxPortalAuth } from "@/app/lib/hyroxAthletePortalSnapshot";
 import {
   isAthleteServerPrefetch,
   isHyroxProgrammeRoute,
-  resolveAuthUserForMiddleware,
 } from "@/app/lib/supabase/resolveAuthUser";
-import { createClient } from "@/app/lib/supabase/server";
 import { AthletePaymentPendingNotice } from "@/components/athlete-command-centre/AthletePaymentPendingNotice";
 import { AthleteUnlinkedNotice } from "@/components/athlete-command-centre/AthleteUnlinkedNotice";
 import { buildHyroxPortalServerAuth } from "@/app/lib/hyroxAthletePortalContract";
@@ -43,8 +42,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
   const isPrefetch = isAthleteServerPrefetch(headerStore);
   const programmeRoute = isHyroxProgrammeRoute(pathname);
 
-  const supabase = await createClient();
-  const { user } = await resolveAuthUserForMiddleware(supabase, hasSupabaseAuthCookie);
+  const { user, supabase } = await probeHyroxPortalAuth(pathname);
 
   const layoutAuth: PortalLayoutAuth = {
     hasSession: Boolean(user),
