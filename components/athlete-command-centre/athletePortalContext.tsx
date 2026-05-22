@@ -203,3 +203,43 @@ export function useAthletePortal() {
   }
   return ctx;
 }
+
+/**
+ * Merges server-loaded programme/onboarding state into portal context so the hub
+ * stays unlocked when the client programme API is slow or fails — without
+ * downgrading a server-confirmed published programme.
+ */
+export function AthletePortalSeedProvider({
+  children,
+  serverProgrammePublished = false,
+  serverProgramme = null,
+}: {
+  children: React.ReactNode;
+  serverProgrammePublished?: boolean;
+  serverProgramme?: AthleteLiveProgrammePayload | null;
+}) {
+  const parent = useAthletePortal();
+
+  const value = useMemo(() => {
+    const serverPublished =
+      serverProgrammePublished ||
+      Boolean(serverProgramme?.published) ||
+      serverProgramme?.state === "published";
+    const programmePublishedLive = parent.programmePublishedLive || serverPublished;
+    const liveProgramme = parent.liveProgramme ?? serverProgramme ?? null;
+    const programmeHubLive =
+      programmePublishedLive || parent.useMockPreview || parent.programmeHubLive;
+
+    return {
+      ...parent,
+      programmePublishedLive,
+      hasPublishedProgramme: programmePublishedLive,
+      programmeHubLive,
+      liveProgramme,
+      programmeState: liveProgramme?.state ?? parent.programmeState,
+      programmeVisibility: liveProgramme?.visibility ?? parent.programmeVisibility,
+    };
+  }, [parent, serverProgrammePublished, serverProgramme]);
+
+  return <AthletePortalContext.Provider value={value}>{children}</AthletePortalContext.Provider>;
+}

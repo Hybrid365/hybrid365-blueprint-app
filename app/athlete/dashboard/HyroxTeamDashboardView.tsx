@@ -46,8 +46,12 @@ export default function HyroxTeamDashboardView({
   );
   const [apiLoadError, setApiLoadError] = useState<string | null>(null);
 
+  const serverProgrammePublished = Boolean(initialProgress?.programmePublished);
+  const showLiveHub =
+    programmePublishedMock || programmePublishedLive || serverProgrammePublished;
+
   useEffect(() => {
-    if (programmePublishedMock || programmePublishedLive) return;
+    if (showLiveHub) return;
     if (initialProgress) return;
     (async () => {
       setApiLoadError(null);
@@ -98,10 +102,11 @@ export default function HyroxTeamDashboardView({
         setApiLoadError("Network error loading athlete status.");
       }
     })();
-  }, [programmePublishedMock, programmePublishedLive, programmeVisibility, initialProgress]);
+  }, [showLiveHub, programmeVisibility, initialProgress]);
 
-  if (programmePublishedMock || programmePublishedLive) {
-    return <HyroxTeamDashboardActive useLiveProgramme={programmePublishedLive} />;
+  if (showLiveHub) {
+    const useLiveData = programmePublishedLive || serverProgrammePublished;
+    return <HyroxTeamDashboardActive useLiveProgramme={useLiveData && !programmePublishedMock} />;
   }
   return (
     <HyroxTeamDashboardLocked

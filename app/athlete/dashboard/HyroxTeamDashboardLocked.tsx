@@ -270,35 +270,37 @@ export default function HyroxTeamDashboardLocked({
         </DashCard>
       </div>
 
-      <section>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Locked until programme is published
-        </h3>
-        <p className="mb-4 max-w-2xl text-sm text-zinc-600">
-          Your coach is building this section. Enable{" "}
-          <span className="font-medium text-zinc-400">Programme live (mock)</span> above only to preview the full
-          hub with sample data.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {LOCKED_PREVIEW_MODULES.map((m) => (
-            <LockedPreviewCard key={m.title} title={m.title} preview={m.preview} />
-          ))}
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {[
-            { icon: LayoutDashboard, title: "Programme hub" },
-            { icon: ClipboardList, title: "Check-in" },
-            { icon: BarChart3, title: "Benchmarks" },
-          ].map((item) => (
-            <DashCard key={item.title} locked className="relative !p-4">
-              <item.icon className="h-5 w-5 text-zinc-600" />
-              <Lock className="absolute right-3 top-3 h-4 w-4 text-zinc-600" />
-              <h4 className="m-0 mt-3 font-semibold text-zinc-500">{item.title}</h4>
-              <p className="m-0 mt-1 text-xs text-zinc-600">Locked until programme is published</p>
-            </DashCard>
-          ))}
-        </div>
-      </section>
+      {!checklist.programmeLive ? (
+        <section>
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Locked until programme is published
+          </h3>
+          <p className="mb-4 max-w-2xl text-sm text-zinc-600">
+            Your coach is building this section. Enable{" "}
+            <span className="font-medium text-zinc-400">Programme live (mock)</span> above only to preview the full
+            hub with sample data.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {LOCKED_PREVIEW_MODULES.map((m) => (
+              <LockedPreviewCard key={m.title} title={m.title} preview={m.preview} />
+            ))}
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {[
+              { icon: LayoutDashboard, title: "Programme hub" },
+              { icon: ClipboardList, title: "Check-in" },
+              { icon: BarChart3, title: "Benchmarks" },
+            ].map((item) => (
+              <DashCard key={item.title} locked className="relative !p-4">
+                <item.icon className="h-5 w-5 text-zinc-600" />
+                <Lock className="absolute right-3 top-3 h-4 w-4 text-zinc-600" />
+                <h4 className="m-0 mt-3 font-semibold text-zinc-500">{item.title}</h4>
+                <p className="m-0 mt-1 text-xs text-zinc-600">Locked until programme is published</p>
+              </DashCard>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

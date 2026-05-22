@@ -30,13 +30,16 @@ export default function DashboardPageClient({
     portalAthlete,
   } = useAthletePortal();
 
-  if (programmeHubLive) {
+  const serverProgrammePublished = Boolean(initialProgress?.programmePublished);
+  const showLiveHub = programmeHubLive || serverProgrammePublished;
+
+  if (showLiveHub) {
     return (
       <AthletePortalShell>
         <HyroxAthletePortalDebugPanel />
         <HyroxTeamDashboardView
           programmePublishedMock={useMockPreview}
-          programmePublishedLive={programmePublishedLive}
+          programmePublishedLive={programmePublishedLive || serverProgrammePublished}
           portalAthleteName={portalAthlete?.name}
           initialProgress={initialProgress}
         />
@@ -81,7 +84,7 @@ export default function DashboardPageClient({
 
       <HyroxTeamDashboardView
         programmePublishedMock={false}
-        programmePublishedLive={false}
+        programmePublishedLive={serverProgrammePublished}
         programmeVisibility={programmeVisibility}
         portalAthleteName={portalAthlete?.name}
         initialProgress={initialProgress}

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { buildAthleteLoginNextFromRequest } from "@/app/lib/authRedirectUrl";
 import { fetchAthleteLiveProgrammeForServer } from "@/app/lib/hyroxAthleteProgrammeServer";
-import { resolveLinkedHyroxAthleteForServer } from "@/app/lib/hyroxAthletePortalServerAuth";
+import {
+  getAthleteLayoutSessionUser,
+  resolveLinkedHyroxAthleteForServer,
+} from "@/app/lib/hyroxAthletePortalServerAuth";
+import { AthletePortalSeedProvider } from "@/components/athlete-command-centre/athletePortalContext";
 import ProgrammePageClient from "./ProgrammePageClient";
 
 export const metadata: Metadata = {
@@ -11,17 +15,26 @@ export const metadata: Metadata = {
 };
 
 export default async function AthleteProgrammePage() {
-  const linked = await resolveLinkedHyroxAthleteForServer();
-
-  if (!linked) {
+  const user = await getAthleteLayoutSessionUser();
+  if (!user) {
     const next = buildAthleteLoginNextFromRequest("/athlete/programme", "");
     redirect(`/athlete/login?next=${encodeURIComponent(next)}`);
   }
 
-  const initialProgramme = await fetchAthleteLiveProgrammeForServer(
-    linked.athlete,
-    linked.user.email
-  );
+  const linked = await resolveLinkedHyroxAthleteForServer();
+  const initialProgramme = linked
+    ? await fetchAthleteLiveProgrammeForServer(linked.athlete, linked.user.email)
+    : null;
 
-  return <ProgrammePageClient initialProgramme={initialProgramme} />;
+  const serverProgrammePublished =
+    Boolean(initialProgramme?.published) || initialProgramme?.state === "published";
+
+  return (
+    <AthletePortalSeedProvider
+      serverProgrammePublished={serverProgrammePublished}
+      serverProgramme={initialProgramme}
+    >
+      <ProgrammePageClient initialProgramme={initialProgramme} />
+    </AthletePortalSeedProvider>
+  );
 }

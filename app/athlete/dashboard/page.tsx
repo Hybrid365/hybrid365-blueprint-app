@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { AthleteOnboardingProgress } from "@/app/lib/hyroxAthleteOnboardingFlow";
 import { fetchAthleteOnboardingProgress } from "@/app/lib/hyroxAthleteOnboardingServer";
 import { resolveLinkedHyroxAthleteForServer } from "@/app/lib/hyroxAthletePortalServerAuth";
+import { AthletePortalSeedProvider } from "@/components/athlete-command-centre/athletePortalContext";
 import DashboardPageClient from "./DashboardPageClient";
 
 export const metadata: Metadata = {
@@ -17,5 +18,11 @@ export default async function AthleteDashboardPage() {
     initialProgress = await fetchAthleteOnboardingProgress(linked.athlete);
   }
 
-  return <DashboardPageClient initialProgress={initialProgress} />;
+  return (
+    <AthletePortalSeedProvider
+      serverProgrammePublished={Boolean(initialProgress?.programmePublished)}
+    >
+      <DashboardPageClient initialProgress={initialProgress} />
+    </AthletePortalSeedProvider>
+  );
 }

@@ -3,7 +3,8 @@ import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
 import { createClient } from "@/app/lib/supabase/server";
 import type { User } from "@supabase/supabase-js";
 
-async function getLayoutUser(): Promise<User | null> {
+/** Supabase user for athlete server pages — same session refresh as layout. */
+export async function getAthleteLayoutSessionUser(): Promise<User | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,7 +24,7 @@ export async function resolveLinkedHyroxAthleteForServer(): Promise<{
   user: User;
   athlete: HyroxAthleteRow;
 } | null> {
-  const user = await getLayoutUser();
+  const user = await getAthleteLayoutSessionUser();
   if (!user) return null;
 
   const supabase = await createClient();
