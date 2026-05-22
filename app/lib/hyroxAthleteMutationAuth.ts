@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { emailsMatchSafe } from "@/app/lib/hyroxAthleteMutationActor";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
 import {
@@ -35,9 +36,7 @@ export type HyroxMutationAuthResult =
     };
 
 function emailsMatch(a: string | null | undefined, b: string | null | undefined): boolean {
-  const left = a?.trim().toLowerCase();
-  const right = b?.trim().toLowerCase();
-  return Boolean(left && right && left === right);
+  return emailsMatchSafe(a, b);
 }
 
 /**

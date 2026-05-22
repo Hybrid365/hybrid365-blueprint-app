@@ -1,25 +1,15 @@
-import { headers, cookies } from "next/headers";
+import { headers } from "next/headers";
 import {
   buildAthleteAccessDebug,
   evaluateAthleteEmailAccess,
 } from "@/app/lib/hyroxAthleteAutoLink";
-import { getHyroxAccessContext } from "@/app/lib/hyroxAccess";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
-import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
-import {
-  middlewareForwardedAthleteAuth,
-  probeAthleteAuthMarkers,
-  shouldAthleteLayoutRedirectToLogin,
-} from "@/app/lib/supabase/athleteAuthGate";
-import { probeHyroxPortalAuth } from "@/app/lib/hyroxAthletePortalSnapshot";
-import {
-  isAthleteServerPrefetch,
-  isHyroxProgrammeRoute,
-} from "@/app/lib/supabase/resolveAuthUser";
+import { buildHyroxPortalServerAuth } from "@/app/lib/hyroxAthletePortalContract";
+import { resolveAthletePortalPageAuth } from "@/app/lib/hyroxAthletePortalSnapshot";
+import { createHyroxPortalMutationToken } from "@/app/lib/hyroxPortalMutationToken";
+import { isHyroxProgrammeRoute } from "@/app/lib/supabase/resolveAuthUser";
 import { AthletePaymentPendingNotice } from "@/components/athlete-command-centre/AthletePaymentPendingNotice";
 import { AthleteUnlinkedNotice } from "@/components/athlete-command-centre/AthleteUnlinkedNotice";
-import { buildHyroxPortalServerAuth } from "@/app/lib/hyroxAthletePortalContract";
-import { createHyroxPortalMutationToken } from "@/app/lib/hyroxPortalMutationToken";
 import {
   AthletePortalProvider,
   type PortalAthleteSummary,
@@ -28,115 +18,91 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const ATHLETE_PUBLIC_PATHS = new Set([
-  "/athlete/login",
-  "/athlete/no-access",
-  "/athlete/auth-debug",
-]);
-
-/** Auth: middleware. Payment + link gates before portal content. */
+/** Auth: middleware + resolveAthletePortalPageAuth (sb cookies or h365_athlete_session). */
 export default async function AthleteLayout({ children }: { children: React.ReactNode }) {
   const headerStore = await headers();
   const pathname =
     (headerStore.get("x-pathname") ?? "/athlete").split("?")[0] ?? "/athlete";
-  const cookieStore = await cookies();
-  const authMarkers = probeAthleteAuthMarkers(cookieStore, headerStore);
-  const middlewareForwardedAuth = middlewareForwardedAthleteAuth(headerStore);
-  const hasSupabaseAuthCookie = authMarkers.present;
-  const isPrefetch = isAthleteServerPrefetch(headerStore);
   const programmeRoute = isHyroxProgrammeRoute(pathname);
 
-  const { user, supabase } = await probeHyroxPortalAuth(pathname);
+  const portalAuth = await resolveAthletePortalPageAuth(pathname);
+  const { auth, user, portalResolved } = portalAuth;
 
   const layoutAuth: PortalLayoutAuth = {
-    hasSession: Boolean(user),
-    email: user?.email?.trim().toLowerCase() ?? null,
-    userId: user?.id ?? null,
-    hasSupabaseAuthCookie,
+    hasSession: portalAuth.isAuthenticated,
+    email: portalAuth.email,
+    userId: portalAuth.authUserId,
+    hasSupabaseAuthCookie: auth.validSessionCookiesPresent || auth.authCookiesPresent,
+  };
+
+  const routeAuthDebug = {
+    authSource: portalAuth.source,
+    athleteId: portalAuth.athleteId,
+    route: pathname,
+    wouldRedirectToLogin: portalAuth.wouldRedirectToLogin,
   };
 
   if (programmeRoute) {
     console.log("[hyrox-programme-route] layout", {
       pathname,
+      ...routeAuthDebug,
       hasUser: Boolean(user),
-      authMarkers,
-      middlewareForwardedAuth,
-      isPrefetch,
-      isPublicPath: ATHLETE_PUBLIC_PATHS.has(pathname),
+      h365Session: auth.athleteSessionCookieValid,
     });
   }
 
   if (!user) {
-    const wouldRedirect = shouldAthleteLayoutRedirectToLogin({
-      pathname,
-      userPresent: false,
-      authMarkers,
-      middlewareForwardedAuth,
-      isPrefetch,
-    });
-
-    if (wouldRedirect) {
-      /**
-       * Login redirect is middleware-only (sets x-hyrox-redirect-source: middleware).
-       * Layout must not send users to /athlete/login?next=… when cookies() is empty but
-       * middleware already forwarded x-hyrox-cookie-present: yes on the same request.
-       */
+    if (portalAuth.wouldRedirectToLogin) {
       console.warn("[hyrox-athlete-layout] unauthenticated render (middleware should redirect)", {
         pathname,
-        authMarkers,
-        middlewareForwardedAuth,
+        ...routeAuthDebug,
       });
     }
 
     return (
-      <AthletePortalProvider hasLinkedAthlete={false} portalAthlete={null} layoutAuth={layoutAuth}>
+      <AthletePortalProvider
+        hasLinkedAthlete={false}
+        portalAthlete={null}
+        layoutAuth={layoutAuth}
+        portalAuthSource="none"
+        routeAuthDebug={routeAuthDebug}
+      >
         {children}
       </AthletePortalProvider>
     );
   }
 
-  const [ctx, portalResolved] = await Promise.all([
-    getHyroxAccessContext(),
-    resolveHyroxPortalAthlete({ user, supabase, attemptAutoLink: true }),
-  ]);
-
-  const resolvedAthlete = portalResolved.athlete;
-  const accessReason = portalResolved.accessReason;
-
+  const resolvedAthlete = portalResolved?.athlete ?? null;
+  const accessReason = portalResolved?.accessReason ?? null;
   const portalLinked =
     accessReason === "LINKED" &&
     Boolean(resolvedAthlete?.payment_status === "paid" && resolvedAthlete.user_id === user.id);
 
-  const hasLinkedAthlete = portalLinked;
-
   logHyroxAuthDebug("athlete-layout", {
     authUserId: user.id,
     authEmail: user.email ?? null,
-    profileRole: ctx?.profileRole ?? null,
-    hyroxAthleteId: ctx?.hyroxAthleteId ?? null,
-    isAthlete: ctx?.isAthlete ?? false,
-    matchSource: portalResolved.matchSource,
+    authSource: portalAuth.source,
+    matchSource: portalResolved?.matchSource ?? null,
     resolvedAthleteId: resolvedAthlete?.id ?? null,
-    resolvedAthleteUserId: resolvedAthlete?.user_id ?? null,
-    athleteStatus: resolvedAthlete?.status ?? null,
-    athletePaymentStatus: resolvedAthlete?.payment_status ?? null,
     emailAccessReason: accessReason,
     portalLinked,
-    duplicateEmailCount: portalResolved.duplicateEmailAthletes.length,
-    autoLinked: portalResolved.autoLinked,
-    hasSupabaseAuthCookie,
+    h365AthleteSession: auth.athleteSessionCookieValid,
+    wouldRedirectToLogin: portalAuth.wouldRedirectToLogin,
   });
 
   if (accessReason === "ATHLETE_EMAIL_LINKED_TO_DIFFERENT_AUTH_USER") {
     return (
-      <AthleteUnlinkedNotice variant="wrong_auth_user" debug={portalResolved.debug} />
+      <AthleteUnlinkedNotice
+        variant="wrong_auth_user"
+        debug={portalResolved?.debug ?? null}
+      />
     );
   }
 
   if (!resolvedAthlete || accessReason === "NO_PAID_ATHLETE_FOUND" || accessReason === "LOOKUP_FAILED") {
     const unlinkedDebug =
       process.env.NODE_ENV === "development" && user.email
-        ? (portalResolved.debug ??
+        ? (portalResolved?.debug ??
           buildAthleteAccessDebug({
             authUserId: user.id,
             authEmail: user.email,
@@ -154,7 +120,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       : null;
     const unlinkedDebug =
       process.env.NODE_ENV === "development"
-        ? (emailAccess?.debug ?? portalResolved.debug)
+        ? (emailAccess?.debug ?? portalResolved?.debug ?? null)
         : null;
     return <AthleteUnlinkedNotice debug={unlinkedDebug} />;
   }
@@ -177,9 +143,9 @@ export default async function AthleteLayout({ children }: { children: React.Reac
 
   const serverAuth = buildHyroxPortalServerAuth({
     layoutAuth,
-    hasLinkedAthlete,
+    hasLinkedAthlete: portalLinked,
     portalAthlete,
-    portalMatchSource: portalResolved.matchSource,
+    portalMatchSource: portalResolved?.matchSource ?? "none",
   });
 
   const portalMutationToken = serverAuth.serverAuthConfirmed
@@ -196,8 +162,10 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       portalAthlete={serverAuth.portalAthlete}
       portalMatchSource={serverAuth.portalMatchSource}
       layoutAuth={serverAuth.layoutAuth}
-      serverAuthConfirmed={serverAuth.serverAuthConfirmed}
+      serverAuthConfirmed={portalAuth.serverAuthConfirmed}
       portalMutationToken={portalMutationToken}
+      portalAuthSource={portalAuth.source}
+      routeAuthDebug={routeAuthDebug}
     >
       {children}
     </AthletePortalProvider>

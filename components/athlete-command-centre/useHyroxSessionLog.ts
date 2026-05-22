@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { saveHyroxAthleteSessionLogAction } from "@/app/lib/hyroxAthleteSessionLogAction";
-import type { HyroxMutationAuthDebug } from "@/app/lib/hyroxAthleteMutationAuth";
+import type { HyroxMutationActorDebug } from "@/app/lib/hyroxAthleteMutationActor";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 import { useAthletePortal } from "./athletePortalContext";
 
@@ -29,14 +29,22 @@ type SaveResponse = {
   via?: string;
   reason?: string;
   cookieAuth?: string;
+  h365AthleteSession?: string;
   tokenAuth?: string;
   sessionBelongsToAthlete?: boolean;
+  saved?: boolean;
 };
 
 export type SessionLogAttemptDebug = {
-  lastLogAttemptVia: "server" | "api-cookie" | "api-signed-token" | "none";
+  lastLogAttemptVia:
+    | "server"
+    | "api-cookie"
+    | "h365-athlete-session"
+    | "api-signed-token"
+    | "none";
   serverActionResult: "success" | "error" | "no-auth" | "not-attempted";
   cookieAuth: "succeeded" | "failed" | "not-attempted";
+  h365AthleteSession: "valid" | "invalid" | "missing" | "not-attempted";
   tokenAuth:
     | "missing"
     | "invalid"
@@ -55,6 +63,7 @@ function formatStructuredError(debug: SessionLogAttemptDebug, detail: string): s
   return [
     detail,
     `cookieAuth: ${debug.cookieAuth}`,
+    `h365AthleteSession: ${debug.h365AthleteSession}`,
     `tokenAuth: ${debug.tokenAuth}`,
     `via: ${debug.lastLogAttemptVia}`,
     debug.sessionId ? `session: ${debug.sessionId}` : null,
@@ -64,6 +73,12 @@ function formatStructuredError(debug: SessionLogAttemptDebug, detail: string): s
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+function mapApiVia(via?: string): SessionLogAttemptDebug["lastLogAttemptVia"] {
+  if (via === "h365-athlete-session") return "h365-athlete-session";
+  if (via === "api-signed-token") return "api-signed-token";
+  return "api-cookie";
 }
 
 async function saveViaApi(
@@ -108,9 +123,10 @@ export function useHyroxSessionLog() {
     lastLogAttemptVia: "none",
     serverActionResult: "not-attempted",
     cookieAuth: "not-attempted",
+    h365AthleteSession: "not-attempted",
     tokenAuth: "not-attempted",
   });
-  const [serverAuthDebug, setServerAuthDebug] = useState<HyroxMutationAuthDebug | null>(
+  const [serverAuthDebug, setServerAuthDebug] = useState<HyroxMutationActorDebug | null>(
     null
   );
 
@@ -130,6 +146,7 @@ export function useHyroxSessionLog() {
         lastLogAttemptVia: "none",
         serverActionResult: "not-attempted",
         cookieAuth: "not-attempted",
+        h365AthleteSession: "not-attempted",
         tokenAuth: portalMutationToken ? "not-attempted" : "missing",
         sessionId: params.programmeSessionId,
       };
@@ -139,12 +156,10 @@ export function useHyroxSessionLog() {
         serverError?: string,
         serverCode?: string
       ): HyroxSession | null => {
-        const via =
-          apiJson.via === "api-signed-token"
-            ? "api-signed-token"
-            : apiJson.via === "api-cookie"
-              ? "api-cookie"
-              : "api-cookie";
+        const via = mapApiVia(apiJson.via);
+        const h365Status =
+          (apiJson.h365AthleteSession as SessionLogAttemptDebug["h365AthleteSession"]) ??
+          (via === "h365-athlete-session" ? "valid" : "not-attempted");
 
         if (apiJson.success) {
           setLastVia(via);
@@ -160,17 +175,20 @@ export function useHyroxSessionLog() {
                 ? "succeeded"
                 : apiJson.cookieAuth === "failed"
                   ? "failed"
-                  : via === "api-signed-token"
+                  : via === "h365-athlete-session" || via === "api-signed-token"
                     ? "failed"
                     : "succeeded",
+            h365AthleteSession: h365Status,
             tokenAuth:
               (apiJson.tokenAuth as SessionLogAttemptDebug["tokenAuth"]) ?? "not-needed",
             sessionBelongsToAthlete: apiJson.sessionBelongsToAthlete ?? true,
           });
           setSuccessMessage(
-            via === "api-signed-token"
-              ? `${apiJson.message ?? "Saved."} (signed portal token)`
-              : (apiJson.message ?? "Saved.")
+            via === "h365-athlete-session"
+              ? `${apiJson.message ?? "Saved."} (h365 athlete session)`
+              : via === "api-signed-token"
+                ? `${apiJson.message ?? "Saved."} (signed portal token)`
+                : (apiJson.message ?? "Saved.")
           );
           return apiJson.session ?? null;
         }
@@ -192,6 +210,7 @@ export function useHyroxSessionLog() {
               ? "no-auth"
               : "error",
           cookieAuth: cookieFailed ? "failed" : "not-attempted",
+          h365AthleteSession: h365Status,
           tokenAuth: (apiJson.tokenAuth as SessionLogAttemptDebug["tokenAuth"]) ?? "invalid",
           serverError,
           apiError: apiJson.error,
@@ -204,6 +223,7 @@ export function useHyroxSessionLog() {
               ...debugBase,
               lastLogAttemptVia: via,
               cookieAuth: cookieFailed ? "failed" : "not-attempted",
+              h365AthleteSession: h365Status,
               tokenAuth:
                 (apiJson.tokenAuth as SessionLogAttemptDebug["tokenAuth"]) ?? "invalid",
             },
@@ -239,15 +259,26 @@ export function useHyroxSessionLog() {
         setServerAuthDebug(serverResult.authDebug ?? null);
 
         if (serverResult.success) {
-          setLastVia("server");
+          const serverVia =
+            serverResult.via === "h365-athlete-session"
+              ? "h365-athlete-session"
+              : "server";
+          setLastVia(serverVia);
           setAttemptDebug({
             ...debugBase,
-            lastLogAttemptVia: "server",
+            lastLogAttemptVia: serverVia,
             serverActionResult: "success",
-            cookieAuth: "succeeded",
+            cookieAuth:
+              serverResult.via === "supabase-cookie" ? "succeeded" : "failed",
+            h365AthleteSession:
+              serverResult.via === "h365-athlete-session" ? "valid" : "not-attempted",
             tokenAuth: "not-needed",
           });
-          setSuccessMessage(serverResult.message ?? "Saved.");
+          setSuccessMessage(
+            serverResult.via === "h365-athlete-session"
+              ? `${serverResult.message ?? "Saved."} (h365 athlete session)`
+              : (serverResult.message ?? "Saved.")
+          );
           return serverResult.session ?? null;
         }
 

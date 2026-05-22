@@ -1,11 +1,16 @@
 import { cookies, headers } from "next/headers";
+import { normalizeOptionalEmail } from "@/app/lib/hyroxAthleteMutationActor";
+import { athletePortalHasValidServerSession } from "@/app/lib/hyroxAthletePortalSessionGate";
 import { fetchAthleteLiveProgrammeForServer } from "@/app/lib/hyroxAthleteProgrammeServer";
 import {
   countProgrammeWeeksGenerated,
   countPublishedSessionsFromProgramme,
   type ProgrammePageRenderDecision,
 } from "@/app/lib/hyroxAthleteProgrammePageGate";
-import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
+import {
+  resolveHyroxPortalAthlete,
+  type ResolvedPortalAthlete,
+} from "@/app/lib/hyroxAthletePortalResolve";
 import { hasValidSupabaseSessionCookies } from "@/app/lib/supabase/apiRoute";
 import {
   HYROX_MW_COOKIE_HEADER,
@@ -14,6 +19,7 @@ import {
   middlewareForwardedAthleteAuth,
   middlewareForwardedAthleteIdentity,
   probeAthleteAuthMarkers,
+  shouldAthleteLayoutRedirectToLogin,
 } from "@/app/lib/supabase/athleteAuthGate";
 import { createAthleteServerSupabase } from "@/app/lib/supabase/athleteServerClient";
 import {
@@ -28,10 +34,14 @@ import {
   type MergedCookieDebug,
 } from "@/app/lib/supabase/mergedAthleteCookies";
 import {
+  isAthleteServerPrefetch,
   resolveAuthUserForMiddleware,
   resolveAuthUserWithSessionRetry,
 } from "@/app/lib/supabase/resolveAuthUser";
-import type { PortalAthleteSummary } from "@/components/athlete-command-centre/athletePortalContext";
+import type {
+  PortalAthleteSummary,
+  PortalLayoutAuth,
+} from "@/components/athlete-command-centre/athletePortalContext";
 import type { AthleteLiveProgrammePayload } from "@/components/athlete-command-centre/useAthleteLiveProgramme";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
 import type { User } from "@supabase/supabase-js";
@@ -64,6 +74,25 @@ export type HyroxPortalSnapshotAuthProbe = {
   authUserId: string | null;
   authUserEmail: string | null;
   sessionUserId: string | null;
+};
+
+export type AthletePortalAuthSource = "supabase-cookie" | "h365-athlete-session" | "none";
+
+/** Unified portal auth for layout + pages — Supabase cookies or h365_athlete_session. */
+export type AthletePortalPageAuth = {
+  isAuthenticated: boolean;
+  source: AthletePortalAuthSource;
+  authUserId: string | null;
+  email: string | null;
+  athleteId: string | null;
+  athlete: HyroxAthleteRow | null;
+  portalAthlete: PortalAthleteSummary | null;
+  serverAuthConfirmed: boolean;
+  wouldRedirectToLogin: boolean;
+  routePath: string;
+  auth: HyroxPortalSnapshotAuthProbe;
+  user: User | null;
+  portalResolved: ResolvedPortalAthlete | null;
 };
 
 export type HyroxPortalSnapshot = {
@@ -190,11 +219,128 @@ export async function probeHyroxPortalAuth(
     getUserError: userRetryError?.message ?? userFirstError?.message ?? null,
     userSource,
     authUserId: user?.id ?? null,
-    authUserEmail: user?.email?.trim().toLowerCase() ?? null,
+    authUserEmail: normalizeOptionalEmail(user?.email),
     sessionUserId: session?.user?.id ?? null,
   };
 
   return { auth, user, supabase };
+}
+
+function mapUserSourceToPortalAuthSource(
+  userSource: HyroxPortalSnapshotAuthProbe["userSource"],
+  validSessionCookiesPresent: boolean
+): AthletePortalAuthSource {
+  if (userSource === "h365-athlete-session") return "h365-athlete-session";
+  if (userSource === "supabase" || userSource === "middleware-forwarded") {
+    return validSessionCookiesPresent ? "supabase-cookie" : "h365-athlete-session";
+  }
+  return "none";
+}
+
+/**
+ * Single shared resolver for /athlete/* layout and server pages.
+ * Accepts Supabase sb-* session or h365_athlete_session signed cookie.
+ */
+export async function resolveAthletePortalPageAuth(
+  routePath = "/athlete"
+): Promise<AthletePortalPageAuth> {
+  const headerStore = await headers();
+  const cookieStore = await cookies();
+  const pathname =
+    (headerStore.get("x-pathname") ?? routePath).split("?")[0] ?? routePath;
+  const authMarkers = probeAthleteAuthMarkers(cookieStore, headerStore);
+  const middlewareForwardedAuth = middlewareForwardedAthleteAuth(headerStore);
+  const isPrefetch = isAthleteServerPrefetch(headerStore);
+
+  const { auth, user, supabase } = await probeHyroxPortalAuth(pathname);
+
+  const source = user
+    ? mapUserSourceToPortalAuthSource(auth.userSource, auth.validSessionCookiesPresent)
+    : "none";
+
+  const layoutAuth: PortalLayoutAuth = {
+    hasSession: Boolean(user),
+    email: normalizeOptionalEmail(user?.email),
+    userId: user?.id ?? null,
+    hasSupabaseAuthCookie: auth.authCookiesPresent || auth.validSessionCookiesPresent,
+  };
+
+  const wouldRedirectToLogin = shouldAthleteLayoutRedirectToLogin({
+    pathname,
+    userPresent: Boolean(user),
+    authMarkers,
+    middlewareForwardedAuth,
+    isPrefetch,
+    athleteSessionCookieValid: auth.athleteSessionCookieValid,
+  });
+
+  const emptyBase: AthletePortalPageAuth = {
+    isAuthenticated: Boolean(user),
+    source,
+    authUserId: user?.id ?? null,
+    email: layoutAuth.email,
+    athleteId: null,
+    athlete: null,
+    portalAthlete: null,
+    serverAuthConfirmed: false,
+    wouldRedirectToLogin,
+    routePath: pathname,
+    auth,
+    user,
+    portalResolved: null,
+  };
+
+  if (!user) {
+    return emptyBase;
+  }
+
+  const portal = await resolveHyroxPortalAthlete({
+    user,
+    supabase,
+    attemptAutoLink: true,
+  });
+
+  const linked =
+    portal.accessReason === "LINKED" &&
+    portal.athlete?.payment_status === "paid" &&
+    portal.athlete.user_id === user.id;
+
+  if (!linked || !portal.athlete) {
+    return { ...emptyBase, portalResolved: portal };
+  }
+
+  const athlete = portal.athlete;
+  const portalAthlete: PortalAthleteSummary = {
+    id: athlete.id,
+    name:
+      athlete.name?.trim() ||
+      user.email?.split("@")[0]?.trim() ||
+      "Athlete",
+    email: athlete.email ?? user.email ?? null,
+    status: athlete.status,
+  };
+
+  const serverAuthConfirmed = athletePortalHasValidServerSession({
+    layoutAuth: { ...layoutAuth, hasSession: true, userId: user.id },
+    serverAuthConfirmed: true,
+    authProbe: auth,
+  });
+
+  return {
+    isAuthenticated: true,
+    source,
+    authUserId: user.id,
+    email: layoutAuth.email,
+    athleteId: athlete.id,
+    athlete,
+    portalAthlete,
+    serverAuthConfirmed,
+    wouldRedirectToLogin: false,
+    routePath: pathname,
+    auth,
+    user,
+    portalResolved: portal,
+  };
 }
 
 export async function resolveHyroxAthletePortalSnapshot(options?: {

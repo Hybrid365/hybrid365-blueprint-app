@@ -4,8 +4,7 @@ import type { AthleteOnboardingProgress } from "@/app/lib/hyroxAthleteOnboarding
 import { fetchAthleteOnboardingProgress } from "@/app/lib/hyroxAthleteOnboardingServer";
 import { fetchAthleteLiveProgrammeForServer } from "@/app/lib/hyroxAthleteProgrammeServer";
 import { resolveLinkedHyroxAthleteForServer } from "@/app/lib/hyroxAthletePortalServerAuth";
-import { athletePortalHasValidServerSession } from "@/app/lib/hyroxAthletePortalSessionGate";
-import { probeHyroxPortalAuth } from "@/app/lib/hyroxAthletePortalSnapshot";
+import { resolveAthletePortalPageAuth } from "@/app/lib/hyroxAthletePortalSnapshot";
 import { AthletePortalSeedProvider } from "@/components/athlete-command-centre/athletePortalContext";
 import DashboardPageClient from "./DashboardPageClient";
 
@@ -44,7 +43,8 @@ function DashboardAuthBlocked({ reason }: { reason: string }) {
 }
 
 export default async function AthleteDashboardPage() {
-  const { auth, user } = await probeHyroxPortalAuth("/athlete/dashboard");
+  const portalAuth = await resolveAthletePortalPageAuth("/athlete/dashboard");
+  const { auth, user } = portalAuth;
 
   const layoutAuth = {
     hasSession: Boolean(user),
@@ -53,14 +53,7 @@ export default async function AthleteDashboardPage() {
     hasSupabaseAuthCookie: auth.validSessionCookiesPresent || auth.authCookiesPresent,
   };
 
-  const serverAuthConfirmed = athletePortalHasValidServerSession({
-    layoutAuth,
-    serverAuthConfirmed: Boolean(
-      user &&
-        (auth.validSessionCookiesPresent || auth.athleteSessionCookieValid)
-    ),
-    authProbe: auth,
-  });
+  const serverAuthConfirmed = portalAuth.serverAuthConfirmed;
 
   if (!serverAuthConfirmed) {
     const reason = !user

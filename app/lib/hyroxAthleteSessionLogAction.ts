@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { resolveAthleteForHyroxMutation } from "@/app/lib/hyroxAthleteMutationAuth";
+import {
+  resolveHyroxAthleteMutationActor,
+  type HyroxMutationActorDebug,
+} from "@/app/lib/hyroxAthleteMutationActor";
 import {
   HyroxSessionLogError,
   upsertHyroxAthleteSessionLog,
@@ -9,7 +12,6 @@ import {
 } from "@/app/lib/hyroxAthleteSessionLogServer";
 import { mapPublishedSessionsToAthleteUi } from "@/app/lib/hyroxProgrammeServer";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
-import type { HyroxMutationAuthDebug } from "@/app/lib/hyroxAthleteMutationAuth";
 
 export type HyroxSessionLogActionBody = {
   programmeSessionId: string;
@@ -29,8 +31,8 @@ export type HyroxSessionLogActionResult = {
   code?: string;
   message?: string;
   session?: HyroxSession | null;
-  via?: "server";
-  authDebug?: HyroxMutationAuthDebug;
+  via?: "server" | "h365-athlete-session" | "supabase-cookie";
+  authDebug?: HyroxMutationActorDebug;
 };
 
 function feedbackFromBody(
@@ -53,15 +55,18 @@ function feedbackFromBody(
 export async function saveHyroxAthleteSessionLogAction(
   body: HyroxSessionLogActionBody
 ): Promise<HyroxSessionLogActionResult> {
-  const auth = await resolveAthleteForHyroxMutation(body.expectedAthleteId ?? null);
+  const actor = await resolveHyroxAthleteMutationActor({
+    expectedAthleteId: body.expectedAthleteId ?? null,
+    programmeSessionId: body.programmeSessionId?.trim() ?? null,
+  });
 
-  if (!auth.ok) {
+  if (!actor.ok) {
     return {
       success: false,
-      error: `[server action · ${auth.code}] ${auth.error}`,
-      code: auth.code === "NO_USER" ? "NO_AUTH" : auth.code,
+      error: `[server action · ${actor.code}] ${actor.error}`,
+      code: actor.code === "NO_AUTH" ? "NO_AUTH" : actor.code,
       via: "server",
-      authDebug: auth.debug,
+      authDebug: actor.debug,
     };
   }
 
@@ -74,8 +79,8 @@ export async function saveHyroxAthleteSessionLogAction(
 
   try {
     const { session } = await upsertHyroxAthleteSessionLog(
-      auth.supabase,
-      auth.athlete,
+      actor.writeClient,
+      actor.athlete,
       input
     );
     const [uiSession] = mapPublishedSessionsToAthleteUi([session]);
@@ -89,8 +94,13 @@ export async function saveHyroxAthleteSessionLogAction(
       message: input.completed
         ? "Session marked complete."
         : "Session log saved.",
-      via: "server",
-      authDebug: auth.debug,
+      via:
+        actor.source === "h365-athlete-session"
+          ? "h365-athlete-session"
+          : actor.source === "supabase-cookie"
+            ? "supabase-cookie"
+            : "server",
+      authDebug: actor.debug,
     };
   } catch (e) {
     if (e instanceof HyroxSessionLogError) {
@@ -99,7 +109,7 @@ export async function saveHyroxAthleteSessionLogAction(
         error: `[server action · ${e.code}] ${e.message}`,
         code: e.code,
         via: "server",
-        authDebug: auth.debug,
+        authDebug: actor.debug,
       };
     }
     const message = e instanceof Error ? e.message : "Could not save session log.";
@@ -108,7 +118,7 @@ export async function saveHyroxAthleteSessionLogAction(
       error: `[server action] ${message}`,
       code: "UNKNOWN",
       via: "server",
-      authDebug: auth.debug,
+      authDebug: actor.debug,
     };
   }
 }

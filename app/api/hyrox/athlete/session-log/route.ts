@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
-import { saveHyroxSessionLogViaPortalToken } from "@/app/lib/hyroxAthleteSessionLogTokenAuth";
+import {
+  resolveHyroxAthleteMutationActor,
+  type HyroxMutationActorSource,
+} from "@/app/lib/hyroxAthleteMutationActor";
 import {
   createApiRouteSupabase,
   hyroxAthleteApiJson,
@@ -45,6 +47,21 @@ function devAuthFields(extra: Record<string, unknown>): Record<string, unknown> 
   return extra;
 }
 
+function viaFromSource(source: HyroxMutationActorSource): string {
+  if (source === "supabase-cookie") return "api-cookie";
+  if (source === "h365-athlete-session") return "h365-athlete-session";
+  return "api-signed-token";
+}
+
+function failureStatus(code: string): number {
+  if (code === "SESSION_NOT_OWNED") return 403;
+  if (code === "NOT_FOUND") return 404;
+  if (code === "WEEK_LOCKED" || code === "FORBIDDEN") return 403;
+  if (code === "TOKEN_INVALID" || code === "NO_AUTH") return 401;
+  if (code === "NO_ATHLETE" || code === "NOT_PAID") return 403;
+  return 500;
+}
+
 export async function POST(request: NextRequest) {
   const { withAuthCookies } = await createApiRouteSupabase(request);
 
@@ -65,121 +82,97 @@ export async function POST(request: NextRequest) {
     feedback: feedbackFromBody(body),
   };
 
-  const auth = await requireCurrentHyroxAthleteForApi(request, {
+  const actor = await resolveHyroxAthleteMutationActor({
+    request,
+    portalMutationToken: body.portalMutationToken ?? null,
     expectedAthleteId: body.expectedAthleteId ?? null,
+    programmeSessionId: input.programmeSessionId,
   });
 
-  if (!auth.error) {
-    try {
-      const { session } = await upsertHyroxAthleteSessionLog(
-        auth.supabase,
-        auth.athlete,
-        input
-      );
-      const [uiSession] = mapPublishedSessionsToAthleteUi([session]);
-
-      return withAuthCookies(
-        NextResponse.json({
-          success: true,
-          session: uiSession ?? null,
-          message: input.completed
-            ? "Session marked complete."
-            : "Session log saved.",
-          via: "api-cookie",
-          cookieAuth: "succeeded",
-          tokenAuth: body.portalMutationToken ? "not-needed" : "missing",
-          ...devAuthFields({ authDebug: auth.authDebug }),
-        })
-      );
-    } catch (e) {
-      if (e instanceof HyroxSessionLogError) {
-        const status =
-          e.code === "NOT_FOUND"
-            ? 404
-            : e.code === "WEEK_LOCKED" || e.code === "FORBIDDEN"
-              ? 403
-              : 400;
-        return hyroxAthleteApiJson(
-          withAuthCookies,
-          {
-            success: false,
-            error: e.message,
-            code: e.code,
-            via: "api-cookie",
-            cookieAuth: "succeeded",
-          },
-          status
-        );
-      }
-      const message = e instanceof Error ? e.message : "Could not save session log.";
-      return hyroxAthleteApiJson(withAuthCookies, { success: false, error: message }, 500);
-    }
-  }
-
-  if (body.portalMutationToken?.trim()) {
-    const tokenResult = await saveHyroxSessionLogViaPortalToken(
-      body.portalMutationToken,
-      input,
-      { expectedAthleteId: body.expectedAthleteId ?? null }
-    );
-
-    if (tokenResult.ok) {
-      return withAuthCookies(
-        NextResponse.json({
-          success: true,
-          session: tokenResult.session,
-          message: tokenResult.message,
-          via: "api-signed-token",
-          cookieAuth: "failed",
-          tokenAuth: "succeeded",
-          athleteId: tokenResult.athleteId,
-          sessionBelongsToAthlete: true,
-          ...devAuthFields({
-            expectedAthleteId: body.expectedAthleteId ?? null,
-            programmeSessionId: input.programmeSessionId,
-          }),
-        })
-      );
-    }
-
+  if (!actor.ok) {
+    const d = actor.debug;
     return hyroxAthleteApiJson(
       withAuthCookies,
       {
         success: false,
-        error: tokenResult.error,
-        code: tokenResult.code,
-        via: "api-signed-token",
-        cookieAuth: "failed",
-        tokenAuth: tokenResult.tokenAuth,
-        sessionBelongsToAthlete: tokenResult.sessionBelongsToAthlete,
+        error: actor.error,
+        code: actor.code,
+        via: d.source === "none" ? "api-cookie" : viaFromSource(d.source as HyroxMutationActorSource),
+        cookieAuth: d.cookieAuth,
+        h365AthleteSession: d.h365AthleteSession,
+        tokenAuth: d.tokenAuth,
+        sessionBelongsToAthlete: actor.code !== "SESSION_NOT_OWNED",
+        athleteId: d.athleteId,
         ...devAuthFields({
           expectedAthleteId: body.expectedAthleteId ?? null,
           programmeSessionId: input.programmeSessionId,
-          verifyReason: tokenResult.verifyReason,
+          authUserId: d.authUserId,
+          tokenVerifyReason: d.tokenVerifyReason,
+          authDebug: actor.apiAuthDebug,
         }),
       },
-      tokenResult.code === "SESSION_ATHLETE_MISMATCH" ||
-        tokenResult.code === "TOKEN_ATHLETE_MISMATCH"
-        ? 403
-        : 401
+      failureStatus(actor.code)
     );
   }
 
-  return hyroxAthleteApiJson(
-    withAuthCookies,
-    {
-      success: false,
-      error: "Not signed in",
-      code: "NO_AUTH",
-      via: "api-cookie",
-      cookieAuth: "failed",
-      tokenAuth: "missing",
-      sessionBelongsToAthlete: false,
-      ...devAuthFields({
-        expectedAthleteId: body.expectedAthleteId ?? null,
-        programmeSessionId: input.programmeSessionId,
-      }),
-    },
-    401
-  );
+  try {
+    const { session } = await upsertHyroxAthleteSessionLog(
+      actor.writeClient,
+      actor.athlete,
+      input
+    );
+    const [uiSession] = mapPublishedSessionsToAthleteUi([session]);
+
+    return withAuthCookies(
+      NextResponse.json({
+        success: true,
+        session: uiSession ?? null,
+        message: input.completed
+          ? "Session marked complete."
+          : "Session log saved.",
+        via: viaFromSource(actor.source),
+        cookieAuth: actor.debug.cookieAuth,
+        h365AthleteSession: actor.debug.h365AthleteSession,
+        tokenAuth: actor.debug.tokenAuth,
+        athleteId: actor.athlete.id,
+        sessionBelongsToAthlete: true,
+        saved: true,
+        ...devAuthFields({ authDebug: actor.apiAuthDebug }),
+      })
+    );
+  } catch (e) {
+    if (e instanceof HyroxSessionLogError) {
+      return hyroxAthleteApiJson(
+        withAuthCookies,
+        {
+          success: false,
+          error: e.message,
+          code: e.code,
+          via: viaFromSource(actor.source),
+          cookieAuth: actor.debug.cookieAuth,
+          h365AthleteSession: actor.debug.h365AthleteSession,
+          tokenAuth: actor.debug.tokenAuth,
+          athleteId: actor.athlete.id,
+          sessionBelongsToAthlete: e.code !== "NOT_FOUND",
+        },
+        failureStatus(e.code)
+      );
+    }
+    const message = e instanceof Error ? e.message : "Could not save session log.";
+    return hyroxAthleteApiJson(
+      withAuthCookies,
+      {
+        success: false,
+        error: message,
+        code: "UNKNOWN",
+        via: viaFromSource(actor.source),
+        cookieAuth: actor.debug.cookieAuth,
+        h365AthleteSession: actor.debug.h365AthleteSession,
+        tokenAuth: actor.debug.tokenAuth,
+        athleteId: actor.athlete.id,
+        sessionBelongsToAthlete: false,
+      },
+      500
+    );
+  }
 }

@@ -1,4 +1,9 @@
 import type { NextRequest } from "next/server";
+import {
+  H365_ATHLETE_SESSION_COOKIE,
+  h365AthleteSessionPresentInCookieList,
+  hasH365AthleteSessionCookieValue,
+} from "@/app/lib/supabase/cookieProbe";
 import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
 
 /** Forwarded by middleware on every /athlete/* response so layout matches request.cookies. */
@@ -13,11 +18,15 @@ export const HYROX_MW_REDIRECT_SOURCE_HEADER = "x-hyrox-redirect-source";
 export const HYROX_MW_REDIRECT_TARGET_HEADER = "x-hyrox-redirect-target";
 export const HYROX_MW_INTERNAL_NAV_HEADER = "x-hyrox-internal-nav";
 export const HYROX_MW_PATH_HEADER = "x-hyrox-path";
+/** Middleware saw h365_athlete_session — layout may validate with service role. */
+export const HYROX_MW_H365_SESSION_HEADER = "x-hyrox-h365-athlete-session";
 
 const ATHLETE_PUBLIC_PATHS = new Set([
   "/athlete/login",
   "/athlete/no-access",
   "/athlete/auth-debug",
+  "/athlete/login/verify-debug",
+  "/athlete/cookie-probe",
 ]);
 
 export function isAthletePublicPath(pathname: string): boolean {
@@ -36,6 +45,32 @@ export function parseCookieHeaderNames(cookieHeader: string): string[] {
     .filter((name): name is string => Boolean(name));
 }
 
+function readCookieValueFromHeader(cookieHeader: string, name: string): string | null {
+  const prefix = `${name}=`;
+  for (const part of cookieHeader.split(";")) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(prefix)) {
+      const raw = trimmed.slice(prefix.length);
+      if (!raw) return null;
+      try {
+        return decodeURIComponent(raw);
+      } catch {
+        return raw;
+      }
+    }
+  }
+  return null;
+}
+
+export function h365AthleteSessionPresentOnRequest(request: NextRequest): boolean {
+  const fromJar = request.cookies.get(H365_ATHLETE_SESSION_COOKIE)?.value;
+  if (hasH365AthleteSessionCookieValue(fromJar)) return true;
+  const raw = request.headers.get("cookie") ?? "";
+  return hasH365AthleteSessionCookieValue(
+    readCookieValueFromHeader(raw, H365_ATHLETE_SESSION_COOKIE)
+  );
+}
+
 export function supabaseAuthMarkersPresent(cookies: { name: string }[]): boolean {
   return hasSupabaseAuthCookieNames(cookies);
 }
@@ -44,6 +79,7 @@ export type AthleteAuthMarkerProbe = {
   fromCookieStore: boolean;
   fromCookieHeader: boolean;
   fromMiddlewareHeader: boolean;
+  fromH365AthleteSession: boolean;
   present: boolean;
 };
 
@@ -58,11 +94,22 @@ export function probeAthleteAuthMarkers(
     parseCookieHeaderNames(cookieHeader).map((name) => ({ name }))
   );
   const fromMiddlewareHeader = headerStore.get(HYROX_MW_COOKIE_HEADER) === "yes";
+  const fromH365AthleteSession =
+    h365AthleteSessionPresentInCookieList(cookieStore.getAll()) ||
+    hasH365AthleteSessionCookieValue(
+      readCookieValueFromHeader(cookieHeader, H365_ATHLETE_SESSION_COOKIE)
+    ) ||
+    headerStore.get(HYROX_MW_H365_SESSION_HEADER) === "yes";
   return {
     fromCookieStore,
     fromCookieHeader,
     fromMiddlewareHeader,
-    present: fromCookieStore || fromCookieHeader || fromMiddlewareHeader,
+    fromH365AthleteSession,
+    present:
+      fromCookieStore ||
+      fromCookieHeader ||
+      fromMiddlewareHeader ||
+      fromH365AthleteSession,
   };
 }
 
@@ -72,6 +119,7 @@ export function middlewareForwardedAthleteAuth(headerStore: {
   return (
     headerStore.get(HYROX_MW_COOKIE_HEADER) === "yes" ||
     headerStore.get(HYROX_MW_USER_HEADER) === "yes" ||
+    headerStore.get(HYROX_MW_H365_SESSION_HEADER) === "yes" ||
     headerStore.get(HYROX_MW_INTERNAL_NAV_HEADER) === "1"
   );
 }
@@ -83,8 +131,9 @@ export function middlewareForwardedAthleteIdentity(headerStore: {
     return { userId: null, email: null };
   }
   const userId = headerStore.get(HYROX_MW_AUTH_USER_ID_HEADER)?.trim() || null;
+  const emailRaw = headerStore.get(HYROX_MW_AUTH_USER_EMAIL_HEADER)?.trim();
   const email =
-    headerStore.get(HYROX_MW_AUTH_USER_EMAIL_HEADER)?.trim().toLowerCase() || null;
+    emailRaw && emailRaw.length > 0 ? emailRaw.toLowerCase() : null;
   return { userId, email };
 }
 
@@ -125,10 +174,13 @@ export function shouldAthleteLayoutRedirectToLogin(options: {
   authMarkers: AthleteAuthMarkerProbe;
   middlewareForwardedAuth: boolean;
   isPrefetch: boolean;
+  athleteSessionCookieValid?: boolean;
 }): boolean {
   if (options.userPresent) return false;
   if (ATHLETE_PUBLIC_PATHS.has(options.pathname)) return false;
   if (options.authMarkers.present) return false;
+  if (options.authMarkers.fromH365AthleteSession) return false;
+  if (options.athleteSessionCookieValid) return false;
   if (options.middlewareForwardedAuth) return false;
   if (options.isPrefetch) return false;
   return true;

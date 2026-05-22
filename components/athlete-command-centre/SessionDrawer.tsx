@@ -309,7 +309,17 @@ export function SessionDrawer({
               {successMessage}
               {lastVia ? (
                 <span className="mt-1 block text-[10px] text-emerald-300/80">
-                  Saved via {lastVia === "server" ? "server action" : "API"}.
+                  Saved via{" "}
+                  {lastVia === "h365-athlete-session"
+                    ? "h365 athlete session"
+                    : lastVia === "api-signed-token"
+                      ? "signed portal token"
+                      : lastVia === "api-cookie"
+                        ? "API cookie"
+                        : lastVia === "server"
+                          ? "server action"
+                          : lastVia}
+                  .
                 </span>
               ) : null}
             </p>
@@ -326,6 +336,7 @@ export function SessionDrawer({
               <p>portalMutationToken: {portalMutationToken ? "present" : "missing"}</p>
               <p>lastVia: {lastVia}</p>
               <p>cookieAuth: {attemptDebug.cookieAuth}</p>
+              <p>h365AthleteSession: {attemptDebug.h365AthleteSession}</p>
               <p>tokenAuth: {attemptDebug.tokenAuth}</p>
               <p>
                 sessionBelongsToAthlete:{" "}
@@ -342,8 +353,8 @@ export function SessionDrawer({
               {attemptDebug.apiError ? <p>api: {attemptDebug.apiError}</p> : null}
               {serverAuthDebug ? (
                 <p>
-                  server action cookies: {serverAuthDebug.hasAuthCookie ? "yes" : "no"} ·
-                  getUser: {serverAuthDebug.getUserSucceeded ? "yes" : "no"}
+                  server cookieAuth: {serverAuthDebug.cookieAuth} · h365:{" "}
+                  {serverAuthDebug.h365AthleteSession} · source: {serverAuthDebug.source}
                 </p>
               ) : null}
             </div>

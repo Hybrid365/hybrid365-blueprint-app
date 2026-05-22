@@ -32,6 +32,8 @@ export function AthletePortalShell({
     programmeHubLive,
     programmePublishedLive,
     useMockPreview,
+    portalAuthSource,
+    routeAuthDebug,
   } = useAthletePortal();
   const navVisible =
     showNav && (programmeHubLive || (showNavWhenLinked && hasLinkedAthlete));
@@ -39,6 +41,16 @@ export function AthletePortalShell({
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
       <HyroxAthletePortalDebugPanel />
+      {process.env.NODE_ENV === "development" && routeAuthDebug ? (
+        <div className="border-b border-violet-500/25 bg-violet-950/30 px-4 py-1.5 text-center text-[10px] font-mono text-violet-200/90 sm:px-6">
+          auth: {routeAuthDebug.authSource} · athlete: {routeAuthDebug.athleteId ?? "—"} · route:{" "}
+          {routeAuthDebug.route} · login redirect:{" "}
+          {routeAuthDebug.wouldRedirectToLogin ? "yes" : "no"}
+          {portalAuthSource !== routeAuthDebug.authSource
+            ? ` · layout: ${portalAuthSource}`
+            : ""}
+        </div>
+      ) : null}
       {useMockPreview ? <MockPreviewBanner /> : null}
       <div className="sticky top-0 z-40 border-b border-zinc-800/90 bg-black/95 backdrop-blur-md">
         <div className="px-4 py-3 sm:px-6">

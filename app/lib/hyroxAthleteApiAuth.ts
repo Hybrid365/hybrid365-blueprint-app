@@ -43,8 +43,14 @@ function portalContextAthleteAllowed(
 ): boolean {
   if (athlete.id !== expectedAthleteId || athlete.payment_status !== "paid") return false;
   if (athlete.user_id === user.id) return true;
-  const email = user.email?.trim().toLowerCase();
-  const athleteEmail = athlete.email?.trim().toLowerCase();
+  const email =
+    typeof user.email === "string" && user.email.trim()
+      ? user.email.trim().toLowerCase()
+      : null;
+  const athleteEmail =
+    typeof athlete.email === "string" && athlete.email.trim()
+      ? athlete.email.trim().toLowerCase()
+      : null;
   return Boolean(email && athleteEmail && email === athleteEmail);
 }
 

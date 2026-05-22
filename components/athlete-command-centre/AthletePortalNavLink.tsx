@@ -8,6 +8,8 @@ const ATHLETE_PUBLIC_PATHS = [
   "/athlete/login",
   "/athlete/no-access",
   "/athlete/auth-debug",
+  "/athlete/login/verify-debug",
+  "/athlete/cookie-probe",
 ];
 
 /**

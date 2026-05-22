@@ -11,10 +11,18 @@ import type {
   AthleteProgrammeApiState,
   AthleteProgrammeVisibility,
 } from "@/app/lib/hyroxProgrammeServer";
+import type { AthletePortalAuthSource } from "@/app/lib/hyroxAthletePortalSnapshot";
 import {
   useAthleteLiveProgramme,
   type AthleteLiveProgrammePayload,
 } from "./useAthleteLiveProgramme";
+
+export type AthleteRouteAuthDebug = {
+  authSource: AthletePortalAuthSource;
+  athleteId: string | null;
+  route: string;
+  wouldRedirectToLogin: boolean;
+};
 
 export type PortalAthleteSummary = {
   id: string;
@@ -55,6 +63,8 @@ type AthletePortalContextValue = {
   layoutAuth: PortalLayoutAuth;
   /** Short-lived server-signed token for mutations when cookie auth fails (Hyrox only). */
   portalMutationToken: string | null;
+  portalAuthSource: AthletePortalAuthSource;
+  routeAuthDebug: AthleteRouteAuthDebug | null;
 };
 
 const AthletePortalContext = createContext<AthletePortalContextValue | null>(null);
@@ -75,6 +85,8 @@ export function AthletePortalProvider({
   serverAuthConfirmed = false,
   serverProgrammePublishedSeed = false,
   portalMutationToken = null,
+  portalAuthSource = "none",
+  routeAuthDebug = null,
 }: {
   children: React.ReactNode;
   hasLinkedAthlete?: boolean;
@@ -84,6 +96,8 @@ export function AthletePortalProvider({
   serverAuthConfirmed?: boolean;
   serverProgrammePublishedSeed?: boolean;
   portalMutationToken?: string | null;
+  portalAuthSource?: AthletePortalAuthSource;
+  routeAuthDebug?: AthleteRouteAuthDebug | null;
 }) {
   const allowMockPreview = isHyroxAthleteMockPreviewAllowed();
   const [programmePublishedMock, setProgrammePublishedMockState] = useState(false);
@@ -194,6 +208,8 @@ export function AthletePortalProvider({
       reloadLiveProgramme,
       layoutAuth,
       portalMutationToken,
+      portalAuthSource,
+      routeAuthDebug,
     }),
     [
       hydrated,
@@ -217,6 +233,8 @@ export function AthletePortalProvider({
       reloadLiveProgramme,
       layoutAuth,
       portalMutationToken,
+      portalAuthSource,
+      routeAuthDebug,
     ]
   );
 

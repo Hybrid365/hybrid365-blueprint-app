@@ -3,6 +3,20 @@ import { isSupabaseAuthCookieName } from "@/app/lib/supabase/apiRoute";
 
 /** Compact signed athlete-portal session (no Supabase sb-* JSON in cookies). */
 export const H365_ATHLETE_SESSION_COOKIE = "h365_athlete_session";
+
+const H365_ATHLETE_SESSION_MIN_VALUE_LENGTH = 40;
+
+/** True when the compact signed athlete session cookie is present with a non-trivial value. */
+export function hasH365AthleteSessionCookieValue(value: string | null | undefined): boolean {
+  return typeof value === "string" && value.length >= H365_ATHLETE_SESSION_MIN_VALUE_LENGTH;
+}
+
+export function h365AthleteSessionPresentInCookieList(
+  cookies: { name: string; value?: string }[]
+): boolean {
+  const entry = cookies.find((c) => c.name === H365_ATHLETE_SESSION_COOKIE);
+  return hasH365AthleteSessionCookieValue(entry?.value);
+}
 import type { MergedCookieEntry } from "@/app/lib/supabase/mergedAthleteCookies";
 import { appendSetCookieLine } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 

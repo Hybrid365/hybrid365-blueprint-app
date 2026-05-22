@@ -6,9 +6,11 @@ import {
 } from "@/app/lib/authRedirectUrl";
 import {
   authCookiesPresentOnRequest,
+  h365AthleteSessionPresentOnRequest,
   HYROX_MW_AUTH_STAGE_HEADER,
   HYROX_MW_AUTH_USER_EMAIL_HEADER,
   HYROX_MW_AUTH_USER_ID_HEADER,
+  HYROX_MW_H365_SESSION_HEADER,
   HYROX_MW_INTERNAL_NAV_HEADER,
   HYROX_MW_PATH_HEADER,
   isAthletePortalInternalNavigation,
@@ -99,6 +101,7 @@ function attachHyroxMiddlewareDebugHeaders(
   options?: {
     redirectSource?: "middleware" | "layout" | "client" | "other";
     internalNav?: boolean;
+    h365AthleteSession?: boolean;
   }
 ): NextResponse {
   const programmeRoute = isHyroxProgrammeRoute(path);
@@ -127,6 +130,9 @@ function attachHyroxMiddlewareDebugHeaders(
     if (options?.internalNav) {
       response.headers.set(HYROX_MW_INTERNAL_NAV_HEADER, "1");
     }
+    if (options?.h365AthleteSession) {
+      response.headers.set(HYROX_MW_H365_SESSION_HEADER, "yes");
+    }
     if (programmeRoute) {
       response.headers.set("x-hyrox-programme-route-hit", "1");
     }
@@ -143,7 +149,7 @@ function finalizeMiddlewareResponse(
   request: NextRequest,
   pendingCookies: CookieToSet[],
   meta: HyroxMiddlewareDebugMeta,
-  options?: { internalNav?: boolean }
+  options?: { internalNav?: boolean; h365AthleteSession?: boolean }
 ): NextResponse {
   const path = request.nextUrl.pathname;
   const response = NextResponse.next({ request });
@@ -205,11 +211,7 @@ function athleteLoginRedirect(
   );
 }
 
-const ATHLETE_PUBLIC_PATHS = new Set([
-  "/athlete/login",
-  "/athlete/no-access",
-  "/athlete/auth-debug",
-]);
+/* Public athlete paths — keep in sync with athleteAuthGate ATHLETE_PUBLIC_PATHS */
 
 /** Community dashboard — refresh session cookies; auth gate in dashboard layout. */
 export async function updateSession(request: NextRequest) {
@@ -310,6 +312,7 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const { supabase, getPendingCookies } = createMiddlewareClient(request);
   const hasAuthCookie = authCookiesPresentOnRequest(request);
+  const hasH365AthleteSession = h365AthleteSessionPresentOnRequest(request);
   const isPrefetch = isNextRouterPrefetch(request);
   const internalNav =
     isProtectedAthletePortalPath(path) && isAthletePortalInternalNavigation(request);
@@ -338,6 +341,7 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
     userEmail: user?.email ?? null,
     userError: userError?.message ?? null,
     hasAuthCookie,
+    hasH365AthleteSession,
     retriedWithSession,
     isPrefetch,
     internalNav,
@@ -408,6 +412,15 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
           pendingCookies,
           { ...baseMeta, stage: "pass-internal-athlete-nav", userPresent: false },
           { internalNav: true }
+        );
+      }
+
+      if (hasH365AthleteSession) {
+        return finalizeMiddlewareResponse(
+          request,
+          pendingCookies,
+          { ...baseMeta, stage: "pass-h365-athlete-session", userPresent: false },
+          { h365AthleteSession: true }
         );
       }
 

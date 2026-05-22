@@ -474,9 +474,12 @@ function mapDbSessionStatus(status: HyroxProgrammeSessionRow["status"]): Session
   return "upcoming";
 }
 
-function inferSessionType(category: string, name: string): HyroxSession["type"] {
-  const c = category.toLowerCase();
-  const n = name.toLowerCase();
+function inferSessionType(
+  category: string | null | undefined,
+  name: string | null | undefined
+): HyroxSession["type"] {
+  const c = typeof category === "string" ? category.toLowerCase() : "";
+  const n = typeof name === "string" ? name.toLowerCase() : "";
   if (c.includes("strength") || n.includes("strength")) return "Strength";
   if (c.includes("hyrox") || c.includes("station") || n.includes("hyrox")) return "Hybrid";
   if (c.includes("recovery") || n.includes("recovery")) return "Recovery";

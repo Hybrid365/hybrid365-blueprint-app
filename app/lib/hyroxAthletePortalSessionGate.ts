@@ -17,7 +17,7 @@ export function athletePortalHasValidServerSession(input: {
   if (!input.serverAuthConfirmed) return false;
   if (input.authProbe) {
     if (input.authProbe.athleteSessionCookieValid) {
-      return input.authProbe.getUserSucceeded;
+      return true;
     }
     return (
       input.authProbe.validSessionCookiesPresent &&
