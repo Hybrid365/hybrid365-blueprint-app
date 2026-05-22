@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { athleteProgrammePrefetchDisabled } from "./athleteNav";
 import { Lock } from "lucide-react";
 
 /** Shared layout rhythm for athlete portal pages */
@@ -109,6 +110,7 @@ export function SnapshotPanel({
         <h2 className="text-sm font-bold text-white">{title}</h2>
         <Link
           href={href}
+          prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
           className="rounded-lg px-2 py-1 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400/10 hover:text-yellow-300"
         >
           {linkLabel}
@@ -153,7 +155,11 @@ export function BtnLinkSecondary({
   className?: string;
 }) {
   return (
-    <Link href={href} className={`${btnSecondaryClass} ${className}`}>
+    <Link
+      href={href}
+      prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
+      className={`${btnSecondaryClass} ${className}`}
+    >
       {children}
     </Link>
   );

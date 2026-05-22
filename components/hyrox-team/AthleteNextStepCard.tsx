@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { athleteProgrammePrefetchDisabled } from "@/components/athlete-command-centre/athleteNav";
 import { HyroxPrimaryButton } from "@/components/hyrox-team/HyroxTeamUi";
 import type { AthleteNextAction } from "@/app/lib/hyroxAthleteOnboardingFlow";
 
@@ -33,6 +34,7 @@ export function AthleteSecondaryLink({
   return (
     <Link
       href={href}
+      prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
       className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.04] px-6 text-center text-sm font-black text-[#f6f6f6] transition hover:bg-white/[0.07]"
     >
       {label}

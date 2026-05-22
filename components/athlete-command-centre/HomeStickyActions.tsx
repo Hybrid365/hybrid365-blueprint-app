@@ -17,6 +17,7 @@ import {
 } from "./athleteUi";
 import { nextSessionDisplayForDashboard } from "@/app/lib/hyroxAthleteDashboardLive";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
+import { ATHLETE_PROGRAMME_HREF } from "./athleteNav";
 import { useAthletePortal } from "./athletePortalContext";
 
 type Props = {
@@ -72,7 +73,7 @@ export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
             <BtnSecondary className="w-full" disabled={!nextActionable} onClick={onLogResult}>
               Log result
             </BtnSecondary>
-            <Link href="/athlete/programme" className={`${btnGhostClass} w-full`}>
+            <Link href={ATHLETE_PROGRAMME_HREF} prefetch={false} className={`${btnGhostClass} w-full`}>
               Full programme →
             </Link>
           </div>

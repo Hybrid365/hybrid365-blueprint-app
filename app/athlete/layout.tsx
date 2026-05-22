@@ -1,5 +1,7 @@
 import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import {
   buildAthleteAccessDebug,
   evaluateAthleteEmailAccess,
@@ -9,7 +11,11 @@ import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import { buildAthleteLoginNextFromRequest } from "@/app/lib/authRedirectUrl";
 import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
-import { resolveAuthUserForMiddleware } from "@/app/lib/supabase/resolveAuthUser";
+import {
+  isAthleteServerPrefetch,
+  isHyroxProgrammeRoute,
+  resolveAuthUserForMiddleware,
+} from "@/app/lib/supabase/resolveAuthUser";
 import { createClient } from "@/app/lib/supabase/server";
 import { AthletePaymentPendingNotice } from "@/components/athlete-command-centre/AthletePaymentPendingNotice";
 import { AthleteUnlinkedNotice } from "@/components/athlete-command-centre/AthleteUnlinkedNotice";
@@ -23,17 +29,15 @@ import {
 
 const ATHLETE_PUBLIC_PATHS = new Set(["/athlete/login", "/athlete/no-access"]);
 
-async function athletePathFromHeaders(): Promise<string> {
-  const headerStore = await headers();
-  const requested = headerStore.get("x-pathname") ?? "/athlete";
-  return requested.split("?")[0] ?? "/athlete";
-}
-
 /** Auth: middleware. Payment + link gates before portal content. */
 export default async function AthleteLayout({ children }: { children: React.ReactNode }) {
-  const pathname = await athletePathFromHeaders();
+  const headerStore = await headers();
+  const pathname =
+    (headerStore.get("x-pathname") ?? "/athlete").split("?")[0] ?? "/athlete";
   const cookieStore = await cookies();
   const hasSupabaseAuthCookie = hasSupabaseAuthCookieNames(cookieStore.getAll());
+  const isPrefetch = isAthleteServerPrefetch(headerStore);
+  const programmeRoute = isHyroxProgrammeRoute(pathname);
 
   const supabase = await createClient();
   const { user } = await resolveAuthUserForMiddleware(supabase, hasSupabaseAuthCookie);
@@ -45,10 +49,27 @@ export default async function AthleteLayout({ children }: { children: React.Reac
     hasSupabaseAuthCookie,
   };
 
+  if (programmeRoute) {
+    console.log("[hyrox-programme-route] layout", {
+      pathname,
+      hasUser: Boolean(user),
+      hasSupabaseAuthCookie,
+      isPrefetch,
+      isPublicPath: ATHLETE_PUBLIC_PATHS.has(pathname),
+    });
+  }
+
   if (!user) {
     if (!ATHLETE_PUBLIC_PATHS.has(pathname)) {
-      const next = buildAthleteLoginNextFromRequest(pathname, "");
-      redirect(`/athlete/login?next=${encodeURIComponent(next)}`);
+      /** Match middleware: cookies or prefetch → render page in-page debug, not login redirect. */
+      const allowThrough = hasSupabaseAuthCookie || isPrefetch;
+      if (!allowThrough) {
+        const next = buildAthleteLoginNextFromRequest(pathname, "");
+        if (programmeRoute) {
+          console.log("[hyrox-programme-route] layout redirect login", { pathname, next });
+        }
+        redirect(`/athlete/login?next=${encodeURIComponent(next)}`);
+      }
     }
     return (
       <AthletePortalProvider hasLinkedAthlete={false} portalAthlete={null} layoutAuth={layoutAuth}>

@@ -6,6 +6,7 @@ import {
 } from "@/app/lib/authRedirectUrl";
 import {
   authCookiesPresent,
+  isHyroxProgrammeRoute,
   isNextRouterPrefetch,
   resolveAuthUserForMiddleware,
   shouldExposeHyroxMiddlewareDebug,
@@ -66,16 +67,23 @@ function attachHyroxMiddlewareDebugHeaders(
   path: string,
   meta: HyroxMiddlewareDebugMeta
 ): NextResponse {
-  if (!shouldExposeHyroxMiddlewareDebug()) return response;
-  if (!path.startsWith("/athlete")) return response;
+  const programmeRoute = isHyroxProgrammeRoute(path);
+  const expose =
+    programmeRoute || (shouldExposeHyroxMiddlewareDebug() && path.startsWith("/athlete"));
+
+  if (!expose) return response;
 
   response.headers.set("x-hyrox-path", path);
+  response.headers.set("x-hyrox-middleware-stage", meta.stage);
   response.headers.set("x-hyrox-auth-stage", meta.stage);
   response.headers.set("x-hyrox-cookie-present", meta.cookiePresent ? "yes" : "no");
   response.headers.set("x-hyrox-refresh-attempted", meta.refreshAttempted ? "yes" : "no");
   response.headers.set("x-hyrox-user-present", meta.userPresent ? "yes" : "no");
   if (meta.redirectTarget) {
     response.headers.set("x-hyrox-redirect-target", meta.redirectTarget);
+  }
+  if (programmeRoute) {
+    response.headers.set("x-hyrox-programme-route-hit", "1");
   }
   return response;
 }
@@ -262,6 +270,16 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
     retriedWithSession,
     isPrefetch,
   });
+
+  if (isHyroxProgrammeRoute(path)) {
+    console.log("[hyrox-programme-route]", {
+      path,
+      hasUser: Boolean(user),
+      hasAuthCookie,
+      isPrefetch,
+      userError: userError?.message ?? null,
+    });
+  }
 
   /** Athlete JSON APIs — refresh session cookies only; route handlers return 401/403. */
   if (path.startsWith("/api/hyrox/athlete")) {

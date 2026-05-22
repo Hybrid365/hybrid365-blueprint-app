@@ -29,9 +29,16 @@ export type AthleteNavItem = {
   mobileMore?: boolean;
 };
 
+export const ATHLETE_PROGRAMME_HREF = "/athlete/programme";
+
+/** Disable Next.js prefetch for programme — avoids cached auth misses on protected RSC. */
+export function athleteProgrammePrefetchDisabled(href: string): boolean {
+  return href === ATHLETE_PROGRAMME_HREF || href.startsWith(`${ATHLETE_PROGRAMME_HREF}?`);
+}
+
 export const ATHLETE_NAV_ITEMS: AthleteNavItem[] = [
   { id: "home", label: "Home", href: "/athlete/dashboard", icon: Home, mobilePrimary: true },
-  { id: "programme", label: "Programme", href: "/athlete/programme", icon: CalendarDays, mobilePrimary: true },
+  { id: "programme", label: "Programme", href: ATHLETE_PROGRAMME_HREF, icon: CalendarDays, mobilePrimary: true },
   { id: "progress", label: "Progress", href: "/athlete/progress", icon: Activity, mobilePrimary: true },
   { id: "benchmarks", label: "Benchmarks", href: "/athlete/benchmarks", icon: Target, mobileMore: true },
   { id: "checkin", label: "Check-In", href: "/athlete/check-in", icon: ClipboardCheck, mobilePrimary: true },

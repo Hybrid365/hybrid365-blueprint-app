@@ -55,6 +55,7 @@ import {
   athleteCardPadding,
   eyebrowClass,
 } from "./athleteUi";
+import { athleteProgrammePrefetchDisabled } from "./athleteNav";
 import { useAthletePortal } from "./athletePortalContext";
 
 function HomePriorityTile({
@@ -73,6 +74,7 @@ function HomePriorityTile({
   return (
     <Link
       href={href}
+      prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
       className={`${athleteCardInteractive} p-4 ${warn ? "border-amber-500/30 bg-amber-950/10" : ""}`}
     >
       <p className={`${eyebrowClass} !tracking-[0.15em]`}>{label}</p>

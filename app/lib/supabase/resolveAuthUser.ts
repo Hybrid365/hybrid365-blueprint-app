@@ -106,13 +106,30 @@ export async function resolveAuthUserForMiddleware(
   };
 }
 
+/**
+ * True only for Next.js link prefetch — not soft navigations (those also send Rsc: 1).
+ * Treating all RSC requests as prefetch skipped auth and caused layout login redirects.
+ */
 export function isNextRouterPrefetch(request: { headers: Headers }): boolean {
   return (
     request.headers.get("Next-Router-Prefetch") === "1" ||
     request.headers.get("Purpose") === "prefetch" ||
-    request.headers.get("x-middleware-prefetch") === "1" ||
-    request.headers.get("RSC") === "1"
+    request.headers.get("x-middleware-prefetch") === "1"
   );
+}
+
+export function isAthleteServerPrefetch(headersList: {
+  get(name: string): string | null;
+}): boolean {
+  return (
+    headersList.get("Next-Router-Prefetch") === "1" ||
+    headersList.get("Purpose") === "prefetch" ||
+    headersList.get("x-middleware-prefetch") === "1"
+  );
+}
+
+export function isHyroxProgrammeRoute(path: string): boolean {
+  return path === "/athlete/programme" || path.startsWith("/athlete/programme/");
 }
 
 export function shouldExposeHyroxMiddlewareDebug(): boolean {
