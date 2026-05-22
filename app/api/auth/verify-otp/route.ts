@@ -11,6 +11,34 @@ function emailLogHint(email: string): string {
   return `${email[0] ?? "?"}***@${email.slice(at + 1)}`;
 }
 
+function buildVerifyOtpDebug(
+  data: {
+    session: { access_token?: string; refresh_token?: string } | null;
+    user: { id?: string; email?: string } | null;
+  } | null,
+  auth: Awaited<ReturnType<typeof createAuthRouteHandlerSupabase>>,
+  extra?: { verifyOtpSuccess?: boolean; setCookieHeader?: ReturnType<typeof auth.getSetCookieHeaderDebug> }
+) {
+  const pending = auth.getPendingAuthCookieDebug();
+  return {
+    verifyOtpSuccess: extra?.verifyOtpSuccess ?? false,
+    dataSessionExists: Boolean(data?.session),
+    dataUserExists: Boolean(data?.user),
+    accessTokenLength: data?.session?.access_token?.length ?? 0,
+    refreshTokenLength: data?.session?.refresh_token?.length ?? 0,
+    pendingCookieBatchCount: pending.names.length,
+    pendingCookieNames: pending.names,
+    pendingCookieValueLengths: pending.valueLengths,
+    pendingHasMaxAgeZero: pending.maxAgeZero,
+    pendingHasValueOver500: pending.hasValueOver500,
+    pendingTotalValueChars: pending.totalValueChars,
+    pendingHasValidSession: pending.hasValidSession,
+    finalSetCookieCount: extra?.setCookieHeader?.count ?? 0,
+    finalSetCookieValueLengths: extra?.setCookieHeader?.valueLengths ?? [],
+    finalSetCookieHasMaxAgeZero: extra?.setCookieHeader?.hasMaxAgeZero ?? false,
+  };
+}
+
 export async function POST(request: NextRequest) {
   let body: { email?: string; token?: string; next?: string; portal?: "athlete" | "community" };
   try {
@@ -30,6 +58,7 @@ export async function POST(request: NextRequest) {
     (body.next?.trim().startsWith("/athlete/") ? "athlete" : "community");
 
   const redirectTo = resolveVerifyOtpRedirect(body.next, portal);
+  const includeDebug = portal === "athlete";
 
   console.log("[auth otp] verify requested", {
     emailHint: emailLogHint(email),
@@ -73,55 +102,68 @@ export async function POST(request: NextRequest) {
       error.message?.includes("expired") || error.message?.includes("invalid")
         ? "That code expired or was already used. Request a new code and use the latest one."
         : error.message || "Check the code and try again.";
-    return NextResponse.json({ ok: false, success: false, error: detail }, { status: 401 });
+    return NextResponse.json({
+      ok: false,
+      success: false,
+      error: detail,
+      ...(includeDebug ? { debug: buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: false }) } : {}),
+    }, { status: 401 });
   }
 
-  const cookiesReady = await auth.waitForSessionCookies();
-  const sessionUser = await assertAuthRouteSession(auth.supabase, auth);
-  const cookieDebug = auth.getPendingAuthCookieDebug();
-
-  const devDebug =
-    process.env.NODE_ENV === "development"
-      ? {
-          verifyReturnedSession: Boolean(data.session),
-          sessionHasAccessToken: Boolean(data.session?.access_token),
-          sessionHasRefreshToken: Boolean(data.session?.refresh_token),
-          userEmail: sessionUser?.email ?? null,
-          cookiesReady,
-          cookieNames: cookieDebug.names,
-          cookieValueLengths: cookieDebug.valueLengths,
-          pendingCookieCount: cookieDebug.names.length,
-        }
-      : undefined;
-
-  if (!sessionUser) {
-    console.log("[auth otp] verify failed", {
-      reason: "no_session_after_verify",
-      cookieDebug,
-      cookiesReady,
+  if (!data.session?.access_token || !data.session.refresh_token) {
+    console.error("[auth otp] verifyOtp returned no session tokens", {
+      hasSession: Boolean(data.session),
+      hasUser: Boolean(data.user),
     });
     return NextResponse.json(
       {
         ok: false,
         success: false,
-        error: "Could not establish a session. Try again.",
-        debug: devDebug,
+        error: "Verification succeeded but no session was returned. Request a new code.",
+        debug: includeDebug
+          ? buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: true })
+          : undefined,
       },
       { status: 500 }
     );
   }
 
+  auth.commitSessionCookies(data.session);
+
+  const sessionUser = await assertAuthRouteSession(auth.supabase, auth);
+  const cookieDebug = auth.getPendingAuthCookieDebug();
+
   if (!auth.hasValidPendingSessionCookies()) {
-    console.error("[auth otp] verify succeeded but session cookies are invalid/too small", {
+    console.error("[auth otp] commitSessionCookies produced invalid pending batch", {
       cookieDebug,
-      cookiesReady,
+      accessTokenLength: data.session.access_token.length,
     });
     return NextResponse.json(
       {
         ok: false,
         success: false,
         error: "Session could not be saved. Try again or use the email link.",
-        debug: devDebug,
+        debug: includeDebug
+          ? buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: true })
+          : undefined,
+      },
+      { status: 500 }
+    );
+  }
+
+  if (!sessionUser) {
+    console.log("[auth otp] verify failed", {
+      reason: "no_user_after_commit",
+      cookieDebug,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        success: false,
+        error: "Could not establish a session. Try again.",
+        debug: includeDebug
+          ? buildVerifyOtpDebug(data, auth, { verifyOtpSuccess: true })
+          : undefined,
       },
       { status: 500 }
     );
@@ -132,24 +174,32 @@ export async function POST(request: NextRequest) {
     emailHint: emailLogHint(email),
     redirectTo,
     cookieDebug,
-    cookiesReady,
   });
 
-  const jsonBody: Record<string, unknown> = {
-    ok: true,
-    success: true,
-    redirectTo,
-    authCookiesSet: true,
-  };
-  if (devDebug) jsonBody.debug = devDebug;
+  const successResponse = auth.withAuthCookies(
+    NextResponse.json({
+      ok: true,
+      success: true,
+      redirectTo,
+      authCookiesSet: true,
+    })
+  );
 
-  const response = NextResponse.json(jsonBody);
-  const final = auth.withAuthCookies(response);
-  const setCookieCount = final.headers.getSetCookie?.()?.length ?? 0;
-
-  if (process.env.NODE_ENV === "development") {
-    console.log("[auth otp] response Set-Cookie count", setCookieCount);
+  if (includeDebug) {
+    return NextResponse.json(
+      {
+        ok: true,
+        success: true,
+        redirectTo,
+        authCookiesSet: true,
+        debug: buildVerifyOtpDebug(data, auth, {
+          verifyOtpSuccess: true,
+          setCookieHeader: auth.getSetCookieHeaderDebug(successResponse),
+        }),
+      },
+      { headers: successResponse.headers }
+    );
   }
 
-  return final;
+  return successResponse;
 }

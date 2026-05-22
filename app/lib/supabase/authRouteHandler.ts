@@ -1,13 +1,16 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  hasValidSupabaseSessionCookies,
-} from "@/app/lib/supabase/apiRoute";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { hasValidSupabaseSessionCookies } from "@/app/lib/supabase/apiRoute";
 import { readAthleteRouteHandlerCookies } from "@/app/lib/supabase/mergedAthleteCookies";
+import {
+  buildSessionCookiesToSet,
+  debugPendingSessionCookies,
+  type SessionCookieToSet,
+} from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
-type CookieToSet = { name: string; value: string; options?: CookieOptions };
+type CookieToSet = SessionCookieToSet;
 
 function passthroughCookieOptions(options?: CookieOptions): CookieOptions | undefined {
   if (!options) return { path: "/" };
@@ -18,15 +21,49 @@ function totalCookieValueLength(batch: CookieToSet[]): number {
   return batch.reduce((n, c) => n + (c.value?.length ?? 0), 0);
 }
 
+function isWipeOnlyBatch(batch: CookieToSet[]): boolean {
+  if (batch.length === 0) return true;
+  return batch.every((c) => !c.value || c.options?.maxAge === 0);
+}
+
 /**
- * Route Handler Supabase client — official getAll/setAll pattern.
- * @supabase/ssr persists cookies via onAuthStateChange → applyServerStorage → setAll.
- * We keep the richest setAll batch (avoid a later wipe-only batch overwriting session cookies).
+ * Route Handler Supabase client — getAll/setAll plus synchronous session cookie commit
+ * from verifyOtp / exchangeCodeForSession data.session (SSR async storage is unreliable).
  */
 export async function createAuthRouteHandlerSupabase(request: NextRequest) {
   const cookieStore = await cookies();
-  const { cookies: mergedRequestCookies } = await readAthleteRouteHandlerCookies(request);
+  const { cookies: initialMerged } = await readAthleteRouteHandlerCookies(request);
+  let mergedRequestCookies = [...initialMerged];
   let pendingCookies: CookieToSet[] = [];
+
+  const applyToHandlers = (batch: CookieToSet[]) => {
+    for (const { name, value, options } of batch) {
+      const opts = passthroughCookieOptions(options);
+      try {
+        if (!value) {
+          request.cookies.delete(name);
+        } else {
+          request.cookies.set(name, value);
+        }
+      } catch {
+        /* request.cookies may be read-only in some contexts */
+      }
+      try {
+        if (!value) {
+          cookieStore.delete(name);
+          mergedRequestCookies = mergedRequestCookies.filter((c) => c.name !== name);
+        } else {
+          cookieStore.set(name, value, opts);
+          const existing = mergedRequestCookies.findIndex((c) => c.name === name);
+          const entry = { name, value };
+          if (existing >= 0) mergedRequestCookies[existing] = entry;
+          else mergedRequestCookies.push(entry);
+        }
+      } catch {
+        /* mirrored on response */
+      }
+    }
+  };
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,7 +76,16 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
         setAll(cookiesToSet) {
           const incomingTotal = totalCookieValueLength(cookiesToSet);
           const pendingTotal = totalCookieValueLength(pendingCookies);
-          if (incomingTotal >= pendingTotal) {
+          const incomingWipe = isWipeOnlyBatch(cookiesToSet);
+          const pendingValid = hasValidSupabaseSessionCookies(pendingCookies);
+          const incomingValid = hasValidSupabaseSessionCookies(cookiesToSet);
+
+          let shouldReplacePending = false;
+          if (incomingValid) shouldReplacePending = true;
+          else if (!pendingValid && !incomingWipe) shouldReplacePending = incomingTotal >= pendingTotal;
+          else if (!pendingValid && incomingWipe) shouldReplacePending = false;
+
+          if (shouldReplacePending) {
             pendingCookies = cookiesToSet.map(({ name, value, options }) => ({
               name,
               value,
@@ -47,13 +93,8 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
             }));
           }
 
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              request.cookies.set(name, value);
-              cookieStore.set(name, value, passthroughCookieOptions(options));
-            });
-          } catch {
-            /* Route Handler — mirrored on response via withAuthCookies. */
+          if (shouldReplacePending || incomingValid) {
+            applyToHandlers(cookiesToSet);
           }
         },
       },
@@ -62,67 +103,55 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
 
   return {
     supabase,
+
+    /**
+     * Write real Supabase SSR session cookies from verifyOtp/exchangeCodeForSession result.
+     * Required because onAuthStateChange → applyServerStorage often runs after the response.
+     */
+    commitSessionCookies(session: Session) {
+      const existingNames = mergedRequestCookies.map((c) => c.name);
+      pendingCookies = buildSessionCookiesToSet(session, existingNames);
+      applyToHandlers(pendingCookies);
+    },
+
     withAuthCookies(response: NextResponse) {
       pendingCookies.forEach(({ name, value, options }) => {
         if (!value) {
           response.cookies.delete(name);
           return;
         }
-        response.cookies.set(name, value, options);
+        response.cookies.set(name, value, passthroughCookieOptions(options));
       });
       return response;
     },
-    getPendingAuthCookieNames(): string[] {
-      return pendingCookies.map((c) => c.name);
-    },
+
     getPendingAuthCookieDebug() {
-      return {
-        names: pendingCookies.map((c) => c.name),
-        valueLengths: pendingCookies.map((c) => c.value?.length ?? 0),
-        totalValueChars: totalCookieValueLength(pendingCookies),
-        hasValidSession: hasValidSupabaseSessionCookies(pendingCookies),
-      };
+      return debugPendingSessionCookies(pendingCookies);
     },
+
     hasValidPendingSessionCookies(): boolean {
-      return hasValidSupabaseSessionCookies(pendingCookies);
+      return debugPendingSessionCookies(pendingCookies).hasValidSession;
     },
-    /**
-     * Wait for @supabase/ssr applyServerStorage (async onAuthStateChange) to call setAll
-     * with full chunked session cookies — not just empty removal placeholders.
-     */
-    async waitForSessionCookies(options?: {
-      minTotalValueChars?: number;
-      timeoutMs?: number;
-    }): Promise<boolean> {
-      const minTotal = options?.minTotalValueChars ?? 120;
-      const timeoutMs = options?.timeoutMs ?? 3000;
-      const deadline = Date.now() + timeoutMs;
 
-      while (Date.now() < deadline) {
-        if (
-          hasValidSupabaseSessionCookies(pendingCookies) &&
-          totalCookieValueLength(pendingCookies) >= minTotal
-        ) {
-          return true;
-        }
-        await new Promise((r) => setTimeout(r, 25));
-      }
-
-      return (
-        hasValidSupabaseSessionCookies(pendingCookies) &&
-        totalCookieValueLength(pendingCookies) >= minTotal
-      );
+    getSetCookieHeaderDebug(response: NextResponse) {
+      const headers = response.headers.getSetCookie?.() ?? [];
+      return {
+        count: headers.length,
+        valueLengths: headers.map((h) => {
+          const valuePart = h.split(";")[0] ?? "";
+          const eq = valuePart.indexOf("=");
+          return eq >= 0 ? valuePart.slice(eq + 1).length : 0;
+        }),
+        hasMaxAgeZero: headers.some((h) => /Max-Age=0/i.test(h)),
+      };
     },
   };
 }
 
-/** After verifyOtp / exchangeCodeForSession — do not call setSession again (wipes cookies). */
 export async function assertAuthRouteSession(
   supabase: SupabaseClient,
   auth: Awaited<ReturnType<typeof createAuthRouteHandlerSupabase>>
 ): Promise<{ userId: string; email: string | null } | null> {
-  await auth.waitForSessionCookies();
-
   const {
     data: { session },
     error: sessionError,

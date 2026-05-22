@@ -11,7 +11,7 @@ import {
   assertAuthRouteSession,
   createAuthRouteHandlerSupabase,
 } from "@/app/lib/supabase/authRouteHandler";
-import type { EmailOtpType } from "@supabase/supabase-js";
+import type { EmailOtpType, Session } from "@supabase/supabase-js";
 
 function log(message: string, extra?: Record<string, unknown>) {
   if (extra) {
@@ -104,8 +104,13 @@ export async function GET(request: NextRequest) {
     log("[auth callback] athlete auto-link", linkResult);
   }
 
-  async function finishSuccessRedirect(stage: string) {
-    await auth.waitForSessionCookies();
+  async function finishSuccessRedirect(stage: string, session: Session | null) {
+    if (!session?.access_token || !session.refresh_token) {
+      log("[auth callback] no session on success path", { stage });
+      return loginErrorRedirect(origin, "session_not_returned", rawNext, portal);
+    }
+
+    auth.commitSessionCookies(session);
     const sessionUser = await assertAuthRouteSession(auth.supabase, auth);
     const cookieDebug = auth.getPendingAuthCookieDebug();
 
@@ -126,9 +131,9 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const { error } = await auth.supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await auth.supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return finishSuccessRedirect("exchange");
+      return finishSuccessRedirect("exchange", data.session);
     }
 
     log("[auth callback] exchange failed", {
@@ -143,13 +148,13 @@ export async function GET(request: NextRequest) {
 
   if (tokenHash) {
     const otpType = otpTypeFromParam(typeParam) ?? "email";
-    const { error } = await auth.supabase.auth.verifyOtp({
+    const { data, error } = await auth.supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: otpType,
     });
 
     if (!error) {
-      return finishSuccessRedirect("token_hash");
+      return finishSuccessRedirect("token_hash", data.session);
     }
 
     log("[auth callback] verifyOtp failed", {
@@ -171,7 +176,10 @@ export async function GET(request: NextRequest) {
       userId: existingUser.id,
       next,
     });
-    return finishSuccessRedirect("existing-session");
+    const {
+      data: { session },
+    } = await auth.supabase.auth.getSession();
+    return finishSuccessRedirect("existing-session", session);
   }
 
   log("[auth callback] no code or token_hash — redirecting to login");
