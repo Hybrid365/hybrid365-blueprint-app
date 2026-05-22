@@ -4,6 +4,10 @@ import {
   buildAthleteLoginNextFromRequest,
   buildLoginNextFromRequest,
 } from "@/app/lib/authRedirectUrl";
+import {
+  authCookiesPresent,
+  resolveAuthUserWithSessionRetry,
+} from "@/app/lib/supabase/resolveAuthUser";
 import { evaluateAthleteEmailAccess } from "@/app/lib/hyroxAthleteAutoLink";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
 import {
@@ -163,10 +167,11 @@ async function fetchHyroxAccessForMiddleware(
 export async function updateHyroxProtectedSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const { supabase, supabaseResponse, getPendingCookies } = createMiddlewareClient(request);
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const requestCookies = request.cookies.getAll();
+  const hasAuthCookie = authCookiesPresent(requestCookies);
+
+  const { user, error: userError, retriedWithSession } =
+    await resolveAuthUserWithSessionRetry(supabase, { hasAuthCookie });
 
   logHyroxAuthDebug("middleware", {
     path,
@@ -174,6 +179,8 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
     userId: user?.id ?? null,
     userEmail: user?.email ?? null,
     userError: userError?.message ?? null,
+    hasAuthCookie,
+    retriedWithSession,
   });
 
   /** Athlete JSON APIs — refresh session cookies only; route handlers return 401/403. */

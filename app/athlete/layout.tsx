@@ -12,6 +12,7 @@ import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
 import { createClient } from "@/app/lib/supabase/server";
 import { AthletePaymentPendingNotice } from "@/components/athlete-command-centre/AthletePaymentPendingNotice";
 import { AthleteUnlinkedNotice } from "@/components/athlete-command-centre/AthleteUnlinkedNotice";
+import { buildHyroxPortalServerAuth } from "@/app/lib/hyroxAthletePortalContract";
 import {
   AthletePortalProvider,
   type PortalAthleteSummary,
@@ -143,12 +144,20 @@ export default async function AthleteLayout({ children }: { children: React.Reac
     status: resolvedAthlete.status,
   };
 
+  const serverAuth = buildHyroxPortalServerAuth({
+    layoutAuth,
+    hasLinkedAthlete,
+    portalAthlete,
+    portalMatchSource: portalResolved.matchSource,
+  });
+
   return (
     <AthletePortalProvider
-      hasLinkedAthlete={hasLinkedAthlete}
-      portalAthlete={portalAthlete}
-      portalMatchSource={portalResolved.matchSource}
-      layoutAuth={layoutAuth}
+      hasLinkedAthlete={serverAuth.hasLinkedAthlete}
+      portalAthlete={serverAuth.portalAthlete}
+      portalMatchSource={serverAuth.portalMatchSource}
+      layoutAuth={serverAuth.layoutAuth}
+      serverAuthConfirmed={serverAuth.serverAuthConfirmed}
     >
       {children}
     </AthletePortalProvider>

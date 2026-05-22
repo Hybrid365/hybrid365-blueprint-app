@@ -1,22 +1,20 @@
+import { cookies } from "next/headers";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
+import { authCookiesPresent } from "@/app/lib/supabase/resolveAuthUser";
 import { createClient } from "@/app/lib/supabase/server";
+import { resolveAuthUserWithSessionRetry } from "@/app/lib/supabase/resolveAuthUser";
 import type { User } from "@supabase/supabase-js";
 
 /** Supabase user for athlete server pages — same session refresh as layout. */
 export async function getAthleteLayoutSessionUser(): Promise<User | null> {
+  const cookieStore = await cookies();
+  const hasAuthCookie = authCookiesPresent(cookieStore.getAll());
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) return user;
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  return session?.user ?? null;
+  const { user } = await resolveAuthUserWithSessionRetry(supabase, {
+    hasAuthCookie,
+  });
+  return user;
 }
 
 /** Linked paid athlete for server pages — same rules as layout + athlete APIs. */

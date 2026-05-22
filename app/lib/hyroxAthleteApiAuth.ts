@@ -7,6 +7,7 @@ import {
   hyroxAthleteApiJson,
   type ApiRouteAuthDebug,
 } from "@/app/lib/supabase/apiRoute";
+import { resolveAuthUserWithSessionRetry } from "@/app/lib/supabase/resolveAuthUser";
 
 function devFields(extra: Record<string, unknown>): Record<string, unknown> {
   if (process.env.NODE_ENV !== "development") return {};
@@ -39,13 +40,17 @@ export async function requireCurrentHyroxAthleteForApi(request: NextRequest) {
   const { supabase, withAuthCookies, authDebug } =
     await createApiRouteSupabase(request);
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const hasAuthCookie =
+    authDebug.hasAuthCookieOnRequest || authDebug.hasAuthCookieInHeaderStore;
+
+  const { user, error: userError, retriedWithSession } =
+    await resolveAuthUserWithSessionRetry(supabase, { hasAuthCookie });
 
   authDebug.getUserSucceeded = Boolean(user);
   authDebug.userError = userError?.message ?? null;
+  if (retriedWithSession && process.env.NODE_ENV === "development") {
+    authDebug.cookiesRefreshed = true;
+  }
 
   if (!user) {
     logHyroxAuthDebug("hyrox-api-no-user", {

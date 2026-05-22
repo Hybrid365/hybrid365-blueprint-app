@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { HyroxPageShell } from "@/components/hyrox-team/HyroxTeamUi";
 import { AthleteAppNav } from "./AthleteAppNav";
+import { HyroxAthletePortalDebugPanel } from "./HyroxAthletePortalDebugPanel";
 import { PreviewGateCard, ProgrammeWaitingCard } from "./athleteUi";
 import { useAthletePortal } from "./athletePortalContext";
 
@@ -37,6 +38,7 @@ export function AthletePortalShell({
 
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
+      <HyroxAthletePortalDebugPanel />
       {useMockPreview ? <MockPreviewBanner /> : null}
       <div className="sticky top-0 z-40 border-b border-zinc-800/90 bg-black/95 backdrop-blur-md">
         <div className="px-4 py-3 sm:px-6">

@@ -5,6 +5,7 @@ import {
   createApiRouteSupabase,
   hyroxAthleteApiJson,
 } from "@/app/lib/supabase/apiRoute";
+import { resolveAuthUserWithSessionRetry } from "@/app/lib/supabase/resolveAuthUser";
 
 /** Development-only portal resolution diagnostics. */
 export async function GET(request: NextRequest) {
@@ -15,13 +16,15 @@ export async function GET(request: NextRequest) {
   const { supabase, withAuthCookies, authDebug } =
     await createApiRouteSupabase(request);
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const hasAuthCookie =
+    authDebug.hasAuthCookieOnRequest || authDebug.hasAuthCookieInHeaderStore;
+
+  const { user, error: userError, retriedWithSession } =
+    await resolveAuthUserWithSessionRetry(supabase, { hasAuthCookie });
 
   authDebug.getUserSucceeded = Boolean(user);
   authDebug.userError = userError?.message ?? null;
+  if (retriedWithSession) authDebug.cookiesRefreshed = true;
 
   if (!user) {
     return hyroxAthleteApiJson(withAuthCookies, {

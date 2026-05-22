@@ -39,6 +39,9 @@ type AthletePortalContextValue = {
   hasLinkedAthlete: boolean;
   portalAthlete: PortalAthleteSummary | null;
   portalMatchSource: PortalMatchSource;
+  /** Layout resolved linked paid athlete — client API must not downgrade auth. */
+  serverAuthConfirmed: boolean;
+  serverProgrammePublishedSeed: boolean;
   programmePublishedLive: boolean;
   hasPublishedProgramme: boolean;
   programmeState: AthleteProgrammeApiState;
@@ -46,6 +49,7 @@ type AthletePortalContextValue = {
   useMockPreview: boolean;
   liveProgramme: AthleteLiveProgrammePayload | null;
   liveProgrammeLoading: boolean;
+  liveProgrammeApiError: string | null;
   programmeHubLive: boolean;
   reloadLiveProgramme: () => Promise<void>;
   layoutAuth: PortalLayoutAuth;
@@ -66,12 +70,16 @@ export function AthletePortalProvider({
   portalAthlete = null,
   portalMatchSource = "none",
   layoutAuth = EMPTY_LAYOUT_AUTH,
+  serverAuthConfirmed = false,
+  serverProgrammePublishedSeed = false,
 }: {
   children: React.ReactNode;
   hasLinkedAthlete?: boolean;
   portalAthlete?: PortalAthleteSummary | null;
   portalMatchSource?: PortalMatchSource;
   layoutAuth?: PortalLayoutAuth;
+  serverAuthConfirmed?: boolean;
+  serverProgrammePublishedSeed?: boolean;
 }) {
   const allowMockPreview = isHyroxAthleteMockPreviewAllowed();
   const [programmePublishedMock, setProgrammePublishedMockState] = useState(false);
@@ -80,8 +88,11 @@ export function AthletePortalProvider({
   const {
     data: liveProgramme,
     loading: liveProgrammeLoading,
+    error: liveProgrammeApiError,
     reload: reloadLiveProgramme,
-  } = useAthleteLiveProgramme(hasLinkedAthlete && hydrated);
+  } = useAthleteLiveProgramme(hasLinkedAthlete && hydrated, {
+    preserveDataOnAuthFailure: serverAuthConfirmed,
+  });
 
   useEffect(() => {
     if (!allowMockPreview) {
@@ -103,7 +114,9 @@ export function AthletePortalProvider({
     [allowMockPreview]
   );
 
-  const programmePublishedLive = Boolean(liveProgramme?.published);
+  const clientProgrammePublished = Boolean(liveProgramme?.published);
+  const programmePublishedLive =
+    clientProgrammePublished || serverProgrammePublishedSeed;
   const hasPublishedProgramme = programmePublishedLive;
   const programmeState: AthleteProgrammeApiState = liveProgramme?.state ?? "coach_reviewing";
   const programmeVisibility: AthleteProgrammeVisibility =
@@ -121,7 +134,9 @@ export function AthletePortalProvider({
     allowMockPreview && hydrated && programmePublishedMock && !programmePublishedLive;
 
   /** Full hub only for real published programme, or explicit dev mock preview. */
-  const programmeHubLive = hydrated && (programmePublishedLive || useMockPreview);
+  const programmeHubLive =
+    (hydrated && (programmePublishedLive || useMockPreview)) ||
+    (serverAuthConfirmed && serverProgrammePublishedSeed);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development" || !hydrated) return;
@@ -161,6 +176,8 @@ export function AthletePortalProvider({
       hasLinkedAthlete,
       portalAthlete,
       portalMatchSource,
+      serverAuthConfirmed,
+      serverProgrammePublishedSeed,
       programmePublishedLive,
       hasPublishedProgramme,
       programmeState,
@@ -168,6 +185,7 @@ export function AthletePortalProvider({
       useMockPreview,
       liveProgramme,
       liveProgrammeLoading,
+      liveProgrammeApiError,
       programmeHubLive,
       reloadLiveProgramme,
       layoutAuth,
@@ -180,6 +198,8 @@ export function AthletePortalProvider({
       hasLinkedAthlete,
       portalAthlete,
       portalMatchSource,
+      serverAuthConfirmed,
+      serverProgrammePublishedSeed,
       programmePublishedLive,
       hasPublishedProgramme,
       programmeState,
@@ -187,6 +207,7 @@ export function AthletePortalProvider({
       useMockPreview,
       liveProgramme,
       liveProgrammeLoading,
+      liveProgrammeApiError,
       programmeHubLive,
       reloadLiveProgramme,
       layoutAuth,
@@ -228,10 +249,15 @@ export function AthletePortalSeedProvider({
     const programmePublishedLive = parent.programmePublishedLive || serverPublished;
     const liveProgramme = parent.liveProgramme ?? serverProgramme ?? null;
     const programmeHubLive =
-      programmePublishedLive || parent.useMockPreview || parent.programmeHubLive;
+      programmePublishedLive ||
+      parent.useMockPreview ||
+      parent.programmeHubLive ||
+      (parent.serverAuthConfirmed && serverPublished);
 
     return {
       ...parent,
+      serverProgrammePublishedSeed:
+        serverPublished || parent.serverProgrammePublishedSeed,
       programmePublishedLive,
       hasPublishedProgramme: programmePublishedLive,
       programmeHubLive,

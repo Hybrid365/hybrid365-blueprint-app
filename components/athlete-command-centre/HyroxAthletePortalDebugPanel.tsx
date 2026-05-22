@@ -16,10 +16,26 @@ type ApiCheck = {
   matchedAthleteId?: string | null;
 };
 
+type SessionLogProbe = {
+  ok: boolean;
+  status: number;
+  error?: string;
+  code?: string;
+  via?: string;
+};
+
 const HYROX_ATHLETE_FETCH: RequestInit = { credentials: "include" };
 
 export function HyroxAthletePortalDebugPanel() {
-  const { layoutAuth, portalAthlete } = useAthletePortal();
+  const {
+    layoutAuth,
+    portalAthlete,
+    serverAuthConfirmed,
+    serverProgrammePublishedSeed,
+    programmePublishedLive,
+    programmeHubLive,
+    liveProgrammeApiError,
+  } = useAthletePortal();
   const [snapshot, setSnapshot] = useState<
     (AthletePortalDebugSnapshot & {
       apiAuthEmail?: string;
@@ -27,6 +43,7 @@ export function HyroxAthletePortalDebugPanel() {
     }) | null
   >(null);
   const [apiChecks, setApiChecks] = useState<ApiCheck[]>([]);
+  const [sessionLogProbe, setSessionLogProbe] = useState<SessionLogProbe | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -87,6 +104,33 @@ export function HyroxAthletePortalDebugPanel() {
           }
         }
         setApiChecks(checks);
+
+        try {
+          const logRes = await fetch("/api/hyrox/athlete/session-log", {
+            ...HYROX_ATHLETE_FETCH,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ programmeSessionId: "__debug_probe__" }),
+          });
+          const logBody = (await logRes.json()) as {
+            error?: string;
+            code?: string;
+            success?: boolean;
+          };
+          setSessionLogProbe({
+            ok: logRes.ok,
+            status: logRes.status,
+            error: logBody.error,
+            code: logBody.code,
+            via: logRes.status === 401 ? "no-auth" : logRes.status === 404 ? "auth-ok" : "other",
+          });
+        } catch (e) {
+          setSessionLogProbe({
+            ok: false,
+            status: 0,
+            error: e instanceof Error ? e.message : "probe failed",
+          });
+        }
       } catch {
         setLoadError("Could not load portal debug.");
       }
@@ -103,6 +147,11 @@ export function HyroxAthletePortalDebugPanel() {
     layoutAuth.email &&
     layoutAuth.email !== snapshot.apiAuthEmail;
 
+  const portalApiAthleteMismatch =
+    portalAthlete?.id &&
+    snapshot?.matchedAthleteId &&
+    portalAthlete.id !== snapshot.matchedAthleteId;
+
   return (
     <div className="mb-6 rounded-xl border border-violet-500/35 bg-violet-950/25 p-4 text-left text-xs text-violet-100/90">
       <p className="font-bold uppercase tracking-wide text-violet-300">Dev — athlete portal session debug</p>
@@ -110,10 +159,21 @@ export function HyroxAthletePortalDebugPanel() {
       <dl className="mt-3 grid gap-1.5 sm:grid-cols-2">
         <Row label="Layout auth email" value={layoutAuth.email ?? "— (no session)"} />
         <Row label="Layout auth user id" value={layoutAuth.userId ?? "—"} />
+        <Row label="Portal athlete (layout)" value={portalAthlete?.name ?? "—"} />
+        <Row label="Portal athlete id (context)" value={portalAthlete?.id ?? "—"} />
+        <Row label="Server auth confirmed" value={serverAuthConfirmed ? "yes" : "no"} />
+        <Row
+          label="Programme server seed published"
+          value={serverProgrammePublishedSeed ? "yes" : "no"}
+        />
+        <Row label="Programme hub live (context)" value={programmeHubLive ? "yes" : "no"} />
+        <Row label="Programme published (context)" value={programmePublishedLive ? "yes" : "no"} />
+        <Row label="Programme API error" value={liveProgrammeApiError ?? "—"} />
         <Row label="API auth email" value={snapshot?.apiAuthEmail ?? "—"} />
+        <Row label="API matched athlete id" value={snapshot?.matchedAthleteId ?? "—"} />
         <Row
           label="Supabase auth cookie present"
-          value={layoutAuth.hasSupabaseAuthCookie ? "yes (request)" : "no"}
+          value={layoutAuth.hasSupabaseAuthCookie ? "yes (layout)" : "no"}
         />
         <Row
           label="API getUser() succeeded"
@@ -155,14 +215,17 @@ export function HyroxAthletePortalDebugPanel() {
                 : "no"
           }
         />
-        <Row label="Portal athlete (layout)" value={portalAthlete?.name ?? "—"} />
-        <Row label="Matched athlete id" value={snapshot?.matchedAthleteId ?? portalAthlete?.id ?? "—"} />
         <Row label="Matched by" value={snapshot?.matchedBy ?? "—"} />
         <Row label="Access reason" value={snapshot?.accessReason ?? "—"} />
       </dl>
       {layoutApiMismatch ? (
         <p className="mt-2 font-medium text-red-300">
           Layout and API auth emails differ — session cookies may not be reaching API routes.
+        </p>
+      ) : null}
+      {portalApiAthleteMismatch ? (
+        <p className="mt-2 font-medium text-red-300">
+          Portal context athlete id differs from API matched id.
         </p>
       ) : null}
       {snapshot ? (
@@ -176,6 +239,24 @@ export function HyroxAthletePortalDebugPanel() {
           <Row label="Mock preview (session)" value={mockOn ? "ON" : "off"} />
           <Row label="Duplicate email rows" value={String(snapshot.duplicateEmailCount)} />
         </dl>
+      ) : null}
+      {sessionLogProbe ? (
+        <div className="mt-3 border-t border-violet-500/20 pt-3">
+          <p className="font-semibold text-violet-300">Session-log API auth probe</p>
+          <p
+            className={`mt-1 font-mono text-[11px] ${
+              sessionLogProbe.via === "auth-ok" ? "text-emerald-300" : "text-red-300"
+            }`}
+          >
+            POST /api/hyrox/athlete/session-log → {sessionLogProbe.status}{" "}
+            {sessionLogProbe.via === "auth-ok"
+              ? "(auth OK — 404 expected for probe id)"
+              : sessionLogProbe.via === "no-auth"
+                ? "(NOT SIGNED IN — auth broken)"
+                : (sessionLogProbe.error ?? "")}
+            {sessionLogProbe.code ? ` · code: ${sessionLogProbe.code}` : ""}
+          </p>
+        </div>
       ) : null}
       {snapshot && snapshot.duplicateEmailCount > 1 ? (
         <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/30 p-2">

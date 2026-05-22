@@ -107,7 +107,15 @@ function mapProgrammeApi(json: ProgrammeApiJson): AthleteLiveProgrammePayload | 
   };
 }
 
-export function useAthleteLiveProgramme(enabled: boolean) {
+type UseAthleteLiveProgrammeOptions = {
+  /** Keep existing programme data when API auth fails but layout already confirmed session. */
+  preserveDataOnAuthFailure?: boolean;
+};
+
+export function useAthleteLiveProgramme(
+  enabled: boolean,
+  options?: UseAthleteLiveProgrammeOptions
+) {
   const [data, setData] = useState<AthleteLiveProgrammePayload | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
@@ -120,8 +128,18 @@ export function useAthleteLiveProgramme(enabled: boolean) {
       const res = await fetch("/api/hyrox/athlete/programme", { credentials: "include" });
       const json = (await res.json()) as ProgrammeApiJson;
       if (!res.ok || !json.success) {
-        setError(json.error ?? "Could not load programme.");
-        setData(null);
+        const isAuthFailure =
+          res.status === 401 ||
+          json.error === "Not signed in" ||
+          (json as { reason?: string }).reason === "NO_AUTH_SESSION";
+        const message =
+          isAuthFailure && options?.preserveDataOnAuthFailure
+            ? "Programme API could not refresh your session. Reload the page if data looks stale."
+            : (json.error ?? "Could not load programme.");
+        setError(message);
+        if (!(isAuthFailure && options?.preserveDataOnAuthFailure)) {
+          setData(null);
+        }
         return;
       }
       const mapped = mapProgrammeApi(json);
@@ -141,7 +159,7 @@ export function useAthleteLiveProgramme(enabled: boolean) {
     } finally {
       setLoading(false);
     }
-  }, [enabled]);
+  }, [enabled, options?.preserveDataOnAuthFailure]);
 
   useEffect(() => {
     void reload();

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
+import { hyroxAthleteApiJson } from "@/app/lib/supabase/apiRoute";
 import {
   HyroxSessionLogError,
   upsertHyroxAthleteSessionLog,
@@ -43,7 +44,10 @@ export async function POST(request: NextRequest) {
   try {
     body = (await request.json()) as SessionLogBody;
   } catch {
-    return NextResponse.json({ success: false, error: "Invalid JSON body." }, { status: 400 });
+    return hyroxAthleteApiJson(withAuthCookies, {
+      success: false,
+      error: "Invalid JSON body.",
+    }, 400);
   }
 
   const input: HyroxSessionLogInput = {
@@ -70,12 +74,13 @@ export async function POST(request: NextRequest) {
     if (e instanceof HyroxSessionLogError) {
       const status =
         e.code === "NOT_FOUND" ? 404 : e.code === "WEEK_LOCKED" || e.code === "FORBIDDEN" ? 403 : 400;
-      return NextResponse.json(
-        { success: false, error: e.message, code: e.code },
-        { status }
-      );
+      return hyroxAthleteApiJson(withAuthCookies, {
+        success: false,
+        error: e.message,
+        code: e.code,
+      }, status);
     }
     const message = e instanceof Error ? e.message : "Could not save session log.";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return hyroxAthleteApiJson(withAuthCookies, { success: false, error: message }, 500);
   }
 }

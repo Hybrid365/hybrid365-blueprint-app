@@ -1,5 +1,10 @@
+import { cookies } from "next/headers";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
+import {
+  authCookiesPresent,
+  resolveAuthUserWithSessionRetry,
+} from "@/app/lib/supabase/resolveAuthUser";
 import { createClient } from "@/app/lib/supabase/server";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -74,9 +79,9 @@ export async function resolveCurrentHyroxAthlete(
   supabase?: SupabaseClient
 ): Promise<ResolvedHyroxAthleteResult> {
   const client = supabase ?? (await createClient());
-  const {
-    data: { user },
-  } = await client.auth.getUser();
+  const cookieStore = await cookies();
+  const hasAuthCookie = authCookiesPresent(cookieStore.getAll());
+  const { user } = await resolveAuthUserWithSessionRetry(client, { hasAuthCookie });
 
   if (!user) {
     return {
