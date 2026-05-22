@@ -9,6 +9,7 @@ import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import { buildAthleteLoginNextFromRequest } from "@/app/lib/authRedirectUrl";
 import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
+import { resolveAuthUserForMiddleware } from "@/app/lib/supabase/resolveAuthUser";
 import { createClient } from "@/app/lib/supabase/server";
 import { AthletePaymentPendingNotice } from "@/components/athlete-command-centre/AthletePaymentPendingNotice";
 import { AthleteUnlinkedNotice } from "@/components/athlete-command-centre/AthleteUnlinkedNotice";
@@ -34,16 +35,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
   const hasSupabaseAuthCookie = hasSupabaseAuthCookieNames(cookieStore.getAll());
 
   const supabase = await createClient();
-  let {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user && hasSupabaseAuthCookie) {
-    await supabase.auth.getSession();
-    ({
-      data: { user },
-    } = await supabase.auth.getUser());
-  }
+  const { user } = await resolveAuthUserForMiddleware(supabase, hasSupabaseAuthCookie);
 
   const layoutAuth: PortalLayoutAuth = {
     hasSession: Boolean(user),

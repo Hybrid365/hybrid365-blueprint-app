@@ -67,19 +67,61 @@ function upcomingSubcopy(mode: WeekTabMode): string {
   return PLANNED_COPY;
 }
 
+function countProgrammeSessions(programme: AthleteLiveProgrammePayload | null | undefined): number {
+  if (!programme?.programmeWeeks?.length) return programme?.sessions?.length ?? 0;
+  return programme.programmeWeeks.reduce((n, w) => n + (w.sessions?.length ?? 0), 0);
+}
+
+function ProgrammePageClientDebug({
+  selectedSessionId,
+  effectiveProgramme,
+  effectivePublished,
+  programmeSource,
+  invalidSessionCleared,
+}: {
+  selectedSessionId: string | null;
+  effectiveProgramme: AthleteLiveProgrammePayload | null | undefined;
+  effectivePublished: boolean;
+  programmeSource: "server" | "client" | "none";
+  invalidSessionCleared: boolean;
+}) {
+  if (process.env.NODE_ENV !== "development") return null;
+
+  const weekCount = effectiveProgramme?.programmeWeeks?.length ?? 0;
+  const sessionCount = countProgrammeSessions(effectiveProgramme);
+
+  return (
+    <div className="mb-4 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3 py-2 text-[11px] text-zinc-400">
+      <p className="font-semibold text-zinc-300">Dev — programme page client</p>
+      <p>route: /athlete/programme · selectedSessionId: {selectedSessionId ?? "—"}</p>
+      <p>
+        programmeWeeks: {weekCount} · sessions: {sessionCount} · published:{" "}
+        {effectivePublished ? "yes" : "no"} · source: {programmeSource}
+      </p>
+      {invalidSessionCleared ? (
+        <p className="text-amber-300">Cleared invalid selected session id.</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ProgrammePageView({
   serverProgramme = null,
+  serverLoadVariant = "ready",
 }: {
   serverProgramme?: AthleteLiveProgrammePayload | null;
+  serverLoadVariant?: "ready" | "no-session" | "not-linked";
 }) {
   const {
     programmePublishedLive,
     liveProgramme,
     liveProgrammeLoading,
+    liveProgrammeApiError,
     portalAthlete,
     useMockPreview,
     programmeHubLive,
     reloadLiveProgramme,
+    serverProgrammePublishedSeed,
   } = useAthletePortal();
   const { dashboardLive } = useAthleteDashboardLive();
 
@@ -96,6 +138,14 @@ export function ProgrammePageView({
   const [sessionDetailOverride, setSessionDetailOverride] = useState<
     ReturnType<typeof sessionDetailFromHyroxSession> | null
   >(null);
+  const [invalidSessionMessage, setInvalidSessionMessage] = useState<string | null>(null);
+  const [invalidSessionCleared, setInvalidSessionCleared] = useState(false);
+
+  const programmeSource: "server" | "client" | "none" = liveProgramme
+    ? "client"
+    : serverProgramme
+      ? "server"
+      : "none";
 
   const blockId = useLive && dashboardLive ? dashboardLive.blockId : MOCK_ATHLETE.blockId;
   const block = HYROX_BLOCKS.find((b) => b.id === blockId)!;
@@ -206,16 +256,38 @@ export function ProgrammePageView({
           ? "This week has not been published yet."
           : undefined;
 
+  const allProgrammeSessionIds = useMemo(() => {
+    if (!useLive || !effectiveProgramme?.programmeWeeks) return new Set<string>();
+    const ids = new Set<string>();
+    for (const week of effectiveProgramme.programmeWeeks) {
+      for (const s of week.sessions ?? []) {
+        if (s.id) ids.add(s.id);
+      }
+    }
+    return ids;
+  }, [useLive, effectiveProgramme?.programmeWeeks]);
+
   const openSession = useCallback(
     (id: string, title?: string, opts?: { showLogForm?: boolean }) => {
+      const hit = sessions.find((s) => s.id === id) ?? null;
+      if (useLive && !hit && !allProgrammeSessionIds.has(id)) {
+        setInvalidSessionMessage("Session not found — that id is not in your published programme.");
+        setInvalidSessionCleared(true);
+        setSessionId(null);
+        setDrawerSession(null);
+        setDrawerShowLogForm(false);
+        setSessionDetailOverride(null);
+        return;
+      }
+      setInvalidSessionMessage(null);
+      setInvalidSessionCleared(false);
       setSessionId(id);
       setSessionTitle(title);
       setDrawerShowLogForm(Boolean(opts?.showLogForm));
-      const hit = sessions.find((s) => s.id === id) ?? null;
       setDrawerSession(hit);
       setSessionDetailOverride(hit ? sessionDetailFromHyroxSession(hit) : null);
     },
-    [sessions]
+    [sessions, useLive, allProgrammeSessionIds]
   );
 
   const handleSessionUpdated = useCallback(
@@ -232,13 +304,50 @@ export function ProgrammePageView({
   );
 
   const programmeVisible =
-    programmeHubLive || Boolean(serverProgramme?.published) || (useLive && Boolean(effectiveProgramme));
+    programmeHubLive ||
+    serverProgrammePublishedSeed ||
+    Boolean(serverProgramme?.published) ||
+    (useLive && Boolean(effectiveProgramme));
   const showMockWeek = useMock && !useLive;
   const showWeekSessions = (useLive && selectedTab?.generated) || showMockWeek;
   const missingStartDateWarning = useLive && programmeVisible && !programmeStartDate;
+  const publishedNoSessions =
+    useLive &&
+    programmeVisible &&
+    countProgrammeSessions(effectiveProgramme) === 0 &&
+    !liveProgrammeLoading;
 
   return (
     <PageContent width="wide">
+      <ProgrammePageClientDebug
+        selectedSessionId={sessionId}
+        effectiveProgramme={effectiveProgramme}
+        effectivePublished={effectivePublished}
+        programmeSource={programmeSource}
+        invalidSessionCleared={invalidSessionCleared}
+      />
+
+      {serverLoadVariant !== "ready" && process.env.NODE_ENV === "development" ? (
+        <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
+          Server load variant was <span className="font-mono">{serverLoadVariant}</span> — rendering
+          programme from layout-confirmed auth
+          {portalAthlete?.id ? ` (athlete ${portalAthlete.id.slice(0, 8)}…)` : ""}.
+        </p>
+      ) : null}
+
+      {liveProgrammeApiError && useLive ? (
+        <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
+          {liveProgrammeApiError}
+          {serverProgramme ? " Showing server-loaded programme until API recovers." : ""}
+        </p>
+      ) : null}
+
+      {invalidSessionMessage ? (
+        <p className="mb-4 rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-2 text-sm text-red-200">
+          {invalidSessionMessage}
+        </p>
+      ) : null}
+
       <PageHeader
         eyebrow={meta.eyebrow}
         title={meta.title}
@@ -262,8 +371,18 @@ export function ProgrammePageView({
         </p>
       ) : null}
 
-      {liveProgrammeLoading && useLive && !serverProgramme ? (
+      {liveProgrammeLoading && useLive && !effectiveProgramme ? (
         <p className="text-sm text-zinc-500">Loading programme…</p>
+      ) : null}
+
+      {publishedNoSessions ? (
+        <div className={`${athleteCard} ${athleteCardPadding} mb-6`}>
+          <p className={eyebrowClass}>Programme published</p>
+          <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+            Programme published but no sessions were found for W1–W4. Your coach may need to
+            publish session rows, or reload after a moment.
+          </p>
+        </div>
       ) : null}
 
       <div className={`${athleteCardHighlight} ${athleteCardPadding}`}>
@@ -414,6 +533,7 @@ export function ProgrammePageView({
           setDrawerSession(null);
           setDrawerShowLogForm(false);
           setSessionDetailOverride(null);
+          setInvalidSessionMessage(null);
         }}
       />
     </PageContent>

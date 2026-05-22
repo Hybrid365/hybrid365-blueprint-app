@@ -1,19 +1,19 @@
 import { cookies } from "next/headers";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
-import { authCookiesPresent } from "@/app/lib/supabase/resolveAuthUser";
+import {
+  authCookiesPresent,
+  resolveAuthUserForMiddleware,
+} from "@/app/lib/supabase/resolveAuthUser";
 import { createClient } from "@/app/lib/supabase/server";
-import { resolveAuthUserWithSessionRetry } from "@/app/lib/supabase/resolveAuthUser";
 import type { User } from "@supabase/supabase-js";
 
-/** Supabase user for athlete server pages — same session refresh as layout. */
+/** Supabase user for athlete server pages — session refresh first (same as middleware). */
 export async function getAthleteLayoutSessionUser(): Promise<User | null> {
   const cookieStore = await cookies();
   const hasAuthCookie = authCookiesPresent(cookieStore.getAll());
   const supabase = await createClient();
-  const { user } = await resolveAuthUserWithSessionRetry(supabase, {
-    hasAuthCookie,
-  });
+  const { user } = await resolveAuthUserForMiddleware(supabase, hasAuthCookie);
   return user;
 }
 

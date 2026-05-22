@@ -6,9 +6,13 @@ import type { ProgrammePageServerDebug } from "@/app/lib/hyroxAthleteProgrammePa
 export function ProgrammePageServerDebugPanel({
   debug,
   variant,
+  layoutTrustsAthlete = false,
+  serverVariantFailed = false,
 }: {
   debug: ProgrammePageServerDebug;
   variant: string;
+  layoutTrustsAthlete?: boolean;
+  serverVariantFailed?: boolean;
 }) {
   if (process.env.NODE_ENV !== "development") return null;
 
@@ -18,26 +22,20 @@ export function ProgrammePageServerDebugPanel({
         Dev — /athlete/programme server render
       </p>
       <dl className="mt-3 grid gap-1.5 sm:grid-cols-2">
-        <Row label="Page executed" value={debug.pageExecuted ? "yes" : "no"} />
-        <Row label="Variant" value={variant} />
+        <Row label="Page route" value="/athlete/programme" />
+        <Row label="Server variant" value={variant} />
+        <Row label="Layout trusts athlete" value={layoutTrustsAthlete ? "yes" : "no"} />
+        <Row
+          label="Recovered via layout"
+          value={serverVariantFailed && layoutTrustsAthlete ? "yes" : "no"}
+        />
         <Row label="Auth user email" value={debug.authUserEmail ?? "—"} />
         <Row label="Auth user id" value={debug.authUserId ?? "—"} />
         <Row label="Linked athlete id" value={debug.linkedAthleteId ?? "—"} />
-        <Row label="Linked athlete email" value={debug.linkedAthleteEmail ?? "—"} />
-        <Row label="Programme published" value={debug.programmePublished ? "yes" : "no"} />
+        <Row label="Programme published (server)" value={debug.programmePublished ? "yes" : "no"} />
         <Row label="Published week count" value={String(debug.publishedWeekCount)} />
         <Row label="Link failure reason" value={debug.linkFailureReason ?? "—"} />
-        <Row
-          label="Would have redirected to login (old)"
-          value={debug.wouldHaveRedirectedToLogin ? "YES — removed" : "no"}
-        />
       </dl>
-      {debug.wouldHaveRedirectedToLogin ? (
-        <p className="mt-3 text-amber-200">
-          Previous code called redirect(&quot;/athlete/login&quot;) here. Layout already gates auth —
-          this page now shows an in-page state instead.
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -51,12 +49,12 @@ export function ProgrammePageResolveNotice({
 }) {
   const title =
     variant === "no-session"
-      ? "Session not found on programme page"
+      ? "Could not verify sign-in on programme page"
       : "Athlete profile not linked";
 
   const copy =
     variant === "no-session"
-      ? "The layout should have redirected you before this rendered. Try reloading or signing in again."
+      ? "The portal layout did not confirm your athlete session for this page load. Reload or sign in again."
       : `Your sign-in is active but this page could not resolve a linked Hyrox athlete (${debug.linkFailureReason ?? "unknown"}).`;
 
   return (

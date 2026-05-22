@@ -16,7 +16,8 @@ export function useAthleteDashboardLive() {
   const [benchmarksLoading, setBenchmarksLoading] = useState(false);
   const [benchmarksError, setBenchmarksError] = useState<string | null>(null);
 
-  const useLive = programmePublishedLive && !useMockPreview;
+  const useLive =
+    programmePublishedLive && !useMockPreview && Boolean(liveProgramme);
 
   const reloadBenchmarks = useCallback(async () => {
     if (!useLive) {
