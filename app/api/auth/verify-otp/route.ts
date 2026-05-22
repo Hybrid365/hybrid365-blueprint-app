@@ -6,17 +6,20 @@ import {
 } from "@/app/lib/supabase/authRouteHandler";
 import {
   attachH365OtpAuthProbe,
-  copySetCookieHeaders,
   H365_OTP_AUTH_PROBE_NAME,
   H365_OTP_AUTH_PROBE_VALUE,
 } from "@/app/lib/supabase/cookieProbe";
+import type { ResponseSetCookieDebug } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 import {
-  MAIN_AUTH_COOKIE_OVERWRITE_ERROR,
-  type ResponseSetCookieDebug,
-} from "@/app/lib/supabase/persistSupabaseSessionCookies";
+  attachVerifiedSessionCookies,
+  athleteVerifyOtpErrorRedirect,
+  cookieAttachFailureMessage,
+  parseVerifyOtpRequestBody,
+  resolveVerifyOtpPortal,
+  wantsJsonVerifyOtpResponse,
+} from "@/app/lib/supabase/verifyOtpRouteHelpers";
 
-const COOKIE_ATTACH_ERROR =
-  "OTP verified but auth cookies were not attached to response";
+export const dynamic = "force-dynamic";
 
 function emailLogHint(email: string): string {
   const at = email.indexOf("@");
@@ -42,6 +45,7 @@ type VerifyOtpDebug = {
   h365AuthProbeSet: boolean;
   h365AuthProbeCookie: string | null;
   h365AuthProbeValue: string | null;
+  responseMode: "json" | "redirect" | "probe";
 } & ResponseSetCookieDebug;
 
 function buildVerifyOtpDebug(
@@ -55,6 +59,7 @@ function buildVerifyOtpDebug(
     responseStatus: number;
     setCookie?: ResponseSetCookieDebug;
     h365AuthProbeSet?: boolean;
+    responseMode: VerifyOtpDebug["responseMode"];
   }
 ): VerifyOtpDebug {
   const pending = auth.getPendingAuthCookieDebug();
@@ -73,6 +78,7 @@ function buildVerifyOtpDebug(
     pendingTotalValueChars: pending.totalValueChars,
     pendingHasValidSession: pending.hasValidSession,
     responseStatus: extra.responseStatus,
+    responseMode: extra.responseMode,
     setCookieHeaderPresent: extra.setCookie?.setCookieHeaderPresent ?? false,
     setCookieHeaderCount: extra.setCookie?.setCookieHeaderCount ?? 0,
     setCookieHeaderCharLength: extra.setCookie?.setCookieHeaderCharLength ?? 0,
@@ -95,45 +101,58 @@ function buildVerifyOtpDebug(
   };
 }
 
-function cookieAttachFailureMessage(inspect: ResponseSetCookieDebug): string {
-  if (inspect.duplicateMainAuthTokenNames || inspect.emptyMainAuthTokenSetCookie) {
-    return MAIN_AUTH_COOKIE_OVERWRITE_ERROR;
+/** GET ?probeOnly=1 — probe cookie only (same pattern as /api/auth/cookie-probe). */
+export async function GET(request: NextRequest) {
+  if (request.nextUrl.searchParams.get("probeOnly") !== "1") {
+    return NextResponse.json({ ok: false, error: "Use POST to verify OTP." }, { status: 405 });
   }
-  return COOKIE_ATTACH_ERROR;
+  const response = NextResponse.json({
+    ok: true,
+    probeOnly: true,
+    cookie: H365_OTP_AUTH_PROBE_NAME,
+  });
+  attachH365OtpAuthProbe(response);
+  return response;
 }
 
 export async function POST(request: NextRequest) {
-  let body: { email?: string; token?: string; next?: string; portal?: "athlete" | "community" };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return NextResponse.json({ ok: false, success: false, error: "Invalid request." }, { status: 400 });
+  const probeOnly = request.nextUrl.searchParams.get("probeOnly") === "1";
+  const body = await parseVerifyOtpRequestBody(request);
+  const portal = resolveVerifyOtpPortal(request, body);
+  const redirectTo = resolveVerifyOtpRedirect(body.next, portal);
+  const useJsonResponse = wantsJsonVerifyOtpResponse(request);
+  const includeDebug = portal === "athlete" && useJsonResponse;
+
+  if (probeOnly) {
+    const response = NextResponse.json({
+      ok: true,
+      probeOnly: true,
+      cookie: H365_OTP_AUTH_PROBE_NAME,
+      responseMode: useJsonResponse ? "json" : "redirect",
+    });
+    attachH365OtpAuthProbe(response);
+    return response;
   }
 
   const email = body.email?.trim().toLowerCase() ?? "";
   const token = body.token?.trim().replace(/\s/g, "") ?? "";
-  const referer = request.headers.get("referer") ?? "";
-  const portalFromReferer = referer.includes("/athlete/login") ? "athlete" : undefined;
-  const portal =
-    body.portal ??
-    portalFromReferer ??
-    (body.next?.trim().startsWith("/athlete/") ? "athlete" : "community");
 
-  const redirectTo = resolveVerifyOtpRedirect(body.next, portal);
-  const includeDebug = portal === "athlete";
+  const fail = (message: string, status: number, debug?: VerifyOtpDebug) => {
+    if (portal === "athlete" && !useJsonResponse) {
+      return athleteVerifyOtpErrorRedirect(request, message, redirectTo);
+    }
+    return NextResponse.json(
+      { ok: false, success: false, error: message, ...(debug ? { debug } : {}) },
+      { status }
+    );
+  };
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json(
-      { ok: false, success: false, error: "Enter a valid email address." },
-      { status: 400 }
-    );
+    return fail("Enter a valid email address.", 400);
   }
 
   if (token.length < 6) {
-    return NextResponse.json(
-      { ok: false, success: false, error: "Enter the 6-digit code from your email." },
-      { status: 400 }
-    );
+    return fail("Enter the 6-digit code from your email.", 400);
   }
 
   const auth = await createAuthRouteHandlerSupabase(request);
@@ -145,97 +164,97 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    const failBody: Record<string, unknown> = {
-      ok: false,
-      success: false,
-      error:
-        error.message?.includes("expired") || error.message?.includes("invalid")
-          ? "That code expired or was already used. Request a new code and use the latest one."
-          : error.message || "Check the code and try again.",
-    };
-    if (includeDebug) {
-      failBody.debug = buildVerifyOtpDebug(data, auth, {
-        verifyOtpSuccess: false,
-        responseStatus: 401,
-      });
-    }
-    return NextResponse.json(failBody, { status: 401 });
+    const message =
+      error.message?.includes("expired") || error.message?.includes("invalid")
+        ? "That code expired or was already used. Request a new code and use the latest one."
+        : error.message || "Check the code and try again.";
+    return fail(
+      message,
+      401,
+      includeDebug
+        ? buildVerifyOtpDebug(data, auth, {
+            verifyOtpSuccess: false,
+            responseStatus: 401,
+            responseMode: useJsonResponse ? "json" : "redirect",
+          })
+        : undefined
+    );
   }
 
   if (!data.session?.access_token || !data.session.refresh_token) {
-    const failBody: Record<string, unknown> = {
-      ok: false,
-      success: false,
-      error: "Verification succeeded but no session was returned. Request a new code.",
-    };
-    if (includeDebug) {
-      failBody.debug = buildVerifyOtpDebug(data, auth, {
-        verifyOtpSuccess: true,
-        responseStatus: 500,
-      });
-    }
-    return NextResponse.json(failBody, { status: 500 });
+    return fail(
+      "Verification succeeded but no session was returned. Request a new code.",
+      500,
+      includeDebug
+        ? buildVerifyOtpDebug(data, auth, {
+            verifyOtpSuccess: true,
+            responseStatus: 500,
+            responseMode: useJsonResponse ? "json" : "redirect",
+          })
+        : undefined
+    );
   }
 
   auth.commitSessionCookies(data.session);
 
   if (!auth.hasValidPendingSessionCookies()) {
-    const failBody: Record<string, unknown> = {
-      ok: false,
-      success: false,
-      error: "Session could not be saved. Try again or use the email link.",
-    };
-    if (includeDebug) {
-      failBody.debug = buildVerifyOtpDebug(data, auth, {
-        verifyOtpSuccess: true,
-        responseStatus: 500,
-      });
-    }
-    return NextResponse.json(failBody, { status: 500 });
+    return fail(
+      "Session could not be saved. Try again or use the email link.",
+      500,
+      includeDebug
+        ? buildVerifyOtpDebug(data, auth, {
+            verifyOtpSuccess: true,
+            responseStatus: 500,
+            responseMode: useJsonResponse ? "json" : "redirect",
+          })
+        : undefined
+    );
   }
 
   const sessionUser = await assertAuthRouteSession(auth.supabase, auth);
   if (!sessionUser) {
-    const failBody: Record<string, unknown> = {
-      ok: false,
-      success: false,
-      error: "Could not establish a session. Try again.",
-    };
-    if (includeDebug) {
-      failBody.debug = buildVerifyOtpDebug(data, auth, {
-        verifyOtpSuccess: true,
-        responseStatus: 500,
-      });
-    }
-    return NextResponse.json(failBody, { status: 500 });
+    return fail(
+      "Could not establish a session. Try again.",
+      500,
+      includeDebug
+        ? buildVerifyOtpDebug(data, auth, {
+            verifyOtpSuccess: true,
+            responseStatus: 500,
+            responseMode: useJsonResponse ? "json" : "redirect",
+          })
+        : undefined
+    );
   }
 
-  const cookieProbe = new NextResponse(null, { status: 200 });
-  auth.attachSessionCookiesToResponse(cookieProbe);
-  const setCookieInspect = auth.inspectResponseSetCookies(cookieProbe);
+  const responseMode = useJsonResponse ? "json" : "redirect";
 
-  const fullDebug = buildVerifyOtpDebug(data, auth, {
-    verifyOtpSuccess: true,
-    responseStatus: 200,
-    setCookie: setCookieInspect,
-  });
+  if (portal === "athlete" && !useJsonResponse) {
+    const response = NextResponse.redirect(new URL(redirectTo, request.url));
+    const setCookieInspect = attachVerifiedSessionCookies(auth, response);
 
-  if (!auth.responseAuthCookiesAreValid(cookieProbe)) {
-    console.error("[auth otp] verify cookie attach failed", {
+    if (!auth.responseAuthCookiesAreValid(response)) {
+      console.error("[auth otp] redirect cookie attach failed", {
+        userId: sessionUser.userId.slice(0, 8),
+        emailHint: emailLogHint(email),
+        setCookie: setCookieInspect,
+        pending: auth.getPendingAuthCookieDebug(),
+      });
+      return athleteVerifyOtpErrorRedirect(
+        request,
+        cookieAttachFailureMessage(setCookieInspect),
+        redirectTo
+      );
+    }
+
+    console.log("[auth otp] verify redirect success", {
       userId: sessionUser.userId.slice(0, 8),
       emailHint: emailLogHint(email),
-      pending: auth.getPendingAuthCookieDebug(),
+      redirectTo,
       setCookie: setCookieInspect,
+      responseMode: "redirect",
     });
-    return NextResponse.json(
-      {
-        ok: false,
-        success: false,
-        error: cookieAttachFailureMessage(setCookieInspect),
-        ...(includeDebug ? { debug: fullDebug } : {}),
-      },
-      { status: 500 }
-    );
+
+    return response;
   }
 
   const response = NextResponse.json({
@@ -243,29 +262,36 @@ export async function POST(request: NextRequest) {
     success: true,
     redirectTo,
     authCookiesSet: true,
+    ...(includeDebug
+      ? {
+          debug: buildVerifyOtpDebug(data, auth, {
+            verifyOtpSuccess: true,
+            responseStatus: 200,
+            responseMode: "json",
+          }),
+        }
+      : {}),
   });
-  auth.attachSessionCookiesToResponse(response);
-  attachH365OtpAuthProbe(response);
+  const setCookieInspect = attachVerifiedSessionCookies(auth, response);
 
-  const returnedInspect = auth.inspectResponseSetCookies(response);
   if (!auth.responseAuthCookiesAreValid(response)) {
-    console.error("[auth otp] returned response missing Set-Cookie", {
+    console.error("[auth otp] json cookie attach failed", {
       userId: sessionUser.userId.slice(0, 8),
       emailHint: emailLogHint(email),
-      probe: setCookieInspect,
-      returned: returnedInspect,
+      setCookie: setCookieInspect,
     });
     return NextResponse.json(
       {
         ok: false,
         success: false,
-        error: cookieAttachFailureMessage(returnedInspect),
+        error: cookieAttachFailureMessage(setCookieInspect),
         ...(includeDebug
           ? {
               debug: buildVerifyOtpDebug(data, auth, {
                 verifyOtpSuccess: true,
                 responseStatus: 500,
-                setCookie: returnedInspect,
+                setCookie: setCookieInspect,
+                responseMode: "json",
               }),
             }
           : {}),
@@ -280,36 +306,24 @@ export async function POST(request: NextRequest) {
       success: true,
       redirectTo,
       authCookiesSet: true,
-      debug: {
-        ...buildVerifyOtpDebug(data, auth, {
-          verifyOtpSuccess: true,
-          responseStatus: 200,
-          setCookie: returnedInspect,
-          h365AuthProbeSet: true,
-        }),
-        h365AuthProbeCookie: H365_OTP_AUTH_PROBE_NAME,
-        h365AuthProbeValue: H365_OTP_AUTH_PROBE_VALUE,
-      },
+      debug: buildVerifyOtpDebug(data, auth, {
+        verifyOtpSuccess: true,
+        responseStatus: 200,
+        setCookie: setCookieInspect,
+        h365AuthProbeSet: true,
+        responseMode: "json",
+      }),
     });
-    copySetCookieHeaders(response, withDebug);
-    console.log("[auth otp] verify success", {
-      userId: sessionUser.userId.slice(0, 8),
-      emailHint: emailLogHint(email),
-      redirectTo,
-      setCookie: returnedInspect,
-      pending: auth.getPendingAuthCookieDebug(),
-      h365AuthProbe: H365_OTP_AUTH_PROBE_NAME,
-    });
+    attachVerifiedSessionCookies(auth, withDebug);
     return withDebug;
   }
 
-  console.log("[auth otp] verify success", {
+  console.log("[auth otp] verify json success", {
     userId: sessionUser.userId.slice(0, 8),
     emailHint: emailLogHint(email),
     redirectTo,
-    setCookie: returnedInspect,
-    pending: auth.getPendingAuthCookieDebug(),
-    h365AuthProbe: H365_OTP_AUTH_PROBE_NAME,
+    setCookie: setCookieInspect,
+    responseMode: "json",
   });
 
   return response;

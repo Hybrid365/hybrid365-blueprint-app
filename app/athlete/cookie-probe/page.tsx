@@ -33,13 +33,23 @@ export default function AthleteCookieProbePage() {
             and check <span className="font-mono">h365_probe present</span>.
           </li>
           <li>
+            Optional: open{" "}
+            <a
+              href="/api/auth/verify-otp?probeOnly=1"
+              className="font-mono text-yellow-300 underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              /api/auth/verify-otp?probeOnly=1
+            </a>{" "}
+            (sets <span className="font-mono">h365_auth_probe</span> only).
+          </li>
+          <li>
             Log in via{" "}
             <Link href="/athlete/login?next=/athlete/auth-debug" className="underline">
               /athlete/login
             </Link>
-            , complete OTP, then read auth-debug again for{" "}
-            <span className="font-mono">h365_auth_probe</span> and{" "}
-            <span className="font-mono">sb-*-auth-token</span>.
+            , complete OTP (native form POST + redirect), then read auth-debug again.
           </li>
         </ol>
 

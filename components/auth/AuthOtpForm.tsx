@@ -598,6 +598,13 @@ export function AuthOtpForm({
         detail: mapCallbackAuthError(urlReason),
       };
     }
+    if (urlError === "otp" && urlReason) {
+      return {
+        kind: "otp",
+        headline: "Code didn’t work",
+        detail: urlReason,
+      };
+    }
     return null;
   });
 
@@ -827,29 +834,62 @@ export function AuthOtpForm({
             ) : null}
           </div>
           {mode === "email_code" ? (
-            <form onSubmit={onVerifyCode} className="space-y-3 border-t border-zinc-800 pt-4">
-              <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">
-                6-digit login code
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={8}
-                value={emailCode}
-                onChange={(e) => setEmailCode(e.target.value)}
-                placeholder="123456"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-center text-lg tracking-widest text-white placeholder:text-zinc-600 focus:border-[#F4D23C]/60 focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/40"
-                disabled={submitting}
-              />
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full rounded-xl bg-[#F4D23C] px-4 py-3 text-sm font-semibold text-black hover:bg-[#e6c235] disabled:opacity-60"
+            variant === "athlete" ? (
+              <form
+                action="/api/auth/verify-otp"
+                method="POST"
+                className="space-y-3 border-t border-zinc-800 pt-4"
               >
-                {submitting ? "Verifying…" : verifyCodeLabel}
-              </button>
-            </form>
+                <input type="hidden" name="portal" value="athlete" />
+                <input type="hidden" name="next" value={next} />
+                <input type="hidden" name="email" value={email.trim()} />
+                <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  6-digit login code
+                </label>
+                <input
+                  type="text"
+                  name="token"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={8}
+                  value={emailCode}
+                  onChange={(e) => setEmailCode(e.target.value)}
+                  placeholder="123456"
+                  required
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-center text-lg tracking-widest text-white placeholder:text-zinc-600 focus:border-[#F4D23C]/60 focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/40"
+                />
+                <button
+                  type="submit"
+                  className="w-full rounded-xl bg-[#F4D23C] px-4 py-3 text-sm font-semibold text-black hover:bg-[#e6c235]"
+                >
+                  {verifyCodeLabel}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={onVerifyCode} className="space-y-3 border-t border-zinc-800 pt-4">
+                <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  6-digit login code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={8}
+                  value={emailCode}
+                  onChange={(e) => setEmailCode(e.target.value)}
+                  placeholder="123456"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-center text-lg tracking-widest text-white placeholder:text-zinc-600 focus:border-[#F4D23C]/60 focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/40"
+                  disabled={submitting}
+                />
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full rounded-xl bg-[#F4D23C] px-4 py-3 text-sm font-semibold text-black hover:bg-[#e6c235] disabled:opacity-60"
+                >
+                  {submitting ? "Verifying…" : verifyCodeLabel}
+                </button>
+              </form>
+            )
           ) : null}
           <button
             type="button"
