@@ -35,6 +35,7 @@ export function HyroxAthletePortalDebugPanel() {
     programmePublishedLive,
     programmeHubLive,
     liveProgrammeApiError,
+    hasLinkedAthlete,
   } = useAthletePortal();
   const [snapshot, setSnapshot] = useState<
     (AthletePortalDebugSnapshot & {
@@ -166,7 +167,18 @@ export function HyroxAthletePortalDebugPanel() {
           label="Programme server seed published"
           value={serverProgrammePublishedSeed ? "yes" : "no"}
         />
+        <Row label="Has linked athlete (layout)" value={hasLinkedAthlete ? "yes" : "no"} />
         <Row label="Programme hub live (context)" value={programmeHubLive ? "yes" : "no"} />
+        <Row
+          label="Hub blocked (no valid session)"
+          value={
+            !serverAuthConfirmed && programmeHubLive
+              ? "yes — false positive risk"
+              : serverAuthConfirmed
+                ? "no"
+                : "yes — expected"
+          }
+        />
         <Row label="Programme published (context)" value={programmePublishedLive ? "yes" : "no"} />
         <Row label="Programme API error" value={liveProgrammeApiError ?? "—"} />
         <Row label="API auth email" value={snapshot?.apiAuthEmail ?? "—"} />

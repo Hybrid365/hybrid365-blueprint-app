@@ -16,8 +16,14 @@ import HyroxTeamDashboardView from "./HyroxTeamDashboardView";
 
 export default function DashboardPageClient({
   initialProgress = null,
+  serverAuthConfirmed = false,
+  dataSource = "unknown",
+  resolvedAthleteId = null,
 }: {
   initialProgress?: AthleteOnboardingProgress | null;
+  serverAuthConfirmed?: boolean;
+  dataSource?: string;
+  resolvedAthleteId?: string | null;
 }) {
   const {
     setProgrammePublishedMock,
@@ -31,12 +37,19 @@ export default function DashboardPageClient({
   } = useAthletePortal();
 
   const serverProgrammePublished = Boolean(initialProgress?.programmePublished);
-  const showLiveHub = programmeHubLive || serverProgrammePublished;
+  const showLiveHub =
+    serverAuthConfirmed && (programmeHubLive || serverProgrammePublished);
 
   if (showLiveHub) {
     return (
       <AthletePortalShell>
         <HyroxAthletePortalDebugPanel />
+        {process.env.NODE_ENV === "development" ? (
+          <p className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-400">
+            Dashboard data source: {dataSource} · athlete id: {resolvedAthleteId ?? "—"} ·
+            serverAuthConfirmed: {serverAuthConfirmed ? "yes" : "no"}
+          </p>
+        ) : null}
         <HyroxTeamDashboardView
           programmePublishedMock={useMockPreview}
           programmePublishedLive={programmePublishedLive || serverProgrammePublished}

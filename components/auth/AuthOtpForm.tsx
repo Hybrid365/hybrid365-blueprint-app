@@ -687,12 +687,12 @@ export function AuthOtpForm({
           }
         }
         navigating = true;
-        window.location.assign(destination);
+        window.location.href = destination;
         return;
       }
 
       navigating = true;
-      window.location.assign(sanitizeNext(result.redirectTo));
+      window.location.href = sanitizeNext(result.redirectTo);
     } catch (unknown) {
       const err = unknown instanceof Error ? unknown : new Error(String(unknown));
       setBanner({

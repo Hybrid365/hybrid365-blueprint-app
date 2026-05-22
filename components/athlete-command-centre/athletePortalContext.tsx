@@ -259,12 +259,12 @@ export function AthletePortalSeedProvider({
     const liveProgramme = parent.liveProgramme ?? serverProgramme ?? null;
     const portalAthlete = parent.portalAthlete ?? serverPortalAthlete ?? null;
     const hasLinkedAthlete = parent.hasLinkedAthlete || Boolean(serverPortalAthlete?.id);
+    /** Never unlock live hub from server seed alone — layout must confirm real session. */
     const programmeHubLive =
-      programmePublishedLive ||
-      parent.useMockPreview ||
-      parent.programmeHubLive ||
-      (parent.serverAuthConfirmed && serverPublished) ||
-      Boolean(serverProgramme && serverPortalAthlete?.id);
+      parent.serverAuthConfirmed &&
+      (programmePublishedLive ||
+        parent.useMockPreview ||
+        (serverPublished && Boolean(portalAthlete?.id)));
 
     return {
       ...parent,

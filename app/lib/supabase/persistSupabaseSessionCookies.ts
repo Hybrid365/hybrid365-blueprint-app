@@ -50,19 +50,22 @@ export function buildSessionCookiesToSet(
 
   const chunks = createChunks(storageKey, encoded);
 
+  const secure =
+    process.env.NODE_ENV === "production" ? true : (DEFAULT_COOKIE_OPTIONS.secure ?? false);
+
   const removeCookieOptions: CookieOptions = {
     path: DEFAULT_COOKIE_OPTIONS.path,
-    sameSite: DEFAULT_COOKIE_OPTIONS.sameSite,
+    sameSite: DEFAULT_COOKIE_OPTIONS.sameSite ?? "lax",
     httpOnly: DEFAULT_COOKIE_OPTIONS.httpOnly,
-    secure: DEFAULT_COOKIE_OPTIONS.secure,
+    secure,
     maxAge: 0,
   };
 
   const setCookieOptions: CookieOptions = {
     path: DEFAULT_COOKIE_OPTIONS.path,
-    sameSite: DEFAULT_COOKIE_OPTIONS.sameSite,
+    sameSite: DEFAULT_COOKIE_OPTIONS.sameSite ?? "lax",
     httpOnly: DEFAULT_COOKIE_OPTIONS.httpOnly,
-    secure: DEFAULT_COOKIE_OPTIONS.secure,
+    secure,
     maxAge: DEFAULT_COOKIE_OPTIONS.maxAge,
   };
 
