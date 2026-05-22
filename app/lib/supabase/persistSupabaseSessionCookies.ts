@@ -14,6 +14,22 @@ export type SessionCookieToSet = {
   options?: CookieOptions;
 };
 
+export function isMainSupabaseAuthStorageKey(name: string, storageKey?: string): boolean {
+  const key = storageKey ?? getSupabaseAuthStorageKey();
+  return name === key;
+}
+
+/** PKCE verifier cookie — safe to delete; not the session auth-token. */
+export function isSupabasePkceCodeVerifierCookieName(name: string): boolean {
+  return name.includes("code-verifier");
+}
+
+/** Chunk cookies (e.g. sb-…-auth-token.0) — not the undecorated main storage key. */
+export function isSupabaseAuthChunkCookieName(name: string, storageKey?: string): boolean {
+  const key = storageKey ?? getSupabaseAuthStorageKey();
+  return isChunkLike(name, key) && name !== key;
+}
+
 /** Storage key used by @supabase/ssr / GoTrue for this project. */
 export function getSupabaseAuthStorageKey(): string {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -70,8 +86,10 @@ export function buildSessionCookiesToSet(
     maxAge: DEFAULT_COOKIE_OPTIONS.maxAge,
   };
 
+  // Only remove orphan chunk cookies (.0, .1, …). Never emit Max-Age=0 for the main
+  // storage key in the same response as the session set — browsers can keep the empty cookie.
   const removals = existingCookieNames
-    .filter((name) => isChunkLike(name, storageKey))
+    .filter((name) => isSupabaseAuthChunkCookieName(name, storageKey))
     .map((name) => ({
       name,
       value: "",
@@ -84,7 +102,7 @@ export function buildSessionCookiesToSet(
     options: setCookieOptions,
   }));
 
-  return [...removals, ...sets];
+  return [...sets, ...removals];
 }
 
 export type PendingSessionCookieDebug = {
@@ -96,22 +114,43 @@ export type PendingSessionCookieDebug = {
   hasValidSession: boolean;
 };
 
+export type ParsedSetCookieHeader = {
+  name: string;
+  valueLength: number;
+  maxAgeZero: boolean;
+  expiresDelete: boolean;
+};
+
 export type ResponseSetCookieDebug = {
   setCookieHeaderPresent: boolean;
   setCookieHeaderCount: number;
   setCookieHeaderCharLength: number;
   setCookieCookieNames: string[];
   setCookieValueLengths: number[];
+  setCookieMaxAgeZeroFlags: boolean[];
+  setCookieExpiresDeleteFlags: boolean[];
   hasLargeAuthCookie: boolean;
+  mainAuthTokenSetCookieCount: number;
+  duplicateMainAuthTokenNames: boolean;
+  emptyMainAuthTokenSetCookie: boolean;
+  finalMainAuthTokenValueLength: number;
+  codeVerifierDeletionNames: string[];
 };
 
-function parseSetCookieHeaderLine(header: string): { name: string; valueLength: number } {
+export const MAIN_AUTH_COOKIE_OVERWRITE_ERROR =
+  "Main auth cookie would be overwritten by empty cookie";
+
+function parseSetCookieHeaderLine(header: string): ParsedSetCookieHeader {
   const valuePart = header.split(";")[0] ?? "";
   const eq = valuePart.indexOf("=");
-  if (eq < 0) return { name: valuePart.trim(), valueLength: 0 };
+  const name = eq < 0 ? valuePart.trim() : valuePart.slice(0, eq).trim();
+  const valueLength = eq < 0 ? 0 : valuePart.slice(eq + 1).length;
+  const lower = header.toLowerCase();
   return {
-    name: valuePart.slice(0, eq).trim(),
-    valueLength: valuePart.slice(eq + 1).length,
+    name,
+    valueLength,
+    maxAgeZero: /\bmax-age=0\b/.test(lower),
+    expiresDelete: /\bexpires=/.test(lower) && /\b1970\b/.test(lower),
   };
 }
 
@@ -119,11 +158,21 @@ function parseSetCookieHeaderLine(header: string): { name: string; valueLength: 
 export function inspectResponseSetCookieHeaders(response: NextResponse): ResponseSetCookieDebug {
   const headers = response.headers.getSetCookie?.() ?? [];
   const parsed = headers.map(parseSetCookieHeaderLine);
+  const storageKey = getSupabaseAuthStorageKey();
+
+  const mainEntries = parsed.filter((p) => isMainSupabaseAuthStorageKey(p.name, storageKey));
+  const finalMain = mainEntries.at(-1);
+
   const setCookieCookieNames = parsed.map((p) => p.name);
   const setCookieValueLengths = parsed.map((p) => p.valueLength);
   const setCookieHeaderCharLength = headers.reduce((n, h) => n + h.length, 0);
-  const hasLargeAuthCookie = parsed.some(
-    (p) => isSupabaseAuthCookieName(p.name) && p.valueLength > 500
+  const hasLargeAuthCookie = (finalMain?.valueLength ?? 0) > 500;
+
+  const emptyMainAuthTokenSetCookie = mainEntries.some(
+    (p) =>
+      p.valueLength === 0 ||
+      p.maxAgeZero ||
+      p.expiresDelete
   );
 
   return {
@@ -132,8 +181,29 @@ export function inspectResponseSetCookieHeaders(response: NextResponse): Respons
     setCookieHeaderCharLength,
     setCookieCookieNames,
     setCookieValueLengths,
+    setCookieMaxAgeZeroFlags: parsed.map((p) => p.maxAgeZero),
+    setCookieExpiresDeleteFlags: parsed.map((p) => p.expiresDelete),
     hasLargeAuthCookie,
+    mainAuthTokenSetCookieCount: mainEntries.length,
+    duplicateMainAuthTokenNames: mainEntries.length > 1,
+    emptyMainAuthTokenSetCookie,
+    finalMainAuthTokenValueLength: finalMain?.valueLength ?? 0,
+    codeVerifierDeletionNames: parsed
+      .filter(
+        (p) =>
+          isSupabasePkceCodeVerifierCookieName(p.name) &&
+          (p.valueLength === 0 || p.maxAgeZero || p.expiresDelete)
+      )
+      .map((p) => p.name),
   };
+}
+
+export function responseAuthSetCookiesAreValid(debug: ResponseSetCookieDebug): boolean {
+  if (!debug.setCookieHeaderPresent || !debug.hasLargeAuthCookie) return false;
+  if (debug.duplicateMainAuthTokenNames) return false;
+  if (debug.emptyMainAuthTokenSetCookie) return false;
+  if (debug.finalMainAuthTokenValueLength <= 500) return false;
+  return true;
 }
 
 export function debugPendingSessionCookies(

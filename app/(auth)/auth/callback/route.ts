@@ -11,6 +11,7 @@ import {
   assertAuthRouteSession,
   createAuthRouteHandlerSupabase,
 } from "@/app/lib/supabase/authRouteHandler";
+import { MAIN_AUTH_COOKIE_OVERWRITE_ERROR } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 import type { EmailOtpType, Session } from "@supabase/supabase-js";
 
 function log(message: string, extra?: Record<string, unknown>) {
@@ -126,8 +127,25 @@ export async function GET(request: NextRequest) {
       return loginErrorRedirect(origin, "session_not_saved", rawNext, portal);
     }
 
+    const redirectResponse = NextResponse.redirect(successUrl);
+    auth.attachSessionCookiesToResponse(redirectResponse);
+    const setCookieInspect = auth.inspectResponseSetCookies(redirectResponse);
+    if (!auth.responseAuthCookiesAreValid(redirectResponse)) {
+      log("[auth callback] Set-Cookie validation failed", {
+        stage,
+        setCookieInspect,
+        cookieDebug,
+      });
+      const reason =
+        setCookieInspect.duplicateMainAuthTokenNames ||
+        setCookieInspect.emptyMainAuthTokenSetCookie
+          ? encodeURIComponent(MAIN_AUTH_COOKIE_OVERWRITE_ERROR.slice(0, 120))
+          : "session_cookies_not_attached";
+      return loginErrorRedirect(origin, reason, rawNext, portal);
+    }
+
     await tryAthleteAutoLink();
-    return auth.withAuthCookies(NextResponse.redirect(successUrl));
+    return redirectResponse;
   }
 
   if (code) {

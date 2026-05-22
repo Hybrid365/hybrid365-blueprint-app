@@ -4,7 +4,10 @@ import {
   assertAuthRouteSession,
   createAuthRouteHandlerSupabase,
 } from "@/app/lib/supabase/authRouteHandler";
-import type { ResponseSetCookieDebug } from "@/app/lib/supabase/persistSupabaseSessionCookies";
+import {
+  MAIN_AUTH_COOKIE_OVERWRITE_ERROR,
+  type ResponseSetCookieDebug,
+} from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
 const COOKIE_ATTACH_ERROR =
   "OTP verified but auth cookies were not attached to response";
@@ -65,8 +68,22 @@ function buildVerifyOtpDebug(
     setCookieHeaderCharLength: extra.setCookie?.setCookieHeaderCharLength ?? 0,
     setCookieCookieNames: extra.setCookie?.setCookieCookieNames ?? [],
     setCookieValueLengths: extra.setCookie?.setCookieValueLengths ?? [],
+    setCookieMaxAgeZeroFlags: extra.setCookie?.setCookieMaxAgeZeroFlags ?? [],
+    setCookieExpiresDeleteFlags: extra.setCookie?.setCookieExpiresDeleteFlags ?? [],
     hasLargeAuthCookie: extra.setCookie?.hasLargeAuthCookie ?? false,
+    mainAuthTokenSetCookieCount: extra.setCookie?.mainAuthTokenSetCookieCount ?? 0,
+    duplicateMainAuthTokenNames: extra.setCookie?.duplicateMainAuthTokenNames ?? false,
+    emptyMainAuthTokenSetCookie: extra.setCookie?.emptyMainAuthTokenSetCookie ?? false,
+    finalMainAuthTokenValueLength: extra.setCookie?.finalMainAuthTokenValueLength ?? 0,
+    codeVerifierDeletionNames: extra.setCookie?.codeVerifierDeletionNames ?? [],
   };
+}
+
+function cookieAttachFailureMessage(inspect: ResponseSetCookieDebug): string {
+  if (inspect.duplicateMainAuthTokenNames || inspect.emptyMainAuthTokenSetCookie) {
+    return MAIN_AUTH_COOKIE_OVERWRITE_ERROR;
+  }
+  return COOKIE_ATTACH_ERROR;
 }
 
 export async function POST(request: NextRequest) {
@@ -187,7 +204,7 @@ export async function POST(request: NextRequest) {
     setCookie: setCookieInspect,
   });
 
-  if (!setCookieInspect.setCookieHeaderPresent || !setCookieInspect.hasLargeAuthCookie) {
+  if (!auth.responseAuthCookiesAreValid(cookieProbe)) {
     console.error("[auth otp] verify cookie attach failed", {
       userId: sessionUser.userId.slice(0, 8),
       emailHint: emailLogHint(email),
@@ -198,7 +215,7 @@ export async function POST(request: NextRequest) {
       {
         ok: false,
         success: false,
-        error: COOKIE_ATTACH_ERROR,
+        error: cookieAttachFailureMessage(setCookieInspect),
         ...(includeDebug ? { debug: fullDebug } : {}),
       },
       { status: 500 }
@@ -218,10 +235,7 @@ export async function POST(request: NextRequest) {
   auth.attachSessionCookiesToResponse(response);
 
   const returnedInspect = auth.inspectResponseSetCookies(response);
-  if (
-    !returnedInspect.setCookieHeaderPresent ||
-    !returnedInspect.hasLargeAuthCookie
-  ) {
+  if (!auth.responseAuthCookiesAreValid(response)) {
     console.error("[auth otp] returned response missing Set-Cookie", {
       userId: sessionUser.userId.slice(0, 8),
       emailHint: emailLogHint(email),
@@ -232,7 +246,7 @@ export async function POST(request: NextRequest) {
       {
         ok: false,
         success: false,
-        error: COOKIE_ATTACH_ERROR,
+        error: cookieAttachFailureMessage(returnedInspect),
         ...(includeDebug
           ? {
               debug: buildVerifyOtpDebug(data, auth, {

@@ -33,9 +33,40 @@ export default async function AthleteAuthDebugPage() {
     : null;
 
   const merge = auth.cookieMerge;
+  const mainAuth = auth.mainAuth;
 
   const rows: { label: string; value: string }[] = [
     { label: "Auth cookies present", value: auth.authCookiesPresent ? "yes" : "no" },
+    {
+      label: "Raw Cookie header names",
+      value:
+        mainAuth.rawCookieHeaderNames.length > 0
+          ? mainAuth.rawCookieHeaderNames.join(", ")
+          : "—",
+    },
+    {
+      label: "Main auth-token exists",
+      value: mainAuth.mainAuthTokenExists ? "yes" : "no",
+    },
+    {
+      label: "Main auth-token value length",
+      value: `${mainAuth.mainAuthTokenValueLength} B`,
+    },
+    {
+      label: "Empty main auth-token duplicate",
+      value: mainAuth.emptyMainAuthDuplicateDetected ? "yes" : "no",
+    },
+    {
+      label: "Code-verifier cookie present",
+      value: mainAuth.codeVerifierCookiePresent ? "yes" : "no",
+    },
+    {
+      label: "Code-verifier cookie names",
+      value:
+        mainAuth.codeVerifierCookieNames.length > 0
+          ? mainAuth.codeVerifierCookieNames.join(", ")
+          : "—",
+    },
     { label: "Valid session cookies", value: auth.validSessionCookiesPresent ? "yes" : "no" },
     { label: "Duplicate cookie names", value: merge.duplicateNamesDetected ? "yes" : "no" },
     {
@@ -117,6 +148,23 @@ export default async function AthleteAuthDebugPage() {
               <span className="font-mono">Set-Cookie</span> and{" "}
               <span className="font-mono">debug.setCookieHeaderPresent</span> /{" "}
               <span className="font-mono">hasLargeAuthCookie</span> in the response body.
+            </p>
+          </div>
+        ) : null}
+
+        {mainAuth.mainAuthTokenExists && mainAuth.mainAuthTokenValueLength === 0 ? (
+          <div
+            className="mt-4 rounded-xl border border-amber-500/45 bg-amber-950/35 px-4 py-3 text-sm text-amber-100"
+            role="alert"
+          >
+            <p className="font-semibold text-amber-200">Main auth-token cookie is empty (0 B)</p>
+            <p className="mt-1 text-amber-100/90">
+              The browser sent{" "}
+              <span className="font-mono">{mainAuth.mainAuthTokenName}</span> but with no session
+              value. This usually means a deletion Set-Cookie overwrote the large session cookie.
+              Re-login and check verify-otp for{" "}
+              <span className="font-mono">duplicateMainAuthTokenNames</span> /{" "}
+              <span className="font-mono">emptyMainAuthTokenSetCookie</span> in the response debug.
             </p>
           </div>
         ) : null}

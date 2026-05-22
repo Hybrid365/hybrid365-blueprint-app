@@ -54,6 +54,12 @@ type VerifyOtpApiDebug = {
   hasLargeAuthCookie?: boolean;
   setCookieHeaderCount?: number;
   setCookieHeaderCharLength?: number;
+  setCookieCookieNames?: string[];
+  setCookieValueLengths?: number[];
+  duplicateMainAuthTokenNames?: boolean;
+  emptyMainAuthTokenSetCookie?: boolean;
+  finalMainAuthTokenValueLength?: number;
+  codeVerifierDeletionNames?: string[];
   accessTokenLength?: number;
   refreshTokenLength?: number;
   dataSessionExists?: boolean;
@@ -144,12 +150,17 @@ async function verifyOtpViaApi(input: {
   if (
     input.portal === "athlete" &&
     debug &&
-    (!debug.setCookieHeaderPresent || !debug.hasLargeAuthCookie)
+    (!debug.setCookieHeaderPresent ||
+      !debug.hasLargeAuthCookie ||
+      debug.duplicateMainAuthTokenNames ||
+      debug.emptyMainAuthTokenSetCookie ||
+      (debug.finalMainAuthTokenValueLength ?? 0) <= 500)
   ) {
     return {
       status: "error",
-      message:
-        "Login succeeded on the server but session cookies were not set. Open Network → verify-otp and check Set-Cookie.",
+      message: debug.duplicateMainAuthTokenNames || debug.emptyMainAuthTokenSetCookie
+        ? "Login would overwrite the session cookie with an empty value. Try again."
+        : "Login succeeded on the server but session cookies were not set. Open Network → verify-otp and check Set-Cookie.",
       debug,
     };
   }
@@ -171,6 +182,11 @@ function formatVerifyOtpDevDetail(debug?: VerifyOtpApiDebug): string | null {
   return [
     `setCookie: ${debug.setCookieHeaderPresent ? "yes" : "no"}`,
     `large auth cookie: ${debug.hasLargeAuthCookie ? "yes" : "no"}`,
+    debug.finalMainAuthTokenValueLength != null
+      ? `main token ${debug.finalMainAuthTokenValueLength} B`
+      : null,
+    debug.duplicateMainAuthTokenNames ? "duplicate main token" : null,
+    debug.emptyMainAuthTokenSetCookie ? "empty main token Set-Cookie" : null,
     debug.setCookieHeaderCount != null ? `count ${debug.setCookieHeaderCount}` : null,
     debug.accessTokenLength != null ? `access ${debug.accessTokenLength} chars` : null,
   ]

@@ -19,6 +19,7 @@ import { createAthleteServerSupabase } from "@/app/lib/supabase/athleteServerCli
 import {
   readAthletePortalCookies,
   type AuthCookieSummary,
+  type MainAuthCookieReadDebug,
   type MergedCookieDebug,
 } from "@/app/lib/supabase/mergedAthleteCookies";
 import {
@@ -48,6 +49,7 @@ export type HyroxPortalSnapshotAuthProbe = {
   authCookieValueLengths: number[];
   cookieMerge: MergedCookieDebug;
   authCookieSummaries: AuthCookieSummary[];
+  mainAuth: MainAuthCookieReadDebug;
   getSessionError: string | null;
   getUserError: string | null;
   userSource: "supabase" | "middleware-forwarded" | "none";
@@ -93,7 +95,11 @@ export async function probeHyroxPortalAuth(
 }> {
   const headerStore = await headers();
   const cookieStore = await cookies();
-  const { cookies: mergedCookies, debug: cookieMerge } = await readAthletePortalCookies();
+  const {
+    cookies: mergedCookies,
+    debug: cookieMerge,
+    mainAuth,
+  } = await readAthletePortalCookies();
   const authMarkers = probeAthleteAuthMarkers(cookieStore, headerStore);
   const middlewareAuth = middlewareForwardedAthleteAuth(headerStore);
   const mwIdentity = middlewareForwardedAthleteIdentity(headerStore);
@@ -154,6 +160,7 @@ export async function probeHyroxPortalAuth(
     authCookieValueLengths: authCookieSummaries.map((c) => c.mergedLength),
     cookieMerge,
     authCookieSummaries,
+    mainAuth,
     getSessionError: sessionError?.message ?? null,
     getUserError: userRetryError?.message ?? userFirstError?.message ?? null,
     userSource,

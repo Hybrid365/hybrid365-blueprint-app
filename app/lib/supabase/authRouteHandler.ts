@@ -7,7 +7,12 @@ import { readAthleteRouteHandlerCookies } from "@/app/lib/supabase/mergedAthlete
 import {
   buildSessionCookiesToSet,
   debugPendingSessionCookies,
+  getSupabaseAuthStorageKey,
   inspectResponseSetCookieHeaders,
+  isMainSupabaseAuthStorageKey,
+  isSupabaseAuthChunkCookieName,
+  isSupabasePkceCodeVerifierCookieName,
+  responseAuthSetCookiesAreValid,
   type SessionCookieToSet,
 } from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
@@ -36,6 +41,28 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
   const { cookies: initialMerged } = await readAthleteRouteHandlerCookies(request);
   let mergedRequestCookies = [...initialMerged];
   let pendingCookies: CookieToSet[] = [];
+  let sessionCommitted = false;
+  const storageKey = getSupabaseAuthStorageKey();
+
+  const appendSafePostCommitCookieOps = (batch: CookieToSet[]) => {
+    for (const { name, value, options } of batch) {
+      if (isMainSupabaseAuthStorageKey(name, storageKey)) continue;
+      if (isSupabaseAuthChunkCookieName(name, storageKey) && (value?.length ?? 0) > 0) {
+        continue;
+      }
+      const isRemoval = !value || options?.maxAge === 0;
+      if (!isRemoval) continue;
+      if (!isSupabasePkceCodeVerifierCookieName(name) && !isSupabaseAuthChunkCookieName(name, storageKey)) {
+        continue;
+      }
+      if (pendingCookies.some((c) => c.name === name && !c.value)) continue;
+      pendingCookies.push({
+        name,
+        value: "",
+        options: passthroughCookieOptions(options),
+      });
+    }
+  };
 
   const applyToHandlers = (batch: CookieToSet[]) => {
     for (const { name, value, options } of batch) {
@@ -75,6 +102,17 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
           return mergedRequestCookies;
         },
         setAll(cookiesToSet) {
+          if (sessionCommitted) {
+            appendSafePostCommitCookieOps(
+              cookiesToSet.map(({ name, value, options }) => ({
+                name,
+                value,
+                options: passthroughCookieOptions(options),
+              }))
+            );
+            return;
+          }
+
           const incomingTotal = totalCookieValueLength(cookiesToSet);
           const pendingTotal = totalCookieValueLength(pendingCookies);
           const incomingWipe = isWipeOnlyBatch(cookiesToSet);
@@ -110,20 +148,29 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
      * Required because onAuthStateChange → applyServerStorage often runs after the response.
      */
     commitSessionCookies(session: Session) {
+      sessionCommitted = true;
       const existingNames = mergedRequestCookies.map((c) => c.name);
       pendingCookies = buildSessionCookiesToSet(session, existingNames);
       applyToHandlers(pendingCookies);
     },
 
-    /** Deterministic write of pending session cookies onto the response (no async setAll). */
+    /** Deterministic write: session sets first, then safe removals (chunks / code-verifier only). */
     attachSessionCookiesToResponse(response: NextResponse) {
-      pendingCookies.forEach(({ name, value, options }) => {
-        if (!value) {
-          response.cookies.delete(name);
-          return;
-        }
+      const sets = pendingCookies.filter((c) => (c.value?.length ?? 0) > 0);
+      const removals = pendingCookies.filter(
+        (c) =>
+          (!c.value || c.options?.maxAge === 0) &&
+          !isMainSupabaseAuthStorageKey(c.name, storageKey) &&
+          (isSupabasePkceCodeVerifierCookieName(c.name) ||
+            isSupabaseAuthChunkCookieName(c.name, storageKey))
+      );
+
+      for (const { name, value, options } of sets) {
         response.cookies.set(name, value, passthroughCookieOptions(options));
-      });
+      }
+      for (const { name } of removals) {
+        response.cookies.delete(name);
+      }
       return response;
     },
 
@@ -141,6 +188,10 @@ export async function createAuthRouteHandlerSupabase(request: NextRequest) {
 
     inspectResponseSetCookies(response: NextResponse) {
       return inspectResponseSetCookieHeaders(response);
+    },
+
+    responseAuthCookiesAreValid(response: NextResponse) {
+      return responseAuthSetCookiesAreValid(inspectResponseSetCookieHeaders(response));
     },
   };
 }

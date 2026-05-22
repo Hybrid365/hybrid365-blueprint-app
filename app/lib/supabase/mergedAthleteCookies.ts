@@ -1,6 +1,10 @@
 import { cookies, headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { isSupabaseAuthCookieName } from "@/app/lib/supabase/apiRoute";
+import {
+  getSupabaseAuthStorageKey,
+  isSupabasePkceCodeVerifierCookieName,
+} from "@/app/lib/supabase/persistSupabaseSessionCookies";
 
 export type MergedCookieEntry = { name: string; value: string };
 
@@ -187,13 +191,65 @@ export function mergeAthleteRequestCookies(input: {
 export async function readAthletePortalCookies(): Promise<{
   cookies: MergedCookieEntry[];
   debug: MergedCookieDebug;
+  mainAuth: MainAuthCookieReadDebug;
 }> {
   const cookieStore = await cookies();
   const headerStore = await headers();
-  return mergeAthleteRequestCookies({
+  const rawCookieHeader = headerStore.get("cookie") ?? "";
+  const merged = mergeAthleteRequestCookies({
     cookieStore: cookieStore.getAll(),
-    rawCookieHeader: headerStore.get("cookie") ?? "",
+    rawCookieHeader,
   });
+  return {
+    ...merged,
+    mainAuth: buildMainAuthCookieReadDebug(merged.cookies, merged.debug, rawCookieHeader),
+  };
+}
+
+export type MainAuthCookieReadDebug = {
+  rawCookieHeaderNames: string[];
+  mainAuthTokenName: string;
+  mainAuthTokenExists: boolean;
+  mainAuthTokenValueLength: number;
+  emptyMainAuthDuplicateDetected: boolean;
+  codeVerifierCookiePresent: boolean;
+  codeVerifierCookieNames: string[];
+};
+
+export function buildMainAuthCookieReadDebug(
+  cookies: MergedCookieEntry[],
+  debug: MergedCookieDebug,
+  rawCookieHeader?: string
+): MainAuthCookieReadDebug {
+  const mainAuthTokenName = getSupabaseAuthStorageKey();
+  const rawNames = parseRawCookieHeader(rawCookieHeader ?? "").map((c) => c.name);
+  const mainEntry = cookies.find((c) => c.name === mainAuthTokenName);
+  const mainSummary = debug.authCookieSummaries.find((c) => c.name === mainAuthTokenName);
+  const storeLen = mainSummary?.cookiesStoreLength ?? 0;
+  const headerLen = mainSummary?.rawHeaderLength ?? 0;
+  const mergedLen = mainEntry?.value?.length ?? 0;
+
+  const emptyMainAuthDuplicateDetected =
+    Boolean(mainEntry) &&
+    mergedLen === 0 &&
+    (storeLen > 0 ||
+      headerLen > 0 ||
+      debug.duplicateNames.includes(mainAuthTokenName) ||
+      rawNames.filter((n) => n === mainAuthTokenName).length > 1);
+
+  const codeVerifierCookieNames = cookies
+    .filter((c) => isSupabasePkceCodeVerifierCookieName(c.name))
+    .map((c) => c.name);
+
+  return {
+    rawCookieHeaderNames: rawNames,
+    mainAuthTokenName,
+    mainAuthTokenExists: Boolean(mainEntry),
+    mainAuthTokenValueLength: mergedLen,
+    emptyMainAuthDuplicateDetected,
+    codeVerifierCookiePresent: codeVerifierCookieNames.length > 0,
+    codeVerifierCookieNames,
+  };
 }
 
 /** Route Handlers — request.cookies + cookies() + raw Cookie header. */
