@@ -21,8 +21,7 @@ function DashboardAuthBlocked({ reason }: { reason: string }) {
       <h1 className="text-xl font-semibold">Sign in required</h1>
       <p className="mt-3 text-sm text-zinc-400">{reason}</p>
       <p className="mt-2 text-xs text-zinc-500">
-        Your session cookie was not saved. The dashboard cannot show a live programme without a
-        valid Supabase session.
+        Sign in again to load your dashboard and programme.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Link
@@ -30,12 +29,6 @@ function DashboardAuthBlocked({ reason }: { reason: string }) {
           className="rounded-full bg-yellow-400 px-4 py-2 text-sm font-semibold text-black"
         >
           Athlete login
-        </Link>
-        <Link
-          href="/athlete/auth-debug"
-          className="rounded-full border border-zinc-600 px-4 py-2 text-sm text-zinc-200"
-        >
-          Auth debug
         </Link>
       </div>
     </div>

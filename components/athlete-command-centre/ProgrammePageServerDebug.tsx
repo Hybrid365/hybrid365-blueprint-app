@@ -155,12 +155,14 @@ export function ProgrammePageResolveNotice({
           </Link>
         )}
       </div>
-      <div className="mt-8 rounded-xl border border-zinc-700/80 bg-zinc-900/60 p-4 text-left text-xs text-zinc-300">
-        <p className="font-semibold uppercase tracking-wide text-zinc-400">
-          Programme page resolver debug
-        </p>
-        <DebugRows debug={debug} variant={variant} layoutServerAuthConfirmed={false} gate={gate} />
-      </div>
+      {process.env.NODE_ENV === "development" ? (
+        <div className="mt-8 rounded-xl border border-zinc-700/80 bg-zinc-900/60 p-4 text-left text-xs text-zinc-300">
+          <p className="font-semibold uppercase tracking-wide text-zinc-400">
+            Programme page resolver debug
+          </p>
+          <DebugRows debug={debug} variant={variant} layoutServerAuthConfirmed={false} gate={gate} />
+        </div>
+      ) : null}
     </div>
   );
 }

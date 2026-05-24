@@ -66,12 +66,6 @@ function ProgrammePageInner({
           layoutServerAuthConfirmed={serverAuthConfirmed}
           gate={gate}
         />
-        {gate.layoutAuthUncertainButServerOk ? (
-          <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
-            Layout auth uncertain, but programme server resolver succeeded — showing your
-            programme from server data.
-          </p>
-        ) : null}
         {gate.decision === "published-empty" ? (
           <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-sm text-amber-100/90">
             Programme is marked published but no sessions were found. Ask your coach to publish

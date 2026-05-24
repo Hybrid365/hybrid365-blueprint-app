@@ -32,13 +32,7 @@ import {
   buildAthleteProgrammeWeekChipMeta,
   calendarStatusToChipMode,
   resolveEffectiveProgrammeStartYmd,
-  type ProgrammeWeekChipDebug,
 } from "@/app/lib/hyroxAthleteProgrammeWeekChip";
-import {
-  resolveAthleteWeekDateRange,
-  startOfLocalDay,
-  toYmd,
-} from "@/app/lib/hyroxProgrammeDates";
 import type { AthleteWeekCalendarStatus } from "@/app/lib/hyroxAthleteProgrammeTypes";
 import type { AthleteLiveProgrammePayload } from "./useAthleteLiveProgramme";
 
@@ -51,7 +45,7 @@ type WeekTab = {
   globalWeek: number;
   mode: WeekTabMode;
   generated: boolean;
-  chipDebug: ProgrammeWeekChipDebug | null;
+  sessionCount: number;
 };
 
 const UPCOMING_COPY = "Upcoming — subject to coach review";
@@ -82,107 +76,6 @@ function upcomingSubcopy(mode: WeekTabMode): string {
 function countProgrammeSessions(programme: AthleteLiveProgrammePayload | null | undefined): number {
   if (!programme?.programmeWeeks?.length) return programme?.sessions?.length ?? 0;
   return programme.programmeWeeks.reduce((n, w) => n + (w.sessions?.length ?? 0), 0);
-}
-
-function ProgrammePageClientDebug({
-  selectedSessionId,
-  effectiveProgramme,
-  effectivePublished,
-  programmeSource,
-  invalidSessionCleared,
-  programmeStartDate,
-  selectedWeek,
-  selectedBundle,
-  sessionsRendered,
-}: {
-  selectedSessionId: string | null;
-  effectiveProgramme: AthleteLiveProgrammePayload | null | undefined;
-  effectivePublished: boolean;
-  programmeSource: "server" | "client" | "none";
-  invalidSessionCleared: boolean;
-  programmeStartDate: string | null;
-  selectedWeek: number;
-  selectedBundle: AthleteLiveProgrammePayload["programmeWeeks"][number] | null | undefined;
-  sessionsRendered: number;
-}) {
-  if (process.env.NODE_ENV !== "development") return null;
-
-  const weekCount = effectiveProgramme?.programmeWeeks?.length ?? 0;
-  const sessionCount = countProgrammeSessions(effectiveProgramme);
-  const todayYmd = toYmd(startOfLocalDay(new Date()));
-
-  const dbStart =
-    selectedBundle?.week?.week_start_date ?? selectedBundle?.weekStartDate ?? null;
-  const dbEnd = selectedBundle?.week?.week_end_date ?? selectedBundle?.weekEndDate ?? null;
-  const resolved =
-    programmeStartDate && selectedBundle
-      ? resolveAthleteWeekDateRange({
-          programmeStartYmd: programmeStartDate,
-          weekNumber: selectedBundle.weekNumber,
-          dbWeekStartYmd: dbStart,
-          dbWeekEndYmd: dbEnd,
-        })
-      : null;
-  const selectedChipMeta =
-    programmeStartDate && selectedBundle
-      ? buildAthleteProgrammeWeekChipMeta({
-          bundle: selectedBundle,
-          weekNumber: selectedBundle.weekNumber,
-          programmeStartYmd: programmeStartDate,
-        })
-      : null;
-  const computedStatus = selectedChipMeta?.calendarStatus ?? selectedBundle?.calendarStatus ?? "—";
-  const sessionsTotalForWeek = selectedBundle?.sessions?.length ?? 0;
-
-  const weekRows =
-    effectiveProgramme?.programmeWeeks?.map((b) => {
-      const rawStart = b.week?.week_start_date ?? b.weekStartDate;
-      const rawEnd = b.week?.week_end_date ?? b.weekEndDate;
-      const r = programmeStartDate
-        ? resolveAthleteWeekDateRange({
-            programmeStartYmd: programmeStartDate,
-            weekNumber: b.weekNumber,
-            dbWeekStartYmd: rawStart,
-            dbWeekEndYmd: rawEnd,
-          })
-        : null;
-      return `W${b.weekNumber}: ${b.sessions?.length ?? 0} sess · db ${rawStart ?? "—"}→${rawEnd ?? "—"} · resolved ${r?.startYmd ?? "—"}→${r?.endYmd ?? "—"} (${r?.source ?? "—"})`;
-    }) ?? [];
-
-  return (
-    <div className="mb-4 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3 py-2 text-[11px] text-zinc-400">
-      <p className="font-semibold text-zinc-300">Dev — programme week dates / sessions</p>
-      <p>route: /athlete/programme · selectedSessionId: {selectedSessionId ?? "—"}</p>
-      <p>
-        programmeWeeks: {weekCount} · sessions total: {sessionCount} · published:{" "}
-        {effectivePublished ? "yes" : "no"} · source: {programmeSource}
-      </p>
-      <p>programme_start_date: {programmeStartDate ?? "—"} · today: {todayYmd}</p>
-      <p>
-        selectedWeek: {selectedWeek} · weekStart: {resolved?.startYmd ?? "—"} · weekEnd:{" "}
-        {resolved?.endYmd ?? "—"} · dateSource: {resolved?.source ?? "—"} · computedStatus:{" "}
-        {computedStatus}
-      </p>
-      <p>
-        sessionsTotalForWeek: {sessionsTotalForWeek} · sessionsRenderedForWeek:{" "}
-        {sessionsRendered}
-        {sessionsTotalForWeek !== sessionsRendered
-          ? " · mismatch (UI should show all bundle sessions)"
-          : ""}
-      </p>
-      <p>hiddenSessionIds: none (no date/type filter on programme page)</p>
-      {weekRows.length > 0 ? (
-        <ul className="mt-1 list-inside list-disc space-y-0.5">
-          {weekRows.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      ) : null}
-      {invalidSessionCleared ? (
-        <p className="text-amber-300">Cleared invalid selected session id.</p>
-      ) : null}
-    </div>
-  );
 }
 
 export function ProgrammePageView({
@@ -221,7 +114,6 @@ export function ProgrammePageView({
     ReturnType<typeof sessionDetailFromHyroxSession> | null
   >(null);
   const [invalidSessionMessage, setInvalidSessionMessage] = useState<string | null>(null);
-  const [invalidSessionCleared, setInvalidSessionCleared] = useState(false);
 
   const programmeSource: "server" | "client" | "none" = liveProgramme
     ? "client"
@@ -261,7 +153,7 @@ export function ProgrammePageView({
           : null;
 
       const dateRangeLabel = chipMeta?.dateRangeLabel ?? bundle?.dateRangeLabel ?? null;
-      const chipDebug = chipMeta?.debug ?? null;
+      const sessionCount = bundle?.generated ? (bundle.sessions?.length ?? 0) : 0;
 
       let mode: WeekTabMode = "not_generated";
       if (useLive && chipMeta) {
@@ -283,7 +175,7 @@ export function ProgrammePageView({
         globalWeek,
         mode,
         generated,
-        chipDebug,
+        sessionCount,
       };
     });
   }, [block.weeks, useLive, useMock, effectiveProgramme?.programmeWeeks, programmeStartDate]);
@@ -374,7 +266,6 @@ export function ProgrammePageView({
       const hit = sessions.find((s) => s.id === id) ?? null;
       if (useLive && !hit && !allProgrammeSessionIds.has(id)) {
         setInvalidSessionMessage("Session not found — that id is not in your published programme.");
-        setInvalidSessionCleared(true);
         setSessionId(null);
         setDrawerSession(null);
         setDrawerShowLogForm(false);
@@ -382,7 +273,6 @@ export function ProgrammePageView({
         return;
       }
       setInvalidSessionMessage(null);
-      setInvalidSessionCleared(false);
       setSessionId(id);
       setSessionTitle(title);
       setDrawerShowLogForm(Boolean(opts?.showLogForm));
@@ -424,18 +314,6 @@ export function ProgrammePageView({
 
   return (
     <PageContent width="wide">
-      <ProgrammePageClientDebug
-        selectedSessionId={sessionId}
-        effectiveProgramme={effectiveProgramme}
-        effectivePublished={effectivePublished}
-        programmeSource={programmeSource}
-        invalidSessionCleared={invalidSessionCleared}
-        programmeStartDate={programmeStartDate}
-        selectedWeek={selectedWeek}
-        selectedBundle={selectedBundle}
-        sessionsRendered={sessions.length}
-      />
-
       {serverLoadVariant !== "ready" && process.env.NODE_ENV === "development" ? (
         <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
           Server load variant was <span className="font-mono">{serverLoadVariant}</span> — rendering
@@ -561,23 +439,9 @@ export function ProgrammePageView({
                   >
                     {chipLabel}
                   </span>
-                  {tab.chipDebug ? (
-                    <span className="mt-1 font-mono text-[8px] leading-tight text-zinc-600">
-                      w{tab.chipDebug.weekNumber} raw {tab.chipDebug.rawStart ?? "—"}→
-                      {tab.chipDebug.rawEnd ?? "—"} · res {tab.chipDebug.resolvedStart ?? "—"}→
-                      {tab.chipDebug.resolvedEnd ?? "—"} · {tab.chipDebug.status} · lbl{" "}
-                      {tab.chipDebug.labelActuallyRendered ?? "—"} · src {tab.chipDebug.dateSource}
-                      {tab.chipDebug.dbMismatchWarning ? (
-                        <span className="text-amber-500/90"> · ⚠ misaligned DB</span>
-                      ) : null}
-                      {tab.chipDebug.payloadDateRangeLabel &&
-                      tab.chipDebug.payloadDateRangeLabel !== tab.chipDebug.labelActuallyRendered
-                        ? ` · payload ${tab.chipDebug.payloadDateRangeLabel}`
-                        : ""}
-                      <br />
-                      sess {tab.chipDebug.sessionsTotalForWeek}/{tab.chipDebug.sessionsRenderedForWeek}
-                      · weekId {tab.chipDebug.programmeWeekId?.slice(0, 8) ?? "—"} · UI renders all
-                      bundle sessions
+                  {tab.generated && tab.sessionCount > 0 ? (
+                    <span className="mt-0.5 text-[10px] text-zinc-500">
+                      {tab.sessionCount} sessions
                     </span>
                   ) : null}
                 </button>

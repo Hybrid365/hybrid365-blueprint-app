@@ -307,21 +307,6 @@ export function SessionDrawer({
           {successMessage ? (
             <p className="rounded-lg border border-emerald-500/35 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
               {successMessage}
-              {lastVia ? (
-                <span className="mt-1 block text-[10px] text-emerald-300/80">
-                  Saved via{" "}
-                  {lastVia === "h365-athlete-session"
-                    ? "h365 athlete session"
-                    : lastVia === "api-signed-token"
-                      ? "signed portal token"
-                      : lastVia === "api-cookie"
-                        ? "API cookie"
-                        : lastVia === "server"
-                          ? "server action"
-                          : lastVia}
-                  .
-                </span>
-              ) : null}
             </p>
           ) : null}
 
