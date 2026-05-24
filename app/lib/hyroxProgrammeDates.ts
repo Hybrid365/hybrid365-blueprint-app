@@ -139,12 +139,34 @@ export type ResolvedAthleteWeekDates = {
   startYmd: string;
   endYmd: string;
   dateRangeLabel: string;
-  source: "db" | "programme_start";
+  source: "db" | "programme_start" | "programme_start_mismatch_db";
+  /** Set when DB span is valid but dates do not match programme_start + weekNumber. */
+  dbMismatchWarning?: string | null;
 };
 
+/** Expected Mon–Sun range for global week N from programme start (W1 = start, +6d end). */
+export function expectedWeekDateRangeFromProgrammeStart(
+  programmeStartYmd: string,
+  weekNumber: number
+): { startYmd: string; endYmd: string } {
+  const { startYmd, endYmd } = weekDateRangeFromProgrammeStart(programmeStartYmd, weekNumber);
+  return { startYmd, endYmd };
+}
+
+/** DB week dates accepted only when span is valid and exactly match expected derived range. */
+export function dbWeekDatesMatchExpected(
+  dbStartYmd: string,
+  dbEndYmd: string,
+  expectedStartYmd: string,
+  expectedEndYmd: string
+): boolean {
+  if (!isValidWeekDateRangeYmd(dbStartYmd, dbEndYmd)) return false;
+  return dbStartYmd === expectedStartYmd && dbEndYmd === expectedEndYmd;
+}
+
 /**
- * Prefer valid DB week_start/end; otherwise derive from programme_start_date + global week (Mon +6d).
- * Fixes bad DB rows (e.g. week 2 end before start → "29 May – 15 May" and false PAST status).
+ * Prefer DB week_start/end only when they exactly match programme_start + weekNumber.
+ * Valid-length but misaligned DB rows (e.g. W2 dated before W1) use derived dates.
  */
 export function resolveAthleteWeekDateRange(input: {
   programmeStartYmd: string | null;
@@ -152,12 +174,50 @@ export function resolveAthleteWeekDateRange(input: {
   dbWeekStartYmd?: string | null;
   dbWeekEndYmd?: string | null;
 }): ResolvedAthleteWeekDates | null {
-  const computed = input.programmeStartYmd?.trim()
-    ? weekDateRangeFromProgrammeStart(input.programmeStartYmd.trim(), input.weekNumber)
+  const programmeStart = input.programmeStartYmd?.trim() || null;
+  const expected = programmeStart
+    ? weekDateRangeFromProgrammeStart(programmeStart, input.weekNumber)
     : null;
 
   const dbStart = input.dbWeekStartYmd?.trim() || null;
   const dbEnd = input.dbWeekEndYmd?.trim() || null;
+
+  if (expected && dbStart && dbEnd) {
+    if (dbWeekDatesMatchExpected(dbStart, dbEnd, expected.startYmd, expected.endYmd)) {
+      return {
+        startYmd: dbStart,
+        endYmd: dbEnd,
+        dateRangeLabel: formatWeekDateRangeFromYmd(dbStart, dbEnd),
+        source: "db",
+      };
+    }
+
+    if (isValidWeekDateRangeYmd(dbStart, dbEnd)) {
+      return {
+        startYmd: expected.startYmd,
+        endYmd: expected.endYmd,
+        dateRangeLabel: formatWeekDateRangeFromYmd(expected.startYmd, expected.endYmd),
+        source: "programme_start_mismatch_db",
+        dbMismatchWarning: `DB ${dbStart}→${dbEnd} does not match expected W${input.weekNumber} ${expected.startYmd}→${expected.endYmd}`,
+      };
+    }
+
+    return {
+      startYmd: expected.startYmd,
+      endYmd: expected.endYmd,
+      dateRangeLabel: formatWeekDateRangeFromYmd(expected.startYmd, expected.endYmd),
+      source: "programme_start",
+    };
+  }
+
+  if (expected) {
+    return {
+      startYmd: expected.startYmd,
+      endYmd: expected.endYmd,
+      dateRangeLabel: formatWeekDateRangeFromYmd(expected.startYmd, expected.endYmd),
+      source: "programme_start",
+    };
+  }
 
   if (dbStart && dbEnd && isValidWeekDateRangeYmd(dbStart, dbEnd)) {
     return {
@@ -165,15 +225,6 @@ export function resolveAthleteWeekDateRange(input: {
       endYmd: dbEnd,
       dateRangeLabel: formatWeekDateRangeFromYmd(dbStart, dbEnd),
       source: "db",
-    };
-  }
-
-  if (computed) {
-    return {
-      startYmd: computed.startYmd,
-      endYmd: computed.endYmd,
-      dateRangeLabel: formatWeekDateRangeFromYmd(computed.startYmd, computed.endYmd),
-      source: "programme_start",
     };
   }
 

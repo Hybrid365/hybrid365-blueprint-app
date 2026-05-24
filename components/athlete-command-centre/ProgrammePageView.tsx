@@ -567,10 +567,17 @@ export function ProgrammePageView({
                       {tab.chipDebug.rawEnd ?? "—"} · res {tab.chipDebug.resolvedStart ?? "—"}→
                       {tab.chipDebug.resolvedEnd ?? "—"} · {tab.chipDebug.status} · lbl{" "}
                       {tab.chipDebug.labelActuallyRendered ?? "—"} · src {tab.chipDebug.dateSource}
+                      {tab.chipDebug.dbMismatchWarning ? (
+                        <span className="text-amber-500/90"> · ⚠ misaligned DB</span>
+                      ) : null}
                       {tab.chipDebug.payloadDateRangeLabel &&
                       tab.chipDebug.payloadDateRangeLabel !== tab.chipDebug.labelActuallyRendered
                         ? ` · payload ${tab.chipDebug.payloadDateRangeLabel}`
                         : ""}
+                      <br />
+                      sess {tab.chipDebug.sessionsTotalForWeek}/{tab.chipDebug.sessionsRenderedForWeek}
+                      · weekId {tab.chipDebug.programmeWeekId?.slice(0, 8) ?? "—"} · UI renders all
+                      bundle sessions
                     </span>
                   ) : null}
                 </button>

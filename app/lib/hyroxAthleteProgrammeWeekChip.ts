@@ -19,7 +19,20 @@ export type ProgrammeWeekChipDebug = {
   dateSource: ResolvedAthleteWeekDates["source"] | "payload_label" | "none";
   payloadDateRangeLabel: string | null;
   programmeStartUsed: string | null;
+  dbMismatchWarning: string | null;
+  sessionsTotalForWeek: number;
+  sessionsRenderedForWeek: number;
+  programmeWeekId: string | null;
 };
+
+function chipDebugSessionFields(bundle: AthleteProgrammeWeekBundle | null | undefined) {
+  const sessionsTotalForWeek = bundle?.sessions?.length ?? 0;
+  return {
+    sessionsTotalForWeek,
+    sessionsRenderedForWeek: sessionsTotalForWeek,
+    programmeWeekId: bundle?.week?.id ?? null,
+  };
+}
 
 export type ProgrammeWeekChipMeta = {
   dateRangeLabel: string | null;
@@ -87,6 +100,8 @@ export function buildAthleteProgrammeWeekChipMeta(params: {
         dateSource: "none",
         payloadDateRangeLabel,
         programmeStartUsed: programmeStartYmd,
+        dbMismatchWarning: null,
+        ...chipDebugSessionFields(bundle),
       },
     };
   }
@@ -116,6 +131,8 @@ export function buildAthleteProgrammeWeekChipMeta(params: {
         dateSource: resolved?.source ?? (label ? "payload_label" : "none"),
         payloadDateRangeLabel,
         programmeStartUsed: programmeStartYmd,
+        dbMismatchWarning: resolved?.dbMismatchWarning ?? null,
+        ...chipDebugSessionFields(bundle),
       },
     };
   }
@@ -160,6 +177,8 @@ export function buildAthleteProgrammeWeekChipMeta(params: {
       dateSource: resolved?.source ?? (payloadDateRangeLabel ? "payload_label" : "none"),
       payloadDateRangeLabel,
       programmeStartUsed: programmeStartYmd,
+      dbMismatchWarning: resolved?.dbMismatchWarning ?? null,
+      ...chipDebugSessionFields(bundle),
     },
   };
 }
