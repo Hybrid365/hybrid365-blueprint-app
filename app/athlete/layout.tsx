@@ -35,11 +35,15 @@ export default async function AthleteLayout({ children }: { children: React.Reac
     hasSupabaseAuthCookie: auth.validSessionCookiesPresent || auth.authCookiesPresent,
   };
 
+  const serverProgrammePublishedSeed = portalAuth.serverProgrammePublished;
+
   const routeAuthDebug = {
     authSource: portalAuth.source,
     athleteId: portalAuth.athleteId,
     route: pathname,
     wouldRedirectToLogin: portalAuth.wouldRedirectToLogin,
+    serverProgrammePublishedSeed,
+    publishedSessionsCount: portalAuth.publishedSessionsCount,
   };
 
   if (programmeRoute) {
@@ -163,6 +167,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       portalMatchSource={serverAuth.portalMatchSource}
       layoutAuth={serverAuth.layoutAuth}
       serverAuthConfirmed={portalAuth.serverAuthConfirmed}
+      serverProgrammePublishedSeed={serverProgrammePublishedSeed}
       portalMutationToken={portalMutationToken}
       portalAuthSource={portalAuth.source}
       routeAuthDebug={routeAuthDebug}

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { HyroxPageShell } from "@/components/hyrox-team/HyroxTeamUi";
 import { AthleteAppNav } from "./AthleteAppNav";
 import { HyroxAthletePortalDebugPanel } from "./HyroxAthletePortalDebugPanel";
-import { PreviewGateCard, ProgrammeWaitingCard } from "./athleteUi";
+import { AthletePortalGate } from "./AthletePortalGate";
 import { useAthletePortal } from "./athletePortalContext";
+
+export { AthletePortalGate } from "./AthletePortalGate";
 
 function MockPreviewBanner() {
   return (
@@ -34,9 +36,14 @@ export function AthletePortalShell({
     useMockPreview,
     portalAuthSource,
     routeAuthDebug,
+    serverProgrammePublishedSeed,
+    serverAuthConfirmed,
   } = useAthletePortal();
   const navVisible =
-    showNav && (programmeHubLive || (showNavWhenLinked && hasLinkedAthlete));
+    showNav &&
+    (programmeHubLive ||
+      (showNavWhenLinked && hasLinkedAthlete) ||
+      (serverAuthConfirmed && serverProgrammePublishedSeed));
 
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
@@ -46,6 +53,8 @@ export function AthletePortalShell({
           auth: {routeAuthDebug.authSource} · athlete: {routeAuthDebug.athleteId ?? "—"} · route:{" "}
           {routeAuthDebug.route} · login redirect:{" "}
           {routeAuthDebug.wouldRedirectToLogin ? "yes" : "no"}
+          · prog seed: {routeAuthDebug.serverProgrammePublishedSeed ? "yes" : "no"}
+          · hub: {programmeHubLive ? "yes" : "no"}
           {portalAuthSource !== routeAuthDebug.authSource
             ? ` · layout: ${portalAuthSource}`
             : ""}
@@ -90,44 +99,4 @@ export function AthletePortalShell({
       {navVisible ? <AthleteAppNav variant="mobile" /> : null}
     </HyroxPageShell>
   );
-}
-
-export function AthletePortalGate({
-  children,
-  allowLinkedProgrammeAccess = false,
-}: {
-  children: React.ReactNode;
-  allowLinkedProgrammeAccess?: boolean;
-}) {
-  const {
-    programmeHubLive,
-    programmePublishedLive,
-    hasLinkedAthlete,
-    allowMockPreview,
-    serverProgrammePublishedSeed,
-    liveProgramme,
-  } = useAthletePortal();
-
-  const serverProgrammeGate =
-    allowLinkedProgrammeAccess &&
-    (serverProgrammePublishedSeed || Boolean(liveProgramme?.programmeWeeks?.length));
-
-  if (
-    programmePublishedLive ||
-    programmeHubLive ||
-    (allowLinkedProgrammeAccess && hasLinkedAthlete) ||
-    serverProgrammeGate
-  ) {
-    return <>{children}</>;
-  }
-
-  if (hasLinkedAthlete) {
-    return <ProgrammeWaitingCard />;
-  }
-
-  if (allowMockPreview) {
-    return <PreviewGateCard />;
-  }
-
-  return <ProgrammeWaitingCard />;
 }

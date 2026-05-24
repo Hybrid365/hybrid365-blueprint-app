@@ -93,6 +93,11 @@ export type AthletePortalPageAuth = {
   auth: HyroxPortalSnapshotAuthProbe;
   user: User | null;
   portalResolved: ResolvedPortalAthlete | null;
+  /** Server-loaded programme publish state (shared across all /athlete/* routes). */
+  serverProgrammePublished: boolean;
+  publishedWeekCount: number;
+  publishedSessionsCount: number;
+  serverProgramme: AthleteLiveProgrammePayload | null;
 };
 
 export type HyroxPortalSnapshot = {
@@ -288,6 +293,10 @@ export async function resolveAthletePortalPageAuth(
     auth,
     user,
     portalResolved: null,
+    serverProgrammePublished: false,
+    publishedWeekCount: 0,
+    publishedSessionsCount: 0,
+    serverProgramme: null,
   };
 
   if (!user) {
@@ -326,6 +335,15 @@ export async function resolveAthletePortalPageAuth(
     authProbe: auth,
   });
 
+  const programme = await fetchAthleteLiveProgrammeForServer(athlete, user.email);
+  const publishedWeekCount = countProgrammeWeeksGenerated(programme);
+  const publishedSessionsCount = countPublishedSessionsFromProgramme(programme);
+  const serverProgrammePublished =
+    Boolean(programme?.published) ||
+    programme?.state === "published" ||
+    publishedWeekCount > 0 ||
+    publishedSessionsCount > 0;
+
   return {
     isAuthenticated: true,
     source,
@@ -340,6 +358,10 @@ export async function resolveAthletePortalPageAuth(
     auth,
     user,
     portalResolved: portal,
+    serverProgrammePublished,
+    publishedWeekCount,
+    publishedSessionsCount,
+    serverProgramme: programme,
   };
 }
 

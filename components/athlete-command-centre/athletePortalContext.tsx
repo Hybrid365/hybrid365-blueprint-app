@@ -22,6 +22,8 @@ export type AthleteRouteAuthDebug = {
   athleteId: string | null;
   route: string;
   wouldRedirectToLogin: boolean;
+  serverProgrammePublishedSeed?: boolean;
+  publishedSessionsCount?: number;
 };
 
 export type PortalAthleteSummary = {
@@ -151,10 +153,10 @@ export function AthletePortalProvider({
   const useMockPreview =
     allowMockPreview && hydrated && programmePublishedMock && !programmePublishedLive;
 
-  /** Full hub only for real published programme, or explicit dev mock preview. */
+  /** Hub live from server seed immediately; client API must not downgrade when auth is confirmed. */
   const programmeHubLive =
-    (hydrated && (programmePublishedLive || useMockPreview)) ||
-    (serverAuthConfirmed && serverProgrammePublishedSeed);
+    (serverAuthConfirmed && serverProgrammePublishedSeed) ||
+    (hydrated && (programmePublishedLive || useMockPreview));
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development" || !hydrated) return;
@@ -277,12 +279,10 @@ export function AthletePortalSeedProvider({
     const liveProgramme = parent.liveProgramme ?? serverProgramme ?? null;
     const portalAthlete = parent.portalAthlete ?? serverPortalAthlete ?? null;
     const hasLinkedAthlete = parent.hasLinkedAthlete || Boolean(serverPortalAthlete?.id);
-    /** Never unlock live hub from server seed alone — layout must confirm real session. */
     const programmeHubLive =
-      parent.serverAuthConfirmed &&
-      (programmePublishedLive ||
-        parent.useMockPreview ||
-        (serverPublished && Boolean(portalAthlete?.id)));
+      (parent.serverAuthConfirmed && (serverPublished || parent.serverProgrammePublishedSeed)) ||
+      programmePublishedLive ||
+      parent.useMockPreview;
 
     return {
       ...parent,
