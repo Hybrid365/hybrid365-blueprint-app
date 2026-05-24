@@ -3,18 +3,30 @@ import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import { fetchHyroxAthleteById } from "@/app/lib/hyroxAthleteCoachDb";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
-import { mergeProfileIntoCoachAthlete } from "@/app/lib/hyroxAssessmentMapping";
-import { buildCoachAthleteStubFromLiveRow } from "@/app/lib/hyroxLiveCoachAthlete";
-import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import {
-  fetchLatestMappedProfile,
   fetchProgrammeDraftById,
   logCoachDraftRoute,
   publishProgrammeBlock,
   publishProgrammeDraft,
+  StaleDraftPublishError,
 } from "@/app/lib/hyroxProgrammeServer";
 
 type RouteContext = { params: Promise<{ draftId: string }> };
+
+function parseExpectedSessionCountsByWeek(
+  raw: unknown
+): Partial<Record<number, number>> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Partial<Record<number, number>> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const week = Number(key);
+    const count = typeof value === "number" ? value : Number(value);
+    if (Number.isFinite(week) && week >= 1 && Number.isFinite(count) && count > 0) {
+      out[week] = count;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 export async function POST(request: Request, context: RouteContext) {
   const auth = await requireHyroxCoachApi();
@@ -26,8 +38,13 @@ export async function POST(request: Request, context: RouteContext) {
     /** When true (default), publish all four weeks in the athlete's current block. */
     publish_block?: boolean;
     programme_start_date?: string;
+    /** Global week number → session count shown in admin UI (validates DB draft before write). */
+    expected_session_counts_by_week?: Record<string, number>;
+    /** Single-week publish: expected session count for the draft being published. */
+    expected_session_count?: number;
   };
   const publishBlock = body.publish_block !== false;
+  const expectedByWeek = parseExpectedSessionCountsByWeek(body.expected_session_counts_by_week);
 
   const { client: supabase, mode } = await createCoachServerClient();
   const { draft, error: draftError } = await fetchProgrammeDraftById(supabase, draftId);
@@ -93,22 +110,16 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     if (publishBlock) {
-      const flags = await fetchAthleteProgressFlags(supabase, draft.athlete_id);
-      const stub = buildCoachAthleteStubFromLiveRow(athlete as HyroxAthleteRow, flags);
-      const mappedProfile = await fetchLatestMappedProfile(supabase, draft.athlete_id);
-      const effective = mappedProfile?.effective_profile as
-        | import("@/app/lib/hyroxAthleteProfileTypes").HyroxAthleteProfile
-        | undefined;
-      const coachAthlete = effective
-        ? mergeProfileIntoCoachAthlete(stub, effective)
-        : stub;
+      const athleteRow = athlete as HyroxAthleteRow;
+      const blockNumber = athleteRow.current_block ?? draft.block_number ?? 1;
 
       const blockResult = await publishProgrammeBlock(supabase, {
-        coachAthlete,
-        athleteRow: athlete as HyroxAthleteRow,
-        mappedProfileId: mappedProfile?.id ?? null,
+        athleteRow,
+        blockNumber,
         programmeStartDate,
         changedBy: auth.ctx.userId,
+        expectedSessionCountsByWeek: expectedByWeek,
+        seedDraftId: draftId,
       });
 
       return NextResponse.json({
@@ -117,14 +128,20 @@ export async function POST(request: Request, context: RouteContext) {
         sessionCount: blockResult.sessionCount,
         generatedWeekNumbers: blockResult.generatedWeekNumbers,
         syncedWeekNumbers: blockResult.syncedWeekNumbers,
+        weekResults: blockResult.weekResults,
         publishBlock: true,
-        message: `Published ${blockResult.weeks.length} week(s) in block ${coachAthlete.programmeBlock} to athlete dashboard.${
+        message: `Published ${blockResult.weeks.length} week(s) in block ${blockNumber} from approved drafts (no regeneration).${
           blockResult.syncedWeekNumbers.length > 0
-            ? ` Synced missing sessions for week(s): ${blockResult.syncedWeekNumbers.join(", ")}.`
+            ? ` Synced week(s): ${blockResult.syncedWeekNumbers.join(", ")}.`
             : ""
         }`,
       });
     }
+
+    const expectedSingle =
+      body.expected_session_count ??
+      expectedByWeek?.[draft.week_number] ??
+      undefined;
 
     const result = await publishProgrammeDraft(supabase, {
       draft,
@@ -132,16 +149,40 @@ export async function POST(request: Request, context: RouteContext) {
       weeklyFocus: body.weekly_focus ?? "",
       programmeStartDate,
       changedBy: auth.ctx.userId,
+      expectedSessionCount: expectedSingle,
     });
 
     return NextResponse.json({
       success: true,
       week: result.week,
       sessionCount: result.sessionCount,
+      weekResults: [
+        {
+          ...result.audit,
+          sessionsToInsertCount: result.sessionCount,
+          sessionsToInsertTitles: result.audit.approvedDraftSessionTitles,
+          existingRowsBefore: 0,
+          insertedRowsCount: result.sessionCount,
+          skippedRowsCount: 0,
+          skippedReasons: [],
+          rowsAfterPublish: result.sessionCount,
+        },
+      ],
       publishBlock: false,
-      message: "Programme published to athlete dashboard.",
+      message: `Published ${result.sessionCount} session(s) from approved draft ${draft.id.slice(0, 8)}…`,
     });
   } catch (e) {
+    if (e instanceof StaleDraftPublishError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: e.message,
+          code: e.code,
+          audit: e.audit,
+        },
+        { status: 409 }
+      );
+    }
     const message = e instanceof Error ? e.message : "Publish failed.";
     return NextResponse.json(
       {

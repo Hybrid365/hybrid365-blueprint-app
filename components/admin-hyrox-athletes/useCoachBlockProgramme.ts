@@ -644,34 +644,65 @@ export function useCoachBlockProgramme(params: {
 
     setSaving(true);
     try {
+      const expected_session_counts_by_week = publishBlock
+        ? Object.fromEntries(
+            effectiveBlockWeeks
+              .filter((w) => w.generated)
+              .map((w) => [String(w.globalWeek), w.sessionCount])
+          )
+        : undefined;
+      const expected_session_count = publishBlock
+        ? undefined
+        : (effectiveBlockWeeks.find((w) => w.cycle === selectedCycle)?.sessionCount ??
+          draft.days.reduce((n, d) => n + d.sessions.length, 0));
+
       const res = await fetch(`/api/hyrox/programme-drafts/${activeDraftId}/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           publish_block: publishBlock,
           programme_start_date: programmeStartDate,
+          expected_session_counts_by_week,
+          expected_session_count,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         const detail =
-          process.env.NODE_ENV === "development" && data.detail
-            ? `${data.error}: ${data.detail}`
-            : (data.error ?? "Publish failed.");
+          data.code === "STALE_DRAFT_SESSION_COUNT"
+            ? data.error
+            : process.env.NODE_ENV === "development" && data.detail
+              ? `${data.error}: ${data.detail}`
+              : (data.error ?? "Publish failed.");
         showToast(detail);
         return;
       }
       setStatus("published");
       onStatusChange("published");
+      const weekLines = Array.isArray(data.weekResults)
+        ? data.weekResults.map(
+            (w: {
+              weekNumber: number;
+              existingRowsBefore: number;
+              insertedRowsCount: number;
+              rowsAfterPublish: number;
+              approvedDraftSessionCount: number;
+            }) =>
+              `W${w.weekNumber}: ${w.existingRowsBefore}→+${w.insertedRowsCount}→${w.rowsAfterPublish} (draft ${w.approvedDraftSessionCount})`
+          )
+        : [];
       if (data.publishBlock) {
         showToast(
-          `Block published: ${data.weeks?.length ?? 4} week(s), ${data.sessionCount ?? 0} sessions — visible to athlete.`
+          weekLines.length > 0
+            ? `Block published. ${weekLines.join(" · ")}`
+            : `Block published: ${data.weeks?.length ?? 4} week(s), ${data.sessionCount ?? 0} sessions.`
         );
       } else {
         showToast(
-          data.sessionCount != null
-            ? `Published ${data.sessionCount} session(s) to athlete dashboard.`
-            : "Week published to athlete."
+          weekLines[0] ??
+            (data.sessionCount != null
+              ? `Published ${data.sessionCount} session(s) to athlete dashboard.`
+              : "Week published to athlete.")
         );
       }
       const weeks = await loadBlockMeta();
@@ -684,6 +715,7 @@ export function useCoachBlockProgramme(params: {
   }, [
     activeDraftId,
     applyWeekFromMeta,
+    draft,
     effectiveBlockWeeks,
     generationScope,
     isLive,
