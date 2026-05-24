@@ -28,6 +28,12 @@ import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { useAthletePortal } from "./athletePortalContext";
 import { resolveDefaultProgrammeWeekNumber } from "@/app/lib/hyroxAthleteProgrammeCalendar";
+import {
+  deriveWeekCalendarStatusForAthleteWeek,
+  resolveAthleteWeekDateRange,
+  startOfLocalDay,
+  toYmd,
+} from "@/app/lib/hyroxProgrammeDates";
 import type { AthleteWeekCalendarStatus } from "@/app/lib/hyroxAthleteProgrammeTypes";
 import type { AthleteLiveProgrammePayload } from "./useAthleteLiveProgramme";
 
@@ -78,26 +84,94 @@ function ProgrammePageClientDebug({
   effectivePublished,
   programmeSource,
   invalidSessionCleared,
+  programmeStartDate,
+  selectedWeek,
+  selectedBundle,
+  sessionsRendered,
 }: {
   selectedSessionId: string | null;
   effectiveProgramme: AthleteLiveProgrammePayload | null | undefined;
   effectivePublished: boolean;
   programmeSource: "server" | "client" | "none";
   invalidSessionCleared: boolean;
+  programmeStartDate: string | null;
+  selectedWeek: number;
+  selectedBundle: AthleteLiveProgrammePayload["programmeWeeks"][number] | null | undefined;
+  sessionsRendered: number;
 }) {
   if (process.env.NODE_ENV !== "development") return null;
 
   const weekCount = effectiveProgramme?.programmeWeeks?.length ?? 0;
   const sessionCount = countProgrammeSessions(effectiveProgramme);
+  const todayYmd = toYmd(startOfLocalDay(new Date()));
+
+  const dbStart =
+    selectedBundle?.week?.week_start_date ?? selectedBundle?.weekStartDate ?? null;
+  const dbEnd = selectedBundle?.week?.week_end_date ?? selectedBundle?.weekEndDate ?? null;
+  const resolved =
+    programmeStartDate && selectedBundle
+      ? resolveAthleteWeekDateRange({
+          programmeStartYmd: programmeStartDate,
+          weekNumber: selectedBundle.weekNumber,
+          dbWeekStartYmd: dbStart,
+          dbWeekEndYmd: dbEnd,
+        })
+      : null;
+  const computedStatus =
+    programmeStartDate && selectedBundle
+      ? deriveWeekCalendarStatusForAthleteWeek({
+          programmeStartYmd: programmeStartDate,
+          weekNumber: selectedBundle.weekNumber,
+          dbWeekStartYmd: dbStart,
+          dbWeekEndYmd: dbEnd,
+        })
+      : selectedBundle?.calendarStatus ?? "—";
+  const sessionsTotalForWeek = selectedBundle?.sessions?.length ?? 0;
+
+  const weekRows =
+    effectiveProgramme?.programmeWeeks?.map((b) => {
+      const rawStart = b.week?.week_start_date ?? b.weekStartDate;
+      const rawEnd = b.week?.week_end_date ?? b.weekEndDate;
+      const r = programmeStartDate
+        ? resolveAthleteWeekDateRange({
+            programmeStartYmd: programmeStartDate,
+            weekNumber: b.weekNumber,
+            dbWeekStartYmd: rawStart,
+            dbWeekEndYmd: rawEnd,
+          })
+        : null;
+      return `W${b.weekNumber}: ${b.sessions?.length ?? 0} sess · db ${rawStart ?? "—"}→${rawEnd ?? "—"} · resolved ${r?.startYmd ?? "—"}→${r?.endYmd ?? "—"} (${r?.source ?? "—"})`;
+    }) ?? [];
 
   return (
     <div className="mb-4 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3 py-2 text-[11px] text-zinc-400">
-      <p className="font-semibold text-zinc-300">Dev — programme page client</p>
+      <p className="font-semibold text-zinc-300">Dev — programme week dates / sessions</p>
       <p>route: /athlete/programme · selectedSessionId: {selectedSessionId ?? "—"}</p>
       <p>
-        programmeWeeks: {weekCount} · sessions: {sessionCount} · published:{" "}
+        programmeWeeks: {weekCount} · sessions total: {sessionCount} · published:{" "}
         {effectivePublished ? "yes" : "no"} · source: {programmeSource}
       </p>
+      <p>programme_start_date: {programmeStartDate ?? "—"} · today: {todayYmd}</p>
+      <p>
+        selectedWeek: {selectedWeek} · weekStart: {resolved?.startYmd ?? "—"} · weekEnd:{" "}
+        {resolved?.endYmd ?? "—"} · dateSource: {resolved?.source ?? "—"} · computedStatus:{" "}
+        {computedStatus}
+      </p>
+      <p>
+        sessionsTotalForWeek: {sessionsTotalForWeek} · sessionsRenderedForWeek:{" "}
+        {sessionsRendered}
+        {sessionsTotalForWeek !== sessionsRendered
+          ? " · mismatch (UI should show all bundle sessions)"
+          : ""}
+      </p>
+      <p>hiddenSessionIds: none (no date/type filter on programme page)</p>
+      {weekRows.length > 0 ? (
+        <ul className="mt-1 list-inside list-disc space-y-0.5">
+          {weekRows.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
       {invalidSessionCleared ? (
         <p className="text-amber-300">Cleared invalid selected session id.</p>
       ) : null}
@@ -164,11 +238,37 @@ export function ProgrammePageView({
         : null;
       const generated = Boolean(bundle?.generated && bundle.sessions.length > 0);
       const subtitle = bundle?.weekRole ?? BLOCK_WEEK_FOCUS_LABELS[cycle];
-      const dateRangeLabel = bundle?.dateRangeLabel ?? null;
+      const dbStart = bundle?.week?.week_start_date ?? bundle?.weekStartDate ?? null;
+      const dbEnd = bundle?.week?.week_end_date ?? bundle?.weekEndDate ?? null;
+      const resolved =
+        useLive && programmeStartDate
+          ? resolveAthleteWeekDateRange({
+              programmeStartYmd: programmeStartDate,
+              weekNumber: globalWeek,
+              dbWeekStartYmd: dbStart,
+              dbWeekEndYmd: dbEnd,
+            })
+          : null;
+      const dateRangeLabel = resolved?.dateRangeLabel ?? bundle?.dateRangeLabel ?? null;
 
       let mode: WeekTabMode = "not_generated";
-      if (useLive && bundle?.calendarStatus) {
-        mode = calendarStatusToTabMode(bundle.calendarStatus);
+      if (useLive && bundle) {
+        if (
+          bundle.calendarStatus === "locked" ||
+          bundle.calendarStatus === "not_generated"
+        ) {
+          mode = calendarStatusToTabMode(bundle.calendarStatus);
+        } else if (programmeStartDate) {
+          const status = deriveWeekCalendarStatusForAthleteWeek({
+            programmeStartYmd: programmeStartDate,
+            weekNumber: globalWeek,
+            dbWeekStartYmd: dbStart,
+            dbWeekEndYmd: dbEnd,
+          });
+          mode = calendarStatusToTabMode(status);
+        } else if (bundle.calendarStatus) {
+          mode = calendarStatusToTabMode(bundle.calendarStatus);
+        }
       } else if (generated && useMock) {
         if (globalWeek === MOCK_ATHLETE.currentWeek) mode = "active";
         else if (globalWeek < MOCK_ATHLETE.currentWeek) mode = "past";
@@ -186,7 +286,7 @@ export function ProgrammePageView({
         generated,
       };
     });
-  }, [block.weeks, useLive, useMock, effectiveProgramme?.programmeWeeks]);
+  }, [block.weeks, useLive, useMock, effectiveProgramme?.programmeWeeks, programmeStartDate]);
 
   const defaultTab = useLive
     ? resolveDefaultProgrammeWeekNumber(
@@ -330,6 +430,10 @@ export function ProgrammePageView({
         effectivePublished={effectivePublished}
         programmeSource={programmeSource}
         invalidSessionCleared={invalidSessionCleared}
+        programmeStartDate={programmeStartDate}
+        selectedWeek={selectedWeek}
+        selectedBundle={selectedBundle}
+        sessionsRendered={sessions.length}
       />
 
       {serverLoadVariant !== "ready" && process.env.NODE_ENV === "development" ? (

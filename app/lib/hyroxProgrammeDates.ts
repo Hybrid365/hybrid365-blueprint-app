@@ -120,6 +120,87 @@ export function weekDateRangeFromProgrammeStart(
   return { start, end, startYmd: toYmd(start), endYmd: toYmd(end) };
 }
 
+const MS_PER_DAY = 86400000;
+
+/** True when start/end look like a Mon–Sun training week (not swapped or truncated DB values). */
+export function isValidWeekDateRangeYmd(startYmd: string, endYmd: string): boolean {
+  try {
+    const start = startOfLocalDay(parseYmd(startYmd));
+    const end = startOfLocalDay(parseYmd(endYmd));
+    if (end < start) return false;
+    const spanDays = Math.round((end.getTime() - start.getTime()) / MS_PER_DAY);
+    return spanDays >= 5 && spanDays <= 7;
+  } catch {
+    return false;
+  }
+}
+
+export type ResolvedAthleteWeekDates = {
+  startYmd: string;
+  endYmd: string;
+  dateRangeLabel: string;
+  source: "db" | "programme_start";
+};
+
+/**
+ * Prefer valid DB week_start/end; otherwise derive from programme_start_date + global week (Mon +6d).
+ * Fixes bad DB rows (e.g. week 2 end before start → "29 May – 15 May" and false PAST status).
+ */
+export function resolveAthleteWeekDateRange(input: {
+  programmeStartYmd: string | null;
+  weekNumber: number;
+  dbWeekStartYmd?: string | null;
+  dbWeekEndYmd?: string | null;
+}): ResolvedAthleteWeekDates | null {
+  const computed = input.programmeStartYmd?.trim()
+    ? weekDateRangeFromProgrammeStart(input.programmeStartYmd.trim(), input.weekNumber)
+    : null;
+
+  const dbStart = input.dbWeekStartYmd?.trim() || null;
+  const dbEnd = input.dbWeekEndYmd?.trim() || null;
+
+  if (dbStart && dbEnd && isValidWeekDateRangeYmd(dbStart, dbEnd)) {
+    return {
+      startYmd: dbStart,
+      endYmd: dbEnd,
+      dateRangeLabel: formatWeekDateRangeFromYmd(dbStart, dbEnd),
+      source: "db",
+    };
+  }
+
+  if (computed) {
+    return {
+      startYmd: computed.startYmd,
+      endYmd: computed.endYmd,
+      dateRangeLabel: formatWeekDateRangeFromYmd(computed.startYmd, computed.endYmd),
+      source: "programme_start",
+    };
+  }
+
+  if (dbStart && dbEnd) {
+    return {
+      startYmd: dbStart,
+      endYmd: dbEnd,
+      dateRangeLabel: formatWeekDateRangeFromYmd(dbStart, dbEnd),
+      source: "db",
+    };
+  }
+
+  return null;
+}
+
+export function deriveWeekCalendarStatusForAthleteWeek(input: {
+  programmeStartYmd: string | null;
+  weekNumber: number;
+  dbWeekStartYmd?: string | null;
+  dbWeekEndYmd?: string | null;
+  today?: Date;
+}): ProgrammeWeekCalendarStatus {
+  const resolved = resolveAthleteWeekDateRange(input);
+  if (!resolved) return "upcoming";
+  return deriveWeekCalendarStatus(resolved.startYmd, resolved.endYmd, input.today);
+}
+
 export function formatWeekDateRangeShort(start: Date, end: Date): string {
   const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
   const a = start.toLocaleDateString("en-GB", opts);

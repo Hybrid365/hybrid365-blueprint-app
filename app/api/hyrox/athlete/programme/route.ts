@@ -2,11 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
 import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
-import { formatWeekDateRangeFromYmd, getBlockWeekRole } from "@/app/lib/hyroxProgrammeDates";
+import { getBlockWeekRole } from "@/app/lib/hyroxProgrammeDates";
 import {
   fetchAthletePublishedProgramme,
   mapPublishedSessionsToAthleteUi,
   resolveAthleteProgrammeApiState,
+  resolvePublishedWeekDates,
 } from "@/app/lib/hyroxProgrammeServer";
 
 export async function GET(request: NextRequest) {
@@ -34,18 +35,16 @@ export async function GET(request: NextRequest) {
       const weekRole =
         bundle.week?.weekly_focus ??
         getBlockWeekRole(blockNum, cycle, programme.programmeLengthWeeks);
-      const dateRangeLabel =
-        bundle.weekStartDate && bundle.weekEndDate
-          ? formatWeekDateRangeFromYmd(bundle.weekStartDate, bundle.weekEndDate)
-          : null;
+      const resolvedDates = resolvePublishedWeekDates(bundle, programme.programmeStartDate);
+      const dateRangeLabel = resolvedDates?.dateRangeLabel ?? null;
 
       return {
         weekNumber: bundle.weekNumber,
         blockWeekInCycle: cycle,
         generated: bundle.generated,
         calendarStatus: bundle.calendarStatus,
-        weekStartDate: bundle.weekStartDate,
-        weekEndDate: bundle.weekEndDate,
+        weekStartDate: resolvedDates?.startYmd ?? bundle.weekStartDate,
+        weekEndDate: resolvedDates?.endYmd ?? bundle.weekEndDate,
         dateRangeLabel,
         week: bundle.week
           ? {

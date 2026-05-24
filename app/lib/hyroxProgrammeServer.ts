@@ -34,8 +34,9 @@ import { parseHyroxAthleteSessionFeedback } from "@/app/lib/hyroxAthleteSessionF
 import type { HyroxSession, SessionStatus } from "@/app/lib/hyroxTeamDashboardMock";
 import {
   deriveLiveGlobalWeek,
-  deriveWeekCalendarStatus,
+  deriveWeekCalendarStatusForAthleteWeek,
   getBlockWeekRole,
+  resolveAthleteWeekDateRange,
   weekDateRangeFromProgrammeStart,
   type ProgrammeLengthWeeks,
   type ProgrammeWeekCalendarStatus,
@@ -109,17 +110,25 @@ export function resolvePublishedWeekCalendarStatus(
   programmeStartDate: string | null
 ): PublishedProgrammeWeekBundle["calendarStatus"] {
   if (!bundle.generated) return "not_generated";
-  if (bundle.weekStartDate && bundle.weekEndDate) {
-    return deriveWeekCalendarStatus(bundle.weekStartDate, bundle.weekEndDate);
-  }
-  if (programmeStartDate) {
-    const { startYmd, endYmd } = weekDateRangeFromProgrammeStart(
-      programmeStartDate,
-      bundle.weekNumber
-    );
-    return deriveWeekCalendarStatus(startYmd, endYmd);
-  }
-  return "upcoming";
+  return deriveWeekCalendarStatusForAthleteWeek({
+    programmeStartYmd: programmeStartDate,
+    weekNumber: bundle.weekNumber,
+    dbWeekStartYmd: bundle.weekStartDate,
+    dbWeekEndYmd: bundle.weekEndDate,
+  });
+}
+
+/** Normalized week dates + label for athlete UI (DB when valid, else programme_start_date). */
+export function resolvePublishedWeekDates(
+  bundle: Pick<PublishedProgrammeWeekBundle, "weekStartDate" | "weekEndDate" | "weekNumber">,
+  programmeStartDate: string | null
+) {
+  return resolveAthleteWeekDateRange({
+    programmeStartYmd: programmeStartDate,
+    weekNumber: bundle.weekNumber,
+    dbWeekStartYmd: bundle.weekStartDate,
+    dbWeekEndYmd: bundle.weekEndDate,
+  });
 }
 
 /** One active mapped profile per athlete — update latest row (simplest safe model). */
@@ -634,8 +643,16 @@ export async function fetchAthletePublishedProgramme(
       ? allSessions.filter((s) => s.programme_week_id === week.id)
       : [];
     const generated = Boolean(week && sessionsForWeek.length > 0);
-    const weekStartDate = week?.week_start_date ?? null;
-    const weekEndDate = week?.week_end_date ?? null;
+    const dbWeekStart = week?.week_start_date ?? null;
+    const dbWeekEnd = week?.week_end_date ?? null;
+    const resolvedDates = resolveAthleteWeekDateRange({
+      programmeStartYmd: programmeStartDate,
+      weekNumber: globalWeek,
+      dbWeekStartYmd: dbWeekStart,
+      dbWeekEndYmd: dbWeekEnd,
+    });
+    const weekStartDate = resolvedDates?.startYmd ?? dbWeekStart;
+    const weekEndDate = resolvedDates?.endYmd ?? dbWeekEnd;
     const base = {
       week,
       sessions: sessionsForWeek,

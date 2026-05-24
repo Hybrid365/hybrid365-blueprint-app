@@ -19,6 +19,8 @@ export type AthleteProgrammeWeekBundle = {
     id: string;
     block_number: number;
     week_number: number;
+    week_start_date?: string | null;
+    week_end_date?: string | null;
     weekly_focus: string | null;
     coach_note: string | null;
     athlete_facing_note: string | null;
