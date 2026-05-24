@@ -297,6 +297,53 @@ export function HyroxAthleteDiagnosticView({
                     value={p.programmeStartDate ?? "—"}
                   />
                   <KeyValue label="live global week" value={p.liveGlobalWeek ?? "—"} />
+                  {p.generatorTrainingDaysNote ? (
+                    <p className="mt-2 text-xs text-amber-200/90">{p.generatorTrainingDaysNote}</p>
+                  ) : null}
+                  {p.weekSessionBreakdown.length > 0 ? (
+                    <div className="mt-4 space-y-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                        Week session breakdown (DB vs draft)
+                      </p>
+                      {p.weekSessionBreakdown.map((week) => (
+                        <div
+                          key={week.weekNumber}
+                          className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 p-3"
+                        >
+                          <p className="text-sm font-semibold text-white">
+                            Week {week.weekNumber}
+                            {week.programmeWeekId ? (
+                              <span className="ml-2 font-mono text-[10px] font-normal text-zinc-500">
+                                {week.programmeWeekId.slice(0, 8)}…
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="mt-1 font-mono text-[11px] text-zinc-400">
+                            DB: {week.dbSessionCount} · draft: {week.draftSessionCount ?? "—"} ·
+                            key {week.draftKeyCount ?? "—"} · optional {week.draftOptionalCount ?? "—"}{" "}
+                            · Main/AM/PM {week.draftMainCount ?? "—"}/{week.draftAmCount ?? "—"}/
+                            {week.draftPmCount ?? "—"}
+                          </p>
+                          {week.mismatchNote ? (
+                            <p className="mt-1 text-[11px] text-amber-300/90">{week.mismatchNote}</p>
+                          ) : null}
+                          {week.sessions.length > 0 ? (
+                            <ul className="mt-2 space-y-1 font-mono text-[10px] text-zinc-500">
+                              {week.sessions.map((s) => (
+                                <li key={s.id}>
+                                  {s.day} {s.slot} · {s.title} · {s.category}
+                                  {s.isKey ? " · key" : ""}
+                                  {s.isOptional ? " · optional" : ""} · {s.id.slice(0, 8)}…
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="mt-2 text-[10px] text-zinc-600">No published sessions in DB.</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   <KeyValue
                     label="calendar live week"
                     value={p.calendarLiveWeekNumber ?? "—"}

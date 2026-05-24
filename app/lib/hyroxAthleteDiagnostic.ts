@@ -11,8 +11,11 @@ import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
 import { fetchLatestHyroxAssessment } from "@/app/lib/hyroxAthleteAssessmentDb";
 import { fetchHyroxAthleteTestingRows } from "@/app/lib/hyroxAthleteTestingDb";
+import { countCoachDraftSessions } from "@/app/lib/hyroxCoachProgrammeDraft";
 import {
   fetchAthletePublishedProgramme,
+  fetchDraftForAthleteWeek,
+  parseCoachDraftWeek,
   resolveAthleteProgrammeApiState,
 } from "@/app/lib/hyroxProgrammeServer";
 import { deriveLiveGlobalWeek } from "@/app/lib/hyroxProgrammeDates";
@@ -84,6 +87,30 @@ export type HyroxPortalResolverDiagnostic = {
   autoLinked: boolean;
 };
 
+export type HyroxProgrammeWeekSessionRow = {
+  id: string;
+  title: string;
+  day: string;
+  slot: string;
+  category: string;
+  isKey: boolean;
+  isOptional: boolean;
+};
+
+export type HyroxProgrammeWeekSessionDiagnostic = {
+  weekNumber: number;
+  programmeWeekId: string | null;
+  dbSessionCount: number;
+  draftSessionCount: number | null;
+  draftKeyCount: number | null;
+  draftOptionalCount: number | null;
+  draftMainCount: number | null;
+  draftAmCount: number | null;
+  draftPmCount: number | null;
+  mismatchNote: string | null;
+  sessions: HyroxProgrammeWeekSessionRow[];
+};
+
 export type HyroxProgrammeDiagnostic = {
   athleteId: string;
   publishedWeekCount: number;
@@ -101,6 +128,8 @@ export type HyroxProgrammeDiagnostic = {
   programmeVisibility: string;
   programmeShouldBeLive: boolean;
   calendarLiveWeekNumber: number | null;
+  weekSessionBreakdown: HyroxProgrammeWeekSessionDiagnostic[];
+  generatorTrainingDaysNote: string | null;
 };
 
 export type HyroxApiProbeDiagnostic = {
@@ -288,6 +317,66 @@ async function buildProgrammeDiagnostic(
     ? deriveLiveGlobalWeek(programmeStartDate)
     : null;
 
+  const blockNumber = athlete.current_block ?? 1;
+  const weekSessionBreakdown: HyroxProgrammeWeekSessionDiagnostic[] = [];
+
+  for (const weekNumber of [1, 2, 3, 4] as const) {
+    const bundle = programme.weeks.find((w) => w.weekNumber === weekNumber);
+    const dbSessions = bundle?.sessions ?? [];
+    const draftRow = await fetchDraftForAthleteWeek(
+      supabase,
+      athlete.id,
+      blockNumber,
+      weekNumber
+    );
+    const draftWeek = draftRow ? parseCoachDraftWeek(draftRow.draft_data) : null;
+    const draftCounts = draftWeek ? countCoachDraftSessions(draftWeek) : null;
+
+    let mismatchNote: string | null = null;
+    if (draftCounts && dbSessions.length < draftCounts.total) {
+      mismatchNote = `DB has ${dbSessions.length} rows; latest draft has ${draftCounts.total} — republish block to sync missing sessions.`;
+    } else if (draftCounts && dbSessions.length === 4 && draftCounts.total > 4) {
+      mismatchNote =
+        "Likely published with 4 training days (generator emits 4 sessions/week). Mapped profile may now request more — republish block.";
+    }
+
+    weekSessionBreakdown.push({
+      weekNumber,
+      programmeWeekId: bundle?.week?.id ?? null,
+      dbSessionCount: dbSessions.length,
+      draftSessionCount: draftCounts?.total ?? null,
+      draftKeyCount: draftCounts?.key ?? null,
+      draftOptionalCount: draftCounts?.optional ?? null,
+      draftMainCount: draftCounts?.main ?? null,
+      draftAmCount: draftCounts?.am ?? null,
+      draftPmCount: draftCounts?.pm ?? null,
+      mismatchNote,
+      sessions: dbSessions.map((s) => {
+        const meta = (s.metadata ?? {}) as Record<string, unknown>;
+        return {
+          id: s.id,
+          title: s.session_name,
+          day: s.day_of_week,
+          slot: s.session_slot,
+          category: s.category,
+          isKey: Boolean(meta.isKeySession),
+          isOptional: Boolean(meta.isOptional),
+        };
+      }),
+    });
+  }
+
+  const w1Count = weekSessionBreakdown.find((w) => w.weekNumber === 1)?.dbSessionCount ?? 0;
+  const w2Count = weekSessionBreakdown.find((w) => w.weekNumber === 2)?.dbSessionCount ?? 0;
+  let generatorTrainingDaysNote: string | null = null;
+  if (w2Count === 4 && w1Count > 4) {
+    generatorTrainingDaysNote =
+      "W2–W4 have 4 DB sessions each (typical of 4-day generator output); W1 has more — weeks may have been published at different training-day settings or W1 was synced separately.";
+  } else if (weekSessionBreakdown.every((w) => w.dbSessionCount === 4)) {
+    generatorTrainingDaysNote =
+      "All weeks have 4 DB sessions — matches generator output for athletes with 4 training days per week (not a UI filter).";
+  }
+
   return {
     athleteId: athlete.id,
     publishedWeekCount: generatedWeeks.length,
@@ -306,6 +395,8 @@ async function buildProgrammeDiagnostic(
     programmeShouldBeLive:
       state === "published" && generatedWeeks.some((w) => w.calendarStatus === "live"),
     calendarLiveWeekNumber: liveWeek?.weekNumber ?? liveGlobalWeek,
+    weekSessionBreakdown,
+    generatorTrainingDaysNote,
   };
 }
 
@@ -590,6 +681,18 @@ function buildDiagnosis(report: Omit<HyroxAthleteDiagnosticReport, "diagnosis">)
   if (resolvedId && resolvedProgramme && resolvedProgramme.publishedWeekCount === 0) {
     headlines.push("No published programme weeks for the resolved athlete id.");
     recommendedActions.push("Publish the 4-week block to the resolved athlete in coach admin.");
+  }
+
+  if (resolvedId && resolvedProgramme?.generatorTrainingDaysNote) {
+    headlines.push(resolvedProgramme.generatorTrainingDaysNote);
+    recommendedActions.push(
+      "Coach admin: Publish 4-week block again (syncs missing sessions into existing weeks from current mapped profile)."
+    );
+  }
+
+  const w2Diag = resolvedProgramme?.weekSessionBreakdown.find((w) => w.weekNumber === 2);
+  if (w2Diag?.mismatchNote) {
+    headlines.push(`Week 2 sessions: ${w2Diag.mismatchNote}`);
   }
 
   if (

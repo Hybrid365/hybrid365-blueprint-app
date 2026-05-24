@@ -722,6 +722,133 @@ export async function fetchAthletePublishedProgramme(
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function sessionRowKey(dayOfWeek: string, sessionSlot: string): string {
+  return `${dayOfWeek}|${sessionSlot}`;
+}
+
+export function buildSessionInsertRowsFromDraftWeek(
+  draftWeek: CoachDraftWeek,
+  params: { programmeWeekId: string; athleteId: string }
+) {
+  return draftWeek.days.flatMap((day) =>
+    day.sessions.map((sess) => ({
+      programme_week_id: params.programmeWeekId,
+      athlete_id: params.athleteId,
+      day_of_week: day.day,
+      session_slot: sess.timeOfDay,
+      session_name: sess.title,
+      category: sess.sessionType ?? "general",
+      prescription: {
+        ...(sess.prescription ?? {}),
+        editConfig: sess.editConfig,
+        rpeTarget: sess.rpeHr ?? sess.prescription?.rpeTarget,
+      } as unknown as HyroxJson,
+      metadata: {
+        duration: sess.duration,
+        intensity: sess.intensity,
+        focus: day.stationFocus ?? sess.title,
+        intent: sess.rationale,
+        isKeySession: sess.isKeySession,
+        isOptional: sess.isOptional,
+        draftId: sess.draftId,
+        coachLibraryId: sess.coachLibraryId,
+      } as unknown as HyroxJson,
+      status: "scheduled" as const,
+    }))
+  );
+}
+
+/** Insert draft sessions missing from a published week (day + slot). Does not delete existing rows. */
+export async function syncPublishedWeekSessionsFromDraft(
+  supabase: SupabaseClient,
+  params: {
+    week: HyroxProgrammeWeekRow;
+    draftWeek: CoachDraftWeek;
+    athleteId: string;
+    programmeStartDate: string;
+    sourceDraftId?: string | null;
+  }
+): Promise<{
+  draftSessionCount: number;
+  dbSessionCountBefore: number;
+  insertedCount: number;
+  dbSessionCountAfter: number;
+}> {
+  const { data: existingRows, error: fetchError } = await supabase
+    .from("hyrox_programme_sessions")
+    .select("id, day_of_week, session_slot")
+    .eq("programme_week_id", params.week.id);
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const existing = (existingRows ?? []) as Pick<
+    HyroxProgrammeSessionRow,
+    "id" | "day_of_week" | "session_slot"
+  >[];
+  const existingKeys = new Set(
+    existing.map((r) => sessionRowKey(r.day_of_week, r.session_slot))
+  );
+
+  const allRows = buildSessionInsertRowsFromDraftWeek(params.draftWeek, {
+    programmeWeekId: params.week.id,
+    athleteId: params.athleteId,
+  });
+  const toInsert = allRows.filter(
+    (row) => !existingKeys.has(sessionRowKey(row.day_of_week, row.session_slot))
+  );
+
+  if (toInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from("hyrox_programme_sessions")
+      .insert(toInsert);
+    if (insertError) throw new Error(insertError.message);
+  }
+
+  const { startYmd, endYmd } = weekDateRangeFromProgrammeStart(
+    params.programmeStartDate,
+    params.week.week_number
+  );
+
+  await supabase
+    .from("hyrox_programme_weeks")
+    .update({
+      week_start_date: startYmd,
+      week_end_date: endYmd,
+      source_draft_id: params.sourceDraftId ?? params.week.source_draft_id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", params.week.id);
+
+  const draftSessionCount = allRows.length;
+  const dbSessionCountBefore = existing.length;
+
+  return {
+    draftSessionCount,
+    dbSessionCountBefore,
+    insertedCount: toInsert.length,
+    dbSessionCountAfter: dbSessionCountBefore + toInsert.length,
+  };
+}
+
+export async function fetchDraftForAthleteWeek(
+  supabase: SupabaseClient,
+  athleteId: string,
+  blockNumber: number,
+  weekNumber: number
+): Promise<HyroxProgrammeDraftRow | null> {
+  const { data } = await supabase
+    .from("hyrox_programme_drafts")
+    .select(DRAFT_SELECT)
+    .eq("athlete_id", athleteId)
+    .eq("block_number", blockNumber)
+    .eq("week_number", weekNumber)
+    .neq("status", "archived")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as HyroxProgrammeDraftRow | null) ?? null;
+}
+
 export async function publishProgrammeDraft(
   supabase: SupabaseClient,
   params: {
@@ -767,32 +894,10 @@ export async function publishProgrammeDraft(
 
   if (weekError) throw new Error(weekError.message);
 
-  const sessionRows = draftWeek.days.flatMap((day) =>
-    day.sessions.map((sess) => ({
-      programme_week_id: (week as HyroxProgrammeWeekRow).id,
-      athlete_id: params.athleteRow.id,
-      day_of_week: day.day,
-      session_slot: sess.timeOfDay,
-      session_name: sess.title,
-      category: sess.sessionType ?? "general",
-      prescription: {
-        ...(sess.prescription ?? {}),
-        editConfig: sess.editConfig,
-        rpeTarget: sess.rpeHr ?? sess.prescription?.rpeTarget,
-      } as unknown as HyroxJson,
-      metadata: {
-        duration: sess.duration,
-        intensity: sess.intensity,
-        focus: day.stationFocus ?? sess.title,
-        intent: sess.rationale,
-        isKeySession: sess.isKeySession,
-        isOptional: sess.isOptional,
-        draftId: sess.draftId,
-        coachLibraryId: sess.coachLibraryId,
-      } as unknown as HyroxJson,
-      status: "scheduled" as const,
-    }))
-  );
+  const sessionRows = buildSessionInsertRowsFromDraftWeek(draftWeek, {
+    programmeWeekId: (week as HyroxProgrammeWeekRow).id,
+    athleteId: params.athleteRow.id,
+  });
 
   if (sessionRows.length > 0) {
     const { error: sessionsError } = await supabase
@@ -860,26 +965,7 @@ async function fetchPublishedWeekForAthlete(
   return (data as HyroxProgrammeWeekRow | null) ?? null;
 }
 
-async function fetchDraftForAthleteWeek(
-  supabase: SupabaseClient,
-  athleteId: string,
-  blockNumber: number,
-  weekNumber: number
-): Promise<HyroxProgrammeDraftRow | null> {
-  const { data } = await supabase
-    .from("hyrox_programme_drafts")
-    .select(DRAFT_SELECT)
-    .eq("athlete_id", athleteId)
-    .eq("block_number", blockNumber)
-    .eq("week_number", weekNumber)
-    .neq("status", "archived")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data as HyroxProgrammeDraftRow | null) ?? null;
-}
-
-/** Publish all four weeks in the athlete's current block (skips weeks already published). */
+/** Publish all four weeks in the athlete's current block; syncs missing sessions into existing published weeks. */
 export async function publishProgrammeBlock(
   supabase: SupabaseClient,
   params: {
@@ -888,12 +974,21 @@ export async function publishProgrammeBlock(
     mappedProfileId: string | null;
     programmeStartDate: string;
     changedBy: string | null;
+    /** When true (default), insert missing sessions for weeks already published. */
+    syncExistingWeeks?: boolean;
   }
-): Promise<{ weeks: HyroxProgrammeWeekRow[]; sessionCount: number; generatedWeekNumbers: number[] }> {
+): Promise<{
+  weeks: HyroxProgrammeWeekRow[];
+  sessionCount: number;
+  generatedWeekNumbers: number[];
+  syncedWeekNumbers: number[];
+}> {
   const blockNumber = params.coachAthlete.programmeBlock;
   const publishedWeeks: HyroxProgrammeWeekRow[] = [];
   let sessionCount = 0;
   const generatedWeekNumbers: number[] = [];
+  const syncedWeekNumbers: number[] = [];
+  const syncExistingWeeks = params.syncExistingWeeks !== false;
 
   for (const cycle of [1, 2, 3, 4] as const) {
     const globalWeek = globalWeekForBlock(blockNumber, cycle);
@@ -903,10 +998,6 @@ export async function publishProgrammeBlock(
       blockNumber,
       globalWeek
     );
-    if (existing) {
-      publishedWeeks.push(existing);
-      continue;
-    }
 
     let draftRow = await fetchDraftForAthleteWeek(
       supabase,
@@ -927,7 +1018,7 @@ export async function publishProgrammeBlock(
         athleteFacingNote: "",
         changedBy: params.changedBy,
       });
-    } else if (draftRow.status !== "published") {
+    } else {
       draftRow = await updateProgrammeDraft(supabase, {
         draftId: draftRow.id,
         athlete: params.coachAthlete,
@@ -935,7 +1026,7 @@ export async function publishProgrammeBlock(
         draft: draftWeek,
         coachNote: draftRow.coach_note ?? "",
         athleteFacingNote: draftRow.athlete_facing_note ?? "",
-        coachStatus: "approved",
+        coachStatus: draftRow.status === "published" ? undefined : "approved",
         changedBy: params.changedBy,
       });
     }
@@ -946,6 +1037,31 @@ export async function publishProgrammeBlock(
         athleteRow: params.athleteRow,
         changedBy: params.changedBy,
       });
+    }
+
+    if (existing && syncExistingWeeks) {
+      const sync = await syncPublishedWeekSessionsFromDraft(supabase, {
+        week: existing,
+        draftWeek,
+        athleteId: params.athleteRow.id,
+        programmeStartDate: params.programmeStartDate,
+        sourceDraftId: draftRow.id,
+      });
+      sessionCount += sync.insertedCount;
+      syncedWeekNumbers.push(globalWeek);
+      publishedWeeks.push(existing);
+      if (draftRow.status !== "published") {
+        await supabase
+          .from("hyrox_programme_drafts")
+          .update({ status: "published", published_at: new Date().toISOString() })
+          .eq("id", draftRow.id);
+      }
+      continue;
+    }
+
+    if (existing) {
+      publishedWeeks.push(existing);
+      continue;
     }
 
     if (draftRow.status === "published") {
@@ -988,7 +1104,7 @@ export async function publishProgrammeBlock(
     })
     .eq("id", params.athleteRow.id);
 
-  return { weeks: publishedWeeks, sessionCount, generatedWeekNumbers };
+  return { weeks: publishedWeeks, sessionCount, generatedWeekNumbers, syncedWeekNumbers };
 }
 
 export { DAY_ORDER };

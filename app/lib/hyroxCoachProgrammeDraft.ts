@@ -119,6 +119,40 @@ export type CoachDraftWeek = {
   generatedAt: string;
 };
 
+export type CoachDraftSessionCounts = {
+  total: number;
+  key: number;
+  optional: number;
+  main: number;
+  am: number;
+  pm: number;
+};
+
+/** Session counts from generated draft JSON (before publish). */
+export function countCoachDraftSessions(draft: CoachDraftWeek): CoachDraftSessionCounts {
+  const counts: CoachDraftSessionCounts = {
+    total: 0,
+    key: 0,
+    optional: 0,
+    main: 0,
+    am: 0,
+    pm: 0,
+  };
+
+  for (const day of draft.days) {
+    for (const sess of day.sessions) {
+      counts.total += 1;
+      if (sess.isKeySession && !sess.isOptional) counts.key += 1;
+      if (sess.isOptional) counts.optional += 1;
+      if (sess.timeOfDay === "Main") counts.main += 1;
+      else if (sess.timeOfDay === "AM") counts.am += 1;
+      else if (sess.timeOfDay === "PM") counts.pm += 1;
+    }
+  }
+
+  return counts;
+}
+
 export type ValidationItem = {
   id: string;
   severity: "warn" | "error" | "ok";

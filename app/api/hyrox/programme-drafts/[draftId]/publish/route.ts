@@ -116,8 +116,13 @@ export async function POST(request: Request, context: RouteContext) {
         weeks: blockResult.weeks,
         sessionCount: blockResult.sessionCount,
         generatedWeekNumbers: blockResult.generatedWeekNumbers,
+        syncedWeekNumbers: blockResult.syncedWeekNumbers,
         publishBlock: true,
-        message: `Published ${blockResult.weeks.length} week(s) in block ${coachAthlete.programmeBlock} to athlete dashboard.`,
+        message: `Published ${blockResult.weeks.length} week(s) in block ${coachAthlete.programmeBlock} to athlete dashboard.${
+          blockResult.syncedWeekNumbers.length > 0
+            ? ` Synced missing sessions for week(s): ${blockResult.syncedWeekNumbers.join(", ")}.`
+            : ""
+        }`,
       });
     }
 
