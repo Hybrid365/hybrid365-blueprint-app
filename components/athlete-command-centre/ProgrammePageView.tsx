@@ -29,7 +29,12 @@ import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { useAthletePortal } from "./athletePortalContext";
 import { resolveDefaultProgrammeWeekNumber } from "@/app/lib/hyroxAthleteProgrammeCalendar";
 import {
-  deriveWeekCalendarStatusForAthleteWeek,
+  buildAthleteProgrammeWeekChipMeta,
+  calendarStatusToChipMode,
+  resolveEffectiveProgrammeStartYmd,
+  type ProgrammeWeekChipDebug,
+} from "@/app/lib/hyroxAthleteProgrammeWeekChip";
+import {
   resolveAthleteWeekDateRange,
   startOfLocalDay,
   toYmd,
@@ -46,6 +51,7 @@ type WeekTab = {
   globalWeek: number;
   mode: WeekTabMode;
   generated: boolean;
+  chipDebug: ProgrammeWeekChipDebug | null;
 };
 
 const UPCOMING_COPY = "Upcoming — subject to coach review";
@@ -117,15 +123,15 @@ function ProgrammePageClientDebug({
           dbWeekEndYmd: dbEnd,
         })
       : null;
-  const computedStatus =
+  const selectedChipMeta =
     programmeStartDate && selectedBundle
-      ? deriveWeekCalendarStatusForAthleteWeek({
-          programmeStartYmd: programmeStartDate,
+      ? buildAthleteProgrammeWeekChipMeta({
+          bundle: selectedBundle,
           weekNumber: selectedBundle.weekNumber,
-          dbWeekStartYmd: dbStart,
-          dbWeekEndYmd: dbEnd,
+          programmeStartYmd: programmeStartDate,
         })
-      : selectedBundle?.calendarStatus ?? "—";
+      : null;
+  const computedStatus = selectedChipMeta?.calendarStatus ?? selectedBundle?.calendarStatus ?? "—";
   const sessionsTotalForWeek = selectedBundle?.sessions?.length ?? 0;
 
   const weekRows =
@@ -225,7 +231,13 @@ export function ProgrammePageView({
 
   const blockId = useLive && dashboardLive ? dashboardLive.blockId : MOCK_ATHLETE.blockId;
   const block = HYROX_BLOCKS.find((b) => b.id === blockId)!;
-  const programmeStartDate = useLive ? effectiveProgramme?.programmeStartDate ?? null : null;
+  const programmeStartDate = useLive
+    ? resolveEffectiveProgrammeStartYmd(
+        effectiveProgramme?.programmeStartDate,
+        effectiveProgramme?.athlete?.programme_start_date,
+        effectiveProgramme?.programmeWeeks
+      )
+    : null;
   const liveGlobalWeek = useLive
     ? effectiveProgramme?.liveGlobalWeek ?? effectiveProgramme?.athlete.current_week ?? 1
     : MOCK_ATHLETE.currentWeek;
@@ -238,37 +250,24 @@ export function ProgrammePageView({
         : null;
       const generated = Boolean(bundle?.generated && bundle.sessions.length > 0);
       const subtitle = bundle?.weekRole ?? BLOCK_WEEK_FOCUS_LABELS[cycle];
-      const dbStart = bundle?.week?.week_start_date ?? bundle?.weekStartDate ?? null;
-      const dbEnd = bundle?.week?.week_end_date ?? bundle?.weekEndDate ?? null;
-      const resolved =
-        useLive && programmeStartDate
-          ? resolveAthleteWeekDateRange({
-              programmeStartYmd: programmeStartDate,
+
+      const chipMeta =
+        useLive && bundle
+          ? buildAthleteProgrammeWeekChipMeta({
+              bundle,
               weekNumber: globalWeek,
-              dbWeekStartYmd: dbStart,
-              dbWeekEndYmd: dbEnd,
+              programmeStartYmd: programmeStartDate,
             })
           : null;
-      const dateRangeLabel = resolved?.dateRangeLabel ?? bundle?.dateRangeLabel ?? null;
+
+      const dateRangeLabel = chipMeta?.dateRangeLabel ?? bundle?.dateRangeLabel ?? null;
+      const chipDebug = chipMeta?.debug ?? null;
 
       let mode: WeekTabMode = "not_generated";
-      if (useLive && bundle) {
-        if (
-          bundle.calendarStatus === "locked" ||
-          bundle.calendarStatus === "not_generated"
-        ) {
-          mode = calendarStatusToTabMode(bundle.calendarStatus);
-        } else if (programmeStartDate) {
-          const status = deriveWeekCalendarStatusForAthleteWeek({
-            programmeStartYmd: programmeStartDate,
-            weekNumber: globalWeek,
-            dbWeekStartYmd: dbStart,
-            dbWeekEndYmd: dbEnd,
-          });
-          mode = calendarStatusToTabMode(status);
-        } else if (bundle.calendarStatus) {
-          mode = calendarStatusToTabMode(bundle.calendarStatus);
-        }
+      if (useLive && chipMeta) {
+        mode = calendarStatusToChipMode(chipMeta.calendarStatus);
+      } else if (useLive && bundle?.calendarStatus) {
+        mode = calendarStatusToTabMode(bundle.calendarStatus);
       } else if (generated && useMock) {
         if (globalWeek === MOCK_ATHLETE.currentWeek) mode = "active";
         else if (globalWeek < MOCK_ATHLETE.currentWeek) mode = "past";
@@ -284,6 +283,7 @@ export function ProgrammePageView({
         globalWeek,
         mode,
         generated,
+        chipDebug,
       };
     });
   }, [block.weeks, useLive, useMock, effectiveProgramme?.programmeWeeks, programmeStartDate]);
@@ -561,6 +561,18 @@ export function ProgrammePageView({
                   >
                     {chipLabel}
                   </span>
+                  {tab.chipDebug ? (
+                    <span className="mt-1 font-mono text-[8px] leading-tight text-zinc-600">
+                      w{tab.chipDebug.weekNumber} raw {tab.chipDebug.rawStart ?? "—"}→
+                      {tab.chipDebug.rawEnd ?? "—"} · res {tab.chipDebug.resolvedStart ?? "—"}→
+                      {tab.chipDebug.resolvedEnd ?? "—"} · {tab.chipDebug.status} · lbl{" "}
+                      {tab.chipDebug.labelActuallyRendered ?? "—"} · src {tab.chipDebug.dateSource}
+                      {tab.chipDebug.payloadDateRangeLabel &&
+                      tab.chipDebug.payloadDateRangeLabel !== tab.chipDebug.labelActuallyRendered
+                        ? ` · payload ${tab.chipDebug.payloadDateRangeLabel}`
+                        : ""}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}

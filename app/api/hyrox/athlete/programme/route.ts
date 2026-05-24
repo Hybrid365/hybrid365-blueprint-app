@@ -1,12 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
 import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
+import { resolveEffectiveProgrammeStartYmd } from "@/app/lib/hyroxAthleteProgrammeWeekChip";
+import type { AthleteWeekCalendarStatus } from "@/app/lib/hyroxAthleteProgrammeTypes";
 import { getBlockWeekRole } from "@/app/lib/hyroxProgrammeDates";
 import {
   fetchAthletePublishedProgramme,
   mapPublishedSessionsToAthleteUi,
   resolveAthleteProgrammeApiState,
+  resolvePublishedWeekCalendarStatus,
   resolvePublishedWeekDates,
 } from "@/app/lib/hyroxProgrammeServer";
 
@@ -29,20 +35,30 @@ export async function GET(request: NextRequest) {
 
     const displayName = athlete.name?.trim() || user.email?.trim() || "Athlete";
 
+    const programmeStartEffective = resolveEffectiveProgrammeStartYmd(
+      programme.programmeStartDate,
+      athlete.programme_start_date,
+      programme.weeks.map((w) => ({ weekNumber: w.weekNumber, week: w.week }))
+    );
+
     const programmeWeeks = programme.weeks.map((bundle) => {
       const cycle = (((bundle.weekNumber - 1) % 4) + 1) as 1 | 2 | 3 | 4;
       const blockNum = bundle.week?.block_number ?? athlete.current_block ?? 1;
       const weekRole =
         bundle.week?.weekly_focus ??
         getBlockWeekRole(blockNum, cycle, programme.programmeLengthWeeks);
-      const resolvedDates = resolvePublishedWeekDates(bundle, programme.programmeStartDate);
+      const resolvedDates = resolvePublishedWeekDates(bundle, programmeStartEffective);
       const dateRangeLabel = resolvedDates?.dateRangeLabel ?? null;
+      const calendarStatus = resolvePublishedWeekCalendarStatus(
+        bundle,
+        programmeStartEffective
+      ) as AthleteWeekCalendarStatus;
 
       return {
         weekNumber: bundle.weekNumber,
         blockWeekInCycle: cycle,
         generated: bundle.generated,
-        calendarStatus: bundle.calendarStatus,
+        calendarStatus,
         weekStartDate: resolvedDates?.startYmd ?? bundle.weekStartDate,
         weekEndDate: resolvedDates?.endYmd ?? bundle.weekEndDate,
         dateRangeLabel,
@@ -75,8 +91,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return withAuthCookies(
-      NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       state,
       visibility: programme.visibility,
@@ -84,7 +99,7 @@ export async function GET(request: NextRequest) {
       hasPublishedProgramme: programme.published,
       programmeStatus: programme.programmeStatus,
       athleteStatus: programme.athleteStatus,
-      programmeStartDate: programme.programmeStartDate,
+      programmeStartDate: programmeStartEffective ?? programme.programmeStartDate,
       programmeLengthWeeks: programme.programmeLengthWeeks,
       liveGlobalWeek: programme.liveGlobalWeek,
       athlete: {
@@ -106,8 +121,9 @@ export async function GET(request: NextRequest) {
             coachNote: programme.week.coach_note ?? "",
           }
         : null,
-    })
-    );
+    });
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    return withAuthCookies(response);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not load programme.";
     return withAuthCookies(

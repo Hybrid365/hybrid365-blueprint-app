@@ -125,7 +125,11 @@ export function useAthleteLiveProgramme(
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/hyrox/athlete/programme", { credentials: "include" });
+      const res = await fetch("/api/hyrox/athlete/programme", {
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       const json = (await res.json()) as ProgrammeApiJson;
       if (!res.ok || !json.success) {
         const isAuthFailure =

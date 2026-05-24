@@ -106,28 +106,38 @@ export type AthletePublishedProgramme = {
 };
 
 export function resolvePublishedWeekCalendarStatus(
-  bundle: Pick<PublishedProgrammeWeekBundle, "generated" | "weekStartDate" | "weekEndDate" | "weekNumber">,
+  bundle: Pick<
+    PublishedProgrammeWeekBundle,
+    "generated" | "weekStartDate" | "weekEndDate" | "weekNumber" | "week"
+  >,
   programmeStartDate: string | null
 ): PublishedProgrammeWeekBundle["calendarStatus"] {
   if (!bundle.generated) return "not_generated";
+  const dbStart = bundle.week?.week_start_date ?? bundle.weekStartDate;
+  const dbEnd = bundle.week?.week_end_date ?? bundle.weekEndDate;
   return deriveWeekCalendarStatusForAthleteWeek({
     programmeStartYmd: programmeStartDate,
     weekNumber: bundle.weekNumber,
-    dbWeekStartYmd: bundle.weekStartDate,
-    dbWeekEndYmd: bundle.weekEndDate,
+    dbWeekStartYmd: dbStart,
+    dbWeekEndYmd: dbEnd,
   });
 }
 
-/** Normalized week dates + label for athlete UI (DB when valid, else programme_start_date). */
+/** Normalized week dates + label for athlete UI (raw DB when valid, else programme_start_date). */
 export function resolvePublishedWeekDates(
-  bundle: Pick<PublishedProgrammeWeekBundle, "weekStartDate" | "weekEndDate" | "weekNumber">,
+  bundle: Pick<
+    PublishedProgrammeWeekBundle,
+    "weekStartDate" | "weekEndDate" | "weekNumber" | "week"
+  >,
   programmeStartDate: string | null
 ) {
+  const dbStart = bundle.week?.week_start_date ?? bundle.weekStartDate;
+  const dbEnd = bundle.week?.week_end_date ?? bundle.weekEndDate;
   return resolveAthleteWeekDateRange({
     programmeStartYmd: programmeStartDate,
     weekNumber: bundle.weekNumber,
-    dbWeekStartYmd: bundle.weekStartDate,
-    dbWeekEndYmd: bundle.weekEndDate,
+    dbWeekStartYmd: dbStart,
+    dbWeekEndYmd: dbEnd,
   });
 }
 
@@ -653,14 +663,14 @@ export async function fetchAthletePublishedProgramme(
     });
     const weekStartDate = resolvedDates?.startYmd ?? dbWeekStart;
     const weekEndDate = resolvedDates?.endYmd ?? dbWeekEnd;
-    const base = {
+    const base: PublishedProgrammeWeekBundle = {
       week,
       sessions: sessionsForWeek,
       generated,
       weekNumber: globalWeek,
       weekStartDate,
       weekEndDate,
-      calendarStatus: "not_generated" as const,
+      calendarStatus: "not_generated",
     };
     return {
       ...base,

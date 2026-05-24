@@ -2,11 +2,14 @@ import type { AthleteLiveProgrammePayload } from "@/components/athlete-command-c
 import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
+import { resolveEffectiveProgrammeStartYmd } from "@/app/lib/hyroxAthleteProgrammeWeekChip";
 import { getBlockWeekRole } from "@/app/lib/hyroxProgrammeDates";
+import type { AthleteWeekCalendarStatus } from "@/app/lib/hyroxAthleteProgrammeTypes";
 import {
   fetchAthletePublishedProgramme,
   mapPublishedSessionsToAthleteUi,
   resolveAthleteProgrammeApiState,
+  resolvePublishedWeekCalendarStatus,
   resolvePublishedWeekDates,
 } from "@/app/lib/hyroxProgrammeServer";
 
@@ -28,20 +31,30 @@ export async function fetchAthleteLiveProgrammeForServer(
   const displayName =
     athlete.name?.trim() || userEmail?.trim() || programme.athlete.name?.trim() || "Athlete";
 
+  const programmeStartEffective = resolveEffectiveProgrammeStartYmd(
+    programme.programmeStartDate,
+    athlete.programme_start_date ?? programme.athlete.programme_start_date,
+    programme.weeks.map((w) => ({ weekNumber: w.weekNumber, week: w.week }))
+  );
+
   const programmeWeeks = programme.weeks.map((bundle) => {
     const cycle = (((bundle.weekNumber - 1) % 4) + 1) as 1 | 2 | 3 | 4;
     const blockNum = bundle.week?.block_number ?? athlete.current_block ?? 1;
     const weekRole =
       bundle.week?.weekly_focus ??
       getBlockWeekRole(blockNum, cycle, programme.programmeLengthWeeks);
-    const resolvedDates = resolvePublishedWeekDates(bundle, programme.programmeStartDate);
+    const resolvedDates = resolvePublishedWeekDates(bundle, programmeStartEffective);
     const dateRangeLabel = resolvedDates?.dateRangeLabel ?? null;
+    const calendarStatus = resolvePublishedWeekCalendarStatus(
+      bundle,
+      programmeStartEffective
+    ) as AthleteWeekCalendarStatus;
 
     return {
       weekNumber: bundle.weekNumber,
       blockWeekInCycle: cycle,
       generated: bundle.generated,
-      calendarStatus: bundle.calendarStatus,
+      calendarStatus,
       weekStartDate: resolvedDates?.startYmd ?? bundle.weekStartDate,
       weekEndDate: resolvedDates?.endYmd ?? bundle.weekEndDate,
       dateRangeLabel,
@@ -68,7 +81,7 @@ export async function fetchAthleteLiveProgrammeForServer(
     published: programme.published,
     programmeStatus: programme.programmeStatus,
     athleteStatus: programme.athleteStatus,
-    programmeStartDate: programme.programmeStartDate,
+    programmeStartDate: programmeStartEffective ?? programme.programmeStartDate,
     programmeLengthWeeks: programme.programmeLengthWeeks,
     liveGlobalWeek: programme.liveGlobalWeek,
     athlete: {
