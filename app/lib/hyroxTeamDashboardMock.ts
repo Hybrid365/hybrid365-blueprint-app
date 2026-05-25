@@ -408,6 +408,7 @@ export type SessionDetail = {
   mainSet: string[];
   coolDown: string[];
   coachNote: string;
+  coachPacingNote?: string;
   recordFields: string[];
   filmPrompt?: string;
 };

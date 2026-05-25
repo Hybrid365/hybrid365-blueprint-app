@@ -24,6 +24,12 @@ import { HYROX_SESSION_LIBRARY, getHyroxSession } from "@/src/lib/hyrox/sessionL
 import { resolveSessionPrescription } from "@/src/lib/hyrox/sessionResolver";
 import type { HyroxSessionDefinition } from "@/src/lib/hyrox/types";
 import type { ResolvedSessionPrescription } from "@/src/lib/hyrox/types";
+import {
+  hasManualPaceLoadOverrides,
+  hasManualTargetOverrides,
+  mainSetStructureLinesFromConfig,
+  targetSplitWattsFromConfig,
+} from "@/app/lib/hyroxSessionTargetOverrides";
 
 /** Publish / review workflow status (local mock). */
 export type CoachProgrammeStatus =
@@ -81,6 +87,12 @@ export type CoachSessionEditConfig = {
   station?: string;
   stationDetail?: string;
   targetPaceLoad?: string;
+  /** Manual split / watts / load line (e.g. 1:55–2:00/500m, 250–280w). */
+  targetSplitWatts?: string;
+  /** Manual rest between reps/intervals (preferred over recovery). */
+  restRecovery?: string;
+  /** Athlete-facing pacing guidance separate from general coach note. */
+  coachPacingNote?: string;
   filmPrompt?: string;
   bikeWatts?: string;
   bikeDurationMinutes?: number;
@@ -342,6 +354,9 @@ export function defaultEditConfig(session: CoachDraftSession): CoachSessionEditC
     mainSetLines: [],
     coolDownLines: p?.cooldown ?? [],
     targetPaceLoad: p?.targetPace ?? p?.targetSplit ?? p?.targetLoad ?? undefined,
+    targetSplitWatts: p?.targetSplit ?? undefined,
+    restRecovery: undefined,
+    coachPacingNote: undefined,
   };
 
   if (kind === "threshold_run") {
@@ -357,6 +372,7 @@ export function defaultEditConfig(session: CoachDraftSession): CoachSessionEditC
           ? 5
           : 5,
       recovery: "90 sec",
+      restRecovery: "90 sec",
       thresholdMinutes: coachEntry?.thresholdMinutes ?? session.thresholdMinutes,
     };
   }
@@ -370,6 +386,7 @@ export function defaultEditConfig(session: CoachDraftSession): CoachSessionEditC
       ergReps: m ? Number(m[1]) : coachMatch ? Number(coachMatch[1]) : 8,
       intervalDurationMinutes: m ? Number(m[2]) : coachMatch ? Number(coachMatch[2]) : 4,
       recovery: "60–90 sec",
+      restRecovery: "60–90 sec",
     };
   }
   if (kind === "easy_aerobic") {
@@ -508,19 +525,8 @@ export function deriveMainSetLinesFromEditConfig(c: CoachSessionEditConfig): str
   if (c.mainSetLines?.length) {
     return c.mainSetLines.filter((l) => l.trim().length > 0);
   }
-  if (c.kind === "erg_interval" && c.ergReps && c.intervalDurationMinutes) {
-    const mod = c.modality === "row" ? "Row" : c.modality === "bike" ? "Bike" : "Ski";
-    const lines = [`${c.ergReps}×${c.intervalDurationMinutes} min ${mod} @ threshold`];
-    if (c.recovery?.trim()) lines.push(`Recovery: ${c.recovery.trim()}`);
-    if (c.targetSplit?.trim()) lines.push(`Target split: ${c.targetSplit.trim()}`);
-    return lines;
-  }
-  if (c.kind === "threshold_run" && c.reps && c.repDurationMinutes) {
-    const lines = [`${c.reps}×${c.repDurationMinutes} min @ threshold`];
-    if (c.recovery?.trim()) lines.push(`Recovery: ${c.recovery.trim()}`);
-    if (c.targetPace?.trim()) lines.push(`Target pace: ${c.targetPace.trim()}`);
-    return lines;
-  }
+  const structured = mainSetStructureLinesFromConfig(c);
+  if (structured.length) return structured;
   if (c.exercises?.trim()) {
     return c.exercises.split("\n").map((l) => l.trim()).filter(Boolean);
   }
@@ -546,8 +552,9 @@ function mergePrescriptionFromEditConfig(
     cooldown: c.coolDownLines?.length ? c.coolDownLines : base.cooldown,
     keySetSummary: resolvedMainSet[0] ?? base.keySetSummary,
     rpeTarget: c.rpeTarget ?? base.rpeTarget,
-    targetPace: c.targetPace ?? base.targetPace,
-    targetSplit: c.targetSplit ?? base.targetSplit,
+    targetPace: c.targetPaceLoad?.trim() || c.targetPace || base.targetPace,
+    targetSplit: targetSplitWattsFromConfig(c) || base.targetSplit,
+    targetLoad: c.targetPaceLoad?.trim() || base.targetLoad,
     targetHRRange: c.hrGuide ?? c.hrZone ?? base.targetHRRange,
     coachNote: c.coachNote ?? base.coachNote,
     whatToRecord: c.whatToRecord?.length ? c.whatToRecord : base.whatToRecord,
@@ -565,18 +572,22 @@ export function applyEditConfigToSession(session: CoachDraftSession): CoachDraft
   if (c.kind === "threshold_run" && c.reps && c.repDurationMinutes) {
     title = `${c.sessionName || "Threshold Run"} — ${c.reps} x ${c.repDurationMinutes} min`;
     duration = `~${45 + c.reps * 2} min`;
-    if (c.targetPace) rpeHr = `${c.rpeTarget ?? "RPE 7–8"} · ${c.targetPace}`;
+    if (!c.targetPaceLoad?.trim() && c.targetPace) {
+      rpeHr = `${c.rpeTarget ?? "RPE 7–8"} · ${c.targetPace}`;
+    }
   }
   if (c.kind === "erg_interval" && c.ergReps && c.intervalDurationMinutes) {
     const mod = c.modality === "row" ? "Row" : c.modality === "bike" ? "Bike" : "Ski";
     const label = c.sessionName?.trim() || `${mod} Threshold`;
     title = `${label} — ${c.ergReps} x ${c.intervalDurationMinutes} min`;
-    if (c.targetSplit) rpeHr = `${c.rpeTarget ?? "RPE 7–8"} · ${c.targetSplit}`;
+    if (!hasManualTargetOverrides(c) && c.targetSplit) {
+      rpeHr = `${c.rpeTarget ?? "RPE 7–8"} · ${c.targetSplit}`;
+    }
   }
   if (c.kind === "easy_aerobic" && c.durationMinutes) {
     duration = `${c.durationMinutes} min`;
   }
-  if (c.hrGuide) {
+  if (c.hrGuide && !hasManualTargetOverrides(c)) {
     rpeHr = `${c.rpeTarget ?? session.rpeHr} · ${c.hrGuide}`;
   }
 

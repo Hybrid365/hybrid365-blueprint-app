@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CoachDraftSession, CoachSessionEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { calcThresholdMinutesFromConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
+import { detectManualTargetStaleWarning } from "@/app/lib/hyroxSessionTargetOverrides";
 import { PrescriptionDetailBlocks } from "@/components/admin-hyrox-athletes/PrescriptionDetailBlocks";
 import { X } from "lucide-react";
 
@@ -23,12 +24,20 @@ export function SessionEditDrawer({
     if (session && open) setC({ ...session.editConfig });
   }, [session, open]);
 
+  const staleTargetWarning = useMemo(
+    () => (session && c ? detectManualTargetStaleWarning(session, c) : null),
+    [session, c]
+  );
+
   if (!open || !session || !c) return null;
 
   const patch = (p: Partial<CoachSessionEditConfig>) => {
     setC((prev) => {
       if (!prev) return prev;
       const next = { ...prev, ...p };
+      if (p.recovery !== undefined && p.restRecovery === undefined) {
+        next.restRecovery = p.recovery;
+      }
       next.thresholdMinutes = calcThresholdMinutesFromConfig(next);
       return next;
     });
@@ -63,11 +72,6 @@ export function SessionEditDrawer({
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <Field label="Session name" value={c.sessionName} onChange={(v) => patch({ sessionName: v })} />
           <TextArea label="Objective" value={c.objective ?? ""} onChange={(v) => patch({ objective: v })} />
-          <Field
-            label="Target pace / load"
-            value={c.targetPaceLoad ?? c.targetPace ?? c.targetSplit ?? ""}
-            onChange={(v) => patch({ targetPaceLoad: v })}
-          />
           <TextArea
             label="Warm-up (one line per bullet)"
             value={(c.warmUpLines ?? []).join("\n")}
@@ -90,6 +94,53 @@ export function SessionEditDrawer({
             }
           />
 
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 space-y-3">
+            <p className="text-xs font-bold uppercase text-amber-300">Manual targets / pacing</p>
+            <p className="text-[11px] text-zinc-500">
+              These override generated library text on the athlete session detail (pace, split, HR, RPE, rest).
+            </p>
+            {staleTargetWarning ? (
+              <p className="rounded-lg border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-xs text-amber-100">
+                {staleTargetWarning}
+              </p>
+            ) : null}
+            <Field
+              label="Target pace / load"
+              value={c.targetPaceLoad ?? ""}
+              onChange={(v) => patch({ targetPaceLoad: v })}
+              placeholder="e.g. 3:40–3:50/km · heavy but smooth"
+            />
+            <Field
+              label="Target split / watts"
+              value={c.targetSplitWatts ?? c.targetSplit ?? ""}
+              onChange={(v) => patch({ targetSplitWatts: v, targetSplit: v })}
+              placeholder="e.g. 1:55–2:00/500m · 250–280w"
+            />
+            <Field
+              label="Target HR / HR zone"
+              value={c.hrGuide ?? c.hrZone ?? ""}
+              onChange={(v) => patch({ hrGuide: v, hrZone: v })}
+              placeholder="e.g. Z4 · 165–175 bpm"
+            />
+            <Field
+              label="Target RPE"
+              value={c.rpeTarget ?? ""}
+              onChange={(v) => patch({ rpeTarget: v })}
+              placeholder="e.g. RPE 7–8"
+            />
+            <Field
+              label="Rest / recovery"
+              value={c.restRecovery ?? c.recovery ?? ""}
+              onChange={(v) => patch({ restRecovery: v, recovery: v })}
+              placeholder="e.g. 90 sec · 2 min easy jog"
+            />
+            <TextArea
+              label="Coach pacing note"
+              value={c.coachPacingNote ?? ""}
+              onChange={(v) => patch({ coachPacingNote: v })}
+            />
+          </div>
+
           {c.kind === "threshold_run" && (
             <>
               <Row2
@@ -100,8 +151,6 @@ export function SessionEditDrawer({
                   onChange: (v) => patch({ repDurationMinutes: Number(v) }),
                 }}
               />
-              <Field label="Recovery" value={c.recovery ?? ""} onChange={(v) => patch({ recovery: v })} />
-              <Field label="Target pace" value={c.targetPace ?? ""} onChange={(v) => patch({ targetPace: v })} />
             </>
           )}
 
@@ -129,8 +178,6 @@ export function SessionEditDrawer({
                   onChange: (v) => patch({ intervalDurationMinutes: Number(v) }),
                 }}
               />
-              <Field label="Recovery" value={c.recovery ?? ""} onChange={(v) => patch({ recovery: v })} />
-              <Field label="Target split" value={c.targetSplit ?? ""} onChange={(v) => patch({ targetSplit: v })} />
             </>
           )}
 
@@ -151,7 +198,6 @@ export function SessionEditDrawer({
                 value={String(c.durationMinutes ?? "")}
                 onChange={(v) => patch({ durationMinutes: Number(v) })}
               />
-              <Field label="HR zone" value={c.hrZone ?? ""} onChange={(v) => patch({ hrZone: v })} />
               <label className="flex items-center gap-2 text-xs text-zinc-400">
                 <input
                   type="checkbox"
@@ -203,7 +249,6 @@ export function SessionEditDrawer({
                 value={c.stationDetail ?? ""}
                 onChange={(v) => patch({ stationDetail: v })}
               />
-              <Field label="Rest" value={c.rest ?? ""} onChange={(v) => patch({ rest: v })} />
               <Row2
                 a={{
                   label: "Bike watts",
@@ -240,17 +285,10 @@ export function SessionEditDrawer({
                   onChange: (v) => patch({ lungeDurationMinutes: Number(v) }),
                 }}
               />
-              <Field
-                label="Target pace"
-                value={c.targetPaceLoad ?? ""}
-                onChange={(v) => patch({ targetPaceLoad: v })}
-              />
               <Field label="Film prompt" value={c.filmPrompt ?? ""} onChange={(v) => patch({ filmPrompt: v })} />
             </>
           )}
 
-          <Field label="HR guide" value={c.hrGuide ?? ""} onChange={(v) => patch({ hrGuide: v })} />
-          <Field label="RPE target" value={c.rpeTarget ?? ""} onChange={(v) => patch({ rpeTarget: v })} />
           <p className="text-xs text-zinc-500">
             Threshold minutes (auto):{" "}
             <span className="text-yellow-400/90">{calcThresholdMinutesFromConfig(c) ?? "—"}</span>
@@ -282,18 +320,21 @@ function Field({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   return (
     <label className="block text-xs text-zinc-500">
       {label}
       <input
         value={value}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white"
+        className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-600"
       />
     </label>
   );

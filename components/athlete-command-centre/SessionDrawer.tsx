@@ -220,6 +220,12 @@ export function SessionDrawer({
             <p className="text-sm leading-relaxed text-zinc-300">{d.coachNote}</p>
           </Block>
 
+          {d.coachPacingNote ? (
+            <Block title="Coach pacing note">
+              <p className="text-sm leading-relaxed text-zinc-300">{d.coachPacingNote}</p>
+            </Block>
+          ) : null}
+
           {d.filmPrompt ? (
             <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 p-3">
               <p className="text-[10px] font-bold uppercase text-blue-300">Film prompt</p>
