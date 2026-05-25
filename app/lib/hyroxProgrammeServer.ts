@@ -57,6 +57,7 @@ import {
   type DraftSessionInsertRow,
   type PublishSessionSyncDetail,
 } from "@/app/lib/hyroxProgrammeSessionSync";
+import { resolveAthleteSessionDetailFromPublishedRow } from "@/app/lib/hyroxAthleteSessionDetail";
 import {
   deriveLiveGlobalWeek,
   deriveWeekCalendarStatusForAthleteWeek,
@@ -568,13 +569,9 @@ export function mapPublishedSessionsToAthleteUi(
   const mapped = sessions.map((s) => {
     const prescription = (s.prescription ?? {}) as Record<string, unknown>;
     const meta = (s.metadata ?? {}) as Record<string, unknown>;
-    const rpeTarget =
-      (prescription.rpeTarget as string) ??
-      (prescription.rpe_target as string) ??
-      (meta.rpeTarget as string) ??
-      "—";
-    const duration =
-      (meta.duration as string) ?? (prescription.duration as string) ?? "—";
+    const detail = resolveAthleteSessionDetailFromPublishedRow(s);
+    const rpeTarget = detail.rpe;
+    const duration = detail.duration;
     const day = s.day_of_week;
     const short = dayShort[day] ?? day.slice(0, 3);
     const timeOfDay = (s.session_slot as ProgrammeTimeOfDay) ?? "Main";
@@ -615,9 +612,10 @@ export function mapPublishedSessionsToAthleteUi(
       priority: (timeOfDay === "Optional" || s.session_slot === "Optional"
         ? "Optional"
         : "Key") as HyroxSession["priority"],
-      intent: (meta.intent as string) ?? s.session_name,
+      intent: detail.objective || (meta.intent as string) || s.session_name,
       timeOfDay,
-      coachNote: coachNote || undefined,
+      coachNote: detail.coachNote || coachNote || undefined,
+      detail,
     };
   });
 

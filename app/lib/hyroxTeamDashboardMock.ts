@@ -1,5 +1,7 @@
 /** Mock data for Hyrox Team athlete dashboard — wire to real APIs later. */
 
+import type { AthleteSessionDetailContent } from "@/app/lib/hyroxAthleteSessionDetail";
+
 export type SessionStatus = "complete" | "upcoming" | "missed" | "modified";
 
 export type HyroxSession = {
@@ -23,6 +25,8 @@ export type HyroxSession = {
   intent: string;
   timeOfDay?: "AM" | "Main" | "PM" | "Optional";
   coachNote?: string;
+  /** Resolved from published prescription — drives session detail drawer. */
+  detail?: AthleteSessionDetailContent;
 };
 
 export const HYROX_BLOCKS = [

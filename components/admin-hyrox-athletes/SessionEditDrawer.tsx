@@ -62,6 +62,33 @@ export function SessionEditDrawer({
         ) : null}
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <Field label="Session name" value={c.sessionName} onChange={(v) => patch({ sessionName: v })} />
+          <TextArea label="Objective" value={c.objective ?? ""} onChange={(v) => patch({ objective: v })} />
+          <Field
+            label="Target pace / load"
+            value={c.targetPaceLoad ?? c.targetPace ?? c.targetSplit ?? ""}
+            onChange={(v) => patch({ targetPaceLoad: v })}
+          />
+          <TextArea
+            label="Warm-up (one line per bullet)"
+            value={(c.warmUpLines ?? []).join("\n")}
+            onChange={(v) =>
+              patch({ warmUpLines: v.split("\n").map((s) => s.trim()).filter(Boolean) })
+            }
+          />
+          <TextArea
+            label="Main set (one line per bullet — leave blank to auto-build from reps)"
+            value={(c.mainSetLines ?? []).join("\n")}
+            onChange={(v) =>
+              patch({ mainSetLines: v.split("\n").map((s) => s.trim()).filter(Boolean) })
+            }
+          />
+          <TextArea
+            label="Cool-down (one line per bullet)"
+            value={(c.coolDownLines ?? []).join("\n")}
+            onChange={(v) =>
+              patch({ coolDownLines: v.split("\n").map((s) => s.trim()).filter(Boolean) })
+            }
+          />
 
           {c.kind === "threshold_run" && (
             <>

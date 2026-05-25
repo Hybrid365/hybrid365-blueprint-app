@@ -89,6 +89,11 @@ export type CoachSessionEditConfig = {
   emomMinutes?: number;
   lungeDurationMinutes?: number;
   skiDistanceM?: number;
+  /** Athlete detail overrides (empty mainSetLines → derived from kind-specific fields). */
+  objective?: string;
+  warmUpLines?: string[];
+  mainSetLines?: string[];
+  coolDownLines?: string[];
 };
 
 export type CoachDraftSession = SandboxSessionBlock & {
@@ -332,6 +337,11 @@ export function defaultEditConfig(session: CoachDraftSession): CoachSessionEditC
     thresholdMinutes: session.thresholdMinutes,
     whatToRecord: p?.whatToRecord ?? [],
     filmPrompt: p?.filmPrompt ?? undefined,
+    objective: p?.objective,
+    warmUpLines: p?.warmup ?? [],
+    mainSetLines: [],
+    coolDownLines: p?.cooldown ?? [],
+    targetPaceLoad: p?.targetPace ?? p?.targetSplit ?? p?.targetLoad ?? undefined,
   };
 
   if (kind === "threshold_run") {
@@ -351,11 +361,14 @@ export function defaultEditConfig(session: CoachDraftSession): CoachSessionEditC
     };
   }
   if (kind === "erg_interval") {
+    const m = session.title.match(/(\d+)\s*x\s*(\d+)/i);
+    const coachMainSet = coachEntry?.prescription.mainSet?.[0];
+    const coachMatch = coachMainSet?.match(/(\d+)[×x](\d+)/i);
     return {
       ...base,
       modality: session.sessionId?.includes("row") ? "row" : "ski",
-      ergReps: 8,
-      intervalDurationMinutes: 4,
+      ergReps: m ? Number(m[1]) : coachMatch ? Number(coachMatch[1]) : 8,
+      intervalDurationMinutes: m ? Number(m[2]) : coachMatch ? Number(coachMatch[2]) : 4,
       recovery: "60–90 sec",
     };
   }
@@ -491,6 +504,57 @@ function volumeMetaFromEdit(
   return next;
 }
 
+export function deriveMainSetLinesFromEditConfig(c: CoachSessionEditConfig): string[] {
+  if (c.mainSetLines?.length) {
+    return c.mainSetLines.filter((l) => l.trim().length > 0);
+  }
+  if (c.kind === "erg_interval" && c.ergReps && c.intervalDurationMinutes) {
+    const mod = c.modality === "row" ? "Row" : c.modality === "bike" ? "Bike" : "Ski";
+    const lines = [`${c.ergReps}×${c.intervalDurationMinutes} min ${mod} @ threshold`];
+    if (c.recovery?.trim()) lines.push(`Recovery: ${c.recovery.trim()}`);
+    if (c.targetSplit?.trim()) lines.push(`Target split: ${c.targetSplit.trim()}`);
+    return lines;
+  }
+  if (c.kind === "threshold_run" && c.reps && c.repDurationMinutes) {
+    const lines = [`${c.reps}×${c.repDurationMinutes} min @ threshold`];
+    if (c.recovery?.trim()) lines.push(`Recovery: ${c.recovery.trim()}`);
+    if (c.targetPace?.trim()) lines.push(`Target pace: ${c.targetPace.trim()}`);
+    return lines;
+  }
+  if (c.exercises?.trim()) {
+    return c.exercises.split("\n").map((l) => l.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function mergePrescriptionFromEditConfig(
+  session: CoachDraftSession,
+  c: CoachSessionEditConfig
+): ResolvedSessionPrescription | null {
+  const base = session.prescription;
+  if (!base) return null;
+
+  const mainSet = deriveMainSetLinesFromEditConfig(c);
+  const resolvedMainSet = mainSet.length ? mainSet : base.mainSet;
+  const titleLabel = c.sessionName?.trim() || session.title;
+
+  return {
+    ...base,
+    objective: c.objective?.trim() || (mainSet.length ? titleLabel : base.objective),
+    warmup: c.warmUpLines?.length ? c.warmUpLines : base.warmup,
+    mainSet: resolvedMainSet,
+    cooldown: c.coolDownLines?.length ? c.coolDownLines : base.cooldown,
+    keySetSummary: resolvedMainSet[0] ?? base.keySetSummary,
+    rpeTarget: c.rpeTarget ?? base.rpeTarget,
+    targetPace: c.targetPace ?? base.targetPace,
+    targetSplit: c.targetSplit ?? base.targetSplit,
+    targetHRRange: c.hrGuide ?? c.hrZone ?? base.targetHRRange,
+    coachNote: c.coachNote ?? base.coachNote,
+    whatToRecord: c.whatToRecord?.length ? c.whatToRecord : base.whatToRecord,
+    filmPrompt: c.filmPrompt ?? base.filmPrompt,
+  };
+}
+
 export function applyEditConfigToSession(session: CoachDraftSession): CoachDraftSession {
   const c = session.editConfig;
   const thresholdMinutes = calcThresholdMinutesFromConfig(c) ?? session.thresholdMinutes;
@@ -517,6 +581,7 @@ export function applyEditConfigToSession(session: CoachDraftSession): CoachDraft
   }
 
   const volumeMeta = volumeMetaFromEdit(session, c, thresholdMinutes);
+  const prescription = mergePrescriptionFromEditConfig(session, c);
 
   return {
     ...session,
@@ -527,6 +592,7 @@ export function applyEditConfigToSession(session: CoachDraftSession): CoachDraft
     coachNote: c.coachNote ?? session.coachNote,
     intensity: c.rpeTarget ?? session.intensity,
     volumeMeta,
+    prescription: prescription ?? session.prescription,
   };
 }
 

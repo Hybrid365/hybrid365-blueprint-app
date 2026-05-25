@@ -12,7 +12,7 @@ import {
 import { formatProgrammeDayLabel, sortProgrammeSessions, type ResolvedNextSession } from "@/app/lib/hyroxAthleteProgrammeSort";
 import { HYROX_BLOCKS } from "@/app/lib/hyroxTeamDashboardMock";
 import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
-import type { HyroxSession, SessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
+import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 export type HyroxWeekTrackingLive = {
   sessionsCompleted: number;
   sessionsPlanned: number;
@@ -225,27 +225,7 @@ export function nextSessionDisplayForDashboard(
   };
 }
 
-export function sessionDetailFromHyroxSession(session: HyroxSession): SessionDetail {
-  const prescriptionNote = session.coachNote?.trim();
-  return {
-    sessionId: session.id,
-    weekLabel: formatProgrammeDayLabel(session.day, session.timeOfDay),
-    categoryTag: session.focus || session.type,
-    objective: session.intent,
-    durationMin: parseInt(session.duration, 10) || 45,
-    rpeTarget: session.rpeTarget.replace(/[^0-9]/g, "") || "7",
-    hrZone: "Per programme prescription",
-    targetPaceLoad: "See session prescription",
-    tags: [session.type, session.focus].filter(Boolean),
-    warmUp: ["Follow coach warm-up guidance in session notes"],
-    mainSet: [session.intent],
-    coolDown: ["Easy flush 5–10 min"],
-    coachNote:
-      prescriptionNote ||
-      "Complete at prescribed RPE. Log honestly in your weekly check-in when available.",
-    recordFields: ["Session RPE", "Duration", "Notes"],
-  };
-}
+export { sessionDetailFromHyroxSession } from "@/app/lib/hyroxAthleteSessionDetail";
 
 export function buildAthleteDashboardLiveView(params: {
   portalAthlete: PortalAthleteSummary | null;

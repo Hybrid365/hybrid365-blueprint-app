@@ -1,4 +1,6 @@
-import type { CoachDraftSession, CoachDraftWeek } from "@/app/lib/hyroxCoachProgrammeDraft";
+import type { CoachDraftSession, CoachDraftWeek, CoachSessionEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
+import { deriveMainSetLinesFromEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
+import { resolveAthleteSessionDetailFromPublishedRow } from "@/app/lib/hyroxAthleteSessionDetail";
 import type { HyroxJson, HyroxProgrammeSessionRow } from "@/app/lib/hyroxDatabaseTypes";
 
 export type DraftSessionInsertRow = {
@@ -215,6 +217,17 @@ export function verifyPublishedWeekMatchesDraft(params: {
       errors.push(
         `Draft edit was not synced to published session "${draftRow.session_name}" (${published.id.slice(0, 8)}…): still differs on ${remaining.join(", ")}. Live: "${livePreview}". Draft: "${draftPreview}".`
       );
+    }
+
+    const draftCfg = editConfigFromPrescription(draftRow.prescription) as CoachSessionEditConfig;
+    const expectedMainSet = deriveMainSetLinesFromEditConfig(draftCfg);
+    if (expectedMainSet.length > 0) {
+      const liveDetail = resolveAthleteSessionDetailFromPublishedRow(published);
+      if (!liveDetail.mainSet.join(" ").includes(expectedMainSet[0]!)) {
+        errors.push(
+          `Athlete detail main set mismatch for "${draftRow.session_name}": expected "${expectedMainSet[0]}", live "${liveDetail.mainSet[0] ?? "—"}".`
+        );
+      }
     }
   }
 
