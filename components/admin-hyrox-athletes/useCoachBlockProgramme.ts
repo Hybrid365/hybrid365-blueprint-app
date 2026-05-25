@@ -43,6 +43,18 @@ export type BlockWeekMeta = {
   approved: boolean;
 };
 
+export type SaveDraftResult = {
+  ok: boolean;
+  httpStatus?: number;
+  error?: string;
+};
+
+export type SaveDraftFeedback = {
+  status: "idle" | "saving" | "success" | "error";
+  message: string | null;
+  httpStatus?: number;
+};
+
 export type PublishReadiness = {
   canPublish: boolean;
   reason: string;
@@ -73,6 +85,11 @@ export function useCoachBlockProgramme(params: {
   );
   const [status, setStatus] = useState<CoachProgrammeStatus>(programmeStatus);
   const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<SaveDraftFeedback>({
+    status: "idle",
+    message: null,
+  });
   const [loadingBlock, setLoadingBlock] = useState(false);
   const [blockLoadError, setBlockLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -83,6 +100,15 @@ export function useCoachBlockProgramme(params: {
     draftWeekFingerprint(draft)
   );
   const [publishResult, setPublishResult] = useState<CoachPublishResultState | null>(null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const [saveDebugTimestamps, setSaveDebugTimestamps] = useState({
+    saveButtonClickedAt: null as string | null,
+    saveRequestStartedAt: null as string | null,
+    saveRequestFinishedAt: null as string | null,
+    lastSaveStatus: "idle" as "idle" | "saving" | "success" | "error",
+    lastSaveError: null as string | null,
+  });
   const [programmeStartDate, setProgrammeStartDate] = useState(() =>
     livePersistence?.programmeStartDate?.trim()
       ? livePersistence.programmeStartDate
@@ -127,6 +153,11 @@ export function useCoachBlockProgramme(params: {
   const draftFingerprint = useMemo(() => draftWeekFingerprint(draft), [draft]);
   const draftDirty = draftFingerprint !== savedFingerprint;
   const unsavedChanges = draftDirty;
+  const dirtyBecause = useMemo(() => {
+    if (!draftDirty) return "local matches last saved fingerprint";
+    if (!lastSavedAt) return "never saved this session";
+    return "local draft fingerprint differs from last saved";
+  }, [draftDirty, lastSavedAt]);
 
   const loadBlockMeta = useCallback(async (): Promise<BlockWeekMeta[] | null> => {
     if (!isLive || !livePersistence?.athleteId) return null;
@@ -193,70 +224,186 @@ export function useCoachBlockProgramme(params: {
       preserveStatus?: boolean;
       silent?: boolean;
       draftOverride?: CoachDraftWeek;
-    }) => {
-      const weekToSave = opts?.draftOverride ?? draft;
+      source?: "save_button" | "session_apply" | "approve" | "publish" | "tab_switch";
+    }): Promise<SaveDraftResult> => {
+      const weekToSave = opts?.draftOverride ?? draftRef.current;
       const draftId = activeDraftId;
-      if (!isLive || !draftId || !livePersistence?.effectiveProfile) {
-        markDraftSaved(weekToSave);
-        return true;
+      const sessionCount = weekToSave.days.reduce((n, d) => n + d.sessions.length, 0);
+      const clickedAt = new Date().toISOString();
+      const isExplicitSave =
+        opts?.source === "save_button" || opts?.source === "session_apply";
+
+      if (isExplicitSave) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[programme-save] clicked", {
+            source: opts?.source,
+            draftId,
+            sessionCount,
+            activeDraftId,
+          });
+        }
+        setSaveDebugTimestamps((prev) => ({
+          ...prev,
+          saveButtonClickedAt: clickedAt,
+          lastSaveStatus: "saving",
+          lastSaveError: null,
+        }));
+        setSaveFeedback({ status: "saving", message: null });
       }
-      setSaving(true);
+
+      if (!isLive) {
+        markDraftSaved(weekToSave);
+        if (isExplicitSave) {
+          setSaveFeedback({ status: "success", message: "Draft saved (local preview)." });
+          setSaveDebugTimestamps((prev) => ({
+            ...prev,
+            saveRequestFinishedAt: new Date().toISOString(),
+            lastSaveStatus: "success",
+          }));
+        }
+        return { ok: true };
+      }
+
+      if (!draftId) {
+        const error = "No draft ID for this week. Generate the programme before saving.";
+        if (isExplicitSave) {
+          setSaveFeedback({ status: "error", message: error });
+          setSaveDebugTimestamps((prev) => ({
+            ...prev,
+            saveRequestFinishedAt: new Date().toISOString(),
+            lastSaveStatus: "error",
+            lastSaveError: error,
+          }));
+          if (!opts?.silent) showToast(error);
+        }
+        if (process.env.NODE_ENV === "development") {
+          console.error("[programme-save] patch failed", { reason: "missing_draft_id" });
+        }
+        return { ok: false, error };
+      }
+
+      setSavingDraft(true);
+      if (!opts?.silent) setSaving(true);
+      const startedAt = new Date().toISOString();
+      if (isExplicitSave) {
+        setSaveDebugTimestamps((prev) => ({
+          ...prev,
+          saveRequestStartedAt: startedAt,
+        }));
+      }
+
       try {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[programme-save] patch started", { draftId, sessionCount });
+        }
+
         const body: Record<string, unknown> = {
           draft: weekToSave,
-          effective_profile: livePersistence.effectiveProfile,
           coach_note: coachNotes.weeklyCoachNote,
           athlete_facing_note: coachNotes.athleteFacingNote,
         };
+        if (livePersistence?.effectiveProfile) {
+          body.effective_profile = livePersistence.effectiveProfile;
+        }
         if (!opts?.preserveStatus && opts?.coachStatus) {
           body.coach_status = opts.coachStatus;
         } else if (status === "published") {
           body.coach_status = "approved";
         }
+
         const res = await fetch(`/api/hyrox/programme-drafts/${draftId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        const data = await res.json();
+        const data = (await res.json().catch(() => ({}))) as {
+          success?: boolean;
+          error?: string;
+          detail?: string;
+          draft?: { id?: string; draft_data?: unknown };
+          coachStatus?: CoachProgrammeStatus;
+          republishedPrep?: boolean;
+        };
+
         if (!res.ok || !data.success) {
           const detail =
             process.env.NODE_ENV === "development" && data.detail
               ? `${data.error}: ${data.detail}`
               : (data.error ?? "Could not save draft.");
+          const error = `${res.status} ${detail}`;
+          if (process.env.NODE_ENV === "development") {
+            console.error("[programme-save] patch failed", { status: res.status, detail });
+          }
+          if (isExplicitSave) {
+            setSaveFeedback({ status: "error", message: error, httpStatus: res.status });
+            setSaveDebugTimestamps((prev) => ({
+              ...prev,
+              saveRequestFinishedAt: new Date().toISOString(),
+              lastSaveStatus: "error",
+              lastSaveError: error,
+            }));
+          }
           if (!opts?.silent) showToast(detail);
-          return false;
+          return { ok: false, httpStatus: res.status, error: detail };
         }
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[programme-save] patch success", { draftId, sessionCount });
+        }
+
         const savedWeek =
           parseCoachDraftWeekJson(data.draft?.draft_data) ?? weekToSave;
-        setDraft(savedWeek);
-        markDraftSaved(savedWeek);
-        if (data.draft?.id) livePersistence.onDraftIdChange(data.draft.id);
+        setDraft(weekToSave);
+        markDraftSaved(weekToSave);
+        setDbDraftSnapshot(savedWeek);
+        if (data.draft?.id) livePersistence?.onDraftIdChange(data.draft.id);
         if (data.coachStatus) {
           setStatus(data.coachStatus);
           onStatusChange(data.coachStatus);
         }
-        await loadBlockMeta();
-        if (!opts?.silent) {
-          showToast(
-            data.republishedPrep
-              ? "Draft saved — set back to approved for republish."
-              : "Draft saved to Supabase."
-          );
+
+        void loadBlockMeta();
+
+        const successMessage = data.republishedPrep
+          ? "Draft saved — set back to approved for republish."
+          : "Draft saved.";
+
+        if (isExplicitSave) {
+          setSaveFeedback({ status: "success", message: successMessage, httpStatus: res.status });
+          setSaveDebugTimestamps((prev) => ({
+            ...prev,
+            saveRequestFinishedAt: new Date().toISOString(),
+            lastSaveStatus: "success",
+            lastSaveError: null,
+          }));
         }
-        return true;
-      } catch {
-        if (!opts?.silent) showToast("Network error saving draft.");
-        return false;
+        if (!opts?.silent) showToast(successMessage);
+        return { ok: true, httpStatus: res.status };
+      } catch (e) {
+        const error = e instanceof Error ? e.message : "Network error saving draft.";
+        if (process.env.NODE_ENV === "development") {
+          console.error("[programme-save] patch failed", { error });
+        }
+        if (isExplicitSave) {
+          setSaveFeedback({ status: "error", message: error });
+          setSaveDebugTimestamps((prev) => ({
+            ...prev,
+            saveRequestFinishedAt: new Date().toISOString(),
+            lastSaveStatus: "error",
+            lastSaveError: error,
+          }));
+        }
+        if (!opts?.silent) showToast(error);
+        return { ok: false, error };
       } finally {
-        setSaving(false);
+        setSavingDraft(false);
+        if (!opts?.silent) setSaving(false);
       }
     },
     [
       activeDraftId,
       coachNotes.athleteFacingNote,
       coachNotes.weeklyCoachNote,
-      draft,
       isLive,
       livePersistence,
       loadBlockMeta,
@@ -267,10 +414,26 @@ export function useCoachBlockProgramme(params: {
     ]
   );
 
+  const saveDraft = useCallback(
+    async (opts?: { draftOverride?: CoachDraftWeek }) => {
+      return persistDraft({
+        coachStatus: "edited_draft",
+        source: "save_button",
+        draftOverride: opts?.draftOverride,
+      });
+    },
+    [persistDraft]
+  );
+
   const ensureDraftSaved = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!unsavedChanges) return true;
-      return persistDraft({ preserveStatus: true, silent: opts?.silent });
+      const result = await persistDraft({
+        preserveStatus: true,
+        silent: opts?.silent,
+        source: "publish",
+      });
+      return result.ok;
     },
     [persistDraft, unsavedChanges]
   );
@@ -613,8 +776,8 @@ export function useCoachBlockProgramme(params: {
       showToast("Generate draft sessions before approving.");
       return;
     }
-    const ok = await persistDraft({ preserveStatus: true });
-    if (!ok && isLive) return;
+    const saveResult = await persistDraft({ preserveStatus: true, source: "approve" });
+    if (!saveResult.ok && isLive) return;
 
     if (!isLive) {
       setBlockWeeks((prev) =>
@@ -684,8 +847,8 @@ export function useCoachBlockProgramme(params: {
 
     setSaving(true);
     try {
-      const ok = await persistDraft({ preserveStatus: true });
-      if (!ok) return;
+      const saveResult = await persistDraft({ preserveStatus: true, source: "approve" });
+      if (!saveResult.ok) return;
 
       const res = await fetch(
         `/api/hyrox/athletes/${livePersistence.athleteId}/programme-drafts/approve-block`,
@@ -908,8 +1071,27 @@ export function useCoachBlockProgramme(params: {
       activeDraftId,
       localSelectedPreview: "—",
       dbSelectedPreview: "—",
+      saveButtonClickedAt: saveDebugTimestamps.saveButtonClickedAt,
+      saveRequestStartedAt: saveDebugTimestamps.saveRequestStartedAt,
+      saveRequestFinishedAt: saveDebugTimestamps.saveRequestFinishedAt,
+      lastSaveStatus: saveDebugTimestamps.lastSaveStatus,
+      lastSaveError: saveDebugTimestamps.lastSaveError,
+      savePayloadSessionCount: draft.days.reduce((n, d) => n + d.sessions.length, 0),
+      localFingerprint: draftFingerprint,
+      savedFingerprint,
+      dirtyBecause,
     }),
-    [activeDraftId, draft.days, draftDirty, lastSavedAt, unsavedChanges]
+    [
+      activeDraftId,
+      dirtyBecause,
+      draft.days,
+      draftDirty,
+      draftFingerprint,
+      lastSavedAt,
+      saveDebugTimestamps,
+      savedFingerprint,
+      unsavedChanges,
+    ]
   );
 
   return {
@@ -926,6 +1108,8 @@ export function useCoachBlockProgramme(params: {
     status,
     setStatus,
     saving,
+    savingDraft,
+    saveFeedback,
     loadingBlock,
     blockLoadError,
     toast,
@@ -935,12 +1119,14 @@ export function useCoachBlockProgramme(params: {
     lastSavedAt,
     publishResult,
     draftDebug,
+    dirtyBecause,
     generate,
     approveSelectedWeek,
     approveFullBlock,
     publish,
     publishReadiness,
     persistDraft,
+    saveDraft,
     ensureDraftSaved,
     loadBlockMeta,
     showToast,

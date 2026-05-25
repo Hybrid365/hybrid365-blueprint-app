@@ -115,6 +115,9 @@ export function ProgrammeBuilder({
     approveFullBlock,
     publish,
     publishReadiness,
+    savingDraft,
+    saveFeedback,
+    saveDraft,
     persistDraft,
     unsavedChanges,
     draftDirty,
@@ -394,13 +397,13 @@ export function ProgrammeBuilder({
             saving={saving}
             generationScope={generationScope}
             publishReadiness={publishReadiness}
+            savingDraft={savingDraft}
+            saveFeedback={saveFeedback}
             unsavedChanges={unsavedChanges}
             lastSavedAt={lastSavedAt}
             approveDisabled={isLive && !block.activeDraftId}
             onPreview={() => setPreviewOpen(true)}
-            onSaveDraft={async () => {
-              await persistDraft({ coachStatus: "edited_draft" });
-            }}
+            onSaveDraft={() => void saveDraft()}
             onApproveWeek={() => void approveSelectedWeek()}
             onApproveBlock={() => void approveFullBlock()}
             onPublish={() => void publish()}
@@ -441,15 +444,15 @@ export function ProgrammeBuilder({
           block.setStatus("edited_draft");
           setEditTarget(null);
           if (isLive) {
-            const ok = await persistDraft({
+            const result = await persistDraft({
               coachStatus: "edited_draft",
-              silent: true,
+              source: "session_apply",
               draftOverride: nextDraft,
             });
             block.showToast(
-              ok
+              result.ok
                 ? "Session applied and saved to draft."
-                : "Session applied locally — save failed; use Save draft."
+                : `Session applied locally — save failed: ${result.error ?? "unknown error"}`
             );
           } else {
             block.showToast("Session updated (local preview)");

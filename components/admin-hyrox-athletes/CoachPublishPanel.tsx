@@ -1,12 +1,14 @@
 "use client";
 
 import type { CoachProgrammeStatus } from "@/app/lib/hyroxCoachProgrammeDraft";
-import type { PublishReadiness } from "./useCoachBlockProgramme";
+import type { PublishReadiness, SaveDraftFeedback } from "./useCoachBlockProgramme";
 
 export function CoachPublishPanel({
   status,
   isLive,
   saving,
+  savingDraft,
+  saveFeedback,
   generationScope,
   publishReadiness,
   unsavedChanges,
@@ -21,6 +23,8 @@ export function CoachPublishPanel({
   status: CoachProgrammeStatus;
   isLive?: boolean;
   saving?: boolean;
+  savingDraft?: boolean;
+  saveFeedback?: SaveDraftFeedback;
   generationScope: string;
   publishReadiness: PublishReadiness;
   unsavedChanges?: boolean;
@@ -33,6 +37,8 @@ export function CoachPublishPanel({
   onPublish: () => void | Promise<void>;
 }) {
   const showBlockApprove = generationScope === "block_4";
+  const draftSaving = Boolean(savingDraft);
+  const saveStatus = saveFeedback?.status ?? "idle";
 
   return (
     <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
@@ -61,12 +67,22 @@ export function CoachPublishPanel({
         </button>
         <button
           type="button"
-          disabled={saving}
+          disabled={draftSaving || saving}
           onClick={() => void onSaveDraft()}
           className="rounded-full border border-zinc-600 py-2 text-xs font-semibold text-zinc-200 disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save draft"}
+          {draftSaving ? "Saving…" : "Save draft"}
         </button>
+        {saveStatus === "success" && saveFeedback?.message ? (
+          <p className="rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-100">
+            {saveFeedback.message}
+          </p>
+        ) : null}
+        {saveStatus === "error" && saveFeedback?.message ? (
+          <p className="rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-2 text-xs text-red-100">
+            Save failed: {saveFeedback.message}
+          </p>
+        ) : null}
         <button
           type="button"
           disabled={saving || approveDisabled}
