@@ -486,6 +486,7 @@ export default function HyroxAthleteCoachClient({ athleteId }: { athleteId: stri
           onClearAssessmentMappingBanner: clearAssessmentBanner,
           livePersistence,
         }}
+        effectiveProfile={effectiveProfile}
       />
     </CoachAdminShell>
   );

@@ -81,6 +81,7 @@ export function CoachAthleteDashboard({
   onCoachNotesChange,
   profileReview,
   programmeWorkflowInject,
+  effectiveProfile = null,
 }: {
   athlete: CoachAthlete;
   tab: AthleteTab;
@@ -91,6 +92,7 @@ export function CoachAthleteDashboard({
   onCoachNotesChange: (patch: Partial<CoachNotesState>) => void;
   profileReview: ProfileReviewPanelProps;
   programmeWorkflowInject: ProgrammeWorkflowInjectProps;
+  effectiveProfile?: HyroxAthleteProfile | null;
 }) {
   return (
     <div>
@@ -143,6 +145,7 @@ export function CoachAthleteDashboard({
           assessmentMappingBanner={programmeWorkflowInject.assessmentMappingBanner}
           onClearAssessmentMappingBanner={programmeWorkflowInject.onClearAssessmentMappingBanner}
           livePersistence={programmeWorkflowInject.livePersistence}
+          effectiveProfile={effectiveProfile}
         />
       )}
       {tab === "Block Review" && programmeWorkflowInject.livePersistence?.athleteId ? (
@@ -150,6 +153,7 @@ export function CoachAthleteDashboard({
           athleteId={programmeWorkflowInject.livePersistence.athleteId}
           programmeLengthWeeks={programmeWorkflowInject.livePersistence.programmeLengthWeeks ?? 12}
           currentProgrammeBlock={athlete.programmeBlock}
+          effectiveProfile={effectiveProfile}
         />
       ) : tab === "Block Review" ? (
         <p className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-4 py-6 text-sm text-zinc-400">

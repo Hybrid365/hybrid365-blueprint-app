@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BLOCK_REVIEW_RECOMMENDATION_OPTIONS,
   emptyCoachNotes,
@@ -10,7 +11,21 @@ import {
   type HyroxBlockReviewNextRecommendation,
   type HyroxBlockReviewRecord,
 } from "@/app/lib/hyroxBlockReview";
+import {
+  recommendationLabel,
+  resolveNextBlockGenerationPlan,
+} from "@/app/lib/hyroxBlockReviewGeneration";
+import type { HyroxAthleteProfile } from "@/app/lib/hyroxAthleteProfileTypes";
 import { DashCard, SectionHeading, StatTile } from "@/components/hyrox-team/HyroxDashboardUi";
+
+type GeneratedWeekRow = {
+  globalWeek: number;
+  cycle: number;
+  draftId: string | null;
+  sessionCount: number;
+  action: string;
+  skipReason?: string;
+};
 
 const COACH_NOTE_FIELDS: { key: keyof HyroxBlockReviewCoachNotes; label: string; rows: number }[] = [
   { key: "whatWentWell", label: "What went well?", rows: 3 },
@@ -31,10 +46,12 @@ export function CoachBlockReviewPanel({
   athleteId,
   programmeLengthWeeks = 12,
   currentProgrammeBlock = 1,
+  effectiveProfile = null,
 }: {
   athleteId: string;
   programmeLengthWeeks?: number;
   currentProgrammeBlock?: number;
+  effectiveProfile?: HyroxAthleteProfile | null;
 }) {
   const maxBlocks = maxReviewBlocks(programmeLengthWeeks === 16 ? 16 : 12);
   const [blockNumber, setBlockNumber] = useState(
@@ -49,6 +66,24 @@ export function CoachBlockReviewPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmGenerateOpen, setConfirmGenerateOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generateResult, setGenerateResult] = useState<{
+    message: string;
+    weeks: GeneratedWeekRow[];
+    programmeBuilderBlock: number;
+  } | null>(null);
+
+  const lengthWeeks = (programmeLengthWeeks === 16 ? 16 : 12) as 12 | 16;
+  const generationPlan = useMemo(
+    () =>
+      resolveNextBlockGenerationPlan({
+        reviewedBlockNumber: blockNumber,
+        programmeLengthWeeks: lengthWeeks,
+        recommendation: recommendation || null,
+      }),
+    [blockNumber, lengthWeeks, recommendation]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,12 +143,60 @@ export function CoachBlockReviewPanel({
       setSavedReview(data.review);
       setSummary(data.summary);
       setToast(data.message ?? "Block review saved.");
+      setGenerateResult(null);
     } catch {
       setToast("Network error saving block review.");
     } finally {
       setSaving(false);
     }
   };
+
+  const generateNextBlock = async () => {
+    if (!effectiveProfile) {
+      setToast("Map the athlete profile before generating the next block.");
+      return;
+    }
+    setGenerating(true);
+    setToast(null);
+    setConfirmGenerateOpen(false);
+    try {
+      const res = await fetch(
+        `/api/hyrox/athletes/${athleteId}/block-review/generate-next-block`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reviewed_block_number: blockNumber,
+            effective_profile: effectiveProfile,
+            force_retest_week:
+              generationPlan.kind === "retest_week" &&
+              recommendation === "retest_recalibrate",
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setToast(data.error ?? "Could not generate next block.");
+        return;
+      }
+      setGenerateResult({
+        message: data.message,
+        weeks: data.weeks ?? [],
+        programmeBuilderBlock: data.programmeBuilderBlock ?? blockNumber + 1,
+      });
+      setToast(data.message);
+    } catch {
+      setToast("Network error during block generation.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const canGenerate =
+    Boolean(effectiveProfile) &&
+    generationPlan.kind !== "unavailable" &&
+    Boolean(recommendation) &&
+    Boolean(savedReview);
 
   return (
     <div className="space-y-6">
@@ -335,8 +418,95 @@ export function CoachBlockReviewPanel({
               >
                 {saving ? "Saving…" : "Save block review"}
               </button>
+              <button
+                type="button"
+                disabled={!canGenerate || generating || saving}
+                onClick={() => setConfirmGenerateOpen(true)}
+                className="rounded-full border border-emerald-500/45 bg-emerald-500/15 px-5 py-2 text-sm font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
+              >
+                Generate next 4-week block
+              </button>
               {toast ? <span className="text-sm text-emerald-300/90">{toast}</span> : null}
             </div>
+
+            {!effectiveProfile ? (
+              <p className="mt-3 text-xs text-amber-200/80">
+                Complete Profile Review and save the mapped profile before generating drafts.
+              </p>
+            ) : null}
+
+            {confirmGenerateOpen ? (
+              <div className="mt-4 rounded-xl border border-emerald-500/35 bg-emerald-950/25 p-4">
+                <p className="text-sm font-semibold text-emerald-100">Confirm generation</p>
+                <ul className="mt-2 space-y-1 text-xs text-zinc-300">
+                  <li>
+                    Review block: <strong>Block {blockNumber}</strong>
+                  </li>
+                  {generationPlan.kind === "generate_block" ? (
+                    <>
+                      <li>
+                        Next block: <strong>Block {generationPlan.nextBlockNumber}</strong> (
+                        {generationPlan.nextBlockTitle}) · Weeks W{generationPlan.weeksStart}–
+                        {generationPlan.weeksEnd}
+                      </li>
+                    </>
+                  ) : generationPlan.kind === "retest_week" ? (
+                    <li>{generationPlan.message}</li>
+                  ) : null}
+                  <li>Recommendation: {recommendationLabel(recommendation)}</li>
+                  <li>Focus: {nextBlockFocus?.trim() || "—"}</li>
+                </ul>
+                <p className="mt-2 text-[11px] text-zinc-500">
+                  Published weeks are not modified. Session logs and completions on earlier weeks
+                  are unchanged.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={generating}
+                    onClick={() => void generateNextBlock()}
+                    className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+                  >
+                    {generating ? "Generating…" : "Confirm & generate"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmGenerateOpen(false)}
+                    className="rounded-full border border-zinc-600 px-4 py-2 text-sm text-zinc-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {generationPlan.kind === "unavailable" && recommendation ? (
+              <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-100/90">
+                {generationPlan.message}
+              </p>
+            ) : null}
+
+            {generateResult ? (
+              <div className="mt-4 rounded-xl border border-zinc-700 bg-zinc-900/80 p-4">
+                <p className="text-sm font-semibold text-white">Generation result</p>
+                <p className="mt-1 text-xs text-zinc-400">{generateResult.message}</p>
+                <ul className="mt-3 space-y-1 text-xs text-zinc-400">
+                  {generateResult.weeks.map((w) => (
+                    <li key={w.globalWeek}>
+                      W{w.globalWeek}: {w.sessionCount} sessions · {w.action}
+                      {w.draftId ? ` · draft ${w.draftId.slice(0, 8)}…` : ""}
+                      {w.skipReason ? ` (${w.skipReason})` : ""}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={`/admin/hyrox-athletes/${athleteId}?tab=${encodeURIComponent("Programme Builder")}`}
+                  className="mt-4 inline-flex rounded-full bg-yellow-400/15 px-4 py-2 text-sm font-semibold text-yellow-200 ring-1 ring-yellow-500/40 hover:bg-yellow-400/25"
+                >
+                  Review in Programme Builder (Block {generateResult.programmeBuilderBlock})
+                </Link>
+              </div>
+            ) : null}
           </DashCard>
         </>
       ) : null}

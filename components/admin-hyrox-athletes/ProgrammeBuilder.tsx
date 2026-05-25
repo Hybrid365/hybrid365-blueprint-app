@@ -27,6 +27,7 @@ import { WeeklySummaryPanel } from "@/components/admin-hyrox-athletes/WeeklySumm
 import { AthleteWeekPreviewModal } from "@/components/admin-hyrox-athletes/AthleteWeekPreviewModal";
 import { ProgrammeStatusBadge } from "@/components/admin-hyrox-athletes/StatusBadge";
 import { WeeklyRationalePanel } from "@/components/admin-hyrox-athletes/WeeklyRationalePanel";
+import type { HyroxAthleteProfile } from "@/app/lib/hyroxAthleteProfileTypes";
 import type { LiveProgrammePersistenceProps } from "@/components/admin-hyrox-athletes/CoachAthleteDashboard";
 import { CoachBlockWeekTabs } from "@/components/admin-hyrox-athletes/CoachBlockWeekTabs";
 import { CoachGenerationScopeControl } from "@/components/admin-hyrox-athletes/CoachGenerationScopeControl";
@@ -55,6 +56,7 @@ export function ProgrammeBuilder({
   assessmentMappingBanner = null,
   onClearAssessmentMappingBanner,
   livePersistence,
+  effectiveProfile = null,
 }: {
   athlete: CoachAthlete;
   programmeStatus: CoachProgrammeStatus;
@@ -72,6 +74,7 @@ export function ProgrammeBuilder({
   assessmentMappingBanner?: { bullets: string[] } | null;
   onClearAssessmentMappingBanner?: () => void;
   livePersistence?: LiveProgrammePersistenceProps;
+  effectiveProfile?: HyroxAthleteProfile | null;
 }) {
   const block = useCoachBlockProgramme({
     athlete,
@@ -234,6 +237,7 @@ export function ProgrammeBuilder({
           athleteId={livePersistence.athleteId}
           programmeLengthWeeks={programmeLengthWeeks}
           currentProgrammeBlock={athlete.programmeBlock}
+          effectiveProfile={effectiveProfile}
         />
       ) : null}
 
