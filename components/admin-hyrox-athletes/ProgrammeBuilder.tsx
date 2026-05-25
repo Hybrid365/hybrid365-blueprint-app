@@ -37,6 +37,15 @@ import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBl
 import { CoachPublishPanel } from "@/components/admin-hyrox-athletes/CoachPublishPanel";
 import { CoachWeekSessionPreviewList } from "@/components/admin-hyrox-athletes/CoachWeekSessionPreviewList";
 import { useCoachBlockProgramme } from "@/components/admin-hyrox-athletes/useCoachBlockProgramme";
+import {
+  CoachProgrammeDraftDebugPanel,
+  findSessionByIndices,
+  findSessionPreviewInDraft,
+} from "@/components/admin-hyrox-athletes/CoachProgrammeDraftDebugPanel";
+import { CoachPublishResultPanel } from "@/components/admin-hyrox-athletes/CoachPublishResultPanel";
+import {
+  sessionPrescriptionPreview,
+} from "@/app/lib/hyroxCoachProgrammeDraft";
 
 type MoveState = {
   dayIndex: number;
@@ -107,6 +116,12 @@ export function ProgrammeBuilder({
     publish,
     publishReadiness,
     persistDraft,
+    unsavedChanges,
+    draftDirty,
+    lastSavedAt,
+    dbDraftSnapshot,
+    publishResult,
+    draftDebug,
     isLive,
     programmeStartDate,
     saveProgrammeStartDate,
@@ -193,6 +208,24 @@ export function ProgrammeBuilder({
   const editSession = editTarget
     ? draft.days[editTarget.dayIndex]?.sessions[editTarget.sessionIndex]
     : null;
+
+  const selectedForDebug = findSessionByIndices(
+    draft,
+    editTarget?.dayIndex ?? null,
+    editTarget?.sessionIndex ?? null
+  );
+  const dbSelectedForDebug =
+    editSession?.draftId && dbDraftSnapshot
+      ? findSessionPreviewInDraft(dbDraftSnapshot, editSession.draftId)
+      : "—";
+
+  const draftDebugState = {
+    ...draftDebug,
+    localSelectedPreview: selectedForDebug
+      ? sessionPrescriptionPreview(selectedForDebug)
+      : "—",
+    dbSelectedPreview: dbSelectedForDebug,
+  };
 
   const weekRole = BLOCK_WEEK_FOCUS_LABELS[selectedCycle];
 
@@ -361,16 +394,24 @@ export function ProgrammeBuilder({
             saving={saving}
             generationScope={generationScope}
             publishReadiness={publishReadiness}
+            unsavedChanges={unsavedChanges}
+            lastSavedAt={lastSavedAt}
             approveDisabled={isLive && !block.activeDraftId}
             onPreview={() => setPreviewOpen(true)}
             onSaveDraft={async () => {
-              const ok = await persistDraft({ coachStatus: "edited_draft" });
-              if (ok) block.showToast(isLive ? "Draft saved to Supabase" : "Draft saved (local)");
+              await persistDraft({ coachStatus: "edited_draft" });
             }}
             onApproveWeek={() => void approveSelectedWeek()}
             onApproveBlock={() => void approveFullBlock()}
             onPublish={() => void publish()}
           />
+          {isLive ? (
+            <CoachProgrammeDraftDebugPanel
+              debug={draftDebugState}
+              selectedSessionTitle={editSession?.title ?? null}
+            />
+          ) : null}
+          {isLive ? <CoachPublishResultPanel result={publishResult} /> : null}
           <CoachNotesPanel notes={coachNotes} onChange={onCoachNotesChange} />
         </aside>
       </div>
@@ -379,17 +420,40 @@ export function ProgrammeBuilder({
         session={editSession ?? null}
         open={editTarget != null}
         onClose={() => setEditTarget(null)}
-        onSave={(config: CoachSessionEditConfig) => {
+        onSave={async (config: CoachSessionEditConfig) => {
           if (!editTarget) return;
-          updateDay(editTarget.dayIndex, (sessions) =>
-            sessions.map((s, i) => {
-              if (i !== editTarget.sessionIndex) return s;
-              const updated = { ...s, editConfig: config };
-              return applyEditConfigToSession(updated);
-            })
-          );
+          const nextDraft: CoachDraftWeek = {
+            ...draft,
+            days: draft.days.map((d, di) =>
+              di === editTarget.dayIndex
+                ? {
+                    ...d,
+                    sessions: d.sessions.map((s, i) => {
+                      if (i !== editTarget.sessionIndex) return s;
+                      return applyEditConfigToSession({ ...s, editConfig: config });
+                    }),
+                  }
+                : d
+            ),
+          };
+          setDraft(nextDraft);
+          onStatusChange("edited_draft");
+          block.setStatus("edited_draft");
           setEditTarget(null);
-          block.showToast("Session updated");
+          if (isLive) {
+            const ok = await persistDraft({
+              coachStatus: "edited_draft",
+              silent: true,
+              draftOverride: nextDraft,
+            });
+            block.showToast(
+              ok
+                ? "Session applied and saved to draft."
+                : "Session applied locally — save failed; use Save draft."
+            );
+          } else {
+            block.showToast("Session updated (local preview)");
+          }
         }}
       />
 

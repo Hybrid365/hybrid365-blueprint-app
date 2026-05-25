@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BLOCK_WEEK_FOCUS_LABELS,
+  draftWeekFingerprint,
   generateCoachDraftWeekForBlockCycle,
   generateCoachBlockDraftWeeks,
   globalWeekForBlock,
+  parseCoachDraftWeekJson,
   type CoachDraftWeek,
   type CoachProgrammeStatus,
 } from "@/app/lib/hyroxCoachProgrammeDraft";
+import type { CoachPublishResultState } from "@/components/admin-hyrox-athletes/CoachPublishResultPanel";
+import type { CoachDraftDebugState } from "@/components/admin-hyrox-athletes/CoachProgrammeDraftDebugPanel";
 import { draftDbToCoachStatus } from "@/app/lib/hyroxCoachProgrammeStatusMap";
 import {
   defaultProgrammeStartYmd,
@@ -72,6 +76,13 @@ export function useCoachBlockProgramme(params: {
   const [loadingBlock, setLoadingBlock] = useState(false);
   const [blockLoadError, setBlockLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [dbDraftSnapshot, setDbDraftSnapshot] = useState<CoachDraftWeek | null>(null);
+  const lastSavedFingerprintRef = useRef<string>(draftWeekFingerprint(draft));
+  const [savedFingerprint, setSavedFingerprint] = useState(() =>
+    draftWeekFingerprint(draft)
+  );
+  const [publishResult, setPublishResult] = useState<CoachPublishResultState | null>(null);
   const [programmeStartDate, setProgrammeStartDate] = useState(() =>
     livePersistence?.programmeStartDate?.trim()
       ? livePersistence.programmeStartDate
@@ -96,13 +107,26 @@ export function useCoachBlockProgramme(params: {
     setStatus(programmeStatus);
   }, [programmeStatus]);
 
+  const markDraftSaved = useCallback((week: CoachDraftWeek, at?: string) => {
+    const fp = draftWeekFingerprint(week);
+    lastSavedFingerprintRef.current = fp;
+    setSavedFingerprint(fp);
+    setDbDraftSnapshot(week);
+    setLastSavedAt(at ?? new Date().toISOString());
+  }, []);
+
   useEffect(() => {
     if (initialDraft) {
       setDraft(initialDraft);
+      markDraftSaved(initialDraft);
       const cycle = Math.min(4, Math.max(1, ((initialDraft.week - 1) % 4) + 1)) as 1 | 2 | 3 | 4;
       setSelectedCycle(cycle);
     }
-  }, [initialDraft]);
+  }, [initialDraft, markDraftSaved]);
+
+  const draftFingerprint = useMemo(() => draftWeekFingerprint(draft), [draft]);
+  const draftDirty = draftFingerprint !== savedFingerprint;
+  const unsavedChanges = draftDirty;
 
   const loadBlockMeta = useCallback(async (): Promise<BlockWeekMeta[] | null> => {
     if (!isLive || !livePersistence?.athleteId) return null;
@@ -155,45 +179,39 @@ export function useCoachBlockProgramme(params: {
       const week = weeks.find((w) => w.cycle === cycle);
       if (week?.draftData) {
         setDraft(week.draftData);
+        markDraftSaved(week.draftData);
         if (week.draftId) livePersistence?.onDraftIdChange(week.draftId);
         syncStatusFromWeek(week);
       }
     },
-    [livePersistence, syncStatusFromWeek]
-  );
-
-  const selectCycle = useCallback(
-    (cycle: 1 | 2 | 3 | 4) => {
-      setSelectedCycle(cycle);
-      const week = blockWeeks.find((w) => w.cycle === cycle);
-      if (week?.draftData) {
-        setDraft(week.draftData);
-        if (week.draftId) livePersistence?.onDraftIdChange(week.draftId);
-        syncStatusFromWeek(week);
-        return;
-      }
-      setDraft(generateCoachDraftWeekForBlockCycle(athlete, cycle));
-      syncStatusFromWeek(week ?? null);
-    },
-    [athlete, blockWeeks, livePersistence, syncStatusFromWeek]
+    [livePersistence, markDraftSaved, syncStatusFromWeek]
   );
 
   const persistDraft = useCallback(
-    async (opts?: { coachStatus?: CoachProgrammeStatus; preserveStatus?: boolean }) => {
+    async (opts?: {
+      coachStatus?: CoachProgrammeStatus;
+      preserveStatus?: boolean;
+      silent?: boolean;
+      draftOverride?: CoachDraftWeek;
+    }) => {
+      const weekToSave = opts?.draftOverride ?? draft;
       const draftId = activeDraftId;
       if (!isLive || !draftId || !livePersistence?.effectiveProfile) {
+        markDraftSaved(weekToSave);
         return true;
       }
       setSaving(true);
       try {
         const body: Record<string, unknown> = {
-          draft,
+          draft: weekToSave,
           effective_profile: livePersistence.effectiveProfile,
           coach_note: coachNotes.weeklyCoachNote,
           athlete_facing_note: coachNotes.athleteFacingNote,
         };
         if (!opts?.preserveStatus && opts?.coachStatus) {
           body.coach_status = opts.coachStatus;
+        } else if (status === "published") {
+          body.coach_status = "approved";
         }
         const res = await fetch(`/api/hyrox/programme-drafts/${draftId}`, {
           method: "PATCH",
@@ -206,18 +224,29 @@ export function useCoachBlockProgramme(params: {
             process.env.NODE_ENV === "development" && data.detail
               ? `${data.error}: ${data.detail}`
               : (data.error ?? "Could not save draft.");
-          showToast(detail);
+          if (!opts?.silent) showToast(detail);
           return false;
         }
+        const savedWeek =
+          parseCoachDraftWeekJson(data.draft?.draft_data) ?? weekToSave;
+        setDraft(savedWeek);
+        markDraftSaved(savedWeek);
         if (data.draft?.id) livePersistence.onDraftIdChange(data.draft.id);
         if (data.coachStatus) {
           setStatus(data.coachStatus);
           onStatusChange(data.coachStatus);
         }
         await loadBlockMeta();
+        if (!opts?.silent) {
+          showToast(
+            data.republishedPrep
+              ? "Draft saved — set back to approved for republish."
+              : "Draft saved to Supabase."
+          );
+        }
         return true;
       } catch {
-        showToast("Network error saving draft.");
+        if (!opts?.silent) showToast("Network error saving draft.");
         return false;
       } finally {
         setSaving(false);
@@ -231,8 +260,54 @@ export function useCoachBlockProgramme(params: {
       isLive,
       livePersistence,
       loadBlockMeta,
+      markDraftSaved,
       onStatusChange,
       showToast,
+      status,
+    ]
+  );
+
+  const ensureDraftSaved = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!unsavedChanges) return true;
+      return persistDraft({ preserveStatus: true, silent: opts?.silent });
+    },
+    [persistDraft, unsavedChanges]
+  );
+
+  const selectCycle = useCallback(
+    async (cycle: 1 | 2 | 3 | 4) => {
+      if (isLive && unsavedChanges) {
+        const ok = await ensureDraftSaved({ silent: true });
+        if (!ok) {
+          showToast("Save the current week before switching tabs.");
+          return;
+        }
+      }
+      setSelectedCycle(cycle);
+      const week = blockWeeks.find((w) => w.cycle === cycle);
+      if (week?.draftData) {
+        setDraft(week.draftData);
+        markDraftSaved(week.draftData);
+        if (week.draftId) livePersistence?.onDraftIdChange(week.draftId);
+        syncStatusFromWeek(week);
+        return;
+      }
+      const generated = generateCoachDraftWeekForBlockCycle(athlete, cycle);
+      setDraft(generated);
+      markDraftSaved(generated);
+      syncStatusFromWeek(week ?? null);
+    },
+    [
+      athlete,
+      blockWeeks,
+      ensureDraftSaved,
+      isLive,
+      livePersistence,
+      markDraftSaved,
+      showToast,
+      syncStatusFromWeek,
+      unsavedChanges,
     ]
   );
 
@@ -317,6 +392,10 @@ export function useCoachBlockProgramme(params: {
       const weeks = await loadBlockMeta();
       applyWeekFromMeta(weeks, selectedCycle);
       await livePersistence.onReload();
+      if (weeks) {
+        const w = weeks.find((x) => x.cycle === selectedCycle);
+        if (w?.draftData) markDraftSaved(w.draftData);
+      }
     } catch {
       showToast("Network error during generation.");
     } finally {
@@ -331,6 +410,7 @@ export function useCoachBlockProgramme(params: {
     isLive,
     livePersistence,
     loadBlockMeta,
+    markDraftSaved,
     onStatusChange,
     selectedCycle,
     showToast,
@@ -425,6 +505,20 @@ export function useCoachBlockProgramme(params: {
     const generatedWeeks = effectiveBlockWeeks.filter((w) => w.generated);
     const hasDraft = isLive ? Boolean(activeDraftId) : true;
     const sessionCount = draft.days.reduce((n, d) => n + d.sessions.length, 0);
+    const blockRepublish =
+      generationScope === "block_4" &&
+      generatedWeeks.length >= 4 &&
+      generatedWeeks.every((w) => w.published);
+
+    if (unsavedChanges) {
+      return {
+        canPublish: false,
+        reason: "You have unsaved programme edits. Save or approve before publishing.",
+        buttonLabel:
+          generationScope === "block_4" ? "Publish 4-Week Block" : "Publish Selected Week",
+        publishBlock: generationScope === "block_4",
+      };
+    }
 
     if (!programmeStartDate?.trim()) {
       return {
@@ -472,9 +566,11 @@ export function useCoachBlockProgramme(params: {
         };
       }
       return {
-        canPublish: status !== "published",
-        reason: `Ready to publish 4-week block from ${programmeStartDate}. Weeks 1–4 will be visible to the athlete.`,
-        buttonLabel: "Publish 4-Week Block",
+        canPublish: true,
+        reason: blockRepublish
+          ? `Republish block from ${programmeStartDate} — syncs saved draft edits to athlete programme.`
+          : `Ready to publish 4-week block from ${programmeStartDate}. Weeks 1–4 will be visible to the athlete.`,
+        buttonLabel: blockRepublish ? "Republish 4-Week Block" : "Publish 4-Week Block",
         publishBlock: true,
       };
     }
@@ -489,10 +585,13 @@ export function useCoachBlockProgramme(params: {
         publishBlock: false,
       };
     }
+    const weekRepublish = Boolean(selectedWeekMeta?.published);
     return {
-      canPublish: status !== "published",
-      reason: `Ready to publish week ${selectedCycle} only.`,
-      buttonLabel: "Publish Selected Week",
+      canPublish: true,
+      reason: weekRepublish
+        ? `Republish week ${selectedCycle} — syncs saved draft edits to athlete programme.`
+        : `Ready to publish week ${selectedCycle} only.`,
+      buttonLabel: weekRepublish ? "Republish Selected Week" : "Publish Selected Week",
       publishBlock: false,
     };
   }, [
@@ -506,6 +605,7 @@ export function useCoachBlockProgramme(params: {
     programmeStartDate,
     selectedWeekMeta,
     status,
+    unsavedChanges,
   ]);
 
   const approveSelectedWeek = useCallback(async () => {
@@ -622,6 +722,11 @@ export function useCoachBlockProgramme(params: {
       return;
     }
 
+    if (unsavedChanges) {
+      showToast("You have unsaved programme edits. Save/approve before publishing.");
+      return;
+    }
+
     const publishBlock = generationScope === "block_4";
 
     if (!isLive) {
@@ -661,6 +766,21 @@ export function useCoachBlockProgramme(params: {
 
     setSaving(true);
     try {
+      const saved = await ensureDraftSaved({ silent: true });
+      if (!saved) {
+        showToast("Could not save draft before publish.");
+        setPublishResult({
+          fired: true,
+          at: new Date().toISOString(),
+          draftId: activeDraftId,
+          publishBlock,
+          message: null,
+          error: "Draft save failed before publish.",
+          weekResults: [],
+        });
+        return;
+      }
+
       const expected_session_counts_by_week = publishBlock
         ? Object.fromEntries(
             effectiveBlockWeeks
@@ -684,6 +804,7 @@ export function useCoachBlockProgramme(params: {
         }),
       });
       const data = await res.json();
+      const weekResults = Array.isArray(data.weekResults) ? data.weekResults : [];
       if (!res.ok || !data.success) {
         const detail =
           data.code === "STALE_DRAFT_SESSION_COUNT"
@@ -692,12 +813,29 @@ export function useCoachBlockProgramme(params: {
               ? `${data.error}: ${data.detail}`
               : (data.error ?? "Publish failed.");
         showToast(detail);
+        setPublishResult({
+          fired: true,
+          at: new Date().toISOString(),
+          draftId: activeDraftId,
+          publishBlock,
+          message: null,
+          error: detail,
+          weekResults,
+        });
         return;
       }
       setStatus("published");
       onStatusChange("published");
-      const weekLines = Array.isArray(data.weekResults)
-        ? data.weekResults.map(
+      setPublishResult({
+        fired: true,
+        at: new Date().toISOString(),
+        draftId: activeDraftId,
+        publishBlock: Boolean(data.publishBlock ?? publishBlock),
+        message: typeof data.message === "string" ? data.message : "Publish succeeded.",
+        error: null,
+        weekResults,
+      });
+      const weekLines = weekResults.map(
             (w: {
               weekNumber: number;
               insertedRowsCount?: number;
@@ -714,8 +852,7 @@ export function useCoachBlockProgramme(params: {
                   : "";
               return `W${w.weekNumber}: inserted ${inserted}, updated ${updated}, skipped ${skipped}${warn}`;
             }
-          )
-        : [];
+          );
       if (data.publishBlock) {
         showToast(
           weekLines.length > 0
@@ -742,6 +879,7 @@ export function useCoachBlockProgramme(params: {
     applyWeekFromMeta,
     draft,
     effectiveBlockWeeks,
+    ensureDraftSaved,
     generationScope,
     isLive,
     livePersistence,
@@ -751,6 +889,7 @@ export function useCoachBlockProgramme(params: {
     showToast,
     programmeStartDate,
     status,
+    unsavedChanges,
   ]);
 
   const prepareNextBlock = useCallback(() => {
@@ -759,6 +898,19 @@ export function useCoachBlockProgramme(params: {
       `To generate Block ${next}: update the athlete's current block to ${next} in Profile Review, then use Generate 4-week block. Full progress-based auto-generation is coming soon.`
     );
   }, [athlete.programmeBlock, showToast]);
+
+  const draftDebug: CoachDraftDebugState = useMemo(
+    () => ({
+      unsavedChanges,
+      draftDirty,
+      lastSavedAt,
+      approvedDraftSessionCount: draft.days.reduce((n, d) => n + d.sessions.length, 0),
+      activeDraftId,
+      localSelectedPreview: "—",
+      dbSelectedPreview: "—",
+    }),
+    [activeDraftId, draft.days, draftDirty, lastSavedAt, unsavedChanges]
+  );
 
   return {
     effectiveBlockWeeks,
@@ -770,6 +922,7 @@ export function useCoachBlockProgramme(params: {
     selectedWeekMeta,
     draft,
     setDraft,
+    dbDraftSnapshot,
     status,
     setStatus,
     saving,
@@ -777,12 +930,18 @@ export function useCoachBlockProgramme(params: {
     blockLoadError,
     toast,
     activeDraftId,
+    unsavedChanges,
+    draftDirty,
+    lastSavedAt,
+    publishResult,
+    draftDebug,
     generate,
     approveSelectedWeek,
     approveFullBlock,
     publish,
     publishReadiness,
     persistDraft,
+    ensureDraftSaved,
     loadBlockMeta,
     showToast,
     isLive,

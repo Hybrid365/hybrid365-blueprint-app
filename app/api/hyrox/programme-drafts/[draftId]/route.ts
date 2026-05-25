@@ -61,12 +61,14 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  if (draftRow.status === "published") {
+  if (draftRow.status === "archived") {
     return NextResponse.json(
-      { success: false, error: "Published drafts cannot be edited." },
+      { success: false, error: "Archived drafts cannot be edited." },
       { status: 409 }
     );
   }
+
+  const wasPublished = draftRow.status === "published";
 
   const { athlete, error: athleteError } = await fetchHyroxAthleteById(supabase, draftRow.athlete_id);
 
@@ -94,7 +96,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       draft: body.draft,
       coachNote: body.coach_note ?? draftRow.coach_note ?? "",
       athleteFacingNote: body.athlete_facing_note ?? draftRow.athlete_facing_note ?? "",
-      coachStatus,
+      coachStatus: wasPublished && !coachStatus ? "approved" : coachStatus,
       changedBy: auth.ctx.userId,
     });
 
@@ -102,6 +104,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       success: true,
       draft: saved,
       coachStatus: draftDbToCoachStatus(saved.status),
+      republishedPrep: wasPublished,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Save failed.";

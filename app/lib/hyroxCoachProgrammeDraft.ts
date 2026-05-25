@@ -128,6 +128,30 @@ export type CoachDraftSessionCounts = {
   pm: number;
 };
 
+/** Stable fingerprint for unsaved-change detection in Programme Builder. */
+export function draftWeekFingerprint(draft: CoachDraftWeek): string {
+  return JSON.stringify(draft);
+}
+
+export function parseCoachDraftWeekJson(data: unknown): CoachDraftWeek | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const d = data as CoachDraftWeek;
+  if (!d.days || !Array.isArray(d.days)) return null;
+  return d;
+}
+
+export function sessionPrescriptionPreview(session: CoachDraftSession | null | undefined): string {
+  if (!session) return "—";
+  const cfg = session.editConfig;
+  const cfgLine =
+    cfg && cfg.kind === "erg_interval" && cfg.ergReps && cfg.intervalDurationMinutes
+      ? `${cfg.ergReps} x ${cfg.intervalDurationMinutes} min`
+      : cfg && cfg.kind === "threshold_run" && cfg.reps && cfg.repDurationMinutes
+        ? `${cfg.reps} x ${cfg.repDurationMinutes} min`
+        : cfg?.sessionName ?? "";
+  return [session.title, session.duration, cfgLine].filter(Boolean).join(" · ");
+}
+
 /** Session counts from generated draft JSON (before publish). */
 export function countCoachDraftSessions(draft: CoachDraftWeek): CoachDraftSessionCounts {
   const counts: CoachDraftSessionCounts = {

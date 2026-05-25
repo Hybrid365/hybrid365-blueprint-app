@@ -15,7 +15,7 @@ export function SessionEditDrawer({
   session: CoachDraftSession | null;
   open: boolean;
   onClose: () => void;
-  onSave: (config: CoachSessionEditConfig) => void;
+  onSave: (config: CoachSessionEditConfig) => void | Promise<void>;
 }) {
   const [c, setC] = useState<CoachSessionEditConfig | null>(null);
 
@@ -240,10 +240,10 @@ export function SessionEditDrawer({
         <footer className="border-t border-zinc-800 p-4">
           <button
             type="button"
-            onClick={() => onSave(c)}
+            onClick={() => void onSave(c)}
             className="w-full rounded-full bg-yellow-400 py-3 text-sm font-black text-zinc-950"
           >
-            Save changes
+            Apply &amp; save to draft
           </button>
         </footer>
       </aside>

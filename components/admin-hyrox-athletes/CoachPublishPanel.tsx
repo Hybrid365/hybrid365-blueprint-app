@@ -9,6 +9,8 @@ export function CoachPublishPanel({
   saving,
   generationScope,
   publishReadiness,
+  unsavedChanges,
+  lastSavedAt,
   approveDisabled,
   onPreview,
   onSaveDraft,
@@ -21,6 +23,8 @@ export function CoachPublishPanel({
   saving?: boolean;
   generationScope: string;
   publishReadiness: PublishReadiness;
+  unsavedChanges?: boolean;
+  lastSavedAt?: string | null;
   approveDisabled?: boolean;
   onPreview: () => void;
   onSaveDraft: () => void | Promise<void>;
@@ -92,6 +96,15 @@ export function CoachPublishPanel({
       </div>
 
       <p className="mt-2 text-[10px] text-zinc-600">Workflow status: {status.replace(/_/g, " ")}</p>
+      {unsavedChanges ? (
+        <p className="mt-1 text-[10px] font-semibold text-amber-300">
+          Unsaved programme edits — save before approve/publish.
+        </p>
+      ) : lastSavedAt ? (
+        <p className="mt-1 text-[10px] text-zinc-500">
+          Last saved {new Date(lastSavedAt).toLocaleString()}
+        </p>
+      ) : null}
       {approveDisabled ? (
         <p className="mt-1 text-[10px] text-amber-400/80">Generate programme draft first.</p>
       ) : null}

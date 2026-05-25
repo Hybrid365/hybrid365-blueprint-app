@@ -74,11 +74,29 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  if (draft.status !== "approved") {
+  if (
+    !publishBlock &&
+    draft.status !== "approved" &&
+    draft.status !== "published"
+  ) {
     return NextResponse.json(
       {
         success: false,
         error: "Draft must be approved before publishing. Approve the week first.",
+        draftStatus: draft.status,
+      },
+      { status: 409 }
+    );
+  }
+  if (
+    publishBlock &&
+    draft.status !== "approved" &&
+    draft.status !== "published"
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Block drafts must be approved or previously published before syncing.",
         draftStatus: draft.status,
       },
       { status: 409 }
