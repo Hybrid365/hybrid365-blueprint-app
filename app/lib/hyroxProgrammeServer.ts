@@ -744,8 +744,89 @@ export async function fetchAthletePublishedProgramme(
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-function sessionRowKey(dayOfWeek: string, sessionSlot: string): string {
+export function sessionRowKey(dayOfWeek: string, sessionSlot: string): string {
   return `${dayOfWeek}|${sessionSlot}`;
+}
+
+type DraftSessionInsertRow = ReturnType<typeof buildSessionInsertRowsFromDraftWeek>[number];
+
+const PUBLISHED_SESSION_SYNC_SELECT =
+  "id, day_of_week, session_slot, session_name, category, prescription, metadata, status, completed_at, athlete_feedback";
+
+function draftIdFromMetadata(metadata: HyroxJson | null | undefined): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const id = (metadata as Record<string, unknown>).draftId;
+  return typeof id === "string" && id.trim() ? id.trim() : null;
+}
+
+function pickSessionSyncFields(row: {
+  day_of_week: string;
+  session_slot: string;
+  session_name: string;
+  category: string;
+  prescription: HyroxJson;
+  metadata: HyroxJson | null;
+}) {
+  return {
+    day_of_week: row.day_of_week,
+    session_slot: row.session_slot,
+    session_name: row.session_name,
+    category: row.category,
+    prescription: row.prescription,
+    metadata: row.metadata,
+  };
+}
+
+function sessionSyncContentEqual(
+  existing: Pick<
+    HyroxProgrammeSessionRow,
+    "day_of_week" | "session_slot" | "session_name" | "category" | "prescription" | "metadata"
+  >,
+  draft: DraftSessionInsertRow
+): boolean {
+  return (
+    JSON.stringify(pickSessionSyncFields(existing)) ===
+    JSON.stringify(pickSessionSyncFields(draft))
+  );
+}
+
+export function publishedSessionHasAthleteLogs(
+  row: Pick<
+    HyroxProgrammeSessionRow,
+    "status" | "completed_at" | "athlete_feedback"
+  >
+): boolean {
+  if (row.status === "completed" || row.status === "missed" || row.status === "modified") {
+    return true;
+  }
+  if (row.completed_at) return true;
+  const feedback = parseHyroxAthleteSessionFeedback(row.athlete_feedback);
+  return Boolean(
+    feedback.rpe?.trim() ||
+      feedback.notes?.trim() ||
+      feedback.modifications?.trim() ||
+      feedback.score?.trim()
+  );
+}
+
+function findPublishedSessionForDraftRow(
+  existing: HyroxProgrammeSessionRow[],
+  draftRow: DraftSessionInsertRow,
+  usedIds: Set<string>
+): HyroxProgrammeSessionRow | undefined {
+  const draftId = draftIdFromMetadata(draftRow.metadata as HyroxJson);
+  if (draftId) {
+    const byDraftId = existing.find(
+      (row) =>
+        !usedIds.has(row.id) && draftIdFromMetadata(row.metadata) === draftId
+    );
+    if (byDraftId) return byDraftId;
+  }
+  const key = sessionRowKey(draftRow.day_of_week, draftRow.session_slot);
+  return existing.find(
+    (row) =>
+      !usedIds.has(row.id) && sessionRowKey(row.day_of_week, row.session_slot) === key
+  );
 }
 
 export function buildSessionInsertRowsFromDraftWeek(
@@ -780,7 +861,12 @@ export function buildSessionInsertRowsFromDraftWeek(
   );
 }
 
-/** Insert draft sessions missing from a published week (day + slot). Does not delete existing rows. */
+/**
+ * Sync approved draft sessions into an already-published week.
+ * Matches published rows by metadata.draftId, else day + session_slot.
+ * Updates content fields; preserves status / completed_at / athlete_feedback.
+ * Does not delete published sessions missing from the draft.
+ */
 export async function syncPublishedWeekSessionsFromDraft(
   supabase: SupabaseClient,
   params: {
@@ -794,32 +880,72 @@ export async function syncPublishedWeekSessionsFromDraft(
 ): Promise<PublishWeekSyncAudit> {
   const { data: existingRows, error: fetchError } = await supabase
     .from("hyrox_programme_sessions")
-    .select("id, day_of_week, session_slot")
+    .select(PUBLISHED_SESSION_SYNC_SELECT)
     .eq("programme_week_id", params.week.id);
 
   if (fetchError) throw new Error(fetchError.message);
 
-  const existing = (existingRows ?? []) as Pick<
-    HyroxProgrammeSessionRow,
-    "id" | "day_of_week" | "session_slot"
-  >[];
-  const existingKeys = new Set(
-    existing.map((r) => sessionRowKey(r.day_of_week, r.session_slot))
-  );
+  const existing = (existingRows ?? []) as HyroxProgrammeSessionRow[];
+  const usedPublishedIds = new Set<string>();
 
   const allRows = buildSessionInsertRowsFromDraftWeek(params.draftWeek, {
     programmeWeekId: params.week.id,
     athleteId: params.athleteId,
   });
+
+  const warnings: string[] = [];
   const skippedReasons: string[] = [];
-  const toInsert = allRows.filter((row) => {
-    const key = sessionRowKey(row.day_of_week, row.session_slot);
-    if (existingKeys.has(key)) {
-      skippedReasons.push(`already_exists:${key}`);
-      return false;
+  const updatedSessions: PublishWeekSyncAudit["updatedSessions"] = [];
+  const toInsert: DraftSessionInsertRow[] = [];
+  let updatedRowsCount = 0;
+  let unchangedRowsCount = 0;
+  const now = new Date().toISOString();
+
+  for (const draftRow of allRows) {
+    const match = findPublishedSessionForDraftRow(existing, draftRow, usedPublishedIds);
+    if (!match) {
+      toInsert.push(draftRow);
+      continue;
     }
-    return true;
-  });
+
+    usedPublishedIds.add(match.id);
+
+    if (sessionSyncContentEqual(match, draftRow)) {
+      unchangedRowsCount += 1;
+      continue;
+    }
+
+    const hadLogs = publishedSessionHasAthleteLogs(match);
+
+    const { error: updateError } = await supabase
+      .from("hyrox_programme_sessions")
+      .update({
+        ...pickSessionSyncFields(draftRow),
+        updated_at: now,
+      })
+      .eq("id", match.id);
+
+    if (updateError) throw new Error(updateError.message);
+
+    updatedRowsCount += 1;
+    updatedSessions.push({
+      id: match.id,
+      title: draftRow.session_name,
+      hadLogs,
+    });
+    if (hadLogs) {
+      warnings.push(
+        `Updated session with existing logs: "${match.session_name}" (${sessionRowKey(match.day_of_week, match.session_slot)}).`
+      );
+    }
+  }
+
+  for (const row of existing) {
+    if (usedPublishedIds.has(row.id)) continue;
+    warnings.push(
+      `Published session exists but not in draft; not deleted: "${row.session_name}" (${sessionRowKey(row.day_of_week, row.session_slot)}).`
+    );
+  }
 
   if (toInsert.length > 0) {
     const { error: insertError } = await supabase
@@ -839,13 +965,15 @@ export async function syncPublishedWeekSessionsFromDraft(
       week_start_date: startYmd,
       week_end_date: endYmd,
       source_draft_id: params.sourceDraftId ?? params.week.source_draft_id,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq("id", params.week.id);
 
   const dbSessionCountBefore = existing.length;
   const insertedRowsCount = toInsert.length;
   const rowsAfterPublish = dbSessionCountBefore + insertedRowsCount;
+  const skippedBecauseLoggedCount = 0;
+  const skippedRowsCount = unchangedRowsCount;
   const baseAudit = params.audit ?? {
     draftId: params.sourceDraftId ?? "",
     athleteId: params.athleteId,
@@ -858,14 +986,34 @@ export async function syncPublishedWeekSessionsFromDraft(
     expectedSessionCount: null,
   };
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("[hyrox/sync-published-week]", {
+      weekNumber: params.week.week_number,
+      existingRowsBefore: dbSessionCountBefore,
+      draftSessionsCount: allRows.length,
+      insertedRowsCount,
+      updatedRowsCount,
+      unchangedRowsCount,
+      skippedBecauseLoggedCount,
+      updatedSessions,
+      warnings,
+    });
+  }
+
   return {
     ...baseAudit,
     sessionsToInsertCount: toInsert.length,
     sessionsToInsertTitles: toInsert.map((r) => r.session_name),
     existingRowsBefore: dbSessionCountBefore,
+    draftSessionsCount: allRows.length,
     insertedRowsCount,
-    skippedRowsCount: skippedReasons.length,
+    updatedRowsCount,
+    unchangedRowsCount,
+    skippedRowsCount,
+    skippedBecauseLoggedCount,
     skippedReasons,
+    warnings,
+    updatedSessions,
     rowsAfterPublish,
   };
 }
@@ -1158,9 +1306,15 @@ export async function publishProgrammeBlock(
       sessionsToInsertCount: result.sessionCount,
       sessionsToInsertTitles: draftWeekTitles(draftWeek),
       existingRowsBefore: 0,
+      draftSessionsCount: audit.approvedDraftSessionCount,
       insertedRowsCount: result.sessionCount,
+      updatedRowsCount: 0,
+      unchangedRowsCount: 0,
       skippedRowsCount: 0,
+      skippedBecauseLoggedCount: 0,
       skippedReasons: [],
+      warnings: [],
+      updatedSessions: [],
       rowsAfterPublish: result.sessionCount,
     });
   }

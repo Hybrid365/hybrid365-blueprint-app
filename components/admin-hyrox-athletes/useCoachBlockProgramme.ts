@@ -700,12 +700,20 @@ export function useCoachBlockProgramme(params: {
         ? data.weekResults.map(
             (w: {
               weekNumber: number;
-              existingRowsBefore: number;
-              insertedRowsCount: number;
-              rowsAfterPublish: number;
-              approvedDraftSessionCount: number;
-            }) =>
-              `W${w.weekNumber}: ${w.existingRowsBefore}→+${w.insertedRowsCount}→${w.rowsAfterPublish} (draft ${w.approvedDraftSessionCount})`
+              insertedRowsCount?: number;
+              updatedRowsCount?: number;
+              skippedRowsCount?: number;
+              warnings?: string[];
+            }) => {
+              const inserted = w.insertedRowsCount ?? 0;
+              const updated = w.updatedRowsCount ?? 0;
+              const skipped = w.skippedRowsCount ?? 0;
+              const warn =
+                Array.isArray(w.warnings) && w.warnings.length > 0
+                  ? ` (${w.warnings.length} warning${w.warnings.length === 1 ? "" : "s"})`
+                  : "";
+              return `W${w.weekNumber}: inserted ${inserted}, updated ${updated}, skipped ${skipped}${warn}`;
+            }
           )
         : [];
       if (data.publishBlock) {

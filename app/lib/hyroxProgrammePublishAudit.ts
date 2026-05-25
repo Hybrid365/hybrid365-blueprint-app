@@ -31,13 +31,25 @@ export type PublishWeekAudit = {
   expectedSessionCount: number | null;
 };
 
+export type PublishWeekSyncUpdatedSession = {
+  id: string;
+  title: string;
+  hadLogs: boolean;
+};
+
 export type PublishWeekSyncAudit = PublishWeekAudit & {
   sessionsToInsertCount: number;
   sessionsToInsertTitles: string[];
   existingRowsBefore: number;
+  draftSessionsCount: number;
   insertedRowsCount: number;
+  updatedRowsCount: number;
+  unchangedRowsCount: number;
   skippedRowsCount: number;
+  skippedBecauseLoggedCount: number;
   skippedReasons: string[];
+  warnings: string[];
+  updatedSessions: PublishWeekSyncUpdatedSession[];
   rowsAfterPublish: number;
 };
 
