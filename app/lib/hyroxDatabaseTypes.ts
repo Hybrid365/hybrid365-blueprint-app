@@ -334,6 +334,20 @@ export type HyroxCheckInRow = {
   status: HyroxCheckInStatus;
 };
 
+export type HyroxBlockReviewRow = {
+  id: string;
+  athlete_id: string;
+  block_number: number;
+  weeks_start: number;
+  weeks_end: number;
+  completion_summary: HyroxJson;
+  coach_notes: HyroxJson;
+  next_block_recommendation: string | null;
+  next_block_focus: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type HyroxCoachNoteRow = {
   id: string;
   athlete_id: string;
@@ -404,6 +418,7 @@ export const HYROX_TABLES = {
   programmeWeeks: "hyrox_programme_weeks",
   programmeSessions: "hyrox_programme_sessions",
   checkIns: "hyrox_check_ins",
+  blockReviews: "hyrox_block_reviews",
   coachNotes: "hyrox_coach_notes",
   programmeStatusHistory: "hyrox_programme_status_history",
   payments: "hyrox_payments",

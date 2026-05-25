@@ -5,6 +5,7 @@ import type { ProfileReviewOverrides } from "@/app/lib/hyroxAthleteProfileTypes"
 import type { CoachDraftWeek, CoachProgrammeStatus } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import { formatRaceCountdown } from "@/app/lib/hyroxCoachMockAthletes";
+import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBlockReviewPanel";
 import { ProgrammeBuilder } from "@/components/admin-hyrox-athletes/ProgrammeBuilder";
 import { ProfileReviewTab } from "@/components/admin-hyrox-athletes/ProfileReviewTab";
 import {
@@ -20,6 +21,7 @@ const TABS = [
   "Testing",
   "Profile Review",
   "Programme Builder",
+  "Block Review",
   "Check-Ins",
   "Coach Notes",
 ] as const;
@@ -143,6 +145,18 @@ export function CoachAthleteDashboard({
           livePersistence={programmeWorkflowInject.livePersistence}
         />
       )}
+      {tab === "Block Review" && programmeWorkflowInject.livePersistence?.athleteId ? (
+        <CoachBlockReviewPanel
+          athleteId={programmeWorkflowInject.livePersistence.athleteId}
+          programmeLengthWeeks={programmeWorkflowInject.livePersistence.programmeLengthWeeks ?? 12}
+          currentProgrammeBlock={athlete.programmeBlock}
+        />
+      ) : tab === "Block Review" ? (
+        <p className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-4 py-6 text-sm text-zinc-400">
+          Block review is available for live Supabase athletes. Open an accepted athlete from the
+          roster to review blocks 1–3 (weeks 4, 8, 12).
+        </p>
+      ) : null}
       {tab === "Check-Ins" && <CheckInsTab athlete={athlete} />}
       {tab === "Coach Notes" && (
         <CoachNotesTab

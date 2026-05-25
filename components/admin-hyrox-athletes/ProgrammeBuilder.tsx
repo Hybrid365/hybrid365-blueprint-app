@@ -32,6 +32,7 @@ import { CoachBlockWeekTabs } from "@/components/admin-hyrox-athletes/CoachBlock
 import { CoachGenerationScopeControl } from "@/components/admin-hyrox-athletes/CoachGenerationScopeControl";
 import { CoachNextBlockPrompt } from "@/components/admin-hyrox-athletes/CoachNextBlockPrompt";
 import { CoachProgrammeStartDateControl } from "@/components/admin-hyrox-athletes/CoachProgrammeStartDateControl";
+import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBlockReviewPanel";
 import { CoachPublishPanel } from "@/components/admin-hyrox-athletes/CoachPublishPanel";
 import { CoachWeekSessionPreviewList } from "@/components/admin-hyrox-athletes/CoachWeekSessionPreviewList";
 import { useCoachBlockProgramme } from "@/components/admin-hyrox-athletes/useCoachBlockProgramme";
@@ -227,6 +228,14 @@ export function ProgrammeBuilder({
         savedStartDate={livePersistence?.programmeStartDate}
         onChange={(ymd) => void saveProgrammeStartDate(ymd)}
       />
+
+      {isLive && livePersistence?.athleteId ? (
+        <CoachBlockReviewPanel
+          athleteId={livePersistence.athleteId}
+          programmeLengthWeeks={programmeLengthWeeks}
+          currentProgrammeBlock={athlete.programmeBlock}
+        />
+      ) : null}
 
       {showNextBlockPrompt ? (
         <CoachNextBlockPrompt
