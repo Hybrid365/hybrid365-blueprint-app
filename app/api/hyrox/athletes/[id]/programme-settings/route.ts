@@ -5,6 +5,7 @@ import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import {
   defaultProgrammeStartYmd,
   deriveLiveGlobalWeek,
+  validateProgrammeStartDateYmd,
   weekDateRangeFromProgrammeStart,
 } from "@/app/lib/hyroxProgrammeDates";
 
@@ -31,11 +32,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const patch: Record<string, unknown> = {};
   if (body.programme_start_date !== undefined) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.programme_start_date)) {
-      return NextResponse.json(
-        { success: false, error: "programme_start_date must be YYYY-MM-DD." },
-        { status: 400 }
-      );
+    const startError = validateProgrammeStartDateYmd(body.programme_start_date);
+    if (startError) {
+      return NextResponse.json({ success: false, error: startError }, { status: 400 });
     }
     patch.programme_start_date = body.programme_start_date;
     const now = new Date().toISOString();

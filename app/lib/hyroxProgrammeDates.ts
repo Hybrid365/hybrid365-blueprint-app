@@ -2,6 +2,10 @@
 
 export type ProgrammeLengthWeeks = 12 | 16;
 
+/** Shown in admin when start date is not a Monday. */
+export const PROGRAMME_START_MUST_BE_MONDAY =
+  "Programme start date must be a Monday so session days align correctly.";
+
 export type ProgrammeWeekCalendarStatus = "past" | "live" | "upcoming";
 
 export type BlockRoadmapPhase = {
@@ -109,6 +113,25 @@ export function defaultProgrammeStartYmd(reference: Date = new Date()): string {
   return toYmd(nextMondayFrom(reference));
 }
 
+export function isMondayYmd(ymd: string): boolean {
+  try {
+    return startOfLocalDay(parseYmd(ymd)).getDay() === 1;
+  } catch {
+    return false;
+  }
+}
+
+/** Returns an error message when invalid; null when OK. */
+export function validateProgrammeStartDateYmd(ymd: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd.trim())) {
+    return "programme_start_date must be YYYY-MM-DD.";
+  }
+  if (!isMondayYmd(ymd)) {
+    return PROGRAMME_START_MUST_BE_MONDAY;
+  }
+  return null;
+}
+
 export function weekDateRangeFromProgrammeStart(
   programmeStartYmd: string,
   globalWeekNumber: number
@@ -128,8 +151,9 @@ export function isValidWeekDateRangeYmd(startYmd: string, endYmd: string): boole
     const start = startOfLocalDay(parseYmd(startYmd));
     const end = startOfLocalDay(parseYmd(endYmd));
     if (end < start) return false;
+    if (start.getDay() !== 1 || end.getDay() !== 0) return false;
     const spanDays = Math.round((end.getTime() - start.getTime()) / MS_PER_DAY);
-    return spanDays >= 5 && spanDays <= 7;
+    return spanDays === 6;
   } catch {
     return false;
   }

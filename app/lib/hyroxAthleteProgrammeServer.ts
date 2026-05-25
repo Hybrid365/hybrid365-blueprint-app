@@ -21,7 +21,21 @@ export async function fetchAthleteLiveProgrammeForServer(
   const { client: supabase } = await createCoachServerClient();
   const flags = await fetchAthleteProgressFlags(supabase, athlete.id);
   const programme = await fetchAthletePublishedProgramme(supabase, athlete, flags);
-  const sessions = mapPublishedSessionsToAthleteUi(programme.sessions);
+  const programmeStartEffective = resolveEffectiveProgrammeStartYmd(
+    programme.programmeStartDate,
+    athlete.programme_start_date ?? programme.athlete.programme_start_date,
+    programme.weeks.map((w) => ({ weekNumber: w.weekNumber, week: w.week }))
+  );
+
+  const activeWeekNum =
+    programme.week?.week_number ??
+    (programmeStartEffective ? programme.liveGlobalWeek : undefined);
+  const sessions = mapPublishedSessionsToAthleteUi(
+    programme.sessions,
+    programmeStartEffective && activeWeekNum
+      ? { programmeStartYmd: programmeStartEffective, globalWeekNumber: activeWeekNum }
+      : undefined
+  );
   const state = resolveAthleteProgrammeApiState({
     published: programme.published,
     visibility: programme.visibility,
@@ -30,12 +44,6 @@ export async function fetchAthleteLiveProgrammeForServer(
 
   const displayName =
     athlete.name?.trim() || userEmail?.trim() || programme.athlete.name?.trim() || "Athlete";
-
-  const programmeStartEffective = resolveEffectiveProgrammeStartYmd(
-    programme.programmeStartDate,
-    athlete.programme_start_date ?? programme.athlete.programme_start_date,
-    programme.weeks.map((w) => ({ weekNumber: w.weekNumber, week: w.week }))
-  );
 
   const programmeWeeks = programme.weeks.map((bundle) => {
     const cycle = (((bundle.weekNumber - 1) % 4) + 1) as 1 | 2 | 3 | 4;
@@ -71,7 +79,15 @@ export async function fetchAthleteLiveProgrammeForServer(
           }
         : null,
       weekRole,
-      sessions: mapPublishedSessionsToAthleteUi(bundle.sessions),
+      sessions: mapPublishedSessionsToAthleteUi(
+        bundle.sessions,
+        programmeStartEffective && bundle.generated
+          ? {
+              programmeStartYmd: programmeStartEffective,
+              globalWeekNumber: bundle.weekNumber,
+            }
+          : undefined
+      ),
     };
   });
 

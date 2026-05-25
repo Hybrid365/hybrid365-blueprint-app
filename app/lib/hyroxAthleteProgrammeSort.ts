@@ -1,3 +1,9 @@
+import {
+  parseYmd,
+  startOfLocalDay,
+  toYmd,
+  weekDateRangeFromProgrammeStart,
+} from "@/app/lib/hyroxProgrammeDates";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 
 export type ProgrammeTimeOfDay = "AM" | "Main" | "PM" | "Optional";
@@ -53,6 +59,32 @@ export function formatProgrammeDayLabel(day: string, slot?: ProgrammeTimeOfDay |
   const full = normalizeProgrammeDay(day);
   if (!slot || slot === "Main") return full;
   return `${full} · ${slot}`;
+}
+
+/** Calendar date for a session day within global week N (Mon = week start + 0 … Sun + 6). */
+export function sessionDateYmdFromProgrammeStart(
+  programmeStartYmd: string,
+  globalWeekNumber: number,
+  day: string
+): string {
+  const { start } = weekDateRangeFromProgrammeStart(programmeStartYmd, globalWeekNumber);
+  const d = new Date(start);
+  d.setDate(d.getDate() + daySortIndex(day));
+  return toYmd(startOfLocalDay(d));
+}
+
+/** Weekday + calendar date for athlete UI (e.g. "Monday · 19 May"). */
+export function formatSessionCalendarDateLabel(
+  day: string,
+  sessionYmd: string,
+  slot?: ProgrammeTimeOfDay | string
+): string {
+  const d = startOfLocalDay(parseYmd(sessionYmd));
+  const weekday = d.toLocaleDateString("en-GB", { weekday: "long" });
+  const datePart = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const base = `${weekday} · ${datePart}`;
+  if (!slot || slot === "Main") return base;
+  return `${base} · ${slot}`;
 }
 
 export function sortProgrammeSessions(sessions: HyroxSession[]): HyroxSession[] {

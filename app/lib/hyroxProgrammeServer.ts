@@ -36,6 +36,8 @@ import type {
 } from "@/app/lib/hyroxDatabaseTypes";
 import {
   formatProgrammeDayLabel,
+  formatSessionCalendarDateLabel,
+  sessionDateYmdFromProgrammeStart,
   sortProgrammeSessions,
   type ProgrammeTimeOfDay,
 } from "@/app/lib/hyroxAthleteProgrammeSort";
@@ -517,7 +519,8 @@ function inferSessionType(
 }
 
 export function mapPublishedSessionsToAthleteUi(
-  sessions: HyroxProgrammeSessionRow[]
+  sessions: HyroxProgrammeSessionRow[],
+  calendar?: { programmeStartYmd: string; globalWeekNumber: number }
 ): HyroxSession[] {
   const dayShort: Record<string, string> = {
     Mon: "Mon",
@@ -561,7 +564,17 @@ export function mapPublishedSessionsToAthleteUi(
       programmeWeekId: s.programme_week_id,
       day,
       dayShort: short,
-      dateLabel: formatProgrammeDayLabel(day, timeOfDay),
+      dateLabel: calendar
+        ? formatSessionCalendarDateLabel(
+            day,
+            sessionDateYmdFromProgrammeStart(
+              calendar.programmeStartYmd,
+              calendar.globalWeekNumber,
+              day
+            ),
+            timeOfDay
+          )
+        : formatProgrammeDayLabel(day, timeOfDay),
       name: s.session_name,
       type: inferSessionType(s.category, s.session_name),
       focus: (meta.focus as string) ?? s.category,

@@ -224,6 +224,7 @@ export function ProgrammeBuilder({
         value={programmeStartDate}
         blockNumber={athlete.programmeBlock}
         saving={saving}
+        savedStartDate={livePersistence?.programmeStartDate}
         onChange={(ymd) => void saveProgrammeStartDate(ymd)}
       />
 

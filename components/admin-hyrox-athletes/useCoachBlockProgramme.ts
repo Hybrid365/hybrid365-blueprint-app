@@ -13,7 +13,10 @@ import { draftDbToCoachStatus } from "@/app/lib/hyroxCoachProgrammeStatusMap";
 import {
   defaultProgrammeStartYmd,
   formatWeekDateRangeFromYmd,
+  isMondayYmd,
+  PROGRAMME_START_MUST_BE_MONDAY,
   shouldShowNextBlockPrompt,
+  validateProgrammeStartDateYmd,
   weekDateRangeFromProgrammeStart,
   type ProgrammeLengthWeeks,
 } from "@/app/lib/hyroxProgrammeDates";
@@ -357,6 +360,11 @@ export function useCoachBlockProgramme(params: {
 
   const saveProgrammeStartDate = useCallback(
     async (ymd: string) => {
+      const startError = validateProgrammeStartDateYmd(ymd);
+      if (startError) {
+        showToast(startError);
+        return false;
+      }
       setProgrammeStartDate(ymd);
       if (!isLive || !livePersistence?.athleteId) return true;
       try {
@@ -422,6 +430,15 @@ export function useCoachBlockProgramme(params: {
       return {
         canPublish: false,
         reason: "Set a programme start date before publishing.",
+        buttonLabel: generationScope === "block_4" ? "Publish 4-Week Block" : "Publish Selected Week",
+        publishBlock: generationScope === "block_4",
+      };
+    }
+
+    if (!isMondayYmd(programmeStartDate)) {
+      return {
+        canPublish: false,
+        reason: PROGRAMME_START_MUST_BE_MONDAY,
         buttonLabel: generationScope === "block_4" ? "Publish 4-Week Block" : "Publish Selected Week",
         publishBlock: generationScope === "block_4",
       };

@@ -3,6 +3,7 @@ import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import { fetchHyroxAthleteById } from "@/app/lib/hyroxAthleteCoachDb";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
+import { validateProgrammeStartDateYmd } from "@/app/lib/hyroxProgrammeDates";
 import {
   fetchProgrammeDraftById,
   logCoachDraftRoute,
@@ -98,7 +99,7 @@ export async function POST(request: Request, context: RouteContext) {
     (athlete as HyroxAthleteRow).programme_start_date?.trim() ||
     null;
 
-  if (!programmeStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(programmeStartDate)) {
+  if (!programmeStartDate) {
     return NextResponse.json(
       {
         success: false,
@@ -106,6 +107,11 @@ export async function POST(request: Request, context: RouteContext) {
       },
       { status: 400 }
     );
+  }
+
+  const startDateError = validateProgrammeStartDateYmd(programmeStartDate);
+  if (startDateError) {
+    return NextResponse.json({ success: false, error: startDateError }, { status: 400 });
   }
 
   try {

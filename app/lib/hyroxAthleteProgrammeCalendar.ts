@@ -5,9 +5,9 @@
 
 import type { AthleteProgrammeWeekBundle } from "@/app/lib/hyroxAthleteProgrammeTypes";
 import {
-  daySortIndex,
-  formatProgrammeDayLabel,
+  formatSessionCalendarDateLabel,
   normalizeProgrammeDay,
+  sessionDateYmdFromProgrammeStart,
   slotSortIndex,
   sortProgrammeSessions,
   type ResolvedNextSession,
@@ -52,18 +52,32 @@ function sessionDateInWeek(
   globalWeekNumber: number,
   day: string
 ): Date {
-  const { start } = weekDateRangeFromProgrammeStart(programmeStartYmd, globalWeekNumber);
-  const d = new Date(start);
-  d.setDate(d.getDate() + daySortIndex(day));
-  return startOfLocalDay(d);
+  return startOfLocalDay(
+    parseYmd(sessionDateYmdFromProgrammeStart(programmeStartYmd, globalWeekNumber, day))
+  );
 }
 
-function sessionToResolved(session: HyroxSession, dateLabel?: string): ResolvedNextSession {
+function sessionToResolved(
+  session: HyroxSession,
+  options?: { programmeStartYmd: string; globalWeekNumber: number }
+): ResolvedNextSession {
+  const dateLabel =
+    options?.programmeStartYmd && options.globalWeekNumber
+      ? formatSessionCalendarDateLabel(
+          session.day,
+          sessionDateYmdFromProgrammeStart(
+            options.programmeStartYmd,
+            options.globalWeekNumber,
+            session.day
+          ),
+          session.timeOfDay
+        )
+      : session.dateLabel;
   return {
     sessionId: session.id,
     name: session.name,
     day: normalizeProgrammeDay(session.day),
-    dateLabel: dateLabel ?? formatProgrammeDayLabel(session.day, session.timeOfDay),
+    dateLabel,
     type: session.type,
     duration: session.duration,
     rpeTarget: session.rpeTarget,
@@ -291,7 +305,10 @@ export function resolveProgrammeNextSession(params: {
     }
     return {
       state: "upcoming",
-      session: sessionToResolved(first),
+      session: sessionToResolved(first, {
+        programmeStartYmd: programmeStartDate,
+        globalWeekNumber: weekNum,
+      }),
       message: null,
     };
   }
@@ -330,7 +347,10 @@ export function resolveProgrammeNextSession(params: {
     if (next) {
       return {
         state: "session",
-        session: sessionToResolved(next),
+        session: sessionToResolved(next, {
+          programmeStartYmd: programmeStartDate,
+          globalWeekNumber: weekNum,
+        }),
         message: null,
       };
     }
@@ -342,9 +362,20 @@ export function resolveProgrammeNextSession(params: {
 
     const nextWeekSession = findNextGeneratedWeekFirstSession(programmeWeeks, weekNum);
     if (nextWeekSession) {
+      const nextWeek = programmeWeeks.find(
+        (b) => b.sessions.some((s) => s.id === nextWeekSession.id)
+      );
       return {
         state: "upcoming",
-        session: sessionToResolved(nextWeekSession),
+        session: sessionToResolved(
+          nextWeekSession,
+          programmeStartDate && nextWeek
+            ? {
+                programmeStartYmd: programmeStartDate,
+                globalWeekNumber: nextWeek.weekNumber,
+              }
+            : undefined
+        ),
         message: null,
       };
     }
@@ -357,7 +388,10 @@ export function resolveProgrammeNextSession(params: {
     if (first) {
       return {
         state: activeWeekBundle.calendarStatus === "upcoming" ? "upcoming" : "session",
-        session: sessionToResolved(first),
+        session: sessionToResolved(first, {
+          programmeStartYmd: programmeStartDate,
+          globalWeekNumber: weekNum,
+        }),
         message: null,
       };
     }
@@ -365,14 +399,32 @@ export function resolveProgrammeNextSession(params: {
 
   const fallback = pickFirstIncompleteSession(sessions);
   if (fallback) {
-    return { state: "session", session: sessionToResolved(fallback), message: null };
+    return {
+      state: "session",
+      session: sessionToResolved(fallback, {
+        programmeStartYmd: programmeStartDate,
+        globalWeekNumber: weekNum,
+      }),
+      message: null,
+    };
   }
 
   const nextWeekSession = findNextGeneratedWeekFirstSession(programmeWeeks, weekNum);
   if (nextWeekSession) {
+    const nextWeek = programmeWeeks.find(
+      (b) => b.sessions.some((s) => s.id === nextWeekSession.id)
+    );
     return {
       state: "upcoming",
-      session: sessionToResolved(nextWeekSession),
+      session: sessionToResolved(
+        nextWeekSession,
+        programmeStartDate && nextWeek
+          ? {
+              programmeStartYmd: programmeStartDate,
+              globalWeekNumber: nextWeek.weekNumber,
+            }
+          : undefined
+      ),
       message: null,
     };
   }
