@@ -989,13 +989,24 @@ export function useCoachBlockProgramme(params: {
       }
       setStatus("published");
       onStatusChange("published");
+      const syncVerificationPassed = data.syncVerificationPassed !== false;
+      const syncVerificationErrors = Array.isArray(data.syncVerificationErrors)
+        ? (data.syncVerificationErrors as string[])
+        : weekResults.flatMap(
+            (w: { verification?: { errors?: string[] } }) => w.verification?.errors ?? []
+          );
       setPublishResult({
         fired: true,
         at: new Date().toISOString(),
         draftId: activeDraftId,
         publishBlock: Boolean(data.publishBlock ?? publishBlock),
         message: typeof data.message === "string" ? data.message : "Publish succeeded.",
-        error: null,
+        error: syncVerificationPassed
+          ? null
+          : (syncVerificationErrors[0] ??
+            "Draft edit was not synced to published session."),
+        syncVerificationPassed,
+        syncVerificationErrors,
         weekResults,
       });
       const weekLines = weekResults.map(
@@ -1016,7 +1027,12 @@ export function useCoachBlockProgramme(params: {
               return `W${w.weekNumber}: inserted ${inserted}, updated ${updated}, skipped ${skipped}${warn}`;
             }
           );
-      if (data.publishBlock) {
+      if (!syncVerificationPassed) {
+        showToast(
+          syncVerificationErrors[0] ??
+            "Publish completed but draft edits were not verified in published sessions."
+        );
+      } else if (data.publishBlock) {
         showToast(
           weekLines.length > 0
             ? `Block published. ${weekLines.join(" · ")}`

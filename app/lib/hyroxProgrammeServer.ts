@@ -44,6 +44,20 @@ import {
 import { parseHyroxAthleteSessionFeedback } from "@/app/lib/hyroxAthleteSessionFeedback";
 import type { HyroxSession, SessionStatus } from "@/app/lib/hyroxTeamDashboardMock";
 import {
+  derivePublishedSessionName,
+  diffSessionSyncFields,
+  draftInsertRowPreview,
+  draftSessionIdFromInsertRow,
+  findPublishedSessionForDraftRow,
+  pickSessionSyncFields,
+  publishedSessionLivePreview,
+  resolveAthleteSessionDisplayName,
+  sessionRowKey,
+  verifyPublishedWeekMatchesDraft,
+  type DraftSessionInsertRow,
+  type PublishSessionSyncDetail,
+} from "@/app/lib/hyroxProgrammeSessionSync";
+import {
   deriveLiveGlobalWeek,
   deriveWeekCalendarStatusForAthleteWeek,
   getBlockWeekRole,
@@ -52,6 +66,8 @@ import {
   type ProgrammeLengthWeeks,
   type ProgrammeWeekCalendarStatus,
 } from "@/app/lib/hyroxProgrammeDates";
+
+export { sessionRowKey } from "@/app/lib/hyroxProgrammeSessionSync";
 
 const MAPPED_PROFILE_SELECT =
   "id, athlete_id, created_at, updated_at, mapped_profile, coach_overrides, effective_profile, athlete_level, main_limiter, secondary_limiter, recovery_risk, double_session_readiness, first_block_focus, coach_review_flags, status";
@@ -255,7 +271,17 @@ export async function fetchBlockProgrammeDrafts(
     .order("week_number", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data as HyroxProgrammeDraftRow[]) ?? [];
+  const rows = (data as HyroxProgrammeDraftRow[]) ?? [];
+  const latestByWeek = new Map<number, HyroxProgrammeDraftRow>();
+  for (const row of rows) {
+    const prev = latestByWeek.get(row.week_number);
+    if (!prev || row.updated_at > prev.updated_at) {
+      latestByWeek.set(row.week_number, row);
+    }
+  }
+  return weekNumbers
+    .map((w) => latestByWeek.get(w))
+    .filter((r): r is HyroxProgrammeDraftRow => Boolean(r));
 }
 
 export async function approveProgrammeBlockDrafts(
@@ -575,7 +601,7 @@ export function mapPublishedSessionsToAthleteUi(
             timeOfDay
           )
         : formatProgrammeDayLabel(day, timeOfDay),
-      name: s.session_name,
+      name: resolveAthleteSessionDisplayName(s),
       type: inferSessionType(s.category, s.session_name),
       focus: (meta.focus as string) ?? s.category,
       duration,
@@ -744,51 +770,8 @@ export async function fetchAthletePublishedProgramme(
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function sessionRowKey(dayOfWeek: string, sessionSlot: string): string {
-  return `${dayOfWeek}|${sessionSlot}`;
-}
-
-type DraftSessionInsertRow = ReturnType<typeof buildSessionInsertRowsFromDraftWeek>[number];
-
 const PUBLISHED_SESSION_SYNC_SELECT =
   "id, day_of_week, session_slot, session_name, category, prescription, metadata, status, completed_at, athlete_feedback";
-
-function draftIdFromMetadata(metadata: HyroxJson | null | undefined): string | null {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
-  const id = (metadata as Record<string, unknown>).draftId;
-  return typeof id === "string" && id.trim() ? id.trim() : null;
-}
-
-function pickSessionSyncFields(row: {
-  day_of_week: string;
-  session_slot: string;
-  session_name: string;
-  category: string;
-  prescription: HyroxJson;
-  metadata: HyroxJson | null;
-}) {
-  return {
-    day_of_week: row.day_of_week,
-    session_slot: row.session_slot,
-    session_name: row.session_name,
-    category: row.category,
-    prescription: row.prescription,
-    metadata: row.metadata,
-  };
-}
-
-function sessionSyncContentEqual(
-  existing: Pick<
-    HyroxProgrammeSessionRow,
-    "day_of_week" | "session_slot" | "session_name" | "category" | "prescription" | "metadata"
-  >,
-  draft: DraftSessionInsertRow
-): boolean {
-  return (
-    JSON.stringify(pickSessionSyncFields(existing)) ===
-    JSON.stringify(pickSessionSyncFields(draft))
-  );
-}
 
 export function publishedSessionHasAthleteLogs(
   row: Pick<
@@ -809,24 +792,17 @@ export function publishedSessionHasAthleteLogs(
   );
 }
 
-function findPublishedSessionForDraftRow(
-  existing: HyroxProgrammeSessionRow[],
-  draftRow: DraftSessionInsertRow,
-  usedIds: Set<string>
-): HyroxProgrammeSessionRow | undefined {
-  const draftId = draftIdFromMetadata(draftRow.metadata as HyroxJson);
-  if (draftId) {
-    const byDraftId = existing.find(
-      (row) =>
-        !usedIds.has(row.id) && draftIdFromMetadata(row.metadata) === draftId
-    );
-    if (byDraftId) return byDraftId;
-  }
-  const key = sessionRowKey(draftRow.day_of_week, draftRow.session_slot);
-  return existing.find(
-    (row) =>
-      !usedIds.has(row.id) && sessionRowKey(row.day_of_week, row.session_slot) === key
-  );
+function toDraftInsertRow(
+  row: ReturnType<typeof buildSessionInsertRowsFromDraftWeek>[number]
+): DraftSessionInsertRow {
+  return {
+    day_of_week: row.day_of_week,
+    session_slot: row.session_slot,
+    session_name: row.session_name,
+    category: row.category,
+    prescription: row.prescription,
+    metadata: row.metadata,
+  };
 }
 
 export function buildSessionInsertRowsFromDraftWeek(
@@ -839,7 +815,7 @@ export function buildSessionInsertRowsFromDraftWeek(
       athlete_id: params.athleteId,
       day_of_week: day.day,
       session_slot: sess.timeOfDay,
-      session_name: sess.title,
+      session_name: derivePublishedSessionName(sess),
       category: sess.sessionType ?? "general",
       prescription: {
         ...(sess.prescription ?? {}),
@@ -892,45 +868,97 @@ export async function syncPublishedWeekSessionsFromDraft(
     programmeWeekId: params.week.id,
     athleteId: params.athleteId,
   });
+  const draftInsertRows = allRows.map(toDraftInsertRow);
 
   const warnings: string[] = [];
   const skippedReasons: string[] = [];
   const updatedSessions: PublishWeekSyncAudit["updatedSessions"] = [];
-  const toInsert: DraftSessionInsertRow[] = [];
+  const sessionSyncDetails: PublishSessionSyncDetail[] = [];
+  const toInsert: typeof allRows = [];
   let updatedRowsCount = 0;
   let unchangedRowsCount = 0;
   const now = new Date().toISOString();
 
   for (const draftRow of allRows) {
-    const match = findPublishedSessionForDraftRow(existing, draftRow, usedPublishedIds);
+    const draftInsert = toDraftInsertRow(draftRow);
+    const { row: match, source: matchSource } = findPublishedSessionForDraftRow(
+      existing,
+      draftInsert,
+      usedPublishedIds
+    );
+
+  const detailBase: PublishSessionSyncDetail = {
+      draftSessionId: draftSessionIdFromInsertRow(draftInsert),
+      draftTitle: draftInsert.session_name,
+      draftPreview: draftInsertRowPreview(draftInsert),
+      matchedPublishedSessionId: match?.id ?? null,
+      matchSource,
+      previousPublishedTitle: match?.session_name ?? null,
+      previousPublishedPreview: match ? publishedSessionLivePreview(match) : null,
+      newPublishedPreview: draftInsertRowPreview(draftInsert),
+      changedFields: [],
+      updateAttempted: false,
+      updateSuccess: false,
+      unchangedReason: null,
+      syncError: null,
+    };
+
     if (!match) {
       toInsert.push(draftRow);
+      detailBase.unchangedReason = "no published match — will insert";
+      sessionSyncDetails.push(detailBase);
       continue;
     }
 
     usedPublishedIds.add(match.id);
+    const changedFields = diffSessionSyncFields(match, draftInsert);
+    detailBase.changedFields = changedFields;
 
-    if (sessionSyncContentEqual(match, draftRow)) {
+    if (changedFields.length === 0) {
       unchangedRowsCount += 1;
+      detailBase.unchangedReason = "content matches draft";
+      sessionSyncDetails.push(detailBase);
       continue;
     }
 
     const hadLogs = publishedSessionHasAthleteLogs(match);
+    detailBase.updateAttempted = true;
 
-    const { error: updateError } = await supabase
+    const { data: updatedRow, error: updateError } = await supabase
       .from("hyrox_programme_sessions")
       .update({
-        ...pickSessionSyncFields(draftRow),
+        ...pickSessionSyncFields(draftInsert),
         updated_at: now,
       })
-      .eq("id", match.id);
+      .eq("id", match.id)
+      .select(PUBLISHED_SESSION_SYNC_SELECT)
+      .maybeSingle();
 
-    if (updateError) throw new Error(updateError.message);
+    if (updateError) {
+      detailBase.syncError = updateError.message;
+      detailBase.updateSuccess = false;
+      sessionSyncDetails.push(detailBase);
+      throw new Error(updateError.message);
+    }
 
+    if (!updatedRow) {
+      detailBase.syncError = "Update returned no row (check RLS / session id).";
+      detailBase.updateSuccess = false;
+      sessionSyncDetails.push(detailBase);
+      warnings.push(
+        `Draft edit was not synced to published session "${draftInsert.session_name}": update returned 0 rows.`
+      );
+      continue;
+    }
+
+    detailBase.updateSuccess = true;
+    detailBase.newPublishedPreview = publishedSessionLivePreview(
+      updatedRow as HyroxProgrammeSessionRow
+    );
     updatedRowsCount += 1;
     updatedSessions.push({
       id: match.id,
-      title: draftRow.session_name,
+      title: draftInsert.session_name,
       hadLogs,
     });
     if (hadLogs) {
@@ -938,6 +966,7 @@ export async function syncPublishedWeekSessionsFromDraft(
         `Updated session with existing logs: "${match.session_name}" (${sessionRowKey(match.day_of_week, match.session_slot)}).`
       );
     }
+    sessionSyncDetails.push(detailBase);
   }
 
   for (const row of existing) {
@@ -969,9 +998,27 @@ export async function syncPublishedWeekSessionsFromDraft(
     })
     .eq("id", params.week.id);
 
+  const { data: refreshedRows, error: refreshError } = await supabase
+    .from("hyrox_programme_sessions")
+    .select(PUBLISHED_SESSION_SYNC_SELECT)
+    .eq("programme_week_id", params.week.id);
+
+  if (refreshError) throw new Error(refreshError.message);
+
+  const publishedAfter = (refreshedRows ?? []) as HyroxProgrammeSessionRow[];
+  const verification = verifyPublishedWeekMatchesDraft({
+    draftRows: draftInsertRows,
+    publishedRows: publishedAfter,
+    sessionDetails: sessionSyncDetails,
+  });
+
+  if (!verification.verificationPassed) {
+    warnings.push(...verification.errors);
+  }
+
   const dbSessionCountBefore = existing.length;
   const insertedRowsCount = toInsert.length;
-  const rowsAfterPublish = dbSessionCountBefore + insertedRowsCount;
+  const rowsAfterPublish = publishedAfter.length;
   const skippedBecauseLoggedCount = 0;
   const skippedRowsCount = unchangedRowsCount;
   const baseAudit = params.audit ?? {
@@ -989,13 +1036,14 @@ export async function syncPublishedWeekSessionsFromDraft(
   if (process.env.NODE_ENV === "development") {
     console.log("[hyrox/sync-published-week]", {
       weekNumber: params.week.week_number,
+      draftId: baseAudit.draftId,
       existingRowsBefore: dbSessionCountBefore,
       draftSessionsCount: allRows.length,
       insertedRowsCount,
       updatedRowsCount,
       unchangedRowsCount,
-      skippedBecauseLoggedCount,
-      updatedSessions,
+      verificationPassed: verification.verificationPassed,
+      sessionSyncDetails,
       warnings,
     });
   }
@@ -1014,6 +1062,8 @@ export async function syncPublishedWeekSessionsFromDraft(
     skippedReasons,
     warnings,
     updatedSessions,
+    sessionSyncDetails,
+    verification,
     rowsAfterPublish,
   };
 }
@@ -1315,6 +1365,13 @@ export async function publishProgrammeBlock(
       skippedReasons: [],
       warnings: [],
       updatedSessions: [],
+      sessionSyncDetails: [],
+      verification: {
+        verificationPassed: true,
+        missingOrUnsyncedDraftSessionTitles: [],
+        livePreviewForEditedSessions: [],
+        errors: [],
+      },
       rowsAfterPublish: result.sessionCount,
     });
   }

@@ -31,6 +31,13 @@ export type PublishWeekAudit = {
   expectedSessionCount: number | null;
 };
 
+import type {
+  PublishSessionSyncDetail,
+  PublishWeekVerification,
+} from "@/app/lib/hyroxProgrammeSessionSync";
+
+export type { PublishSessionSyncDetail, PublishWeekVerification } from "@/app/lib/hyroxProgrammeSessionSync";
+
 export type PublishWeekSyncUpdatedSession = {
   id: string;
   title: string;
@@ -50,6 +57,8 @@ export type PublishWeekSyncAudit = PublishWeekAudit & {
   skippedReasons: string[];
   warnings: string[];
   updatedSessions: PublishWeekSyncUpdatedSession[];
+  sessionSyncDetails: PublishSessionSyncDetail[];
+  verification: PublishWeekVerification;
   rowsAfterPublish: number;
 };
 

@@ -505,7 +505,8 @@ export function applyEditConfigToSession(session: CoachDraftSession): CoachDraft
   }
   if (c.kind === "erg_interval" && c.ergReps && c.intervalDurationMinutes) {
     const mod = c.modality === "row" ? "Row" : c.modality === "bike" ? "Bike" : "Ski";
-    title = `${mod} Threshold — ${c.ergReps} x ${c.intervalDurationMinutes} min`;
+    const label = c.sessionName?.trim() || `${mod} Threshold`;
+    title = `${label} — ${c.ergReps} x ${c.intervalDurationMinutes} min`;
     if (c.targetSplit) rpeHr = `${c.rpeTarget ?? "RPE 7–8"} · ${c.targetSplit}`;
   }
   if (c.kind === "easy_aerobic" && c.durationMinutes) {

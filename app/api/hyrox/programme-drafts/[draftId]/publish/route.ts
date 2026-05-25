@@ -146,19 +146,30 @@ export async function POST(request: Request, context: RouteContext) {
         seedDraftId: draftId,
       });
 
+      const syncVerificationPassed = blockResult.weekResults.every(
+        (w) => w.verification?.verificationPassed !== false
+      );
+      const syncVerificationErrors = blockResult.weekResults.flatMap(
+        (w) => w.verification?.errors ?? []
+      );
+
       return NextResponse.json({
         success: true,
+        syncVerificationPassed,
+        syncVerificationErrors,
         weeks: blockResult.weeks,
         sessionCount: blockResult.sessionCount,
         generatedWeekNumbers: blockResult.generatedWeekNumbers,
         syncedWeekNumbers: blockResult.syncedWeekNumbers,
         weekResults: blockResult.weekResults,
         publishBlock: true,
-        message: `Published ${blockResult.weeks.length} week(s) in block ${blockNumber} from approved drafts (no regeneration).${
-          blockResult.syncedWeekNumbers.length > 0
-            ? ` Synced week(s): ${blockResult.syncedWeekNumbers.join(", ")}.`
-            : ""
-        }`,
+        message: syncVerificationPassed
+          ? `Published ${blockResult.weeks.length} week(s) in block ${blockNumber} from approved drafts (no regeneration).${
+              blockResult.syncedWeekNumbers.length > 0
+                ? ` Synced week(s): ${blockResult.syncedWeekNumbers.join(", ")}.`
+                : ""
+            }`
+          : `Publish completed but draft edits were not verified in published sessions. ${syncVerificationErrors[0] ?? "See publish result panel."}`,
       });
     }
 
@@ -195,6 +206,13 @@ export async function POST(request: Request, context: RouteContext) {
           skippedReasons: [],
           warnings: [],
           updatedSessions: [],
+          sessionSyncDetails: [],
+          verification: {
+            verificationPassed: true,
+            missingOrUnsyncedDraftSessionTitles: [],
+            livePreviewForEditedSessions: [],
+            errors: [],
+          },
           rowsAfterPublish: result.sessionCount,
         },
       ],
