@@ -84,10 +84,11 @@ export default function HyroxTeamAcceptedPage() {
           <p className="m-0 mt-3 text-xs leading-relaxed text-zinc-500">{MONTHLY_COMMITMENT_DETAIL}</p>
           <p className="m-0 mt-4 text-xs leading-relaxed text-zinc-500">{FOUNDING_PRICE_NOTE}</p>
         </HyroxCard>
-        <div className="mt-8">
-          <HyroxPaymentOptionCards links={checkoutLinks} />
-        </div>
       </HyroxSection>
+
+      <div className="my-6 sm:my-8">
+        <HyroxPaymentOptionCards links={checkoutLinks} />
+      </div>
 
       <HyroxSection clean>
         <h2 className="m-0 text-2xl font-black uppercase tracking-[-0.04em] text-white">Your next steps</h2>
