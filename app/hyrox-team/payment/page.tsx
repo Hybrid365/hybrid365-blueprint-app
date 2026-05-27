@@ -9,22 +9,15 @@ import {
   HyroxSection,
 } from "@/components/hyrox-team/HyroxTeamUi";
 import { TimelineSteps } from "@/components/hyrox-team/TimelineSteps";
-import { HyroxStripePayButton } from "@/components/hyrox-team/HyroxStripeCheckoutButtons";
+import { HyroxPaymentOptionCards } from "@/components/hyrox-team/HyroxPaymentOptionCards";
+import { readHyroxStripeCheckoutLinks } from "@/components/hyrox-team/hyroxStripeCheckout";
 import {
-  BUILD_16WEEK_COMMITMENT_LINE,
-  BUILD_16WEEK_VALUE_BADGE,
-  BUILD_16WEEK_VALUE_LINE,
   FOUNDING_PRICE_NOTE,
   MINIMUM_COMMITMENT_NOTE,
-  MONTHLY_COMMITMENT_DETAIL,
-  MONTHLY_COMMITMENT_HEADLINE,
-  MONTHLY_COMMITMENT_INVESTMENT,
-  UPFRONT_COMMITMENT_LINE,
 } from "@/components/hyrox-team/hyroxTeamOfferCopy";
 import {
   BarChart3,
   Camera,
-  Check,
   ClipboardList,
   Flag,
   LayoutDashboard,
@@ -35,19 +28,14 @@ import {
   Zap,
 } from "lucide-react";
 
+/** Read Stripe links from runtime env (Vercel) rather than a stale static build. */
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Payment | Hybrid365 Hyrox Team",
   description:
     "Choose your Hyrox Team payment option — monthly, 12-week upfront, or 16-week build. Founding athlete rates for Team 001.",
 };
-
-const CORE_BENEFITS = [
-  "12-week Hyrox Team block",
-  "Personalised Hyrox programming",
-  "Weekly check-ins & coach feedback",
-  "Hybrid365 athlete dashboard",
-  "Baseline testing & benchmark tracking",
-];
 
 const AFTER_PAYMENT = [
   { n: 1, title: "Payment confirmed", description: "Stripe receipt — your spot is reserved." },
@@ -76,6 +64,8 @@ const INCLUDED = [
 ];
 
 export default function HyroxTeamPaymentPage() {
+  const checkoutLinks = readHyroxStripeCheckoutLinks();
+
   return (
     <HyroxPageShell maxWidth="max-w-[1100px]">
       <HyroxSection>
@@ -94,87 +84,7 @@ export default function HyroxTeamPaymentPage() {
         <p className="m-0 mt-4 text-sm leading-relaxed text-zinc-500">{FOUNDING_PRICE_NOTE}</p>
       </HyroxCard>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <HyroxCard className="flex flex-col">
-          <span className="w-fit rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
-            Founding athlete rate
-          </span>
-          <p className="m-0 mt-4 text-xs font-black uppercase tracking-[0.14em] text-[#f4d23c]">Pay monthly</p>
-          <p className="mt-2 text-4xl font-black tracking-tight text-white">
-            £150<span className="text-lg font-semibold text-zinc-500">/month</span>
-          </p>
-          <p className="m-0 mt-2 text-sm font-semibold text-zinc-200">{MONTHLY_COMMITMENT_HEADLINE}</p>
-          <p className="m-0 mt-1 text-sm text-zinc-500">3 months · total £450</p>
-          <p className="m-0 mt-4 text-xs leading-relaxed text-zinc-400">{MONTHLY_COMMITMENT_DETAIL}</p>
-          <ul className="m-0 mt-4 flex-1 space-y-1.5 border-t border-zinc-800/80 pt-4">
-            {MONTHLY_COMMITMENT_INVESTMENT.map((item) => (
-              <li key={item} className="text-[11px] leading-snug text-zinc-500">
-                · {item}
-              </li>
-            ))}
-          </ul>
-          <ul className="mt-5 space-y-2.5 border-t border-zinc-800/80 pt-5">
-            {CORE_BENEFITS.map((b) => (
-              <li key={b} className="flex gap-2 text-sm text-zinc-300">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#f4d23c]" />
-                {b}
-              </li>
-            ))}
-          </ul>
-          <HyroxStripePayButton tier="monthly" className="mt-8 w-full">
-            Pay monthly — £150/month
-          </HyroxStripePayButton>
-        </HyroxCard>
-
-        <HyroxCard className="relative flex flex-col">
-          <span className="absolute right-5 top-5 rounded-full border border-emerald-500/35 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-300">
-            Save £51 vs monthly
-          </span>
-          <p className="m-0 mt-4 text-xs font-black uppercase tracking-[0.14em] text-[#f4d23c]">12-week upfront</p>
-          <p className="mt-2 text-4xl font-black tracking-tight text-white">£399</p>
-          <p className="m-0 mt-2 text-sm font-semibold text-emerald-300/90">{UPFRONT_COMMITMENT_LINE}</p>
-          <p className="m-0 mt-1 text-sm text-zinc-500">One payment · full 12-week Hyrox Team block</p>
-          <ul className="mt-6 flex-1 space-y-2.5">
-            {CORE_BENEFITS.map((b) => (
-              <li key={b} className="flex gap-2 text-sm text-zinc-300">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#f4d23c]" />
-                {b}
-              </li>
-            ))}
-          </ul>
-          <HyroxStripePayButton tier="upfront" className="mt-8 w-full">
-            Pay upfront — £399 · 12 weeks
-          </HyroxStripePayButton>
-        </HyroxCard>
-
-        <HyroxCard highlight className="relative flex flex-col">
-          <span className="absolute right-5 top-5 rounded-full border border-[#f4d23c]/40 bg-[#f4d23c]/15 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#f4d23c]">
-            {BUILD_16WEEK_VALUE_BADGE}
-          </span>
-          <span className="w-fit rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
-            Extended 1-1 build
-          </span>
-          <p className="m-0 mt-4 text-xs font-black uppercase tracking-[0.14em] text-[#f4d23c]">16-week build</p>
-          <p className="mt-2 text-4xl font-black tracking-tight text-white">£549</p>
-          <p className="m-0 mt-2 text-sm font-semibold text-[#f4d23c]/90">{BUILD_16WEEK_VALUE_LINE}</p>
-          <p className="m-0 mt-3 text-xs leading-relaxed text-zinc-400">{BUILD_16WEEK_COMMITMENT_LINE}</p>
-          <ul className="mt-6 flex-1 space-y-2.5">
-            {CORE_BENEFITS.map((b) => (
-              <li key={b} className="flex gap-2 text-sm text-zinc-300">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#f4d23c]" />
-                {b}
-              </li>
-            ))}
-            <li className="flex gap-2 text-sm text-zinc-300">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#f4d23c]" />
-              16-week base-to-race progression
-            </li>
-          </ul>
-          <HyroxStripePayButton tier="sixteenWeek" className="mt-8 w-full">
-            Pay upfront — £549 · 16 weeks
-          </HyroxStripePayButton>
-        </HyroxCard>
-      </div>
+      <HyroxPaymentOptionCards links={checkoutLinks} />
 
       <HyroxSection clean className="!my-5">
         <HyroxCard className="border-[#f4d23c]/20 bg-zinc-950/80">

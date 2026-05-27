@@ -8,7 +8,8 @@ import {
   HyroxPageShell,
   HyroxSection,
 } from "@/components/hyrox-team/HyroxTeamUi";
-import { HyroxStripePriceOptions } from "@/components/hyrox-team/HyroxStripeCheckoutButtons";
+import { HyroxPaymentOptionCards } from "@/components/hyrox-team/HyroxPaymentOptionCards";
+import { readHyroxStripeCheckoutLinks } from "@/components/hyrox-team/hyroxStripeCheckout";
 import {
   FOUNDING_PRICE_NOTE,
   MINIMUM_COMMITMENT_NOTE,
@@ -26,6 +27,9 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+
+/** Read Stripe links from runtime env (Vercel) rather than a stale static build. */
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Accepted | Hybrid365 Hyrox Team",
@@ -53,6 +57,8 @@ const INCLUDED = [
 ];
 
 export default function HyroxTeamAcceptedPage() {
+  const checkoutLinks = readHyroxStripeCheckoutLinks();
+
   return (
     <HyroxPageShell>
       <HyroxSection>
@@ -79,16 +85,8 @@ export default function HyroxTeamAcceptedPage() {
           <p className="m-0 mt-4 text-xs leading-relaxed text-zinc-500">{FOUNDING_PRICE_NOTE}</p>
         </HyroxCard>
         <div className="mt-8">
-          <HyroxStripePriceOptions
-            monthlyLabel="Pay monthly — £150/month · 3-month min."
-            upfrontLabel="Pay upfront — £399 · 12 weeks"
-            sixteenWeekLabel="Pay upfront — £549 · 16 weeks"
-          />
+          <HyroxPaymentOptionCards links={checkoutLinks} />
         </div>
-        <p className="mt-4 max-w-2xl text-xs text-zinc-600">
-          Also available: <span className="text-zinc-400">£549 · 16-week build (best value for money)</span> on the payment
-          page for athletes further from race day.
-        </p>
       </HyroxSection>
 
       <HyroxSection clean>
