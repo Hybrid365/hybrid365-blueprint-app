@@ -15,6 +15,10 @@ import {
   resolvePublishedWeekCalendarStatus,
   resolvePublishedWeekDates,
 } from "@/app/lib/hyroxProgrammeServer";
+import {
+  buildAthleteCheckInSummary,
+  buildAthleteWeeklyCheckInForProgramme,
+} from "@/app/lib/hyroxAthleteCheckInServer";
 
 export async function GET(request: NextRequest) {
   const auth = await requireCurrentHyroxAthleteForApi(request);
@@ -26,6 +30,12 @@ export async function GET(request: NextRequest) {
   try {
     const flags = await fetchAthleteProgressFlags(supabase, athlete.id);
     const programme = await fetchAthletePublishedProgramme(supabase, athlete, flags);
+    const weeklyCheckInView = programme.published
+      ? await buildAthleteWeeklyCheckInForProgramme(supabase, athlete, programme)
+      : null;
+    const weeklyCheckInSummary = weeklyCheckInView
+      ? buildAthleteCheckInSummary(weeklyCheckInView)
+      : null;
     const programmeStartEffective = resolveEffectiveProgrammeStartYmd(
       programme.programmeStartDate,
       athlete.programme_start_date,
@@ -137,6 +147,7 @@ export async function GET(request: NextRequest) {
             coachNote: programme.week.coach_note ?? "",
           }
         : null,
+      weeklyCheckIn: weeklyCheckInSummary,
     });
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
     return withAuthCookies(response);

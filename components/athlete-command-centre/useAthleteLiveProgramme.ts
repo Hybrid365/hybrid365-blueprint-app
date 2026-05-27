@@ -1,10 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type {
-  AthleteProgrammeApiState,
-  AthleteProgrammeVisibility,
-} from "@/app/lib/hyroxProgrammeServer";
+import type { AthleteProgrammeApiState, AthleteProgrammeVisibility } from "@/app/lib/hyroxProgrammeServer";
+import type { AthleteCheckInSummary } from "@/app/lib/hyroxAthleteCheckInServer";
 import type {
   AthleteProgrammeWeekBundle,
   AthleteWeekCalendarStatus,
@@ -50,6 +48,7 @@ export type AthleteLiveProgrammePayload = {
     prioritise: string[];
     coachNote: string;
   } | null;
+  weeklyCheckIn?: AthleteCheckInSummary | null;
 };
 
 type ProgrammeApiJson = {
@@ -71,6 +70,7 @@ type ProgrammeApiJson = {
   liveGlobalWeek?: number;
   sessionCount?: number;
   weekRationale?: AthleteLiveProgrammePayload["weekRationale"];
+  weeklyCheckIn?: AthleteCheckInSummary | null;
 };
 
 function mapProgrammeApi(json: ProgrammeApiJson): AthleteLiveProgrammePayload | null {
@@ -104,6 +104,7 @@ function mapProgrammeApi(json: ProgrammeApiJson): AthleteLiveProgrammePayload | 
     sessions: json.sessions ?? [],
     programmeWeeks: json.programmeWeeks ?? [],
     weekRationale: json.weekRationale ?? null,
+    weeklyCheckIn: json.weeklyCheckIn ?? null,
   };
 }
 

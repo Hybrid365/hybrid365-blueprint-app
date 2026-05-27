@@ -57,6 +57,7 @@ export function useAthleteDashboardLive() {
       portalAthlete,
       liveProgramme,
       programmePublishedLive: true,
+      weeklyCheckIn: liveProgramme?.weeklyCheckIn ?? null,
       benchmarkSnapshot: benchmarkSnapshot ?? undefined,
       benchmarksLoading,
       benchmarksError,

@@ -12,6 +12,7 @@ import {
 import { formatProgrammeDayLabel, sortProgrammeSessions, type ResolvedNextSession } from "@/app/lib/hyroxAthleteProgrammeSort";
 import { HYROX_BLOCKS } from "@/app/lib/hyroxTeamDashboardMock";
 import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
+import type { AthleteCheckInSummary } from "@/app/lib/hyroxAthleteCheckInServer";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 export type HyroxWeekTrackingLive = {
   sessionsCompleted: number;
@@ -231,6 +232,7 @@ export function buildAthleteDashboardLiveView(params: {
   portalAthlete: PortalAthleteSummary | null;
   liveProgramme: AthleteLiveProgrammePayload | null;
   programmePublishedLive: boolean;
+  weeklyCheckIn?: AthleteCheckInSummary | null;
   benchmarkSnapshot?: BenchmarkSnapshotItem[];
   benchmarksLoading?: boolean;
   benchmarksError?: string | null;
@@ -292,7 +294,7 @@ export function buildAthleteDashboardLiveView(params: {
         coachNote: "",
       });
 
-  const checkIn = resolveProgrammeCheckInSummary(calendar);
+  const checkIn = resolveProgrammeCheckInSummary(calendar, params.weeklyCheckIn ?? null);
   const raceReadiness = resolveProgrammeRaceReadiness(calendar);
   const weeklyFocusLabel = resolveProgrammeWeeklyFocusLabel(calendar);
 

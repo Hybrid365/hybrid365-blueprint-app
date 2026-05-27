@@ -20,6 +20,7 @@ import {
   weekDateRangeFromProgrammeStart,
   type ProgrammeLengthWeeks,
 } from "@/app/lib/hyroxProgrammeDates";
+import type { AthleteCheckInSummary } from "@/app/lib/hyroxAthleteCheckInServer";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 
 export type ProgrammeNextSessionState =
@@ -222,22 +223,42 @@ export function resolveProgrammeWeeklyFocusLabel(ctx: HyroxProgrammeCalendarCont
   return `Block ${ctx.blockNumber} · Week ${ctx.blockWeekInCycle}`;
 }
 
-export function resolveProgrammeCheckInSummary(ctx: HyroxProgrammeCalendarContext): {
+export function resolveProgrammeCheckInSummary(
+  ctx: HyroxProgrammeCalendarContext,
+  checkIn?: AthleteCheckInSummary | null
+): {
   status: string;
   sub: string;
   due: boolean;
 } {
-  if (ctx.beforeProgrammeStart || ctx.blockWeekInCycle <= 1) {
+  if (checkIn) {
     return {
-      status: "After Week 1",
-      sub: "Weekly check-ins unlock after your first training week",
+      status: checkIn.statusLabel,
+      sub: checkIn.sub,
+      due: checkIn.due,
+    };
+  }
+
+  if (ctx.beforeProgrammeStart) {
+    return {
+      status: "Not available",
+      sub: "Weekly check-ins unlock when your programme is live",
       due: false,
     };
   }
+
+  if (!ctx.activeWeekBundle?.generated) {
+    return {
+      status: "Not available",
+      sub: "Check-in unlocks when this week's sessions are published",
+      due: false,
+    };
+  }
+
   return {
-    status: `After Week ${ctx.blockWeekInCycle}`,
-    sub: "Complete your weekly check-in when the week ends",
-    due: false,
+    status: "Needs completing",
+    sub: `Week ${ctx.liveGlobalWeek} check-in — complete when you're ready`,
+    due: true,
   };
 }
 

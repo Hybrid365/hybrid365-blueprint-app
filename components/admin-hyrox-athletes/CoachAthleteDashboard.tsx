@@ -13,7 +13,8 @@ import {
   ProgrammeStatusBadge,
 } from "@/components/admin-hyrox-athletes/StatusBadge";
 import { DashCard, SectionHeading, StatTile } from "@/components/hyrox-team/HyroxDashboardUi";
-import { Calendar, Heart, Target } from "lucide-react";
+import { Calendar, Target } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const TABS = [
   "Overview",
@@ -161,7 +162,7 @@ export function CoachAthleteDashboard({
           roster to review blocks 1–3 (weeks 4, 8, 12).
         </p>
       ) : null}
-      {tab === "Check-Ins" && <CheckInsTab athlete={athlete} />}
+      {tab === "Check-Ins" && <CheckInsTab athleteId={athlete.id} />}
       {tab === "Coach Notes" && (
         <CoachNotesTab
           athlete={athlete}
@@ -344,36 +345,86 @@ function TestingTab({ athlete }: { athlete: CoachAthlete }) {
   );
 }
 
-function CheckInsTab({ athlete }: { athlete: CoachAthlete }) {
-  const items = [
-    { date: "2026-05-15", sleep: "6.5h", soreness: "Mild quads", rpe: "Fatigue 6/10", flags: [] as string[] },
-    { date: "2026-05-08", sleep: "7h", soreness: "None", rpe: "Good", flags: [] as string[] },
-    {
-      date: "2026-05-01",
-      sleep: "5.5h",
-      soreness: "High lower body",
-      rpe: "Struggling",
-      flags: athlete.recoveryRisk === "high" ? ["Poor sleep", "High soreness"] : [],
-    },
-  ];
+function CheckInsTab({ athleteId }: { athleteId: string }) {
+  const [items, setItems] = useState<
+    Array<{
+      id: string;
+      weekNumber: number;
+      submittedAt: string | null;
+      sleep: number | null;
+      soreness: number | null;
+      energy: number | null;
+      biggestStruggle: string | null;
+    }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/hyrox/athletes/${athleteId}/check-ins`, {
+          credentials: "include",
+        });
+        const json = (await res.json()) as {
+          success?: boolean;
+          checkIns?: typeof items;
+          error?: string;
+        };
+        if (!cancelled) {
+          if (!res.ok || !json.success) {
+            setError(json.error ?? "Could not load check-ins.");
+            setItems([]);
+          } else {
+            setItems(json.checkIns ?? []);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setError("Network error loading check-ins.");
+          setItems([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId]);
+
   return (
     <DashCard>
       <SectionHeading title="Weekly check-ins" />
+      {loading ? <p className="text-sm text-zinc-500">Loading…</p> : null}
+      {error ? <p className="text-sm text-red-300">{error}</p> : null}
+      {!loading && !error && items.length === 0 ? (
+        <p className="text-sm text-zinc-500">No submitted check-ins yet.</p>
+      ) : null}
       <ul className="space-y-3">
         {items.map((c) => (
-          <li key={c.date} className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <li key={c.id} className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
             <div className="flex flex-wrap justify-between gap-2">
-              <p className="font-semibold text-white">{c.date}</p>
-              <span className="text-xs capitalize text-zinc-500">{athlete.checkInStatus}</span>
+              <p className="font-semibold text-white">Week {c.weekNumber}</p>
+              <span className="text-xs text-zinc-500">
+                {c.submittedAt
+                  ? new Date(c.submittedAt).toLocaleDateString(undefined, {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "—"}
+              </span>
             </div>
             <p className="mt-2 text-sm text-zinc-400">
-              Sleep {c.sleep} · Soreness {c.soreness} · {c.rpe}
+              Sleep {c.sleep ?? "—"}/10 · Energy {c.energy ?? "—"}/10 · Soreness {c.soreness ?? "—"}
+              /10
             </p>
-            {c.flags.length > 0 ? (
-              <p className="mt-2 flex items-center gap-1 text-xs text-red-300/90">
-                <Heart className="h-3.5 w-3.5" />
-                {c.flags.join(" · ")}
-              </p>
+            {c.biggestStruggle ? (
+              <p className="mt-2 text-sm text-zinc-500">Struggle: {c.biggestStruggle}</p>
             ) : null}
           </li>
         ))}
