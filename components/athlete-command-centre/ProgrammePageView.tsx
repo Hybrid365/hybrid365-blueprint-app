@@ -63,7 +63,7 @@ function chipLabelForMode(mode: WeekTabMode): string {
   if (mode === "active") return "Live";
   if (mode === "past") return "Past";
   if (mode === "locked") return "Locked";
-  if (mode === "not_generated") return "Not generated";
+  if (mode === "not_generated") return "Coming soon";
   return "Upcoming";
 }
 
@@ -265,7 +265,7 @@ export function ProgrammePageView({
     (id: string, title?: string, opts?: { showLogForm?: boolean }) => {
       const hit = sessions.find((s) => s.id === id) ?? null;
       if (useLive && !hit && !allProgrammeSessionIds.has(id)) {
-        setInvalidSessionMessage("Session not found — that id is not in your published programme.");
+        setInvalidSessionMessage("That session isn't available in your programme right now.");
         setSessionId(null);
         setDrawerSession(null);
         setDrawerShowLogForm(false);
@@ -364,10 +364,10 @@ export function ProgrammePageView({
 
       {publishedNoSessions ? (
         <div className={`${athleteCard} ${athleteCardPadding} mb-6`}>
-          <p className={eyebrowClass}>Programme published</p>
+          <p className={eyebrowClass}>Programme</p>
           <p className="mt-3 text-sm leading-relaxed text-zinc-300">
-            Programme published but no sessions were found for W1–W4. Your coach may need to
-            publish session rows, or reload after a moment.
+            Your programme is live, but no sessions are showing yet. Check back shortly or contact
+            your coach if this persists.
           </p>
         </div>
       ) : null}

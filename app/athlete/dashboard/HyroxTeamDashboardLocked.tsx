@@ -159,12 +159,7 @@ export default function HyroxTeamDashboardLocked({
     <div className="space-y-8">
       {apiLoadError ? (
         <div className="rounded-xl border border-red-500/35 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-          Could not load your athlete profile data: {apiLoadError}
-          {process.env.NODE_ENV === "development" ? (
-            <span className="mt-1 block text-xs text-red-300/80">
-              Check the dev debug panel above — wrong athlete id or account not linked.
-            </span>
-          ) : null}
+          Could not load your athlete profile data. Please reload the page or sign in again.
         </div>
       ) : null}
       <DashCard className="border-zinc-700/80 bg-gradient-to-br from-zinc-950 to-zinc-900/90">

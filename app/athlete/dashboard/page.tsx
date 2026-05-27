@@ -96,8 +96,6 @@ export default async function AthleteDashboardPage() {
       <DashboardPageClient
         initialProgress={initialProgress}
         serverAuthConfirmed={serverAuthConfirmed}
-        dataSource="server-linked-athlete"
-        resolvedAthleteId={linked.athlete.id}
       />
     </AthletePortalSeedProvider>
   );

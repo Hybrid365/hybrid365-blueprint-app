@@ -1,10 +1,7 @@
 "use client";
 
 import { ActiveAthletePage } from "@/components/athlete-command-centre/ActiveAthletePage";
-import {
-  ProgrammePageResolveNotice,
-  ProgrammePageServerDebugPanel,
-} from "@/components/athlete-command-centre/ProgrammePageServerDebug";
+import { ProgrammePageResolveNotice } from "@/components/athlete-command-centre/ProgrammePageServerDebug";
 import { ProgrammePageView } from "@/components/athlete-command-centre/ProgrammePageView";
 import {
   AthletePortalSeedProvider,
@@ -60,16 +57,10 @@ function ProgrammePageInner({
       serverPortalAthlete={serverPortalAthlete}
     >
       <ActiveAthletePage allowLinkedProgrammeAccess>
-        <ProgrammePageServerDebugPanel
-          debug={serverDebug}
-          variant={variant}
-          layoutServerAuthConfirmed={serverAuthConfirmed}
-          gate={gate}
-        />
         {gate.decision === "published-empty" ? (
           <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-sm text-amber-100/90">
-            Programme is marked published but no sessions were found. Ask your coach to publish
-            week sessions, or reload after a few minutes.
+            Your programme is live, but no sessions are showing yet. Check back shortly or contact
+            your coach if this persists.
           </p>
         ) : null}
         <ProgrammePageView

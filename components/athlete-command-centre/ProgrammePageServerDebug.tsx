@@ -125,8 +125,8 @@ export function ProgrammePageResolveNotice({
   const copy =
     variant === "no-session"
       ? gate?.reason ??
-        "The programme page could not resolve your Supabase session. Reload or sign in again."
-      : `Your sign-in is active but this page could not resolve a linked Hyrox athlete (${debug.linkFailureReason ?? "unknown"}).`;
+        "We couldn't verify your sign-in. Please reload the page or sign in again."
+      : "Your sign-in is active, but we couldn't link your Hyrox athlete profile yet. Contact your coach if this continues.";
 
   return (
     <div className="mx-auto max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950/80 p-8 text-center">

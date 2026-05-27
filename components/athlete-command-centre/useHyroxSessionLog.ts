@@ -60,6 +60,9 @@ export type SessionLogAttemptDebug = {
 };
 
 function formatStructuredError(debug: SessionLogAttemptDebug, detail: string): string {
+  if (process.env.NODE_ENV !== "development") {
+    return detail;
+  }
   return [
     detail,
     `cookieAuth: ${debug.cookieAuth}`,

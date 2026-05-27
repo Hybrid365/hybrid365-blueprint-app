@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { HyroxPageShell } from "@/components/hyrox-team/HyroxTeamUi";
 import { AthleteAppNav } from "./AthleteAppNav";
-import { HyroxAthletePortalDebugPanel } from "./HyroxAthletePortalDebugPanel";
 import { AthletePortalGate } from "./AthletePortalGate";
 import { useAthletePortal } from "./athletePortalContext";
 
@@ -34,8 +33,6 @@ export function AthletePortalShell({
     programmeHubLive,
     programmePublishedLive,
     useMockPreview,
-    portalAuthSource,
-    routeAuthDebug,
     serverProgrammePublishedSeed,
     serverAuthConfirmed,
   } = useAthletePortal();
@@ -47,19 +44,6 @@ export function AthletePortalShell({
 
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
-      <HyroxAthletePortalDebugPanel />
-      {process.env.NODE_ENV === "development" && routeAuthDebug ? (
-        <div className="border-b border-violet-500/25 bg-violet-950/30 px-4 py-1.5 text-center text-[10px] font-mono text-violet-200/90 sm:px-6">
-          auth: {routeAuthDebug.authSource} · athlete: {routeAuthDebug.athleteId ?? "—"} · route:{" "}
-          {routeAuthDebug.route} · login redirect:{" "}
-          {routeAuthDebug.wouldRedirectToLogin ? "yes" : "no"}
-          · prog seed: {routeAuthDebug.serverProgrammePublishedSeed ? "yes" : "no"}
-          · hub: {programmeHubLive ? "yes" : "no"}
-          {portalAuthSource !== routeAuthDebug.authSource
-            ? ` · layout: ${portalAuthSource}`
-            : ""}
-        </div>
-      ) : null}
       {useMockPreview ? <MockPreviewBanner /> : null}
       <div className="sticky top-0 z-40 border-b border-zinc-800/90 bg-black/95 backdrop-blur-md">
         <div className="px-4 py-3 sm:px-6">
@@ -94,7 +78,9 @@ export function AthletePortalShell({
         {navVisible ? <AthleteAppNav variant="desktop" /> : null}
       </div>
 
-      <div className={`px-4 sm:px-6 ${navVisible ? "pb-24 pt-6 lg:pb-10" : "py-6"}`}>{children}</div>
+      <div className={`min-w-0 overflow-x-hidden px-4 sm:px-6 ${navVisible ? "pb-24 pt-6 lg:pb-10" : "py-6"}`}>
+        {children}
+      </div>
 
       {navVisible ? <AthleteAppNav variant="mobile" /> : null}
     </HyroxPageShell>

@@ -4,7 +4,6 @@ import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getSessionDetail, type SessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
-import { useAthletePortal } from "./athletePortalContext";
 import {
   useHyroxSessionLog,
   type HyroxSessionLogForm,
@@ -56,11 +55,7 @@ export function SessionDrawer({
     successMessage,
     clearMessages,
     saveSessionLog,
-    lastVia,
-    attemptDebug,
-    serverAuthDebug,
   } = useHyroxSessionLog();
-  const { serverAuthConfirmed, portalAthlete, portalMutationToken } = useAthletePortal();
   const [showLogForm, setShowLogForm] = useState(initialShowLogForm);
   const [form, setForm] = useState<HyroxSessionLogForm>(() => formFromSession(session));
 
@@ -87,7 +82,7 @@ export function SessionDrawer({
     !saving;
 
   const blockedReason = !useLiveApi
-    ? "Session logging is disabled in mock preview. Turn off mock preview to log real sessions."
+    ? "Session logging isn't available in preview mode."
     : !loggingEnabled
       ? loggingBlockedMessage ?? "This session cannot be logged yet."
       : null;
@@ -145,7 +140,7 @@ export function SessionDrawer({
       <aside
         role="dialog"
         aria-modal="true"
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-zinc-800 bg-zinc-950 shadow-2xl animate-in slide-in-from-right duration-300"
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-zinc-800 bg-zinc-950 shadow-2xl animate-in slide-in-from-right duration-300 overflow-hidden"
       >
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4">
           <div>
@@ -299,7 +294,7 @@ export function SessionDrawer({
           ) : null}
         </div>
 
-        <footer className="shrink-0 space-y-2 border-t border-zinc-800 p-4">
+        <footer className="shrink-0 space-y-2 border-t border-zinc-800 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {blockedReason ? (
             <p className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-200/90">
               {blockedReason}
@@ -314,41 +309,6 @@ export function SessionDrawer({
             <p className="rounded-lg border border-emerald-500/35 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
               {successMessage}
             </p>
-          ) : null}
-
-          {process.env.NODE_ENV === "development" ? (
-            <div className="rounded-lg border border-violet-500/30 bg-violet-950/25 px-3 py-2 text-[10px] text-violet-100/90">
-              <p className="font-semibold text-violet-300">Dev — session log</p>
-              <p>sessionId: {sessionId ?? "—"}</p>
-              <p>loggingEnabled: {loggingEnabled ? "yes" : "no"}</p>
-              <p>blocked: {blockedReason ?? "—"}</p>
-              <p>portalAthleteId: {portalAthlete?.id ?? "—"}</p>
-              <p>serverAuthConfirmed: {serverAuthConfirmed ? "yes" : "no"}</p>
-              <p>portalMutationToken: {portalMutationToken ? "present" : "missing"}</p>
-              <p>lastVia: {lastVia}</p>
-              <p>cookieAuth: {attemptDebug.cookieAuth}</p>
-              <p>h365AthleteSession: {attemptDebug.h365AthleteSession}</p>
-              <p>tokenAuth: {attemptDebug.tokenAuth}</p>
-              <p>
-                sessionBelongsToAthlete:{" "}
-                {attemptDebug.sessionBelongsToAthlete === undefined
-                  ? "—"
-                  : attemptDebug.sessionBelongsToAthlete
-                    ? "yes"
-                    : "no"}
-              </p>
-              <p>
-                server: {attemptDebug.serverActionResult}
-                {attemptDebug.serverError ? ` — ${attemptDebug.serverError}` : ""}
-              </p>
-              {attemptDebug.apiError ? <p>api: {attemptDebug.apiError}</p> : null}
-              {serverAuthDebug ? (
-                <p>
-                  server cookieAuth: {serverAuthDebug.cookieAuth} · h365:{" "}
-                  {serverAuthDebug.h365AthleteSession} · source: {serverAuthDebug.source}
-                </p>
-              ) : null}
-            </div>
           ) : null}
 
           <button

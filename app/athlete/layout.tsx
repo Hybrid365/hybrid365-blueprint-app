@@ -47,12 +47,14 @@ export default async function AthleteLayout({ children }: { children: React.Reac
   };
 
   if (programmeRoute) {
-    console.log("[hyrox-programme-route] layout", {
-      pathname,
-      ...routeAuthDebug,
-      hasUser: Boolean(user),
-      h365Session: auth.athleteSessionCookieValid,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[hyrox-programme-route] layout", {
+        pathname,
+        ...routeAuthDebug,
+        hasUser: Boolean(user),
+        h365Session: auth.athleteSessionCookieValid,
+      });
+    }
   }
 
   if (!user) {

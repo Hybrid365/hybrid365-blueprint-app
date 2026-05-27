@@ -10,20 +10,15 @@ import {
 } from "@/components/hyrox-team/HyroxTeamUi";
 import { useAthletePortal } from "@/components/athlete-command-centre/athletePortalContext";
 import { AthletePortalShell } from "@/components/athlete-command-centre/AthletePortalShell";
-import { HyroxAthletePortalDebugPanel } from "@/components/athlete-command-centre/HyroxAthletePortalDebugPanel";
 import type { AthleteOnboardingProgress } from "@/app/lib/hyroxAthleteOnboardingFlow";
 import HyroxTeamDashboardView from "./HyroxTeamDashboardView";
 
 export default function DashboardPageClient({
   initialProgress = null,
   serverAuthConfirmed = false,
-  dataSource = "unknown",
-  resolvedAthleteId = null,
 }: {
   initialProgress?: AthleteOnboardingProgress | null;
   serverAuthConfirmed?: boolean;
-  dataSource?: string;
-  resolvedAthleteId?: string | null;
 }) {
   const {
     setProgrammePublishedMock,
@@ -43,13 +38,6 @@ export default function DashboardPageClient({
   if (showLiveHub) {
     return (
       <AthletePortalShell>
-        <HyroxAthletePortalDebugPanel />
-        {process.env.NODE_ENV === "development" ? (
-          <p className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-400">
-            Dashboard data source: {dataSource} · athlete id: {resolvedAthleteId ?? "—"} ·
-            serverAuthConfirmed: {serverAuthConfirmed ? "yes" : "no"}
-          </p>
-        ) : null}
         <HyroxTeamDashboardView
           programmePublishedMock={useMockPreview}
           programmePublishedLive={programmePublishedLive || serverProgrammePublished}
@@ -62,7 +50,6 @@ export default function DashboardPageClient({
 
   return (
     <HyroxPageShell maxWidth="max-w-7xl">
-      <HyroxAthletePortalDebugPanel />
       <HyroxSection className="!py-6 sm:!py-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
