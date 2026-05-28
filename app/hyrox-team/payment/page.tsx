@@ -65,6 +65,7 @@ const INCLUDED = [
 
 export default function HyroxTeamPaymentPage() {
   const checkoutLinks = readHyroxStripeCheckoutLinks();
+  const showDevMarker = process.env.NODE_ENV === "development";
 
   return (
     <HyroxPageShell maxWidth="max-w-[1100px]">
@@ -85,22 +86,26 @@ export default function HyroxTeamPaymentPage() {
       </HyroxCard>
 
       <HyroxPaymentOptionCards links={checkoutLinks} />
+      {showDevMarker ? (
+        <p className="mt-3 text-center text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          Payment cards component rendered
+        </p>
+      ) : null}
 
       <HyroxSection clean className="!my-5">
         <HyroxCard className="border-[#f4d23c]/20 bg-zinc-950/80">
           <p className="m-0 text-xs font-black uppercase tracking-wide text-[#f4d23c]">After payment</p>
           <p className="m-0 mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">
-            After payment, you&apos;ll be taken to onboarding to complete your assessment and testing. In production, set
-            your Stripe Payment Link success URL to{" "}
-            <span className="font-mono text-zinc-300">/athlete/onboarding</span> on this domain. Until then, you can open
-            onboarding manually:
+            After payment, your coach will set up your athlete dashboard and send your personal login link.
+            Complete your onboarding from that private link so your profile, testing and programme data stay
+            correctly linked to your account.
           </p>
-          <Link
-            href="/athlete/onboarding"
-            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 px-5 text-sm font-bold text-zinc-200 hover:border-zinc-500"
-          >
-            Open onboarding page →
-          </Link>
+          <p className="m-0 mt-4 text-sm leading-relaxed text-zinc-500">
+            Already invited?{" "}
+            <Link href="/athlete/login" className="font-semibold text-zinc-300 hover:text-[#f4d23c]">
+              Open athlete login →
+            </Link>
+          </p>
         </HyroxCard>
       </HyroxSection>
 

@@ -132,8 +132,11 @@ export default function HyroxTeamAcceptedPage() {
           </Link>
         </div>
         <p className="mt-6 text-sm text-zinc-600">
-          Configure Stripe success URL to <span className="font-mono text-zinc-400">/athlete/onboarding</span> when you
-          wire live checkout.
+          After payment, your coach will set up your athlete dashboard and send your personal login link.
+          Already invited?{" "}
+          <Link href="/athlete/login" className="font-semibold text-zinc-400 hover:text-[#f4d23c]">
+            Open athlete login →
+          </Link>
         </p>
       </HyroxSection>
     </HyroxPageShell>

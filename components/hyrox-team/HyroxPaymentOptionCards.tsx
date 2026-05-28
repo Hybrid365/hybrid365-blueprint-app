@@ -161,14 +161,9 @@ type HyroxPaymentOptionCardsProps = {
 
 export function HyroxPaymentOptionCards({ links: linksProp, className = "" }: HyroxPaymentOptionCardsProps) {
   const links = linksProp ?? readHyroxStripeCheckoutLinks();
-  const isDev = process.env.NODE_ENV === "development";
-  const showMonthly = Boolean(links.monthly) || isDev;
-  const showUpfront = Boolean(links.upfront) || isDev;
-  const showSixteen = Boolean(links.sixteenWeek) || isDev;
-
-  if (!showMonthly && !showUpfront && !showSixteen) {
-    return null;
-  }
+  const showMonthly = true;
+  const showUpfront = true;
+  const showSixteen = true;
 
   return (
     <div className={`mx-auto flex w-full max-w-2xl flex-col gap-6 sm:max-w-3xl sm:gap-8 ${className}`}>
