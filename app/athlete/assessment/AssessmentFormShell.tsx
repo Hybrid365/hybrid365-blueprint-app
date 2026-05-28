@@ -37,7 +37,19 @@ const STEPS = [
   { id: "submit", title: "Submit" },
 ] as const;
 
-function AssessmentFormInner() {
+function AssessmentFormInner({
+  apiBasePath,
+  headingName,
+  intro,
+  successMessage,
+  primaryAfterSubmitHref,
+}: {
+  apiBasePath: string;
+  headingName: string;
+  intro: string;
+  successMessage: string;
+  primaryAfterSubmitHref: string | null;
+}) {
   const { values, setFields } = useAssessmentForm();
   const [stepIndex, setStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -52,7 +64,7 @@ function AssessmentFormInner() {
   const loadExisting = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/hyrox/athlete/assessment", { credentials: "include" });
+      const res = await fetch(apiBasePath, { credentials: "include" });
       const data = await res.json();
       if (res.ok && data.submitted && data.assessment?.raw_answers) {
         setFields(data.assessment.raw_answers as AssessmentFormValues);
@@ -74,7 +86,7 @@ function AssessmentFormInner() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/hyrox/athlete/assessment", {
+      const res = await fetch(apiBasePath, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -117,9 +129,7 @@ function AssessmentFormInner() {
               Assessment submitted
             </p>
             <h2 className="m-0 mt-4 text-2xl font-bold text-white">Thank you</h2>
-            <p className="m-0 mx-auto mt-4 max-w-lg text-sm leading-relaxed text-zinc-300">
-              Assessment submitted. Next step: complete your baseline testing.
-            </p>
+            <p className="m-0 mx-auto mt-4 max-w-lg text-sm leading-relaxed text-zinc-300">{successMessage}</p>
             {submittedAt ? (
               <p className="m-0 mt-2 text-xs text-zinc-500">
                 Last saved {new Date(submittedAt).toLocaleString()}
@@ -129,12 +139,14 @@ function AssessmentFormInner() {
               You can update your answers below and resubmit — we use your latest submission for coach review.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/athlete/testing"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#F4D23C] px-6 text-sm font-black text-[#050505]"
-              >
-                Go to Testing
-              </Link>
+              {primaryAfterSubmitHref ? (
+                <Link
+                  href={primaryAfterSubmitHref}
+                  className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#F4D23C] px-6 text-sm font-black text-[#050505]"
+                >
+                  Go to Testing
+                </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setSubmitted(false)}
@@ -153,11 +165,9 @@ function AssessmentFormInner() {
     <HyroxPageShell maxWidth="max-w-[960px]">
       <HyroxSection>
         <HyroxEyebrow>Hyrox Team / Assessment</HyroxEyebrow>
-        <HyroxH1 accent="assessment">Athlete</HyroxH1>
+        <HyroxH1 accent="assessment">{headingName}</HyroxH1>
         <HyroxLead>
-          This assessment gives us the data needed to build your Hyrox programme properly. The more detail you provide,
-          the more accurately your programme can be built around your goal, schedule, strengths, weaknesses and recovery
-          capacity.
+          {intro}
         </HyroxLead>
       </HyroxSection>
 
@@ -222,10 +232,28 @@ function AssessmentFormInner() {
   );
 }
 
-export default function AssessmentFormShell() {
+export default function AssessmentFormShell({
+  apiBasePath = "/api/hyrox/athlete/assessment",
+  headingName = "Athlete",
+  intro = "This assessment gives us the data needed to build your Hyrox programme properly. The more detail you provide, the more accurately your programme can be built around your goal, schedule, strengths, weaknesses and recovery capacity.",
+  successMessage = "Assessment submitted. Next step: complete your baseline testing.",
+  primaryAfterSubmitHref = "/athlete/testing",
+}: {
+  apiBasePath?: string;
+  headingName?: string;
+  intro?: string;
+  successMessage?: string;
+  primaryAfterSubmitHref?: string | null;
+}) {
   return (
     <AssessmentFormProvider initialValues={emptyAssessmentValues()}>
-      <AssessmentFormInner />
+      <AssessmentFormInner
+        apiBasePath={apiBasePath}
+        headingName={headingName}
+        intro={intro}
+        successMessage={successMessage}
+        primaryAfterSubmitHref={primaryAfterSubmitHref}
+      />
     </AssessmentFormProvider>
   );
 }

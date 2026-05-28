@@ -80,3 +80,21 @@ export function suggestedNextAthleteCoachAction(
   }
   return "Review athlete";
 }
+
+export type HyroxAthleteManagerStage =
+  | "Applied"
+  | "Accepted / awaiting payment"
+  | "Paid / onboarding required"
+  | "Assessment complete"
+  | "Programme live";
+
+export function getHyroxAthleteManagerStage(input: {
+  payment_status: HyroxAthletePaymentStatus;
+  hasAssessment?: boolean;
+  programmeLive?: boolean;
+}): HyroxAthleteManagerStage {
+  if (input.programmeLive) return "Programme live";
+  if (input.hasAssessment) return "Assessment complete";
+  if (input.payment_status === "paid") return "Paid / onboarding required";
+  return "Accepted / awaiting payment";
+}

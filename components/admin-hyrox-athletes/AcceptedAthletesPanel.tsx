@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { HyroxAthleteListItem } from "@/app/lib/hyroxDatabaseTypes";
-import { suggestedNextAthleteCoachAction } from "@/app/lib/hyroxAthleteStatus";
+import { getHyroxAthleteManagerStage, suggestedNextAthleteCoachAction } from "@/app/lib/hyroxAthleteStatus";
 import { formatApplicationDate } from "@/app/lib/hyroxApplicationCoach";
 import { DashCard } from "@/components/hyrox-team/HyroxDashboardUi";
+import { HYROX_STRIPE_CHECKOUT_LINKS } from "@/components/hyrox-team/hyroxStripeCheckout";
 
 function PaymentBadge({ status }: { status: string }) {
   const paid = status === "paid";
@@ -23,6 +24,7 @@ function PaymentBadge({ status }: { status: string }) {
 }
 
 const ATHLETE_ONBOARDING_LOGIN_PATH = "/athlete/login?next=/athlete/onboarding";
+const PAYMENT_PAGE_PATH = "/hyrox-team/payment";
 
 function AthleteLoginLinkCopy() {
   const [copied, setCopied] = useState(false);
@@ -81,6 +83,8 @@ function AthleteRowActions({
   const [error, setError] = useState<string | null>(null);
   const [linkEmail, setLinkEmail] = useState(athlete.email);
   const [paymentType, setPaymentType] = useState("");
+  const [onboardingCopied, setOnboardingCopied] = useState(false);
+  const [paymentCopied, setPaymentCopied] = useState(false);
 
   useEffect(() => {
     setLocalAthlete(athlete);
@@ -136,6 +140,51 @@ function AthleteRowActions({
       setLocalAthlete(next);
       setMessage(data.message ?? "Payment confirmed.");
       onUpdated(next);
+    } catch {
+      setError("Network error.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyPaymentLink() {
+    try {
+      const paymentHref =
+        paymentType === "monthly"
+          ? HYROX_STRIPE_CHECKOUT_LINKS.monthly
+          : paymentType === "twelve_week"
+            ? HYROX_STRIPE_CHECKOUT_LINKS.upfront
+            : paymentType === "sixteen_week"
+              ? HYROX_STRIPE_CHECKOUT_LINKS.sixteenWeek
+              : "";
+      const url =
+        typeof window !== "undefined"
+          ? paymentHref || `${window.location.origin}${PAYMENT_PAGE_PATH}`
+          : paymentHref || PAYMENT_PAGE_PATH;
+      await navigator.clipboard.writeText(url);
+      setPaymentCopied(true);
+      window.setTimeout(() => setPaymentCopied(false), 2000);
+      setMessage("Payment link copied.");
+    } catch {
+      setError("Could not copy payment link.");
+    }
+  }
+
+  async function copyOnboardingLink() {
+    if (!localAthlete.id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/hyrox/athletes/${localAthlete.id}/onboarding-link`);
+      const data = (await res.json()) as { success?: boolean; url?: string; error?: string };
+      if (!res.ok || !data.success || !data.url) {
+        setError(data.error ?? "Could not generate onboarding link.");
+        return;
+      }
+      await navigator.clipboard.writeText(data.url);
+      setOnboardingCopied(true);
+      window.setTimeout(() => setOnboardingCopied(false), 2000);
+      setMessage("Personal onboarding link copied.");
     } catch {
       setError("Network error.");
     } finally {
@@ -263,6 +312,14 @@ function AthleteRowActions({
           <button
             type="button"
             disabled={busy}
+            onClick={() => void copyPaymentLink()}
+            className="rounded-full border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 disabled:opacity-50"
+          >
+            {paymentCopied ? "Copied" : "Copy payment link"}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
             onClick={() => void confirmPayment()}
             className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
           >
@@ -298,6 +355,14 @@ function AthleteRowActions({
               Link user
             </button>
           </div>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void copyOnboardingLink()}
+            className="rounded-full border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 disabled:opacity-50"
+          >
+            {onboardingCopied ? "Copied" : "Copy onboarding/assessment link"}
+          </button>
         </div>
       ) : null}
 
@@ -311,6 +376,14 @@ function AthleteRowActions({
             If the athlete sees a sign-in mismatch, use Relink to point this profile at the auth
             account they are actually using (same email).
           </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void copyOnboardingLink()}
+            className="rounded-full border border-zinc-600 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-zinc-500 disabled:opacity-50"
+          >
+            {onboardingCopied ? "Copied" : "Copy onboarding/assessment link"}
+          </button>
           <button
             type="button"
             disabled={busy}
@@ -459,9 +532,20 @@ export function AcceptedAthletesPanel({ refreshToken = 0 }: { refreshToken?: num
                   {a.programmeLive ? `Programme live (${a.publishedWeekCount ?? 0} wks)` : "No published programme"}
                   {a.programme_start_date ? ` · start ${a.programme_start_date}` : ""}
                 </p>
+                <p className="mt-1 text-xs font-semibold text-zinc-300">
+                  Stage:{" "}
+                  {getHyroxAthleteManagerStage({
+                    payment_status: a.payment_status,
+                    hasAssessment: a.hasAssessment,
+                    programmeLive: Boolean(a.programmeLive),
+                  })}
+                </p>
                 <p className="mt-1 text-xs text-yellow-200/80">
                   Next: {suggestedNextAthleteCoachAction(a)}
                 </p>
+                {a.hasAssessment && !a.programmeLive ? (
+                  <p className="mt-1 text-xs text-emerald-300">Assessment complete / ready to generate programme</p>
+                ) : null}
                 <Link
                   href={`/admin/hyrox-athletes/${a.id}?tab=${encodeURIComponent("Profile Review")}`}
                   className="mt-3 inline-flex rounded-full border border-yellow-500/30 px-3 py-1 text-[10px] font-bold text-yellow-200 hover:bg-yellow-400/10"
@@ -472,7 +556,21 @@ export function AcceptedAthletesPanel({ refreshToken = 0 }: { refreshToken?: num
                     }
                   }}
                 >
-                  Open profile review
+                  Create/open athlete profile
+                </Link>
+                <Link
+                  href={`/admin/hyrox-athletes/${a.id}?tab=${encodeURIComponent("Profile Review")}`}
+                  className="ml-2 mt-3 inline-flex rounded-full border border-zinc-600 px-3 py-1 text-[10px] font-bold text-zinc-200 hover:bg-zinc-800/40"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View assessment
+                </Link>
+                <Link
+                  href={`/admin/hyrox-athletes/${a.id}?tab=${encodeURIComponent("Programme Builder")}`}
+                  className="ml-2 mt-3 inline-flex rounded-full border border-emerald-500/30 px-3 py-1 text-[10px] font-bold text-emerald-200 hover:bg-emerald-400/10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Generate programme
                 </Link>
               </button>
 

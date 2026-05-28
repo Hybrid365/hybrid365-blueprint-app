@@ -32,12 +32,21 @@ export function AthleteUnlinkedNotice({
             </>
           ) : (
             <>
-              No Hyrox athlete profile found for this login email, or your account is not linked yet.
-              Sign in with the same email your coach has on file, or ask your coach to link your account
-              in the admin dashboard.
+              Your athlete dashboard is not linked yet. Your coach may still be setting up your
+              profile and training programme.
+              <br />
+              <br />
+              Please make sure you used the same email you applied with. If you think your dashboard
+              should already be ready, message your coach and we&apos;ll get it linked.
             </>
           )}
         </p>
+        {!isWrongAuth ? (
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-zinc-500">
+            Once your profile is linked, you&apos;ll be able to access your dashboard, programme,
+            weekly check-ins and session logging.
+          </p>
+        ) : null}
         {process.env.NODE_ENV === "development" ? (
           <div className="mx-auto mt-6 max-w-md text-left text-xs text-zinc-500">
             <p>
@@ -56,17 +65,19 @@ export function AthleteUnlinkedNotice({
           </div>
         ) : null}
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link
-            href="/logout?next=/athlete/login"
-            className="rounded-xl border border-zinc-700 px-5 py-2.5 text-sm font-medium text-white hover:border-zinc-500"
-          >
-            Sign out & try again
-          </Link>
+          {isWrongAuth ? (
+            <Link
+              href="/logout?next=/athlete/login"
+              className="rounded-xl border border-zinc-700 px-5 py-2.5 text-sm font-medium text-white hover:border-zinc-500"
+            >
+              Sign out & try again
+            </Link>
+          ) : null}
           <Link
             href="/athlete/login?next=/athlete/onboarding"
             className="rounded-xl bg-[#F4D23C] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#e5c436]"
           >
-            Return to athlete login
+            Back to login
           </Link>
         </div>
       </main>

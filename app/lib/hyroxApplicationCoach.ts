@@ -30,7 +30,7 @@ export function formatApplicationDate(iso: string): string {
 }
 
 export const APPLICATION_STATUS_LABELS: Record<HyroxApplicationStatus, string> = {
-  submitted: "Submitted",
+  submitted: "Applied",
   under_review: "Under review",
   accepted: "Accepted",
   rejected: "Rejected",
