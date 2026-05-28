@@ -6,6 +6,9 @@ import {
 } from "@/components/hyrox-team/hyroxStripeCheckout";
 import {
   BUILD_16WEEK_COMMITMENT_LINE,
+  BUILD_16WEEK_CTA_LABEL,
+  BUILD_16WEEK_PRICE_DISPLAY,
+  BUILD_16WEEK_SAVE_VS_MONTHLY,
   BUILD_16WEEK_VALUE_BADGE,
   BUILD_16WEEK_VALUE_LINE,
   MONTHLY_COMMITMENT_DETAIL,
@@ -210,12 +213,15 @@ export function HyroxPaymentOptionCards({ links: linksProp, className = "" }: Hy
 
       {showSixteen ? (
         <PremiumPricingCard highlight>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <PremiumBadge tone="muted">Extended 1-1 build</PremiumBadge>
-            <PremiumBadge tone="highlight">{BUILD_16WEEK_VALUE_BADGE}</PremiumBadge>
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <PremiumBadge tone="muted">Extended 1-1 build</PremiumBadge>
+              <PremiumBadge tone="highlight">{BUILD_16WEEK_VALUE_BADGE}</PremiumBadge>
+            </div>
+            <PremiumBadge tone="emerald">{BUILD_16WEEK_SAVE_VS_MONTHLY}</PremiumBadge>
           </div>
           <OptionTitle>16-week build</OptionTitle>
-          <PriceDisplay>£549</PriceDisplay>
+          <PriceDisplay>{BUILD_16WEEK_PRICE_DISPLAY}</PriceDisplay>
           <p className="m-0 mt-3 text-base font-bold leading-snug text-[#f4d23c]/95 sm:text-lg">{BUILD_16WEEK_VALUE_LINE}</p>
           <p className="m-0 mt-4 text-sm leading-relaxed text-zinc-400 sm:text-[15px]">{BUILD_16WEEK_COMMITMENT_LINE}</p>
           <CardDivider />
@@ -224,7 +230,7 @@ export function HyroxPaymentOptionCards({ links: linksProp, className = "" }: Hy
           />
           <PayCta
             href={links.sixteenWeek}
-            label="Pay upfront — £549 · 16 weeks"
+            label={BUILD_16WEEK_CTA_LABEL}
             envKey="NEXT_PUBLIC_STRIPE_HYROX_16_WEEK_URL"
           />
         </PremiumPricingCard>

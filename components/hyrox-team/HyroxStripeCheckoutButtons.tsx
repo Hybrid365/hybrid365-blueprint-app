@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { HyroxStripeCheckoutLinks } from "./hyroxStripeCheckout";
 import { HYROX_STRIPE_CHECKOUT_LINKS } from "./hyroxStripeCheckout";
+import { BUILD_16WEEK_CTA_LABEL } from "./hyroxTeamOfferCopy";
 
 const btnPrimary =
   "inline-flex min-h-[52px] w-full items-center justify-center rounded-full bg-[#f4d23c] px-6 text-center font-black tracking-[-0.02em] text-[#050505] transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90";
@@ -74,7 +75,7 @@ export function HyroxStripePayButton({
 export function HyroxStripePriceOptions({
   monthlyLabel = "Pay monthly — £150/month",
   upfrontLabel = "Pay upfront — £399 · 12 weeks",
-  sixteenWeekLabel = "Pay upfront — £549 · 16 weeks",
+  sixteenWeekLabel = BUILD_16WEEK_CTA_LABEL,
   className = "",
   links,
 }: {

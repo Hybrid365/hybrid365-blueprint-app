@@ -30,6 +30,12 @@ export const MONTHLY_COMMITMENT_INVESTMENT = [
 
 export const UPFRONT_COMMITMENT_LINE = "Covers the full 3-month minimum commitment upfront.";
 
+export const BUILD_16WEEK_PRICE_DISPLAY = "£499";
+
+export const BUILD_16WEEK_SAVE_VS_MONTHLY = "SAVE £101 VS MONTHLY";
+
+export const BUILD_16WEEK_CTA_LABEL = "Pay upfront — £499 · 16 weeks";
+
 export const BUILD_16WEEK_COMMITMENT_LINE =
   "Best for athletes further from race day who want a full base-to-race build with more time to develop aerobic volume, threshold ability, strength endurance and race specificity.";
 
