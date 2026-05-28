@@ -3,6 +3,7 @@ import { fetchAthleteOnboardingProgress } from "@/app/lib/hyroxAthleteOnboarding
 import { resolveAthletePortalPageAuth } from "@/app/lib/hyroxAthletePortalSnapshot";
 import OnboardingStatusClient from "./OnboardingStatusClient";
 import Link from "next/link";
+import { HYROX_TEAM_EMAIL_LINKING_NOTE } from "@/components/hyrox-team/hyroxTeamOfferCopy";
 
 export const metadata: Metadata = {
   title: "Onboarding | Hyrox Team Athlete",
@@ -25,9 +26,10 @@ export default async function AthleteOnboardingPage() {
             Your athlete dashboard is not linked yet. Your coach may still be setting up your profile
             and training programme.
           </p>
+          <p className="m-0 mt-3 text-sm leading-relaxed text-zinc-400">{HYROX_TEAM_EMAIL_LINKING_NOTE}</p>
           <p className="m-0 mt-3 text-sm leading-relaxed text-zinc-400">
-            Please make sure you used the same email you applied with. If you think your dashboard
-            should already be ready, message your coach and we&apos;ll get it linked.
+            If you think your dashboard should already be ready, message your coach and we&apos;ll get it
+            linked.
           </p>
           <p className="m-0 mt-3 text-sm leading-relaxed text-zinc-500">
             Once your profile is linked, you&apos;ll be able to access your dashboard, programme,

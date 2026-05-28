@@ -12,6 +12,7 @@ import { HyroxPaymentOptionCards } from "@/components/hyrox-team/HyroxPaymentOpt
 import { readHyroxStripeCheckoutLinks } from "@/components/hyrox-team/hyroxStripeCheckout";
 import {
   FOUNDING_PRICE_NOTE,
+  HYROX_TEAM_EMAIL_LINKING_NOTE,
   MINIMUM_COMMITMENT_NOTE,
   MONTHLY_COMMITMENT_DETAIL,
   MONTHLY_COMMITMENT_HEADLINE,
@@ -71,7 +72,8 @@ export default function HyroxTeamAcceptedPage() {
           assessment. This is selective 1-1 coaching inside a small team — your first block is coach-reviewed before it
           goes live, not scraped from a template library.
         </HyroxLead>
-        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-zinc-500">
+        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-zinc-500">{HYROX_TEAM_EMAIL_LINKING_NOTE}</p>
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500">
           Secure your place below. <span className="font-medium text-zinc-300">{MONTHLY_COMMITMENT_HEADLINE}</span> — each
           athlete gets real coach time and project investment from day one, not a generic plan. Prefer full
           detail?{" "}

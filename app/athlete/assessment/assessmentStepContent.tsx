@@ -1,4 +1,5 @@
 import { HyroxCard } from "@/components/hyrox-team/HyroxTeamUi";
+import { HYROX_TEAM_EMAIL_LINKING_NOTE } from "@/components/hyrox-team/hyroxTeamOfferCopy";
 import {
   AssessCheckboxGroup,
   AssessInput,
@@ -45,7 +46,13 @@ export function AssessmentStepContent({ stepId }: { stepId: string }) {
       return (
         <FieldGrid>
           <AssessInput field="fullName" label="Full name" placeholder="e.g. Alex Morgan" />
-          <AssessInput field="email" label="Email" type="email" placeholder="you@email.com" />
+          <AssessInput
+            field="email"
+            label="Email"
+            type="email"
+            placeholder="you@email.com"
+            hint={HYROX_TEAM_EMAIL_LINKING_NOTE}
+          />
           <AssessInput field="phone" label="Phone number" type="tel" placeholder="+44 …" />
           <AssessInput field="age" label="Age" type="number" placeholder="32" />
           <AssessInput field="location" label="Location" placeholder="City, country" />

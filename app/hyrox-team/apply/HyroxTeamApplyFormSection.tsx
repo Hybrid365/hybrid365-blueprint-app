@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { HYROX_TEAM_EMAIL_LINKING_NOTE } from "@/components/hyrox-team/hyroxTeamOfferCopy";
 
 const APPLICATION_API = "/api/hyrox/applications";
 
@@ -12,6 +13,7 @@ function FormField({
   required = true,
   textarea = false,
   placeholder,
+  hint,
 }: {
   label: string;
   name: string;
@@ -19,6 +21,7 @@ function FormField({
   required?: boolean;
   textarea?: boolean;
   placeholder?: string;
+  hint?: string;
 }) {
   const inputClasses =
     "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[#F4D23C]/50 focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/50 transition-colors";
@@ -42,6 +45,7 @@ function FormField({
       ) : (
         <input id={name} name={name} type={type} required={required} placeholder={placeholder} className={inputClasses} />
       )}
+      {hint ? <p className="text-xs leading-relaxed text-white/50">{hint}</p> : null}
     </div>
   );
 }
@@ -159,7 +163,13 @@ export default function HyroxTeamApplyFormSection() {
 
               <div className="grid gap-5 md:grid-cols-2">
                 <FormField label="Full Name" name="name" placeholder="Your full name" />
-                <FormField label="Email Address" name="email" type="email" placeholder="your@email.com" />
+                <FormField
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  hint={HYROX_TEAM_EMAIL_LINKING_NOTE}
+                />
                 <FormField label="Instagram Handle" name="instagram" placeholder="@yourhandle" required={false} />
                 <FormField label="Location" name="location" placeholder="City, Country" />
               </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HyroxPageShell } from "@/components/hyrox-team/HyroxTeamUi";
+import { HYROX_TEAM_EMAIL_LINKING_NOTE } from "@/components/hyrox-team/hyroxTeamOfferCopy";
 import type { HyroxAthleteAccessDebug } from "@/app/lib/hyroxAthleteAutoLink";
 
 type AthleteUnlinkedNoticeProps = {
@@ -36,8 +37,8 @@ export function AthleteUnlinkedNotice({
               profile and training programme.
               <br />
               <br />
-              Please make sure you used the same email you applied with. If you think your dashboard
-              should already be ready, message your coach and we&apos;ll get it linked.
+              {HYROX_TEAM_EMAIL_LINKING_NOTE} If you think your dashboard should already be ready,
+              message your coach and we&apos;ll get it linked.
             </>
           )}
         </p>

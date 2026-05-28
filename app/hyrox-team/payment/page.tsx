@@ -13,6 +13,7 @@ import { HyroxPaymentOptionCards } from "@/components/hyrox-team/HyroxPaymentOpt
 import { readHyroxStripeCheckoutLinks } from "@/components/hyrox-team/hyroxStripeCheckout";
 import {
   FOUNDING_PRICE_NOTE,
+  HYROX_TEAM_EMAIL_LINKING_NOTE,
   MINIMUM_COMMITMENT_NOTE,
 } from "@/components/hyrox-team/hyroxTeamOfferCopy";
 import {
@@ -95,6 +96,7 @@ export default function HyroxTeamPaymentPage() {
       <HyroxSection clean className="!my-5">
         <HyroxCard className="border-[#f4d23c]/20 bg-zinc-950/80">
           <p className="m-0 text-xs font-black uppercase tracking-wide text-[#f4d23c]">After payment</p>
+          <p className="m-0 mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">{HYROX_TEAM_EMAIL_LINKING_NOTE}</p>
           <p className="m-0 mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">
             After payment, your coach will set up your athlete dashboard and send your personal login link.
             Complete your onboarding from that private link so your profile, testing and programme data stay

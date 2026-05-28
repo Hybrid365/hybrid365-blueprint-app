@@ -1,5 +1,9 @@
 /** Shared Hyrox Team offer / commitment copy (payment + accepted pages). */
 
+/** Shown wherever athletes enter or sign in with email (apply, payment, assessment, login). */
+export const HYROX_TEAM_EMAIL_LINKING_NOTE =
+  "Use the same email throughout. This is the email your athlete dashboard, assessment and programme will be linked to.";
+
 export const FOUNDING_PRICE_NOTE =
   "These are founding athlete prices for the first Hybrid365 Hyrox Team cohort. Pricing will increase for future intakes.";
 

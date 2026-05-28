@@ -7,13 +7,15 @@ import {
   AUTH_ATHLETE_DEFAULT_NEXT,
   sanitizeAthleteAuthNextPath,
 } from "@/app/lib/authRedirectUrl";
+import { HYROX_TEAM_EMAIL_LINKING_NOTE } from "@/components/hyrox-team/hyroxTeamOfferCopy";
 
 function AthleteLoginInfoCard() {
   return (
     <div className="mt-3 rounded-xl border border-zinc-800/90 bg-zinc-950/60 p-3.5">
-      <p className="text-xs leading-relaxed text-zinc-300">
-        Use the same email you used when applying for the Hybrid365 Hyrox Team. If your coach has
-        not activated your account yet, you may see a waiting message until your profile is linked.
+      <p className="text-xs leading-relaxed text-zinc-300">{HYROX_TEAM_EMAIL_LINKING_NOTE}</p>
+      <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+        If your coach has not activated your account yet, you may see a waiting message until your
+        profile is linked.
       </p>
     </div>
   );

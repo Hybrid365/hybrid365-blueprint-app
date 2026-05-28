@@ -18,11 +18,13 @@ export function AssessInput({
   field,
   label,
   fullWidth,
+  hint,
   ...props
 }: {
   field: string;
   label: string;
   fullWidth?: boolean;
+  hint?: string;
 } & React.InputHTMLAttributes<HTMLInputElement>) {
   const { values, setField } = useAssessmentForm();
   return (
@@ -32,6 +34,7 @@ export function AssessInput({
         value={val(values, field)}
         onChange={(e) => setField(field, e.target.value)}
       />
+      {hint ? <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{hint}</p> : null}
     </HyroxField>
   );
 }
