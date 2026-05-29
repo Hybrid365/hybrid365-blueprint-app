@@ -258,8 +258,8 @@ export default function HabitsClient({ programmeInstanceId }: Props) {
           <div className="mb-8 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-400/[0.06] to-zinc-950 p-5 sm:p-6">
             <p className="text-sm font-semibold text-yellow-200/95">Habits follow your programme</p>
             <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-              Generate your 12-week plan from the dashboard first — then daily habits anchor your non-negotiables.
-              Structure beats motivation; small wins compound.
+              Build your personalised programme from the dashboard first — then daily habits anchor your
+              non-negotiables. Structure beats motivation; small wins compound.
             </p>
             <Link
               href="/dashboard"

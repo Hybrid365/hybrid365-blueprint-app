@@ -15,6 +15,7 @@ import {
   type AthleteAssessmentRowForProgramme,
   type BenchmarkTestRowForProgramme,
 } from "@/app/lib/mapAssessmentToProgrammeInput";
+import { fetchCommunityProgrammeInstance } from "@/app/lib/communityProgrammeStatus";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import {
   assessmentUpdatedAfterProgramme,
@@ -86,26 +87,17 @@ export async function lookupMemberForProgrammeRefresh(
 
   const userId = lookup.userId;
 
-  const [{ data: membership }, { data: assessment }, { data: instance }, { data: profile }] =
+  const [{ data: membership }, { data: assessment }, instance, { data: profile }] =
     await Promise.all([
       admin.from("memberships").select(MEMBERSHIP_ACCESS_SELECT).eq("user_id", userId).maybeSingle(),
       admin.from("athlete_assessments").select("*").eq("user_id", userId).maybeSingle(),
-      admin
-        .from("programme_instances")
-        .select("id, title, current_week, created_at, updated_at")
-        .eq("user_id", userId)
-        .maybeSingle(),
+      fetchCommunityProgrammeInstance(admin, userId),
       admin.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
     ]);
 
   const membershipRow = membership as MembershipForAccess | null;
   const typedAssessment = assessment as AthleteAssessmentRowForProgramme | null;
-  const typedInstance = instance as {
-    id: string;
-    current_week?: number | null;
-    created_at?: string | null;
-    updated_at?: string | null;
-  } | null;
+  const typedInstance = instance;
 
   let weeksRaw: {
     week_number: number;
@@ -269,13 +261,8 @@ export async function fullRegenerateMemberProgramme(
     return { ok: false, error: "Programme generation failed.", status: 500 };
   }
 
-  const { data: existingInstance } = await admin
-    .from("programme_instances")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  const existingId = (existingInstance as { id?: string } | null)?.id;
+  const existingInstance = await fetchCommunityProgrammeInstance(admin, userId);
+  const existingId = existingInstance?.id;
   const replacedExisting = Boolean(existingId);
 
   const programmeInstancePayload = {

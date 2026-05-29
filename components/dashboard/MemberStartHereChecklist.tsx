@@ -13,6 +13,11 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import {
+  COMMUNITY_BUILD_PROGRAMME,
+  COMMUNITY_BUILDING_PROGRAMME,
+  COMMUNITY_COMPLETE_ATHLETE_PROFILE,
+} from "@/components/dashboard/communityOnboardingCopy";
 import { useDismissibleStartHere } from "@/components/dashboard/useDismissibleStartHere";
 
 export type StartHereChecklistState = {
@@ -61,7 +66,7 @@ export function MemberStartHereChecklist({
   const items: Item[] = [
     {
       id: "assessment",
-      label: "Complete Athlete Assessment",
+      label: COMMUNITY_COMPLETE_ATHLETE_PROFILE,
       done: assessmentCompleted,
       href: "/dashboard/assessment",
     },
@@ -73,10 +78,16 @@ export function MemberStartHereChecklist({
     },
     {
       id: "generate",
-      label: "Generate your 12-week programme",
+      label: "Build personalised programme",
       done: programmeGenerated,
       action: assessmentCompleted && !programmeGenerated ? "generate" : undefined,
       href: programmeGenerated ? "/dashboard/programme" : undefined,
+    },
+    {
+      id: "week1",
+      label: "Start Week 1",
+      done: programmeGenerated,
+      href: "/dashboard/programme",
     },
     {
       id: "homescreen",
@@ -92,7 +103,7 @@ export function MemberStartHereChecklist({
     },
     {
       id: "first-session",
-      label: "Complete your first session",
+      label: "Log your first session",
       done: hasCompletedSession,
       href: "/dashboard/programme",
     },
@@ -162,6 +173,7 @@ export function MemberStartHereChecklist({
             item.id === "assessment" ? ClipboardList
             : item.id === "baseline" ? Gauge
             : item.id === "generate" ? Sparkles
+            : item.id === "week1" ? LayoutGrid
             : item.id === "homescreen" ? Smartphone
             : item.id === "telegram" ? MessageCircle
             : item.id === "first-session" ? Target
@@ -199,6 +211,11 @@ export function MemberStartHereChecklist({
                   className={`flex w-full min-h-[44px] items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${rowClass}`}
                 >
                   {inner}
+                  {!item.done ? (
+                    <span className="shrink-0 text-xs font-bold text-yellow-400/90">
+                      {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
+                    </span>
+                  ) : null}
                 </button>
               </li>
             );

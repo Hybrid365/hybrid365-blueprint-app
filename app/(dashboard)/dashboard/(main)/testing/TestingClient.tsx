@@ -21,6 +21,10 @@ import {
   Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  COMMUNITY_BUILD_PROGRAMME,
+  COMMUNITY_BUILDING_PROGRAMME,
+} from "@/components/dashboard/communityOnboardingCopy";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { coreBaselineAreaFlags, countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
@@ -358,7 +362,7 @@ export default function TestingClient({
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-zinc-400">
                 Log bodyweight, a run trial (5 km or 3 km), one erg (Ski or Row), and at least one strength marker to
-                anchor hybrid progress. You can still generate your programme today.
+                anchor hybrid progress. You can still build your personalised programme today.
               </p>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <button
@@ -368,7 +372,7 @@ export default function TestingClient({
                   onClick={handleGenerateProgramme}
                   className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[200px]"
                 >
-                  {generatingProgramme ? "Generating…" : "Generate programme"}
+                  {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
                 </button>
                 <Link
                   href="/dashboard"

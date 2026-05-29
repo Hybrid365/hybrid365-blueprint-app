@@ -6,6 +6,10 @@ import {
 } from "@/app/lib/membershipAccess";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import {
+  fetchCommunityProgrammeInstance,
+  resolveCommunityProgrammeGenerated,
+} from "@/app/lib/communityProgrammeStatus";
+import {
   extractProgrammeIntelligence,
   extractProgrammeRationale,
 } from "@/app/lib/memberDashboardSchedule";
@@ -24,13 +28,7 @@ import {
 import type { SessionLogLike } from "@/app/lib/progressMetrics";
 import ProgrammeClient from "./ProgrammeClient";
 
-type ProgrammeInstanceRow = {
-  id: string;
-  title: string | null;
-  current_week?: number | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
+export const dynamic = "force-dynamic";
 
 type ProgrammeWeekRow = {
   week_number: number;
@@ -81,13 +79,7 @@ export default async function ProgrammePage() {
     return ty.includes("ski") || ty.includes("row");
   });
 
-  const { data: instance } = await supabase
-    .from("programme_instances")
-    .select("id, title, current_week, created_at, updated_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const typedInstance = instance as ProgrammeInstanceRow | null;
+  const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
 
   let weeksRaw: ProgrammeWeekRow[] = [];
   let sessionLogs: SessionLogRow[] = [];
@@ -136,9 +128,11 @@ export default async function ProgrammePage() {
   const entitledWeeksRaw = applyMembershipEntitlementToWeeks(weeksRaw, membershipRow);
   const weeks12: ProgrammeWeekLike[] = buildTwelveProgrammeWeeks(entitledWeeksRaw);
 
-  const programmeGenerated =
-    Boolean(typedInstance?.id) &&
-    weeksRaw.some((w) => hasMeaningfulPlanJson(w.plan_json));
+  const programmeGenerated = resolveCommunityProgrammeGenerated(
+    typedInstance?.id ?? null,
+    weeksRaw,
+    weeks12
+  );
 
   let weeksMaxUpdatedAt: string | null = null;
   for (const w of weeksRaw) {

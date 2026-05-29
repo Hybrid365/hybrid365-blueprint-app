@@ -16,6 +16,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
+import {
+  COMMUNITY_BUILD_PROGRAMME,
+  COMMUNITY_BUILDING_PROGRAMME,
+  COMMUNITY_POST_PROFILE_NEXT_BODY,
+  COMMUNITY_POST_PROFILE_NEXT_HEADLINE,
+} from "@/components/dashboard/communityOnboardingCopy";
+import { ProgrammeReadyBanner } from "@/components/dashboard/ProgrammeReadyBanner";
 import { ProgrammeRefreshAssessmentNote } from "@/components/dashboard/ProgrammeRefreshAssessmentNote";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 import { RUN_VOLUME_BAND_OPTIONS } from "@/app/lib/runVolumePlanner";
@@ -368,7 +375,7 @@ export default function AssessmentClient({
     } catch {
       /* ignore */
     }
-    setGenerateSuccess(result.message ?? "Programme ready.");
+    setGenerateSuccess("ready");
     setGeneratingProgramme(false);
     router.push("/dashboard");
     router.refresh();
@@ -423,10 +430,10 @@ export default function AssessmentClient({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-primary font-semibold text-sm tracking-wide">HYBRID365</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Athlete Assessment</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Athlete Profile</h1>
           <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Structure beats motivation — honest answers here shape a programme you can execute. Refuse average: train
-            with intent, track the work, get stronger and fitter.
+            Your Athlete Profile is how Hybrid365 coaches you — goal, schedule, equipment and current fitness. Honest
+            answers here shape a programme you can actually execute.
           </p>
           <div className="mb-6">
             <DashboardSubnav variant="light" />
@@ -455,14 +462,12 @@ export default function AssessmentClient({
                   <Check className="h-6 w-6 text-emerald-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Assessment complete</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Athlete Profile complete</p>
                   <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
-                    Your programme can now be built
+                    {COMMUNITY_POST_PROFILE_NEXT_HEADLINE}
                   </h2>
                   <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-                    Add baseline tests if you want stronger tracking, or generate your 12-week programme now. Set your
-                    baseline with bodyweight, a run marker, an engine test (Ski or Row), and at least one strength marker
-                    — recommended, not mandatory.
+                    {COMMUNITY_POST_PROFILE_NEXT_BODY}
                   </p>
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <button
@@ -472,7 +477,7 @@ export default function AssessmentClient({
                       onClick={handleGenerateProgramme}
                       className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-md shadow-yellow-400/20 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[200px]"
                     >
-                      {generatingProgramme ? "Generating…" : "Generate programme"}
+                      {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
                     </button>
                     <Link
                       href="/dashboard/testing"
@@ -491,7 +496,9 @@ export default function AssessmentClient({
                     <p className="mt-4 text-sm text-red-400">{generateError}</p>
                   ) : null}
                   {generateSuccess ? (
-                    <p className="mt-4 text-sm text-emerald-400">{generateSuccess}</p>
+                    <div className="mt-6">
+                      <ProgrammeReadyBanner />
+                    </div>
                   ) : null}
                 </div>
               </div>

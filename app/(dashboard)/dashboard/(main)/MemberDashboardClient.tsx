@@ -54,6 +54,16 @@ import { DashboardChallengeTeaser } from "@/components/dashboard/DashboardChalle
 import { DashboardHabitsTeaser } from "@/components/dashboard/DashboardHabitsTeaser";
 import { DashboardSupportCard } from "@/components/dashboard/DashboardSupportCard";
 import { MissedSessionGuidanceNote } from "@/components/dashboard/MissedSessionGuidanceNote";
+import {
+  COMMUNITY_BUILD_PROGRAMME,
+  COMMUNITY_BUILDING_PROGRAMME,
+  COMMUNITY_COMPLETE_ATHLETE_PROFILE,
+  COMMUNITY_COMPLETE_PROFILE_BODY,
+  COMMUNITY_PROFILE_COMPLETE_BODY,
+  COMMUNITY_PROFILE_COMPLETE_HEADLINE,
+  COMMUNITY_PROGRAMME_STARTS_WITH_PROFILE,
+  COMMUNITY_REVIEW_ATHLETE_PROFILE,
+} from "@/components/dashboard/communityOnboardingCopy";
 import { ProgrammeReadyBanner } from "@/components/dashboard/ProgrammeReadyBanner";
 import { ThisWeekTrackingCard } from "@/components/dashboard/ThisWeekTrackingCard";
 import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
@@ -627,7 +637,7 @@ export default function MemberDashboardClient({
     } catch {
       /* ignore */
     }
-    setGenerateSuccess(result.message ?? "Programme ready.");
+    setGenerateSuccess("ready");
     setShowProgrammeReadyBanner(true);
     setGeneratingProgramme(false);
     router.refresh();
@@ -811,16 +821,34 @@ export default function MemberDashboardClient({
       <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-yellow-400/10 blur-2xl" />
       <div className="relative flex flex-col items-center text-center">
         <span className="mb-3 inline-flex items-center rounded-full border border-yellow-400/35 bg-yellow-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-yellow-400">
-          Programme pending
+          {assessmentCompleted ? "Ready to build" : "Athlete Profile first"}
         </span>
         <Sparkles className="mb-4 h-12 w-12 text-yellow-400/90" />
         <p className="max-w-md text-base font-medium leading-relaxed text-white sm:text-lg">
-          Your 12-week programme sessions will appear here once generated.
+          {assessmentCompleted
+            ? COMMUNITY_PROFILE_COMPLETE_HEADLINE
+            : COMMUNITY_PROGRAMME_STARTS_WITH_PROFILE}
         </p>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-zinc-400">
-          Your personalised sessions will appear here once your 12-week programme is generated. No mock
-          workouts — only your real plan when it&apos;s attached to this week.
+          {assessmentCompleted ? COMMUNITY_PROFILE_COMPLETE_BODY : COMMUNITY_COMPLETE_PROFILE_BODY}
         </p>
+        {assessmentCompleted ? (
+          <button
+            type="button"
+            disabled={generatingProgramme}
+            onClick={handleGenerateProgramme}
+            className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-yellow-400 px-6 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
+          </button>
+        ) : (
+          <Link
+            href="/dashboard/assessment"
+            className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-yellow-400 px-6 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
+          >
+            {COMMUNITY_COMPLETE_ATHLETE_PROFILE}
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -947,14 +975,19 @@ export default function MemberDashboardClient({
               <div className="relative">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-yellow-400/90">Start here</p>
                 <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-                  Welcome to Hybrid365
+                  {assessmentCompleted
+                    ? COMMUNITY_PROFILE_COMPLETE_HEADLINE
+                    : COMMUNITY_PROGRAMME_STARTS_WITH_PROFILE}
                 </h2>
                 <p className="mt-3 text-lg font-semibold leading-snug text-yellow-200/95 sm:text-xl">
-                  Refuse average. Build your structure. Become stronger, fitter and faster.
+                  {assessmentCompleted
+                    ? "Hybrid365 builds your plan — you follow the coaching system."
+                    : "Refuse average. Build your structure. Become stronger, fitter and faster."}
                 </p>
                 <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
-                  Before your programme is built, we need to understand your goal, training availability, current fitness
-                  and what you&apos;re working around. Your answers shape the 12-week plan.
+                  {assessmentCompleted
+                    ? COMMUNITY_PROFILE_COMPLETE_BODY
+                    : COMMUNITY_COMPLETE_PROFILE_BODY}
                 </p>
                 <OnboardingWhopEmailNote />
 
@@ -973,7 +1006,7 @@ export default function MemberDashboardClient({
                         label: "Baseline",
                         variant: s2 ? "done" : s1 ? "recommended" : "hold",
                       },
-                      { n: 3, label: "Generate", variant: s1 ? "active" : "hold" },
+                      { n: 3, label: "Build", variant: s1 ? "active" : "hold" },
                       { n: 4, label: "Train", variant: "hold" },
                     ];
                     return steps.map((step) => {
@@ -1031,9 +1064,10 @@ export default function MemberDashboardClient({
                         {assessmentCompleted ? "Complete" : "Required · Active"}
                       </span>
                     </div>
-                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Build your athlete profile</h3>
+                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Complete your Athlete Profile</h3>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                      Goal, availability, equipment, current level and limitations — so we can programme with intent.
+                      Goal, availability, equipment, current level and limitations — so Hybrid365 can coach you with
+                      intent.
                     </p>
                     <Link
                       href="/dashboard/assessment"
@@ -1043,7 +1077,7 @@ export default function MemberDashboardClient({
                           : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
                       }`}
                     >
-                      {assessmentCompleted ? "Review assessment" : "Complete assessment"}
+                      {assessmentCompleted ? COMMUNITY_REVIEW_ATHLETE_PROFILE : COMMUNITY_COMPLETE_ATHLETE_PROFILE}
                     </Link>
                   </div>
 
@@ -1076,7 +1110,8 @@ export default function MemberDashboardClient({
                     <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Set your baseline</h3>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-400">
                       Bodyweight, a run marker (5 km or 3 km), one engine test (Ski or Row), and at least one strength
-                      marker. You can generate without this — baselines make progress tracking much richer.
+                      marker. Optional — your programme can be built without this, but baselines make progress tracking
+                      much richer.
                     </p>
                     {assessmentCompleted ? (
                       <Link
@@ -1115,10 +1150,10 @@ export default function MemberDashboardClient({
                         {!assessmentCompleted ? "Locked" : "Ready"}
                       </span>
                     </div>
-                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Generate your 12-week programme</h3>
+                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Build your personalised programme</h3>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                      Your plan is built from your profile, goal, schedule and performance — hybrid strength, engine and
-                      physique in one structured arc.
+                      Hybrid365 shapes your 12-week plan from your Athlete Profile — hybrid strength, engine and physique
+                      in one coached arc.
                     </p>
                     <button
                       type="button"
@@ -1127,7 +1162,7 @@ export default function MemberDashboardClient({
                       onClick={handleGenerateProgramme}
                       className="mt-4 inline-flex w-full min-h-[44px] items-center justify-center rounded-xl bg-yellow-400 px-4 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {generatingProgramme ? "Generating…" : "Generate programme"}
+                      {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
                     </button>
                   </div>
 
@@ -1143,10 +1178,10 @@ export default function MemberDashboardClient({
                     </div>
                     <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Start training + tracking</h3>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-                      After generate: follow your programme, log sessions, hit daily habits, weekly check-ins, and join
-                      the Hybrid Challenge — track the work, earn the result.
+                      Start Week 1, log sessions honestly, stack daily habits and weekly check-ins — then lean into the
+                      Hybrid Challenge when you&apos;re ready.
                     </p>
-                    <p className="mt-3 text-xs font-medium text-zinc-600">Unlocks when your plan is live.</p>
+                    <p className="mt-3 text-xs font-medium text-zinc-600">Unlocks when your programme is ready.</p>
                   </div>
                 </div>
 
@@ -1156,7 +1191,7 @@ export default function MemberDashboardClient({
                       href="/dashboard/assessment"
                       className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-center text-sm font-bold text-zinc-950 shadow-lg shadow-yellow-400/20 transition hover:bg-yellow-300 sm:flex-none sm:px-8"
                     >
-                      Complete assessment
+                      {COMMUNITY_COMPLETE_ATHLETE_PROFILE}
                     </Link>
                   ) : (
                     <>
@@ -1167,7 +1202,7 @@ export default function MemberDashboardClient({
                         onClick={handleGenerateProgramme}
                         className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-lg shadow-yellow-400/20 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-8"
                       >
-                        {generatingProgramme ? "Generating…" : "Generate programme"}
+                        {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
                       </button>
                       <Link
                         href="/dashboard/testing"

@@ -24,6 +24,10 @@ import {
   Zap,
 } from "lucide-react";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
+import {
+  COMMUNITY_BUILD_PROGRAMME,
+  COMMUNITY_COMPLETE_ATHLETE_PROFILE,
+} from "@/components/dashboard/communityOnboardingCopy";
 import type {
   BodyweightTrend,
   GroupedBenchmark,
@@ -261,22 +265,24 @@ export default function ProgressClient({
               </div>
               <h2 className="mt-4 text-xl font-bold text-white">Progress unlocks with your programme</h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-300">
-                Track the work: this view fills as you complete sessions and weekly check-ins. Finish your assessment,
-                generate your plan from the dashboard, then come back — the graph tells the truth week by week.
+                Track the work: this view fills as you complete sessions and weekly check-ins. Complete your Athlete
+                Profile, build your personalised programme from the dashboard, then come back — the graph tells the truth
+                week by week.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/dashboard/assessment"
                   className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
                 >
-                  Start with assessment
+                  {COMMUNITY_COMPLETE_ATHLETE_PROFILE}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/dashboard"
-                  className="inline-flex min-h-[48px] items-center rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:border-zinc-600"
+                  className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:border-zinc-600"
                 >
-                  Back to dashboard
+                  {COMMUNITY_BUILD_PROGRAMME}
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>

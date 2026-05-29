@@ -214,7 +214,7 @@ export default function ChallengeClient({
           <div className="mb-8 rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-400/[0.06] to-zinc-950 p-5 sm:p-6">
             <p className="text-sm font-semibold text-yellow-200/95">Train. Track. Prove.</p>
             <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-              Start by completing your programme setup on the dashboard — assessment, optional baselines, then generate
+              Start by completing your programme setup on the dashboard — Athlete Profile, optional baselines, then build
               your 12-week plan. Earn the result with structure, not guesswork.
             </p>
             <Link

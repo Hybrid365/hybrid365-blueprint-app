@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { communityProgrammeHasUnlockedSchedule } from "@/app/lib/communityProgrammeStatus";
 import Link from "next/link";
 import {
   Calendar,
@@ -41,6 +42,12 @@ import { DashboardSupportCard } from "@/components/dashboard/DashboardSupportCar
 import { ProgrammeRefreshStaleNote } from "@/components/dashboard/ProgrammeRefreshStaleNote";
 import { MissedSessionGuidanceNote } from "@/components/dashboard/MissedSessionGuidanceNote";
 import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
+import {
+  COMMUNITY_BUILD_PROGRAMME,
+  COMMUNITY_COMPLETE_ATHLETE_PROFILE,
+  COMMUNITY_PROGRAMME_PAGE_PENDING,
+  COMMUNITY_PROGRAMME_PAGE_READY,
+} from "@/components/dashboard/communityOnboardingCopy";
 
 export type WeekPayload = {
   week_number: number;
@@ -129,6 +136,23 @@ export default function ProgrammeClient({
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(defaultSelectedWeek);
   const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
+
+  const displayWeeks = useMemo(
+    () =>
+      weeksFromDb.map((w) => ({
+        week_number: w.week_number,
+        is_unlocked: w.is_unlocked,
+        plan_json: w.plan_json,
+      })),
+    [weeksFromDb]
+  );
+
+  const canViewProgramme = useMemo(
+    () =>
+      programmeGenerated ||
+      communityProgrammeHasUnlockedSchedule(programmeInstanceId, displayWeeks),
+    [programmeInstanceId, programmeGenerated, displayWeeks]
+  );
 
   const {
     sessionLogs,
@@ -222,17 +246,19 @@ export default function ProgrammeClient({
           ) : null}
         </div>
 
-        {!programmeInstanceId || !programmeGenerated ? (
+        {!canViewProgramme ? (
           <div className="mx-auto mt-10 max-w-6xl px-4 md:px-8">
             <div className="rounded-2xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/[0.07] to-zinc-900/90 p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-400/15 ring-1 ring-yellow-400/25">
                 <LayoutGrid className="h-6 w-6 text-yellow-400" />
               </div>
-              <h2 className="mt-4 text-xl font-bold text-white">Your programme unlocks here</h2>
+              <h2 className="mt-4 text-xl font-bold text-white">
+                {assessmentCompleted ? COMMUNITY_PROGRAMME_PAGE_READY : COMMUNITY_PROGRAMME_PAGE_PENDING}
+              </h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-300">
-                Train with intent: finish your assessment on Hybrid365, generate your 12-week plan from the dashboard,
-                then open Programme to execute week by week. Optional baselines in Testing sharpen progress — they never
-                block you from starting.
+                {assessmentCompleted
+                  ? "Head to your dashboard to build your 12-week plan. Once it’s ready, your full schedule lives here — week by week, session by session."
+                  : "Complete your Athlete Profile first so Hybrid365 can build your training around your goal, level, schedule, equipment and current fitness."}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 {!assessmentCompleted ? (
@@ -240,7 +266,7 @@ export default function ProgrammeClient({
                     href="/dashboard/assessment"
                     className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
                   >
-                    Complete assessment
+                    {COMMUNITY_COMPLETE_ATHLETE_PROFILE}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 ) : (
@@ -248,7 +274,7 @@ export default function ProgrammeClient({
                     href="/dashboard"
                     className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
                   >
-                    Open dashboard — generate programme
+                    {COMMUNITY_BUILD_PROGRAMME}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 )}

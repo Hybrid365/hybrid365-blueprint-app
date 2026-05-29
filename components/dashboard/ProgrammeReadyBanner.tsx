@@ -1,11 +1,22 @@
-import { CheckCircle2, X } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, ChevronRight, X } from "lucide-react";
+import {
+  COMMUNITY_GO_TO_WEEK_ONE,
+  COMMUNITY_PROGRAMME_READY_BODY,
+  COMMUNITY_PROGRAMME_READY_HEADLINE,
+} from "@/components/dashboard/communityOnboardingCopy";
 
 type Props = {
   onDismiss?: () => void;
   className?: string;
+  showWeekOneCta?: boolean;
 };
 
-export function ProgrammeReadyBanner({ onDismiss, className = "" }: Props) {
+export function ProgrammeReadyBanner({
+  onDismiss,
+  className = "",
+  showWeekOneCta = true,
+}: Props) {
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-zinc-950 to-zinc-950 p-5 sm:p-6 ${className}`}
@@ -17,14 +28,22 @@ export function ProgrammeReadyBanner({ onDismiss, className = "" }: Props) {
           <CheckCircle2 className="h-5 w-5 text-emerald-400" />
         </div>
         <div className="min-w-0 flex-1 pr-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400/90">Programme ready</p>
-          <h3 className="mt-1 text-lg font-bold text-white sm:text-xl">
-            Your 12-week Hybrid365 programme is ready.
-          </h3>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-            Start with Week 1, log your sessions honestly and use the weekly check-in to keep the structure working for
-            you.
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400/90">
+            Programme ready
           </p>
+          <h3 className="mt-1 text-lg font-bold text-white sm:text-xl">
+            {COMMUNITY_PROGRAMME_READY_HEADLINE}
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{COMMUNITY_PROGRAMME_READY_BODY}</p>
+          {showWeekOneCta ? (
+            <Link
+              href="/dashboard/programme"
+              className="mt-4 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#F4D23C] px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300"
+            >
+              {COMMUNITY_GO_TO_WEEK_ONE}
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          ) : null}
         </div>
         {onDismiss ? (
           <button

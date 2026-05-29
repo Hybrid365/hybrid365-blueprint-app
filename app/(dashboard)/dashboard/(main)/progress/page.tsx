@@ -4,7 +4,10 @@ import {
   MEMBERSHIP_ACCESS_SELECT,
   type MembershipForAccess,
 } from "@/app/lib/membershipAccess";
-import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
+import {
+  fetchCommunityProgrammeInstance,
+  resolveCommunityProgrammeGenerated,
+} from "@/app/lib/communityProgrammeStatus";
 import { hybridAthleteDisplayName } from "@/app/lib/displayName";
 import { buildBenchmarkSnapshot } from "@/app/lib/dashboardWeekTracking";
 import {
@@ -24,12 +27,6 @@ import {
   type WeeklyCheckInLike,
 } from "@/app/lib/progressMetrics";
 import ProgressClient from "./ProgressClient";
-
-type ProgrammeInstanceRow = {
-  id: string;
-  title: string | null;
-  current_week?: number | null;
-};
 
 type ProgrammeWeekRow = {
   week_number: number;
@@ -76,13 +73,7 @@ export default async function ProgressPage() {
     email: user.email,
   });
 
-  const { data: instance } = await supabase
-    .from("programme_instances")
-    .select("id, title, current_week")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const typedInstance = instance as ProgrammeInstanceRow | null;
+  const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
 
   let weeksRaw: ProgrammeWeekRow[] = [];
   let sessionLogs: SessionLogRow[] = [];
@@ -140,9 +131,11 @@ export default async function ProgressPage() {
   const entitledWeeksRaw = applyMembershipEntitlementToWeeks(weeksRaw, membershipRow);
   const weeks12: ProgrammeWeekLike[] = buildTwelveProgrammeWeeks(entitledWeeksRaw);
 
-  const programmeGenerated =
-    Boolean(typedInstance?.id) &&
-    weeksRaw.some((w) => hasMeaningfulPlanJson(w.plan_json));
+  const programmeGenerated = resolveCommunityProgrammeGenerated(
+    typedInstance?.id ?? null,
+    weeksRaw,
+    weeks12
+  );
 
   const effectiveWeek = deriveEffectiveCurrentWeek(typedInstance?.current_week ?? null, weeks12);
 

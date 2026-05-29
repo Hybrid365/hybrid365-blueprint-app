@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 
 const HOW_IT_WORKS = [
-  { icon: User, text: "Assessment builds your athlete profile" },
+  { icon: User, text: "Athlete Profile shapes your coaching plan" },
   { icon: Gauge, text: "Baseline testing sets your starting point" },
-  { icon: CalendarCheck, text: "Your 12-week programme gives you structure" },
+  { icon: CalendarCheck, text: "Your personalised programme gives you structure" },
   { icon: ClipboardList, text: "Session logs track execution" },
   { icon: Flame, text: "Habits build consistency" },
   { icon: LineChart, text: "Check-ins guide progress" },

@@ -4,7 +4,10 @@ import {
   MEMBERSHIP_ACCESS_SELECT,
   type MembershipForAccess,
 } from "@/app/lib/membershipAccess";
-import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
+import {
+  fetchCommunityProgrammeInstance,
+  resolveCommunityProgrammeGenerated,
+} from "@/app/lib/communityProgrammeStatus";
 import { countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
 import {
   buildChallengeTrackingSummary,
@@ -21,12 +24,6 @@ import {
 import MemberDashboardClient, {
   type WeekPayload,
 } from "./MemberDashboardClient";
-
-type ProgrammeInstanceRow = {
-  id: string;
-  title: string | null;
-  current_week?: number | null;
-};
 
 type ProgrammeWeekRow = {
   week_number: number;
@@ -109,13 +106,7 @@ export default async function DashboardPage() {
     return ty.includes("ski") || ty.includes("row");
   });
 
-  const { data: instance } = await supabase
-    .from("programme_instances")
-    .select("id, title, current_week")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const typedInstance = instance as ProgrammeInstanceRow | null;
+  const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
 
   let weeks: ProgrammeWeekRow[] = [];
   let initialSessionLogs: SessionLogRow[] = [];
@@ -211,16 +202,18 @@ export default async function DashboardPage() {
       ? typedInstance.current_week
       : null;
 
-  const programmeGenerated =
-    Boolean(typedInstance?.id) &&
-    weeks.some((w) => hasMeaningfulPlanJson(w.plan_json));
-
   const weeks12 = buildTwelveProgrammeWeeks(
     entitledWeeks.map((w) => ({
       week_number: w.week_number,
       is_unlocked: w.is_unlocked ?? false,
       plan_json: w.plan_json,
     }))
+  );
+
+  const programmeGenerated = resolveCommunityProgrammeGenerated(
+    typedInstance?.id ?? null,
+    weeks,
+    weeks12
   );
   const effectiveWeek = deriveEffectiveCurrentWeek(instanceCurrentWeek, weeks12);
   const challengeTracking =

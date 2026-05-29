@@ -3,6 +3,7 @@
  * Keeps parity with AthleteDashboardClient session mapping without modifying /athlete routes.
  */
 
+import { normalizePlanJson } from "./programmePlan";
 import type { PaceGuidance } from "./paceGuidance";
 import type { GoalFocus } from "./sessionLibrary";
 import {
@@ -210,8 +211,9 @@ function parseSessionPriority(raw: unknown): Pick<
 
 /** Pull schedule array from stored plan_json (full PlanJson or { schedule: [...] }). */
 export function extractScheduleFromPlanJson(planJson: unknown): unknown[] | null {
-  if (!planJson || typeof planJson !== "object") return null;
-  const o = planJson as Record<string, unknown>;
+  const normalized = normalizePlanJson(planJson);
+  if (!normalized || typeof normalized !== "object") return null;
+  const o = normalized as Record<string, unknown>;
   const schedule = o.schedule;
   if (!Array.isArray(schedule)) return null;
   return schedule;
