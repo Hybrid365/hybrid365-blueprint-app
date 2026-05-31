@@ -19,7 +19,8 @@ import {
 import { nextSessionDisplayForDashboard } from "@/app/lib/hyroxAthleteDashboardLive";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import { ATHLETE_PROGRAMME_HREF } from "./athleteNav";
-import { useAthletePortal } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
+import { useAthletePortalOptional } from "./athletePortalContext";
 
 type Props = {
   onViewSession: () => void;
@@ -27,7 +28,9 @@ type Props = {
 };
 
 export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
-  const { useMockPreview } = useAthletePortal();
+  const adminPreview = useAthleteAdminPreview();
+  const portal = useAthletePortalOptional();
+  const useMockPreview = adminPreview ? false : Boolean(portal?.useMockPreview);
   const { useLive, dashboardLive } = useAthleteDashboardLive();
   const useMockData = useMockPreview;
 

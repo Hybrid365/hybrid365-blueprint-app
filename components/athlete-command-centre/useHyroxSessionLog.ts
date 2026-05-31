@@ -4,7 +4,8 @@ import { useCallback, useState } from "react";
 import { saveHyroxAthleteSessionLogAction } from "@/app/lib/hyroxAthleteSessionLogAction";
 import type { HyroxMutationActorDebug } from "@/app/lib/hyroxAthleteMutationActor";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
-import { useAthletePortal } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
+import { useAthletePortalOptional } from "./athletePortalContext";
 
 export type HyroxSessionLogForm = {
   completed: boolean;
@@ -117,7 +118,12 @@ async function saveViaApi(
 }
 
 export function useHyroxSessionLog() {
-  const { serverAuthConfirmed, portalAthlete, portalMutationToken } = useAthletePortal();
+  const adminPreview = useAthleteAdminPreview();
+  const portal = useAthletePortalOptional();
+  const serverAuthConfirmed = portal?.serverAuthConfirmed ?? false;
+  const portalAthlete = adminPreview?.portalAthlete ?? portal?.portalAthlete ?? null;
+  const portalMutationToken = portal?.portalMutationToken ?? null;
+  const readOnly = Boolean(adminPreview);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -140,6 +146,10 @@ export function useHyroxSessionLog() {
 
   const saveSessionLog = useCallback(
     async (params: HyroxSessionLogSaveParams) => {
+      if (readOnly) {
+        setError("Session logging is disabled in admin preview mode.");
+        return null;
+      }
       setSaving(true);
       setError(null);
       setSuccessMessage(null);
@@ -326,7 +336,7 @@ export function useHyroxSessionLog() {
         setSaving(false);
       }
     },
-    [serverAuthConfirmed, portalAthlete?.id, portalMutationToken]
+    [readOnly, serverAuthConfirmed, portalAthlete?.id, portalMutationToken]
   );
 
   return {
