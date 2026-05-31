@@ -10,7 +10,7 @@ import {
   fetchLatestProgrammeDraft,
   parseCoachDraftWeek,
 } from "@/app/lib/hyroxProgrammeServer";
-import type { HyroxAssessmentRow, HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
+import type { HyroxAssessmentRow, HyroxAthleteRow, HyroxApplicationRow } from "@/app/lib/hyroxDatabaseTypes";
 import type { HyroxAssessmentInput } from "@/app/lib/hyroxAthleteProfileTypes";
 
 const ASSESSMENT_SELECT =
@@ -80,10 +80,21 @@ export async function GET(_request: Request, context: RouteContext) {
     assessmentInput = buildHyroxAssessmentInputFromRow(row, assessment as HyroxAssessmentRow);
   }
 
-  const [mappedProfile, programmeDraft] = await Promise.all([
+  const [mappedProfile, programmeDraft, applicationResult] = await Promise.all([
     fetchLatestMappedProfile(supabase, id),
     fetchLatestProgrammeDraft(supabase, id),
+    row.application_id
+      ? supabase.from("hyrox_applications").select("*").eq("id", row.application_id).maybeSingle()
+      : supabase
+          .from("hyrox_applications")
+          .select("*")
+          .eq("email", row.email)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
   ]);
+
+  const application = (applicationResult.data as HyroxApplicationRow | null) ?? null;
 
   if (process.env.NODE_ENV === "development") {
     console.log("Hyrox athlete detail loaded", {
@@ -102,6 +113,7 @@ export async function GET(_request: Request, context: RouteContext) {
     hasTesting: flags.hasTesting,
     hasRaceResult: (raceCount ?? 0) > 0,
     assessment: assessment as HyroxAssessmentRow | null,
+    application,
     assessmentInput,
     mappedProfile,
     mappedProfileSaved: Boolean(mappedProfile),

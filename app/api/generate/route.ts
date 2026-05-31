@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { buildWeekBlueprint } from "@/app/lib/buildWeekBlueprint";
+import { applyHybrid75FreeWeek } from "@/app/lib/applyHybrid75FreeWeek";
+import { normalizeChallengeMode } from "@/app/lib/freeWeekChallengeMode";
 
 function generatePlanId(): string {
   return "h365_" + Math.random().toString(36).substring(2, 10);
@@ -18,6 +20,7 @@ const InputSchema = z.object({
   equipment: z.array(z.string()).optional(),
   five_k_time: z.string().optional(),
   notes: z.string().optional(),
+  challenge_mode: z.enum(["standard", "hybrid75"]).optional(),
 });
 
 type Input = z.infer<typeof InputSchema>;
@@ -116,7 +119,7 @@ async function createAirtableRecord(
   input: Input,
   planJson: any,
   emailText: string,
-  athleteUrl: string
+  planAccessUrl: string
 ) {
   const token = process.env.AIRTABLE_TOKEN!;
   const baseId = process.env.AIRTABLE_BASE_ID!;
@@ -139,7 +142,7 @@ async function createAirtableRecord(
     Notes: input.notes || "",
     "Generated Plan JSON": JSON.stringify(planJson),
     "Generated Plan Email Version": emailText,
-    "Athlete URL": athleteUrl || "",
+    "Athlete URL": planAccessUrl || "",
     Status: "generated",
   };
 
@@ -163,8 +166,7 @@ async function kitCreateSubscriber(
   email: string,
   blueprint: string,
   firstName: string,
-  planUrl: string,
-  athleteUrl: string
+  planUrl: string
 ): Promise<number> {
   const apiKey = process.env.KIT_API_KEY!;
 
@@ -180,7 +182,8 @@ async function kitCreateSubscriber(
         blueprint,
         first_name: firstName || "",
         plan_url: planUrl || "",
-        athlete_url: athleteUrl || "",
+        // Kit automations historically used athlete_url — point at the public free plan view.
+        athlete_url: planUrl || "",
       },
       state: "active",
     }),
@@ -225,7 +228,9 @@ export async function POST(req: Request) {
     const raw = await req.json();
     const input = InputSchema.parse(raw);
 
-    const planJson = buildWeekBlueprint({
+    const challengeMode = normalizeChallengeMode(input.challenge_mode);
+
+    let planJson = buildWeekBlueprint({
       days_per_week: input.days_per_week,
       weekly_hours_band: input.weekly_hours_band,
       goal_focus: input.goal_focus,
@@ -236,6 +241,16 @@ export async function POST(req: Request) {
       five_k_time: input.five_k_time,
       notes: input.notes,
     });
+
+    if (challengeMode === "hybrid75") {
+      planJson = applyHybrid75FreeWeek(planJson, {
+        days_per_week: input.days_per_week,
+        ability_level: input.ability_level,
+        equipment: input.equipment,
+      });
+    } else {
+      planJson = { ...planJson, challenge_mode: "standard" };
+    }
 
     const planId = generatePlanId();
     const planWithId = {
@@ -248,20 +263,15 @@ export async function POST(req: Request) {
       ? `${process.env.NEXT_PUBLIC_BASE_URL}/plan/${planId}`
       : `http://localhost:3000/plan/${planId}`;
 
-    const athleteUrl = process.env.NEXT_PUBLIC_BASE_URL
-      ? `${process.env.NEXT_PUBLIC_BASE_URL}/athlete/${planId}`
-      : `http://localhost:3000/athlete/${planId}`;
-
     const emailText = asTextPlanForEmail(planWithId, planUrl);
 
-    await createAirtableRecord(input, planWithId, emailText, athleteUrl);
+    await createAirtableRecord(input, planWithId, emailText, planUrl);
 
     const subscriberId = await kitCreateSubscriber(
       input.email,
       emailText,
       input.first_name || "",
-      planUrl,
-      athleteUrl
+      planUrl
     );
 
     // The tag is used to trigger the Kit Free Week automation.
@@ -282,9 +292,8 @@ export async function POST(req: Request) {
       ok: true,
       planId,
       planUrl,
-      athleteUrl,
       message:
-        "Your Hybrid365 Athlete Profile is being prepared. Your access link will arrive by email in around 10–15 minutes. Check your inbox and junk/spam just in case.",
+        "Your Hybrid365 training week is being prepared. Your plan link will arrive by email in around 10–15 minutes. Check your inbox and junk/spam just in case.",
     });
   } catch (e: any) {
     return NextResponse.json(

@@ -118,6 +118,8 @@ export type DayPlan = {
   session_stress?: import("./sessionStressClassification").SessionStressLevel;
   /** Session priority role in the weekly plan. */
   session_role?: import("./sessionStressClassification").SessionRoleType;
+  /** Free-week Hybrid 75 challenge placeholder CTA. */
+  hybrid75_cta?: { label: string; url: string };
 };
 
 export type WeeklyStressLabel = "low" | "balanced" | "high" | "very_high";
@@ -225,6 +227,9 @@ export type PlanJson = {
   schedule_remaining_issues?: string[];
   /** HYROX Pro double-session ladder summary (paid 12-week). */
   double_session_summary?: import("./hyroxDoubleSessionProgression").DoubleSessionWeekSummary;
+  /** Free-week lead magnet only */
+  challenge_mode?: "standard" | "hybrid75";
+  hybrid75?: import("./freeWeekChallengeMode").Hybrid75PlanMeta;
 };
 
 function allEquipment(...items: UserEquipment[]) {

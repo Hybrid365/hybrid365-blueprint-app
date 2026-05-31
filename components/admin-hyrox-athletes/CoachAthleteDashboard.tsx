@@ -8,6 +8,8 @@ import { formatRaceCountdown } from "@/app/lib/hyroxCoachMockAthletes";
 import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBlockReviewPanel";
 import { ProgrammeBuilder } from "@/components/admin-hyrox-athletes/ProgrammeBuilder";
 import { ProfileReviewTab } from "@/components/admin-hyrox-athletes/ProfileReviewTab";
+import { FullAssessmentAnswersTab } from "@/components/admin-hyrox-athletes/FullAssessmentAnswersTab";
+import type { HyroxApplicationRow, HyroxAssessmentRow } from "@/app/lib/hyroxDatabaseTypes";
 import {
   ListStatusBadge,
   ProgrammeStatusBadge,
@@ -26,6 +28,20 @@ const TABS = [
   "Check-Ins",
   "Coach Notes",
 ] as const;
+
+export type AssessmentTabPanelProps = {
+  athlete: {
+    name: string;
+    email: string;
+    race_name?: string | null;
+    race_date?: string | null;
+    race_category?: string | null;
+    target_time?: string | null;
+  };
+  assessmentRow?: HyroxAssessmentRow | null;
+  assessmentInput?: HyroxAssessmentInput;
+  applicationRow?: HyroxApplicationRow | null;
+};
 
 export type ProfileReviewPanelProps = {
   athlete: CoachAthlete;
@@ -81,6 +97,7 @@ export function CoachAthleteDashboard({
   coachNotes,
   onCoachNotesChange,
   profileReview,
+  assessmentTab,
   programmeWorkflowInject,
   effectiveProfile = null,
 }: {
@@ -92,6 +109,7 @@ export function CoachAthleteDashboard({
   coachNotes: CoachNotesState;
   onCoachNotesChange: (patch: Partial<CoachNotesState>) => void;
   profileReview: ProfileReviewPanelProps;
+  assessmentTab: AssessmentTabPanelProps;
   programmeWorkflowInject: ProgrammeWorkflowInjectProps;
   effectiveProfile?: HyroxAthleteProfile | null;
 }) {
@@ -117,7 +135,14 @@ export function CoachAthleteDashboard({
       </div>
 
       {tab === "Overview" && <OverviewTab athlete={athlete} />}
-      {tab === "Assessment" && <AssessmentTab athlete={athlete} />}
+      {tab === "Assessment" && (
+        <FullAssessmentAnswersTab
+          athlete={assessmentTab.athlete}
+          assessmentRow={assessmentTab.assessmentRow}
+          assessmentInput={assessmentTab.assessmentInput}
+          applicationRow={assessmentTab.applicationRow}
+        />
+      )}
       {tab === "Testing" && <TestingTab athlete={athlete} />}
       {tab === "Profile Review" && (
         <ProfileReviewTab
@@ -292,26 +317,6 @@ function OverviewTab({ athlete }: { athlete: CoachAthlete }) {
         </div>
       </DashCard>
     </div>
-  );
-}
-
-function AssessmentTab({ athlete }: { athlete: CoachAthlete }) {
-  const a = athlete.assessment;
-  return (
-    <DashCard>
-      <SectionHeading title="Assessment" />
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <Row label="Running profile" value={a.runningProfile} />
-        <Row label="Strength profile" value={a.strengthProfile} />
-        <Row label="Station weaknesses" value={a.stationWeaknesses.join(", ")} />
-        <Row label="Equipment" value={a.equipmentAccess.join(", ")} />
-        <Row label="Injury / recovery" value={a.injuryRecovery} />
-        <Row label="Nutrition / bodyweight" value={a.nutritionBodyweight} />
-        <Row label="Recovery profile" value={a.recoveryProfile} />
-        <Row label="Documentation consent" value={a.documentationConsent ? "Yes" : "No"} />
-        <Row label="Content consent" value={a.contentConsent ? "Yes" : "No"} />
-      </dl>
-    </DashCard>
   );
 }
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Hybrid75ChallengeHub from "@/components/free-week/Hybrid75ChallengeHub";
+import { normalizeChallengeMode, type Hybrid75PlanMeta } from "@/app/lib/freeWeekChallengeMode";
 import {
   Activity,
   Calendar,
@@ -48,6 +50,7 @@ type SessionDetail = {
   priorityDisplayLabel: string;
   priorityCategoryLabel: string;
   priorityReason: string;
+  challengeCta?: { label: string; url: string };
 };
 
 const DEFAULT_SESSION_PRIORITY = {
@@ -104,11 +107,22 @@ function formatTrainingDays(raw: string): string {
   return raw;
 }
 
-function mapCategory(title: string): SessionDetail["category"] {
+function isChallengeSession(title: string, tags: string[]): boolean {
+  const tagStr = tags.join(" ").toLowerCase();
+  return (
+    tagStr.includes("challenge_placeholder") ||
+    tagStr.includes("hybrid_hard_challenge") ||
+    title.toLowerCase().includes("hybrid hard weekly challenge")
+  );
+}
+
+function mapCategory(title: string, tags: string[] = []): SessionDetail["category"] {
+  if (isChallengeSession(title, tags)) return "Challenge";
   const lowered = title.toLowerCase();
   if (lowered.includes("run")) return "Run";
   if (lowered.includes("strength")) return "Strength";
   if (lowered.includes("recovery") || lowered.includes("rest")) return "Recovery";
+  if (lowered.includes("mobility")) return "Recovery";
   return "Hybrid";
 }
 
@@ -165,14 +179,26 @@ function PriorityChip({ rank, label }: { rank: 1 | 2 | 3; label: string }) {
   );
 }
 
+function parseChallengeCta(item: Record<string, unknown>): SessionDetail["challengeCta"] | undefined {
+  const raw = item?.hybrid75_cta;
+  if (!raw || typeof raw !== "object") return undefined;
+  const cta = raw as Record<string, unknown>;
+  const label = typeof cta.label === "string" ? cta.label.trim() : "";
+  const url = typeof cta.url === "string" ? cta.url.trim() : "";
+  if (!label || !url) return undefined;
+  return { label, url };
+}
+
 function normalizeSchedule(schedule: any[]): SessionDetail[] {
   return schedule.map((item) => {
     const session = item?.session || {};
     const minutes = typeof item?.time_cap_minutes === "number" ? item.time_cap_minutes : null;
     const notes = asArray(session?.notes);
     const title = String(item?.title || "Session");
-    const category = mapCategory(title);
+    const tags = asArray(item?.tags);
+    const category = mapCategory(title, tags);
     const priority = parseSessionPriority(item?.priority);
+    const challengeCta = parseChallengeCta(item ?? {});
 
     return {
       day: String(item?.day || "Day"),
@@ -183,7 +209,7 @@ function normalizeSchedule(schedule: any[]): SessionDetail[] {
       intent: String(item?.intent || "Execute this session with controlled effort and clean form."),
       duration: minutes ? `${minutes} min` : "Use session guidance",
       timeCap: minutes ? `${minutes} min` : undefined,
-      tags: asArray(item?.tags),
+      tags,
       warmUp: asArray(session?.warm_up),
       mainWork: asArray(session?.main),
       coolDown: asArray(session?.cool_down),
@@ -193,6 +219,7 @@ function normalizeSchedule(schedule: any[]): SessionDetail[] {
       effortDescription: String(
         item?.intent || "Respect the purpose of the session and keep the effort controlled."
       ),
+      challengeCta,
       ...priority,
     };
   });
@@ -238,12 +265,14 @@ function SessionCard({ session, onClick }: { session: SessionDetail; onClick: ()
     Run: "bg-white/10 text-white",
     Hybrid: "bg-zinc-700/40 text-zinc-200",
     Recovery: "bg-zinc-800 text-zinc-300",
+    Challenge: "bg-[#F4D23C]/30 text-[#F4D23C]",
   };
   const categoryIcons: Record<string, React.ElementType> = {
     Strength: Dumbbell,
     Run: Activity,
     Hybrid: Zap,
     Recovery: Heart,
+    Challenge: Trophy,
   };
   const Icon = categoryIcons[session.category] || Activity;
 
@@ -346,6 +375,9 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
   const scheduleRaw: any[] = Array.isArray(planJson?.schedule) ? planJson.schedule : [];
   const sessions = useMemo(() => normalizeSchedule(scheduleRaw), [scheduleRaw]);
   const firstName = formatName(String(profile?.first_name || planJson?.first_name || ""));
+  const challengeMode = normalizeChallengeMode(planJson?.challenge_mode);
+  const hybrid75Meta: Hybrid75PlanMeta | null =
+    challengeMode === "hybrid75" ? (planJson?.hybrid75 as Hybrid75PlanMeta | undefined) ?? null : null;
 
   const athleteProfile = {
     name: firstName,
@@ -360,8 +392,8 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
     ),
     equipment: parseEquipment(profile?.equipment),
     readinessScore: 72,
-    currentBlock: "Build the Base",
-    planStatus: "Free Week Active",
+    currentBlock: challengeMode === "hybrid75" ? "Hybrid 75 Challenge" : "Build the Base",
+    planStatus: challengeMode === "hybrid75" ? "Hybrid 75 Active" : "Free Week Active",
   };
 
   const nextSession = sessions[0] || null;
@@ -422,7 +454,11 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
           </h1>
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <Badge>Free Profile</Badge>
-            <Badge variant="accent">Week 1 Unlocked</Badge>
+            {challengeMode === "hybrid75" ? (
+              <Badge variant="accent">Hybrid 75 Challenge</Badge>
+            ) : (
+              <Badge variant="accent">Week 1 Unlocked</Badge>
+            )}
           </div>
           <p className="mb-8 max-w-2xl leading-relaxed text-white/70">
             Your free week is the starting point. The full Hybrid365 Blueprint unlocks progressive 4-week blocks.
@@ -487,6 +523,8 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
             </div>
           </div>
         </section>
+
+        {challengeMode === "hybrid75" ? <Hybrid75ChallengeHub hybrid75={hybrid75Meta} /> : null}
 
         <section className="mb-12">
           <h2 className="mb-6 text-xl font-semibold text-white">Athlete Metrics</h2>
@@ -742,6 +780,22 @@ export default function AthleteDashboardClient({ planJson, planId }: AthleteDash
                 </p>
                 <p className="mt-2 text-sm text-white/75">{selectedSession.effortDescription}</p>
               </div>
+
+              {selectedSession.challengeCta ? (
+                <div className="mt-6 rounded-2xl border border-[#F4D23C]/30 bg-[#F4D23C]/5 p-4 sm:p-5">
+                  <p className="text-sm text-white/75">
+                    This week&apos;s challenge workout is released inside the free Telegram group.
+                  </p>
+                  <a
+                    href={selectedSession.challengeCta.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#F4D23C] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                  >
+                    {selectedSession.challengeCta.label}
+                  </a>
+                </div>
+              ) : null}
 
               <div className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

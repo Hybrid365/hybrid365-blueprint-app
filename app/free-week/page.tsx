@@ -1,10 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  challengeModeFromSearchParam,
+  FREE_WEEK_TELEGRAM_URL,
+  type ChallengeMode,
+} from "@/app/lib/freeWeekChallengeMode";
+import SaveDashboardBanner from "@/components/free-week/SaveDashboardBanner";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
-export default function Home() {
+function FreeWeekForm() {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [daysPerWeek, setDaysPerWeek] = useState(4);
@@ -16,6 +23,13 @@ export default function Home() {
   const [weeklyHoursBand, setWeeklyHoursBand] = useState<string>("5-7");
   const [fiveK, setFiveK] = useState("");
   const [notes, setNotes] = useState("");
+  const [challengeMode, setChallengeMode] = useState<ChallengeMode>("standard");
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    setChallengeMode(challengeModeFromSearchParam(searchParams.get("challenge")));
+  }, [searchParams]);
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; planUrl?: string; message?: string; error?: string } | null>(null);
@@ -54,6 +68,7 @@ export default function Home() {
       weekly_hours_band: weeklyHoursBand,
       five_k_time: fiveK || undefined,
       notes: notes || undefined,
+      challenge_mode: challengeMode,
     };
 
     try {
@@ -72,23 +87,47 @@ export default function Home() {
     }
   }
 
+  const isHybrid75Challenge = challengeMode === "hybrid75";
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto max-w-3xl px-4 py-12">
+        {isHybrid75Challenge ? (
+          <div className="mb-8 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">Hybrid 75 Summer Challenge</p>
+            <h2 className="mt-2 text-2xl font-bold text-white">You&apos;re joining the Hybrid 75 Summer Challenge</h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-200 sm:text-base">
+              Your free week will be built around the challenge rules — runs, lifts, mobility, daily habits, and the
+              weekend Hybrid Hard Challenge.
+            </p>
+          </div>
+        ) : null}
+
         <div className="mb-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-sm">
             <span className="h-2 w-2 rounded-full bg-yellow-400" />
-            Hybrid365 Blueprint
+            {isHybrid75Challenge ? "Hybrid 75 Challenge Builder" : "Hybrid365 Blueprint"}
           </div>
 
           <h1 className="mt-4 text-4xl font-semibold tracking-tight leading-tight">
-            Get Your Personalised Hybrid Training Week
-            <br />
-            <span className="text-yellow-400">Built Using the Hybrid365 Method</span>
+            {isHybrid75Challenge ? (
+              <>
+                Build Your{" "}
+                <span className="text-yellow-400">Hybrid 75 Challenge Week</span>
+              </>
+            ) : (
+              <>
+                Get Your Personalised Hybrid Training Week
+                <br />
+                <span className="text-yellow-400">Built Using the Hybrid365 Method</span>
+              </>
+            )}
           </h1>
 
           <p className="mt-4 text-zinc-300 text-lg">
-            Answer a few questions and get a structured training week built around your goal, fitness level, and schedule.
+            {isHybrid75Challenge
+              ? "Answer a few questions and get a structured challenge week personalised to your schedule, level and equipment."
+              : "Answer a few questions and get a structured training week built around your goal, fitness level, and schedule."}
           </p>
 
           <div className="mt-6 space-y-2 text-sm text-zinc-300">
@@ -126,6 +165,41 @@ export default function Home() {
               <p>Takes 60 seconds</p>
               <p>Plan link delivered by email in around 10–15 minutes</p>
               <p>Includes coaching notes for every session</p>
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-200">Are you joining the Hybrid 75 Summer Challenge?</label>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setChallengeMode("standard")}
+                  className={`rounded-xl border px-4 py-4 text-left transition ${
+                    challengeMode === "standard"
+                      ? "border-yellow-400 bg-yellow-400/10"
+                      : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                  }`}
+                >
+                  <p className="font-semibold text-white">Standard Free Week</p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Build me a personalised Hybrid365 training week.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChallengeMode("hybrid75")}
+                  className={`rounded-xl border px-4 py-4 text-left transition ${
+                    challengeMode === "hybrid75"
+                      ? "border-yellow-400 bg-yellow-400/10"
+                      : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                  }`}
+                >
+                  <p className="font-semibold text-white">Hybrid 75 Summer Challenge</p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Build my week around the challenge rules: 3+ runs, 2–3 lifts, mobility, hydration, clean eating,
+                    accountability and the weekly Hybrid Hard Challenge.
+                  </p>
+                </button>
+              </div>
             </div>
 
             <div>
@@ -292,7 +366,11 @@ export default function Home() {
               disabled={loading}
               className="w-full rounded-xl bg-yellow-400 px-4 py-3 font-semibold text-zinc-950 transition hover:opacity-90 disabled:opacity-60"
             >
-              {loading ? "Building..." : "Build My Personalised Week"}
+              {loading
+                ? "Building..."
+                : isHybrid75Challenge
+                ? "Build My Hybrid 75 Challenge Week"
+                : "Build My Personalised Week"}
             </button>
 
             {result && result.ok && (
@@ -314,8 +392,21 @@ export default function Home() {
 
                 <div className="rounded-lg border border-yellow-400/30 bg-yellow-400/5 p-4">
                   <p className="mb-3 text-sm text-white">
-                    We’re using your goal, training days, weekly hours, running profile, equipment and notes to structure your week. Check your inbox and junk folder — your access link should arrive shortly.
+                    We&apos;re using your goal, training days, weekly hours, running profile, equipment and notes to
+                    structure your week. Check your inbox and junk folder — your plan link should arrive shortly.
                   </p>
+
+                  {result.planUrl ? (
+                    <>
+                      <a
+                        href={result.planUrl}
+                        className="mb-3 inline-block rounded-lg border border-yellow-400/40 bg-zinc-900 px-4 py-2 text-sm font-semibold text-yellow-400 hover:opacity-90 transition"
+                      >
+                        Open your plan (when ready)
+                      </a>
+                      <SaveDashboardBanner planUrl={result.planUrl} variant="card" />
+                    </>
+                  ) : null}
 
                   <a
                     href="https://www.hybrid-365.com"
@@ -326,6 +417,24 @@ export default function Home() {
                     Explore Hybrid365
                   </a>
                 </div>
+
+                {isHybrid75Challenge ? (
+                  <div className="rounded-lg border border-[#F4D23C]/35 bg-zinc-900/60 p-4">
+                    <p className="font-semibold text-white">Next step: join the free Telegram group</p>
+                    <p className="mt-2 text-sm text-zinc-300">
+                      The weekly Hybrid Hard Challenge workout, proof posts, leaderboard updates and prize information
+                      will be released inside the Telegram group.
+                    </p>
+                    <a
+                      href={FREE_WEEK_TELEGRAM_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-block rounded-lg bg-[#F4D23C] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
+                    >
+                      Join the Telegram group
+                    </a>
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -346,5 +455,17 @@ export default function Home() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-950 px-4 py-12 text-center text-zinc-400">Loading assessment form…</div>
+      }
+    >
+      <FreeWeekForm />
+    </Suspense>
   );
 }

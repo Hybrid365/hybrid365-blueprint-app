@@ -21,7 +21,7 @@ import { getCoachAthleteById, suggestedNextCoachAction } from "@/app/lib/hyroxCo
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import { getMockAssessmentForAthlete } from "@/app/lib/hyroxMockAssessmentSubmissions";
 import { buildCoachAthleteStubFromLiveRow } from "@/app/lib/hyroxLiveCoachAthlete";
-import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
+import type { HyroxAthleteRow, HyroxApplicationRow, HyroxAssessmentRow } from "@/app/lib/hyroxDatabaseTypes";
 import {
   CoachAthleteDashboard,
   type AthleteTab,
@@ -70,6 +70,8 @@ type LiveCoachPayload = {
   hasAssessment: boolean;
   hasTesting: boolean;
   hasRaceResult: boolean;
+  assessmentRow: HyroxAssessmentRow | null;
+  applicationRow: HyroxApplicationRow | null;
   assessmentInput: HyroxAssessmentInput | null;
   mappedProfileSaved: boolean;
   programmeDraftId: string | null;
@@ -132,6 +134,8 @@ export default function HyroxAthleteCoachClient({ athleteId }: { athleteId: stri
         hasAssessment: Boolean(data.hasAssessment),
         hasTesting: Boolean(data.hasTesting),
         hasRaceResult: Boolean(data.hasRaceResult),
+        assessmentRow: (data.assessment as HyroxAssessmentRow | null) ?? null,
+        applicationRow: (data.application as HyroxApplicationRow | null) ?? null,
         assessmentInput: data.assessmentInput ?? null,
         mappedProfileSaved: Boolean(data.mappedProfileSaved),
         programmeDraftId: data.programmeDraft?.id ?? null,
@@ -478,6 +482,27 @@ export default function HyroxAthleteCoachClient({ athleteId }: { athleteId: stri
           draftExists: isLive ? Boolean(liveDraftId) : injectedDraft != null && draftInjectionKey > 0,
           mappedProfileSaved: isLive ? mappedProfileSaved : undefined,
           isLive,
+        }}
+        assessmentTab={{
+          athlete: {
+            name: displayAthlete.name,
+            email: displayAthlete.email,
+            race_name: isLive
+              ? livePayload?.athlete.race_name ?? null
+              : assessment?.raceName ?? null,
+            race_date: isLive
+              ? livePayload?.athlete.race_date ?? null
+              : assessment?.raceDate ?? displayAthlete.raceDate,
+            race_category: isLive
+              ? livePayload?.athlete.race_category ?? null
+              : assessment?.raceCategory ?? displayAthlete.raceCategory,
+            target_time: isLive
+              ? livePayload?.athlete.target_time ?? null
+              : assessment?.targetTimeBand ?? null,
+          },
+          assessmentRow: isLive ? livePayload?.assessmentRow ?? null : null,
+          assessmentInput: assessment,
+          applicationRow: isLive ? livePayload?.applicationRow ?? null : null,
         }}
         programmeWorkflowInject={{
           injectedDraft,

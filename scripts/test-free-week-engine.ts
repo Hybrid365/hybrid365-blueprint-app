@@ -269,7 +269,6 @@ type ApiOkResponse = {
   ok: boolean;
   planId?: string;
   planUrl?: string;
-  athleteUrl?: string;
   message?: string;
   error?: string;
 };
@@ -281,7 +280,6 @@ type ResultRow = {
   apiOk?: boolean;
   planId?: string;
   planUrl?: string;
-  athleteUrl?: string;
   message?: string;
   error?: string;
 };
@@ -333,14 +331,17 @@ async function main() {
       row.apiOk = json.ok === true;
       row.planId = json.planId;
       row.planUrl = json.planUrl;
-      row.athleteUrl = json.athleteUrl;
       row.message = json.message;
       row.error = json.error;
 
       console.log(`    http: ${row.httpStatus}  api ok: ${row.apiOk === true}`);
       if (json.planId) console.log(`    planId: ${json.planId}`);
-      if (json.planUrl) console.log(`    planUrl: ${json.planUrl}`);
-      if (json.athleteUrl) console.log(`    athleteUrl: ${json.athleteUrl}`);
+      if (json.planUrl) {
+        console.log(`    planUrl: ${json.planUrl}`);
+        if (!json.planUrl.includes("/plan/")) {
+          console.log(`    ✗ WARNING: planUrl should use /plan/ path`);
+        }
+      }
       if (json.error) console.log(`    error: ${json.error}`);
       if (json.ok && json.message)
         console.log(`    message: ${json.message.slice(0, 80)}…`);
