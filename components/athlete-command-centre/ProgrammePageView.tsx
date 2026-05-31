@@ -26,7 +26,8 @@ import { SessionDrawer } from "./SessionDrawer";
 import { WeekSessionCard } from "./WeekSessionCard";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
-import { useAthletePortal } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
+import { useAthletePortalOptional } from "./athletePortalContext";
 import { resolveDefaultProgrammeWeekNumber } from "@/app/lib/hyroxAthleteProgrammeCalendar";
 import {
   buildAthleteProgrammeWeekChipMeta,
@@ -82,29 +83,40 @@ export function ProgrammePageView({
   serverProgramme = null,
   serverLoadVariant = "ready",
   serverRenderDecision = "programme",
+  isAdminPreview = false,
+  readOnly = false,
 }: {
   serverProgramme?: AthleteLiveProgrammePayload | null;
   serverLoadVariant?: "ready" | "no-session" | "not-linked";
   serverRenderDecision?: string;
+  isAdminPreview?: boolean;
+  readOnly?: boolean;
 }) {
+  const adminPreview = useAthleteAdminPreview();
+  const portal = useAthletePortalOptional();
   const {
-    programmePublishedLive,
-    liveProgramme,
-    liveProgrammeLoading,
-    liveProgrammeApiError,
-    portalAthlete,
-    useMockPreview,
-    programmeHubLive,
-    reloadLiveProgramme,
-    serverProgrammePublishedSeed,
-  } = useAthletePortal();
+    programmePublishedLive = false,
+    liveProgramme = null,
+    liveProgrammeLoading = false,
+    liveProgrammeApiError = null,
+    portalAthlete = null,
+    useMockPreview = false,
+    programmeHubLive = false,
+    reloadLiveProgramme = async () => {},
+    serverProgrammePublishedSeed = false,
+  } = portal ?? {};
   const { dashboardLive } = useAthleteDashboardLive();
 
-  const effectiveProgramme = liveProgramme ?? serverProgramme;
+  const previewMode = isAdminPreview || Boolean(adminPreview) || readOnly;
+
+  const effectiveProgramme =
+    adminPreview?.liveProgramme ?? liveProgramme ?? serverProgramme;
   const effectivePublished =
-    programmePublishedLive || Boolean(serverProgramme?.published);
-  const useLive = effectivePublished && !useMockPreview;
-  const useMock = useMockPreview;
+    adminPreview?.programmePublishedLive ||
+    programmePublishedLive ||
+    Boolean(serverProgramme?.published);
+  const useLive = effectivePublished && !useMockPreview && Boolean(effectiveProgramme);
+  const useMock = useMockPreview && !previewMode;
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionTitle, setSessionTitle] = useState<string | undefined>();
@@ -240,9 +252,10 @@ export function ProgrammePageView({
       : portalAthleteDisplayName(portalAthlete);
 
   const weekLoggingEnabled =
-    useLive && (selectedTab?.mode === "active" || selectedTab?.mode === "past");
-  const weekLoggingBlockedMessage =
-    selectedTab?.mode === "upcoming"
+    !previewMode && useLive && (selectedTab?.mode === "active" || selectedTab?.mode === "past");
+  const weekLoggingBlockedMessage = previewMode
+    ? "Session logging is disabled in admin preview mode."
+    : selectedTab?.mode === "upcoming"
       ? "This session unlocks when the week goes live."
       : selectedTab?.mode === "locked"
         ? "This week unlocks when your coach publishes the next block."
@@ -284,6 +297,7 @@ export function ProgrammePageView({
 
   const handleSessionUpdated = useCallback(
     async (updated: HyroxSession | null) => {
+      if (previewMode) return;
       if (updated) {
         setDrawerSession(updated);
         setSessionDetailOverride(sessionDetailFromHyroxSession(updated));
@@ -292,7 +306,7 @@ export function ProgrammePageView({
         await reloadLiveProgramme();
       }
     },
-    [effectivePublished, useMockPreview, reloadLiveProgramme]
+    [previewMode, effectivePublished, useMockPreview, reloadLiveProgramme]
   );
 
   const programmeVisible =
@@ -517,7 +531,7 @@ export function ProgrammePageView({
         sessionDetail={sessionDetailOverride}
         loggingEnabled={weekLoggingEnabled}
         loggingBlockedMessage={weekLoggingBlockedMessage}
-        useLiveApi={useLive && !useMock}
+        useLiveApi={useLive && !useMock && !previewMode}
         initialShowLogForm={drawerShowLogForm}
         onSessionUpdated={(updated) => void handleSessionUpdated(updated)}
         onClose={() => {

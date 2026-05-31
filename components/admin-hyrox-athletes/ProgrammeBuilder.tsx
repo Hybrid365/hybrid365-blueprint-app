@@ -414,7 +414,15 @@ export function ProgrammeBuilder({
               selectedSessionTitle={editSession?.title ?? null}
             />
           ) : null}
-          {isLive ? <CoachPublishResultPanel result={publishResult} /> : null}
+          {isLive ? (
+            <CoachPublishResultPanel
+              result={publishResult}
+              athleteId={livePersistence?.athleteId}
+              hasPublishedBlock={
+                status === "published" || effectiveBlockWeeks.some((w) => w.published)
+              }
+            />
+          ) : null}
           <CoachNotesPanel notes={coachNotes} onChange={onCoachNotesChange} />
         </aside>
       </div>

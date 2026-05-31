@@ -251,6 +251,10 @@ export function useAthletePortal() {
   return ctx;
 }
 
+export function useAthletePortalOptional() {
+  return useContext(AthletePortalContext);
+}
+
 /**
  * Merges server-loaded programme/onboarding state into portal context so the hub
  * stays unlocked when the client programme API is slow or fails — without

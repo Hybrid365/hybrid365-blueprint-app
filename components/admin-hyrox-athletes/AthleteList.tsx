@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { COACH_ATHLETES } from "@/app/lib/hyroxCoachMockAthletes";
 import { AcceptedAthletesPanel } from "@/components/admin-hyrox-athletes/AcceptedAthletesPanel";
@@ -25,17 +26,25 @@ export function AthleteList() {
     <CoachAdminShell
       title="Hyrox Team coach"
       actions={
-        <div className="text-right text-xs text-zinc-500">
-          {tab === "mock" ? (
-            <>
-              <p className="font-semibold text-yellow-400/90">{needsReview} need attention</p>
-              <p>{COACH_ATHLETES.length} mock athletes</p>
-            </>
-          ) : tab === "accepted" ? (
-            <p className="text-zinc-400">Live hyrox_athletes — payment &amp; linking</p>
-          ) : (
-            <p className="text-zinc-400">Live applications from Supabase</p>
-          )}
+        <div className="flex flex-col items-end gap-2">
+          <Link
+            href="/admin/hyrox-athletes/published-views"
+            className="inline-flex items-center gap-1.5 rounded-full border border-yellow-500/35 bg-yellow-400/10 px-3 py-1.5 text-xs font-semibold text-yellow-200 transition hover:bg-yellow-400/15"
+          >
+            View published athlete dashboards
+          </Link>
+          <div className="text-right text-xs text-zinc-500">
+            {tab === "mock" ? (
+              <>
+                <p className="font-semibold text-yellow-400/90">{needsReview} need attention</p>
+                <p>{COACH_ATHLETES.length} mock athletes</p>
+              </>
+            ) : tab === "accepted" ? (
+              <p className="text-zinc-400">Live hyrox_athletes — payment &amp; linking</p>
+            ) : (
+              <p className="text-zinc-400">Live applications from Supabase</p>
+            )}
+          </div>
         </div>
       }
     >

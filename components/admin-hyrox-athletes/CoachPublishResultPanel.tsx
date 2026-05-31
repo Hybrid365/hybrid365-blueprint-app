@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { Eye, LayoutGrid } from "lucide-react";
 import type { PublishSessionSyncDetail } from "@/app/lib/hyroxProgrammeSessionSync";
 
 export type CoachPublishWeekResult = {
@@ -40,7 +42,25 @@ export type CoachPublishResultState = {
   weekResults: CoachPublishWeekResult[];
 };
 
-export function CoachPublishResultPanel({ result }: { result: CoachPublishResultState | null }) {
+function isPublishResultSuccess(result: CoachPublishResultState): boolean {
+  const verificationFailed =
+    result.syncVerificationPassed === false ||
+    result.weekResults.some((w) => w.verification && !w.verification.verificationPassed);
+  const panelError = result.error ?? (verificationFailed ? result.message : null);
+  return !panelError && !verificationFailed;
+}
+
+export function CoachPublishResultPanel({
+  result,
+  athleteId = null,
+  hasPublishedBlock = false,
+}: {
+  result: CoachPublishResultState | null;
+  /** Live Supabase athlete id — required for view-as link. */
+  athleteId?: string | null;
+  /** When false, hide view-as (no published weeks on athlete). */
+  hasPublishedBlock?: boolean;
+}) {
   if (!result?.fired) {
     return (
       <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3 text-[10px] text-zinc-500">
@@ -54,6 +74,8 @@ export function CoachPublishResultPanel({ result }: { result: CoachPublishResult
     result.syncVerificationPassed === false ||
     result.weekResults.some((w) => w.verification && !w.verification.verificationPassed);
   const panelError = result.error ?? (verificationFailed ? result.message : null);
+  const publishSucceeded = isPublishResultSuccess(result);
+  const showPreviewActions = publishSucceeded && Boolean(athleteId) && hasPublishedBlock;
 
   return (
     <section
@@ -80,7 +102,30 @@ export function CoachPublishResultPanel({ result }: { result: CoachPublishResult
       {panelError ? (
         <p className="mt-2 font-semibold text-red-200">{panelError}</p>
       ) : (
-        <p className="mt-2 text-xs text-emerald-100">{result.message}</p>
+        <>
+          <p className="mt-2 text-xs font-semibold text-emerald-100">Published successfully.</p>
+          {result.message ? (
+            <p className="mt-1 text-xs text-emerald-100/90">{result.message}</p>
+          ) : null}
+          {showPreviewActions ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={`/admin/hyrox-athletes/${athleteId}/view-as`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-yellow-400 px-3 py-1.5 text-xs font-bold text-black transition hover:opacity-90"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                View as athlete
+              </Link>
+              <Link
+                href="/admin/hyrox-athletes/published-views"
+                className="inline-flex items-center gap-1.5 rounded-full border border-zinc-600 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-yellow-500/40 hover:text-yellow-200"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                View all published dashboards
+              </Link>
+            </div>
+          ) : null}
+        </>
       )}
       {result.syncVerificationErrors && result.syncVerificationErrors.length > 0 ? (
         <ul className="mt-2 list-inside list-disc text-red-200">

@@ -56,7 +56,7 @@ import {
   athleteCardPadding,
   eyebrowClass,
 } from "./athleteUi";
-import { useAthletePortal } from "./athletePortalContext";
+import { useAthletePortalOptional } from "./athletePortalContext";
 
 function HomePriorityTile({
   label,
@@ -64,14 +64,28 @@ function HomePriorityTile({
   sub,
   href,
   warn,
+  readOnly = false,
 }: {
   label: string;
   value: string;
   sub?: string;
   href: string;
   warn?: boolean;
+  readOnly?: boolean;
 }) {
   const className = `${athleteCardInteractive} p-4 ${warn ? "border-amber-500/30 bg-amber-950/10" : ""}`;
+
+  if (readOnly) {
+    return (
+      <div className={className}>
+        <p className={`${eyebrowClass} !tracking-[0.15em]`}>{label}</p>
+        <p className={`mt-1.5 line-clamp-2 text-sm font-bold leading-snug ${warn ? "text-amber-200" : "text-white"}`}>
+          {value}
+        </p>
+        {sub ? <p className="mt-1 text-xs text-zinc-500">{sub}</p> : null}
+      </div>
+    );
+  }
 
   if (href.startsWith("/athlete/")) {
     return (
@@ -103,16 +117,30 @@ const EMPTY_WEEK_RATIONALE = {
   coachNote: "",
 };
 
-export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProgramme?: boolean }) {
+export function AthleteHomeDashboard({
+  useLiveProgramme = false,
+  readOnly = false,
+}: {
+  useLiveProgramme?: boolean;
+  readOnly?: boolean;
+}) {
   const router = useRouter();
+  const portal = useAthletePortalOptional();
   const {
     portalAthlete,
     useMockPreview,
     liveProgrammeLoading,
     programmePublishedLive,
     reloadLiveProgramme,
-  } = useAthletePortal();
-  const { dashboardLive } = useAthleteDashboardLive();
+  } = portal ?? {
+    portalAthlete: null,
+    useMockPreview: false,
+    liveProgrammeLoading: false,
+    programmePublishedLive: false,
+    reloadLiveProgramme: async () => {},
+  };
+  const { dashboardLive, readOnly: dashboardReadOnly } = useAthleteDashboardLive();
+  const isReadOnly = readOnly || dashboardReadOnly;
   const useLive = useLiveProgramme && Boolean(dashboardLive);
   const showLiveLoading = useLiveProgramme && liveProgrammeLoading && !dashboardLive;
   const useMockData = useMockPreview;
@@ -230,11 +258,11 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
         setDrawerSession(updated);
         setSessionDetailOverride(sessionDetailFromHyroxSession(updated));
       }
-      if (programmePublishedLive && !useMockPreview) {
+      if (programmePublishedLive && !useMockPreview && !isReadOnly) {
         await reloadLiveProgramme();
       }
     },
-    [programmePublishedLive, useMockPreview, reloadLiveProgramme]
+    [programmePublishedLive, useMockPreview, reloadLiveProgramme, isReadOnly]
   );
 
   return (
@@ -250,6 +278,7 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
           value={next.name}
           sub={`${next.day} · ${next.duration}`}
           href="/athlete/programme"
+          readOnly={isReadOnly}
         />
         <HomePriorityTile
           label="Check-in"
@@ -257,12 +286,14 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
           sub={checkInSub}
           href="/athlete/check-in"
           warn={checkInDue}
+          readOnly={isReadOnly}
         />
         <HomePriorityTile
           label="Weekly focus"
           value={weekRationale.weekRole}
           sub={`Block ${a.blockId} · Week ${a.currentWeek}`}
           href="/athlete/coach-notes"
+          readOnly={isReadOnly}
         />
         <HomePriorityTile
           label="Race readiness"
@@ -273,6 +304,7 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
           }
           sub={m.raceReadiness.delta}
           href="/athlete/progress"
+          readOnly={isReadOnly}
         />
       </div>
 
@@ -298,7 +330,9 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
                   <Play className="h-4 w-4" />
                   View session
                 </BtnPrimary>
-                <BtnLinkSecondary href="/athlete/programme">Full week</BtnLinkSecondary>
+                <BtnLinkSecondary href={isReadOnly ? "#" : "/athlete/programme"}>
+                  Full week
+                </BtnLinkSecondary>
               </div>
             </div>
             <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-zinc-400">{next.objective}</p>
@@ -318,7 +352,7 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
               benchmarks={dashboardLive.benchmarkSnapshot}
               benchmarksLoading={dashboardLive.benchmarksLoading}
               benchmarksError={dashboardLive.benchmarksError}
-              onCompleteCheckIn={() => router.push("/athlete/check-in")}
+              onCompleteCheckIn={isReadOnly ? undefined : () => router.push("/athlete/check-in")}
             />
           ) : null}
 
@@ -395,7 +429,7 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
                   <StatusBadge tone={checkInDue ? "warn" : "neutral"}>{checkInStatus}</StatusBadge>
                 </div>
                 <p className="mt-2 text-sm text-zinc-500">{checkInSub}</p>
-                {checkInDue ? (
+                {checkInDue && !isReadOnly ? (
                   <Link
                     href="/athlete/check-in"
                     className="mt-3 inline-flex min-h-[40px] w-full items-center justify-center rounded-xl bg-yellow-400 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 sm:w-auto sm:px-5"
@@ -415,6 +449,7 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
             </div>
           </div>
 
+          {!isReadOnly ? (
           <section>
             <SectionTitle title="Explore" description="Full detail on each area of your training" />
             <div className="grid gap-3 sm:grid-cols-2">
@@ -467,12 +502,15 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
               />
             </div>
           </section>
+          ) : null}
         </main>
 
+        {!isReadOnly ? (
         <HomeStickyActions
           onViewSession={() => openSession(next.sessionId, next.name)}
           onLogResult={() => openSession(next.sessionId, next.name, { showLogForm: true })}
         />
+        ) : null}
       </div>
 
       <SessionDrawer
@@ -480,8 +518,11 @@ export function AthleteHomeDashboard({ useLiveProgramme = false }: { useLiveProg
         session={drawerSession}
         sessionTitle={sessionTitle}
         sessionDetail={sessionDetailOverride}
-        loggingEnabled={useLive && !useMockData}
-        useLiveApi={useLive && !useMockData}
+        loggingEnabled={useLive && !useMockData && !isReadOnly}
+        loggingBlockedMessage={
+          isReadOnly ? "Session logging is disabled in admin preview mode." : undefined
+        }
+        useLiveApi={useLive && !useMockData && !isReadOnly}
         initialShowLogForm={drawerShowLogForm}
         onSessionUpdated={(updated) => void handleSessionUpdated(updated)}
         onClose={() => {

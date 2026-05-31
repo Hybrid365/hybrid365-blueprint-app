@@ -13,11 +13,18 @@ import { athleteCard, athleteCardPadding, eyebrowClass, ProgressBar } from "./at
 import { nextSessionDisplayForDashboard } from "@/app/lib/hyroxAthleteDashboardLive";
 import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
-import { useAthletePortal } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
+import { useAthletePortalOptional } from "./athletePortalContext";
 
 export function CommandCentreHeader() {
-  const { portalAthlete, useMockPreview, programmePublishedLive, liveProgrammeLoading } =
-    useAthletePortal();
+  const adminPreview = useAthleteAdminPreview();
+  const portal = useAthletePortalOptional();
+  const {
+    portalAthlete = adminPreview?.portalAthlete ?? null,
+    useMockPreview = false,
+    programmePublishedLive = adminPreview?.programmePublishedLive ?? false,
+    liveProgrammeLoading = false,
+  } = portal ?? {};
   const { useLive, dashboardLive } = useAthleteDashboardLive();
   const useMockData = useMockPreview;
   const showLiveLoading = programmePublishedLive && liveProgrammeLoading && !dashboardLive;

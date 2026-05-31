@@ -6,11 +6,19 @@ import {
   buildAthleteDashboardLiveView,
   type AthleteDashboardLiveView,
 } from "@/app/lib/hyroxAthleteDashboardLive";
-import { useAthletePortal } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
+import { useAthletePortalOptional } from "./athletePortalContext";
 
 export function useAthleteDashboardLive() {
-  const { portalAthlete, liveProgramme, programmePublishedLive, useMockPreview, reloadLiveProgramme } =
-    useAthletePortal();
+  const adminPreview = useAthleteAdminPreview();
+  const portal = useAthletePortalOptional();
+  const portalAthlete = adminPreview?.portalAthlete ?? portal?.portalAthlete ?? null;
+  const liveProgramme = adminPreview?.liveProgramme ?? portal?.liveProgramme ?? null;
+  const programmePublishedLive =
+    adminPreview?.programmePublishedLive ?? portal?.programmePublishedLive ?? false;
+  const useMockPreview = adminPreview ? false : Boolean(portal?.useMockPreview);
+  const reloadLiveProgramme = portal?.reloadLiveProgramme ?? (async () => {});
+  const readOnly = Boolean(adminPreview);
 
   const [benchmarkSnapshot, setBenchmarkSnapshot] = useState<BenchmarkSnapshotItem[] | null>(null);
   const [benchmarksLoading, setBenchmarksLoading] = useState(false);
@@ -20,7 +28,7 @@ export function useAthleteDashboardLive() {
     programmePublishedLive && !useMockPreview && Boolean(liveProgramme);
 
   const reloadBenchmarks = useCallback(async () => {
-    if (!useLive) {
+    if (!useLive || readOnly) {
       setBenchmarkSnapshot(null);
       setBenchmarksError(null);
       return;
@@ -45,7 +53,7 @@ export function useAthleteDashboardLive() {
     } finally {
       setBenchmarksLoading(false);
     }
-  }, [useLive]);
+  }, [useLive, readOnly]);
 
   useEffect(() => {
     void reloadBenchmarks();
@@ -80,5 +88,6 @@ export function useAthleteDashboardLive() {
     benchmarksError,
     reloadBenchmarks,
     reloadLiveProgramme,
+    readOnly,
   };
 }
