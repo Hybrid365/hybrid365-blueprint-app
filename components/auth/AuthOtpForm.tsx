@@ -8,6 +8,11 @@ import {
   emailHintForAuthLog,
 } from "@/app/lib/authRedirectUrl";
 import {
+  logCommunityLoginOtpRequest,
+  requestCommunityLoginCodeEmail,
+  requestCommunityMagicLinkEmail,
+} from "@/app/lib/communityLoginOtpRequest";
+import {
   ATHLETE_EMAIL_CODE_SUCCESS_COPY,
   CALLBACK_ERROR_HEADLINE,
   EMAIL_CODE_SUCCESS_COPY,
@@ -311,11 +316,15 @@ function CommunityEmailCodeLogin({
     setBanner(null);
     try {
       const supabase = createClient();
+      if (process.env.NODE_ENV === "development") {
+        console.log("[community login] button click", {
+          mode: "email_code",
+          functionCalled: "sendLoginCode",
+          otpVerifyExpected: true,
+        });
+      }
       const { error } = await withTimeout(
-        supabase.auth.signInWithOtp({
-          email: trimmed,
-          options: { shouldCreateUser: true },
-        }),
+        requestCommunityLoginCodeEmail(supabase, trimmed, next),
         OTP_TIMEOUT_MS,
         "Request timed out. Check your connection and try again."
       );
@@ -412,22 +421,15 @@ function CommunityEmailCodeLogin({
     setBanner(null);
     try {
       const supabase = createClient();
-      const emailRedirectTo = buildEmailRedirectTo(next);
       if (process.env.NODE_ENV === "development") {
-        console.log("[community login] sendMagicLink", {
-          email: emailHintForAuthLog(trimmed),
-          next,
-          emailRedirectTo,
+        console.log("[community login] button click", {
+          mode: "magic_link",
+          functionCalled: "sendMagicLink",
+          otpVerifyExpected: false,
         });
       }
       const { error } = await withTimeout(
-        supabase.auth.signInWithOtp({
-          email: trimmed,
-          options: {
-            shouldCreateUser: true,
-            emailRedirectTo,
-          },
-        }),
+        requestCommunityMagicLinkEmail(supabase, trimmed, next),
         OTP_TIMEOUT_MS,
         "Request timed out. Check your connection and try again."
       );
@@ -492,7 +494,9 @@ function CommunityEmailCodeLogin({
             disabled={submitting}
           />
           <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-            {codeRequested ? LOGIN_CODE_SENT_COPY : "Request a code below, then enter it here."}
+            {codeRequested
+              ? LOGIN_CODE_SENT_COPY
+              : "Use Send login code below (6-digit code). Avoid “magic link” unless you want a clickable link in email."}
           </p>
         </div>
 
@@ -655,44 +659,35 @@ export function AuthOtpForm({
     }
 
     if (mode === "email_code") {
-      const emailRedirectTo = buildEmailRedirectTo(next);
-      if (process.env.NODE_ENV === "development") {
-        console.log("[community login] signInWithOtp (email_code tab)", {
-          email: emailHintForAuthLog(trimmed),
-          next,
-          emailRedirectTo,
-        });
-      }
+      logCommunityLoginOtpRequest({
+        delivery: "email_code",
+        handler: "sendOtpEmail",
+        email: trimmed,
+        next,
+        shouldCreateUser: true,
+        emailRedirectTo: null,
+        otpVerifyExpected: true,
+      });
       return withTimeout(
-        supabase.auth.signInWithOtp({
-          email: trimmed,
-          options: {
-            shouldCreateUser: true,
-            emailRedirectTo,
-          },
-        }),
+        requestCommunityLoginCodeEmail(supabase, trimmed, next),
         OTP_TIMEOUT_MS,
         "Request timed out. Check your connection and try again."
       );
     }
 
     const emailRedirectTo = buildEmailRedirectTo(next);
-    if (process.env.NODE_ENV === "development") {
-      console.log("[community login] signInWithOtp (magic_link tab)", {
-        email: emailHintForAuthLog(trimmed),
-        next,
-        emailRedirectTo,
-      });
-    }
+    logCommunityLoginOtpRequest({
+      delivery: "magic_link",
+      handler: "sendOtpEmail",
+      email: trimmed,
+      next,
+      shouldCreateUser: true,
+      emailRedirectTo,
+      otpVerifyExpected: false,
+    });
 
     return withTimeout(
-      supabase.auth.signInWithOtp({
-        email: trimmed,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo,
-        },
-      }),
+      requestCommunityMagicLinkEmail(supabase, trimmed, next),
       OTP_TIMEOUT_MS,
       "Request timed out. Check your connection and try again."
     );

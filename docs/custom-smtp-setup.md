@@ -176,7 +176,14 @@ NEXT_PUBLIC_SITE_URL=https://your-production-domain.com
 
 Must match Supabase **Site URL** and redirect allowlist.
 
-**Supabase email template:** include `{{ .Token }}` so the 6-digit code appears in magic-link emails.
+**Paid /login (email code):** `signInWithOtp` must **not** pass `emailRedirectTo` on the main “Send login code” button — that switches the Magic Link template to a clickable link.
+
+**Supabase → Authentication → Email Templates → Magic Link** (used for `signInWithOtp`):
+
+- **Code-only login (recommended):** body uses `{{ .Token }}` only; remove `{{ .ConfirmationURL }}` from this template.
+- **Magic link (optional “Prefer magic link?” on /login):** include `{{ .ConfirmationURL }}`; redirect must be allowlisted (`/auth/callback?portal=community&next=/dashboard`).
+
+**Confirm signup** (brand-new email, if “Confirm email” is enabled): separate template with `{{ .ConfirmationURL }}` — often uses **Site URL** (`/free-week`). For paid members, disable **Confirm email** under Auth → Providers → Email, or set Site URL to production app and fix that template’s redirect in Supabase.
 
 ---
 
