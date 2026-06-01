@@ -1,10 +1,15 @@
-import { Play } from "lucide-react";
+import { ExternalLink, Play } from "lucide-react";
 
-/** Set via NEXT_PUBLIC_HYBRID75_VSL_URL — YouTube, Vimeo, or direct MP4/WebM. */
-const VSL_VIDEO_URL = process.env.NEXT_PUBLIC_HYBRID75_VSL_URL?.trim() ?? "";
+/** Unlisted Hybrid 75 founder VSL — override via NEXT_PUBLIC_HYBRID75_VSL_URL if needed. */
+export const HYBRID75_VSL_YOUTUBE_WATCH_URL = "https://youtu.be/A1m2eZuK6IU";
+export const HYBRID75_VSL_YOUTUBE_EMBED_URL = "https://www.youtube.com/embed/A1m2eZuK6IU";
+
+const VSL_VIDEO_URL =
+  process.env.NEXT_PUBLIC_HYBRID75_VSL_URL?.trim() || HYBRID75_VSL_YOUTUBE_WATCH_URL;
 
 type ParsedVsl =
-  | { kind: "youtube" | "vimeo"; embedUrl: string }
+  | { kind: "youtube"; embedUrl: string; watchUrl: string }
+  | { kind: "vimeo"; embedUrl: string }
   | { kind: "mp4"; src: string };
 
 function parseVslUrl(url: string): ParsedVsl | null {
@@ -15,9 +20,11 @@ function parseVslUrl(url: string): ParsedVsl | null {
     /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/
   );
   if (ytMatch) {
+    const id = ytMatch[1];
     return {
       kind: "youtube",
-      embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}?rel=0`,
+      embedUrl: `https://www.youtube.com/embed/${id}`,
+      watchUrl: `https://youtu.be/${id}`,
     };
   }
 
@@ -30,7 +37,12 @@ function parseVslUrl(url: string): ParsedVsl | null {
   }
 
   if (trimmed.includes("youtube.com/embed/")) {
-    return { kind: "youtube", embedUrl: trimmed };
+    const idMatch = trimmed.match(/embed\/([\w-]{11})/);
+    return {
+      kind: "youtube",
+      embedUrl: trimmed.split("?")[0] ?? trimmed,
+      watchUrl: idMatch ? `https://youtu.be/${idMatch[1]}` : HYBRID75_VSL_YOUTUBE_WATCH_URL,
+    };
   }
   if (trimmed.includes("player.vimeo.com/video/")) {
     return { kind: "vimeo", embedUrl: trimmed };
@@ -82,12 +94,20 @@ export function Hybrid75HeroVsl({ className = "" }: { className?: string }) {
 
       <div className="relative mt-3 overflow-hidden rounded-2xl border border-[#F4D23C]/35 bg-zinc-950/90 shadow-[0_0_48px_rgba(244,210,60,0.1)] ring-1 ring-white/5 backdrop-blur-sm">
         <div className="aspect-video w-full">
-          {parsed?.kind === "youtube" || parsed?.kind === "vimeo" ? (
+          {parsed?.kind === "youtube" ? (
             <iframe
               src={parsed.embedUrl}
-              title="Hybrid 75 Summer Challenge — founder intro"
+              title="Hybrid 75 Summer Challenge VSL"
               className="h-full w-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          ) : parsed?.kind === "vimeo" ? (
+            <iframe
+              src={parsed.embedUrl}
+              title="Hybrid 75 Summer Challenge VSL"
+              className="h-full w-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />
           ) : parsed?.kind === "mp4" ? (
@@ -109,6 +129,18 @@ export function Hybrid75HeroVsl({ className = "" }: { className?: string }) {
       <p className="mt-2.5 text-center text-xs leading-relaxed text-white/50 sm:text-sm lg:text-left">
         Kieran explains the challenge, the rules, the dashboard and how to join.
       </p>
+
+      {parsed?.kind === "youtube" ? (
+        <a
+          href={parsed.watchUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-[#F4D23C] transition hover:text-[#F4D23C]/80 lg:justify-start"
+        >
+          Watch on YouTube
+          <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+        </a>
+      ) : null}
     </div>
   );
 }
