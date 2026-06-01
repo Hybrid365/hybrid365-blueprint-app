@@ -2,7 +2,24 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { buildWeekBlueprint } from "@/app/lib/buildWeekBlueprint";
 import { applyHybrid75FreeWeek } from "@/app/lib/applyHybrid75FreeWeek";
-import { normalizeChallengeMode } from "@/app/lib/freeWeekChallengeMode";
+import {
+  normalizeChallengeMode,
+  type ChallengeMode,
+} from "@/app/lib/freeWeekChallengeMode";
+
+/** Public plan links sent to Kit for Hybrid 75 (production domain). */
+const HYBRID75_KIT_PLAN_BASE = "https://plan.hybrid-365.com";
+
+function kitPlanUrl(planId: string, challengeMode: ChallengeMode): string {
+  if (challengeMode === "hybrid75") {
+    return `${HYBRID75_KIT_PLAN_BASE}/plan/${planId}`;
+  }
+  const base = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+  if (base) {
+    return `${base.replace(/\/$/, "")}/plan/${planId}`;
+  }
+  return `http://localhost:3000/plan/${planId}`;
+}
 
 function generatePlanId(): string {
   return "h365_" + Math.random().toString(36).substring(2, 10);
@@ -166,9 +183,22 @@ async function kitCreateSubscriber(
   email: string,
   blueprint: string,
   firstName: string,
-  planUrl: string
+  planUrl: string,
+  challengeMode: ChallengeMode
 ): Promise<number> {
   const apiKey = process.env.KIT_API_KEY!;
+
+  const fields: Record<string, string> = {
+    blueprint,
+    first_name: firstName || "",
+    plan_url: planUrl || "",
+    // Kit automations historically used athlete_url — point at the public free plan view.
+    athlete_url: planUrl || "",
+  };
+
+  if (challengeMode === "hybrid75") {
+    fields.challenge_mode = "hybrid75";
+  }
 
   const res = await fetch("https://api.kit.com/v4/subscribers", {
     method: "POST",
@@ -178,13 +208,7 @@ async function kitCreateSubscriber(
     },
     body: JSON.stringify({
       email_address: email,
-      fields: {
-        blueprint,
-        first_name: firstName || "",
-        plan_url: planUrl || "",
-        // Kit automations historically used athlete_url — point at the public free plan view.
-        athlete_url: planUrl || "",
-      },
+      fields,
       state: "active",
     }),
   });
@@ -204,9 +228,8 @@ async function kitCreateSubscriber(
   return Number(subscriberId);
 }
 
-async function tagKitSubscriber(subscriberId: number) {
+async function tagKitSubscriber(subscriberId: number, tagId: string) {
   const apiKey = process.env.KIT_API_KEY!;
-  const tagId = process.env.KIT_TAG_ID!;
 
   const res = await fetch(`https://api.kit.com/v4/tags/${tagId}/subscribers/${subscriberId}`, {
     method: "POST",
@@ -259,9 +282,7 @@ export async function POST(req: Request) {
       first_name: input.first_name?.trim() || "",
     };
 
-    const planUrl = process.env.NEXT_PUBLIC_BASE_URL
-      ? `${process.env.NEXT_PUBLIC_BASE_URL}/plan/${planId}`
-      : `http://localhost:3000/plan/${planId}`;
+    const planUrl = kitPlanUrl(planId, challengeMode);
 
     const emailText = asTextPlanForEmail(planWithId, planUrl);
 
@@ -271,18 +292,29 @@ export async function POST(req: Request) {
       input.email,
       emailText,
       input.first_name || "",
-      planUrl
+      planUrl,
+      challengeMode
     );
 
-    // The tag is used to trigger the Kit Free Week automation.
-    const kitTagId = process.env.KIT_TAG_ID?.trim();
+    // Tags trigger Kit automations — standard free week vs Hybrid 75 challenge (separate flows).
+    const kitTagId =
+      challengeMode === "hybrid75"
+        ? process.env.KIT_HYBRID75_TAG_ID?.trim()
+        : process.env.KIT_TAG_ID?.trim();
+    const kitTagEnvName =
+      challengeMode === "hybrid75" ? "KIT_HYBRID75_TAG_ID" : "KIT_TAG_ID";
+    const kitTagHint =
+      challengeMode === "hybrid75"
+        ? ' (Kit tag name: "Hybrid 75 Challenge")'
+        : ' (standard free week — e.g. "Hybrid365 Blueprint requested")';
+
     if (!kitTagId) {
       console.warn(
-        "[generate] KIT_TAG_ID is missing — subscriber was created but Kit tag-based automation may not run."
+        `[generate] ${kitTagEnvName} is missing — subscriber was created but Kit tag-based automation may not run.${kitTagHint}`
       );
     } else {
       try {
-        await tagKitSubscriber(subscriberId);
+        await tagKitSubscriber(subscriberId, kitTagId);
       } catch (tagErr) {
         console.error("[generate] Kit tag failed (subscriber still created):", tagErr);
       }
