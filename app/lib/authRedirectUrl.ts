@@ -11,6 +11,9 @@ export const AUTH_ATHLETE_DEFAULT_NEXT = "/athlete/dashboard";
 
 const ATHLETE_LOGIN_PATH = "/athlete/login";
 
+/** Paid community login must never land on lead-magnet / Hybrid 75 entry paths. */
+const BLOCKED_COMMUNITY_NEXT_PATHS = ["/free-week"];
+
 /** Paths that must never be used as Hyrox athlete post-login destinations. */
 const BLOCKED_ATHLETE_NEXT_PATHS = [
   "/free-week",
@@ -18,6 +21,10 @@ const BLOCKED_ATHLETE_NEXT_PATHS = [
   "/login",
   "/community",
 ];
+
+function pathOnlyFromNext(n: string): string {
+  return n.split("?")[0] ?? n;
+}
 
 export type AuthPortal = "athlete" | "community";
 
@@ -50,7 +57,23 @@ export function sanitizeAuthNextPath(next: string | null | undefined): string {
   } catch {
     return AUTH_DEFAULT_NEXT;
   }
+  const pathOnly = pathOnlyFromNext(n);
+  if (
+    BLOCKED_COMMUNITY_NEXT_PATHS.some(
+      (p) => pathOnly === p || pathOnly.startsWith(`${p}/`)
+    )
+  ) {
+    return AUTH_DEFAULT_NEXT;
+  }
   return n;
+}
+
+/** Redact email for dev logs (no tokens). */
+export function emailHintForAuthLog(email: string): string {
+  const trimmed = email.trim().toLowerCase();
+  const at = trimmed.indexOf("@");
+  if (at < 1) return "invalid";
+  return `${trimmed[0]}***@${trimmed.slice(at + 1)}`;
 }
 
 export function buildLoginNextFromRequest(pathname: string, search = ""): string {

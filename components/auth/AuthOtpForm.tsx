@@ -2,7 +2,11 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { buildAthleteAuthCallbackUrl, buildEmailRedirectTo } from "@/app/lib/authRedirectUrl";
+import {
+  buildAthleteAuthCallbackUrl,
+  buildEmailRedirectTo,
+  emailHintForAuthLog,
+} from "@/app/lib/authRedirectUrl";
 import {
   ATHLETE_EMAIL_CODE_SUCCESS_COPY,
   CALLBACK_ERROR_HEADLINE,
@@ -355,6 +359,12 @@ function CommunityEmailCodeLogin({
     setBanner(null);
     let navigating = false;
     try {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[community login] verifyLoginCode", {
+          email: emailHintForAuthLog(trimmedEmail),
+          next,
+        });
+      }
       const result = await verifyOtpViaApi({
         email: trimmedEmail,
         token,
@@ -369,6 +379,12 @@ function CommunityEmailCodeLogin({
           detail: result.message,
         });
         return;
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[community login] verifyLoginCode success", {
+          redirectTo: result.redirectTo,
+        });
       }
 
       navigating = true;
@@ -396,12 +412,20 @@ function CommunityEmailCodeLogin({
     setBanner(null);
     try {
       const supabase = createClient();
+      const emailRedirectTo = buildEmailRedirectTo(next);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[community login] sendMagicLink", {
+          email: emailHintForAuthLog(trimmed),
+          next,
+          emailRedirectTo,
+        });
+      }
       const { error } = await withTimeout(
         supabase.auth.signInWithOtp({
           email: trimmed,
           options: {
             shouldCreateUser: true,
-            emailRedirectTo: buildEmailRedirectTo(next),
+            emailRedirectTo,
           },
         }),
         OTP_TIMEOUT_MS,
@@ -631,14 +655,34 @@ export function AuthOtpForm({
     }
 
     if (mode === "email_code") {
+      const emailRedirectTo = buildEmailRedirectTo(next);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[community login] signInWithOtp (email_code tab)", {
+          email: emailHintForAuthLog(trimmed),
+          next,
+          emailRedirectTo,
+        });
+      }
       return withTimeout(
         supabase.auth.signInWithOtp({
           email: trimmed,
-          options: { shouldCreateUser: true },
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo,
+          },
         }),
         OTP_TIMEOUT_MS,
         "Request timed out. Check your connection and try again."
       );
+    }
+
+    const emailRedirectTo = buildEmailRedirectTo(next);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[community login] signInWithOtp (magic_link tab)", {
+        email: emailHintForAuthLog(trimmed),
+        next,
+        emailRedirectTo,
+      });
     }
 
     return withTimeout(
@@ -646,7 +690,7 @@ export function AuthOtpForm({
         email: trimmed,
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: buildEmailRedirectTo(next),
+          emailRedirectTo,
         },
       }),
       OTP_TIMEOUT_MS,

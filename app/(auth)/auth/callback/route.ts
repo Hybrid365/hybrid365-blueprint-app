@@ -6,7 +6,10 @@ import {
   sanitizeAthleteAuthNextPath,
   sanitizeAuthNextPath,
 } from "@/app/lib/authRedirectUrl";
+import { isMembershipActive, MEMBERSHIP_ACCESS_SELECT } from "@/app/lib/membershipAccess";
 import { autoLinkHyroxAthleteByEmail } from "@/app/lib/hyroxAthleteAutoLink";
+import { claimPendingWhopMembershipForUser } from "@/app/lib/whopMembershipSync";
+import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
 import {
   assertAuthRouteSession,
   createAuthRouteHandlerSupabase,
@@ -105,6 +108,31 @@ export async function GET(request: NextRequest) {
     log("[auth callback] athlete auto-link", linkResult);
   }
 
+  async function logCommunityMembershipHint(userId: string, email: string | null) {
+    if (process.env.NODE_ENV !== "development") return;
+    if (!next.startsWith("/dashboard")) return;
+    try {
+      const admin = createServiceRoleClient();
+      if (email) {
+        await claimPendingWhopMembershipForUser(admin, userId, email);
+      }
+      const { data: membership } = await auth.supabase
+        .from("memberships")
+        .select(MEMBERSHIP_ACCESS_SELECT)
+        .eq("user_id", userId)
+        .maybeSingle();
+      const active = isMembershipActive(membership);
+      log("[auth callback] community membership hint (dev)", {
+        activeMembership: active,
+        expectedLanding: active ? "/dashboard" : "/dashboard/no-access (via layout gate)",
+      });
+    } catch (e) {
+      log("[auth callback] community membership hint failed (dev)", {
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   async function finishSuccessRedirect(stage: string, session: Session | null) {
     if (!session?.access_token || !session.refresh_token) {
       log("[auth callback] no session on success path", { stage });
@@ -119,8 +147,13 @@ export async function GET(request: NextRequest) {
       stage,
       userId: sessionUser?.userId ?? null,
       next,
+      finalRedirect: successUrl,
       cookieDebug,
     });
+
+    if (sessionUser?.userId) {
+      await logCommunityMembershipHint(sessionUser.userId, sessionUser.email ?? null);
+    }
 
     if (!sessionUser || !auth.hasValidPendingSessionCookies()) {
       log("[auth callback] invalid session cookies after auth", { stage, cookieDebug });
