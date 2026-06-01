@@ -1,5 +1,8 @@
 /**
  * QA: Whop webhook field extraction (run: npm run qa:whop-webhook-extract)
+ *
+ * Sample uses legacy plan_JdjBrs5xpfpoN; production webhooks do not filter by plan id.
+ * New checkout plan_BRqCqZPUywY6u is accepted the same way when active.
  */
 import {
   extractMembershipExpiresAt,

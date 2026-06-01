@@ -1,5 +1,6 @@
 import Image from "next/image"
 import type { Metadata } from "next"
+import { getWhopJoinUrl } from "@/app/lib/hybrid365PublicLinks"
 
 export const metadata: Metadata = {
   title: "Hybrid365 Community | Full 16-Week Membership",
@@ -48,6 +49,8 @@ function ShieldIcon() {
 }
 
 export default function CommunityPage() {
+  const whopJoinUrl = getWhopJoinUrl()
+
   return (
     <main className="min-h-screen bg-black text-white">
       {/* Hero Section with Full Background Image */}
@@ -923,7 +926,7 @@ export default function CommunityPage() {
               </div>
 
               <a
-                href="https://whop.com/checkout/plan_JdjBrs5xpfpoN"
+                href={whopJoinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-10 w-full sm:w-auto inline-flex items-center justify-center px-12 py-5 text-lg font-bold uppercase tracking-wide bg-[#F4D23C] text-black rounded-full hover:bg-[#e5c535] transition-colors"
@@ -952,7 +955,7 @@ export default function CommunityPage() {
               programme, member dashboard, weekly check-ins and team accountability — start today.
             </p>
             <a
-              href="https://whop.com/checkout/plan_JdjBrs5xpfpoN"
+              href={whopJoinUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-10 inline-flex items-center justify-center px-12 py-5 text-lg font-bold uppercase tracking-wide bg-[#F4D23C] text-black rounded-full hover:bg-[#e5c535] transition-colors"
