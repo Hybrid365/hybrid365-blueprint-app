@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import {
   challengeModeFromSearchParam,
   FREE_WEEK_TELEGRAM_URL,
+  HYBRID75_TELEGRAM_GROUP_LABEL,
+  HYBRID75_TELEGRAM_SUPPORTING_COPY,
   type ChallengeMode,
 } from "@/app/lib/freeWeekChallengeMode";
 import SaveDashboardBanner from "@/components/free-week/SaveDashboardBanner";
@@ -421,17 +423,14 @@ function FreeWeekForm() {
                 {isHybrid75Challenge ? (
                   <div className="rounded-lg border border-[#F4D23C]/35 bg-zinc-900/60 p-4">
                     <p className="font-semibold text-white">Next step: join the free Telegram group</p>
-                    <p className="mt-2 text-sm text-zinc-300">
-                      The weekly Hybrid Hard Challenge workout, proof posts, leaderboard updates and prize information
-                      will be released inside the Telegram group.
-                    </p>
+                    <p className="mt-2 text-sm text-zinc-300">{HYBRID75_TELEGRAM_SUPPORTING_COPY}</p>
                     <a
                       href={FREE_WEEK_TELEGRAM_URL}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-4 inline-block rounded-lg bg-[#F4D23C] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
                     >
-                      Join the Telegram group
+                      {HYBRID75_TELEGRAM_GROUP_LABEL}
                     </a>
                   </div>
                 ) : null}

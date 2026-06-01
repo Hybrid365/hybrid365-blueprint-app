@@ -11,7 +11,12 @@ import {
   Wind,
 } from "lucide-react";
 import type { Hybrid75PlanMeta } from "@/app/lib/freeWeekChallengeMode";
-import { FREE_WEEK_TELEGRAM_URL, HYBRID75_RULES } from "@/app/lib/freeWeekChallengeMode";
+import {
+  FREE_WEEK_TELEGRAM_URL,
+  HYBRID75_RULES,
+  HYBRID75_TELEGRAM_GROUP_LABEL,
+  HYBRID75_TELEGRAM_SUPPORTING_COPY,
+} from "@/app/lib/freeWeekChallengeMode";
 
 type Hybrid75ChallengeHubProps = {
   hybrid75?: Hybrid75PlanMeta | null;
@@ -73,7 +78,7 @@ export default function Hybrid75ChallengeHub({
   completedCounts,
   pendingPoints = 0,
 }: Hybrid75ChallengeHubProps) {
-  const telegramUrl = hybrid75?.telegram_url ?? FREE_WEEK_TELEGRAM_URL;
+  const telegramUrl = FREE_WEEK_TELEGRAM_URL;
   const scheduled = hybrid75?.scheduled_counts ?? scheduledCounts;
 
   const liftTarget = hybrid75?.targets?.lifts ?? 3;
@@ -157,10 +162,7 @@ export default function Hybrid75ChallengeHub({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <HubCard accent title="Join the free Telegram group">
-          <p className="mb-4 text-sm leading-relaxed text-white/75">
-            The weekly Hybrid Hard Challenge, score submission and leaderboard updates will be released inside the
-            Telegram group.
-          </p>
+          <p className="mb-4 text-sm leading-relaxed text-white/75">{HYBRID75_TELEGRAM_SUPPORTING_COPY}</p>
           <a
             href={telegramUrl}
             target="_blank"
@@ -168,7 +170,7 @@ export default function Hybrid75ChallengeHub({
             className="inline-flex items-center gap-2 rounded-xl bg-[#F4D23C] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
           >
             <MessageCircle className="h-4 w-4" />
-            Join Telegram
+            {HYBRID75_TELEGRAM_GROUP_LABEL}
           </a>
         </HubCard>
 

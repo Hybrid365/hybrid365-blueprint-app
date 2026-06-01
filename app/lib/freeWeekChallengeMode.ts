@@ -1,10 +1,21 @@
 export type ChallengeMode = "standard" | "hybrid75";
 
+/** Official Hybrid 75 Summer Challenge free group — override via env. */
+export const HYBRID75_TELEGRAM_DEFAULT_URL = "https://t.me/+0WAGU5S9BrQxYzQ0";
+
 /** Override via NEXT_PUBLIC_HYBRID75_TELEGRAM_URL or NEXT_PUBLIC_FREE_WEEK_TELEGRAM_URL */
 export const FREE_WEEK_TELEGRAM_URL =
   process.env.NEXT_PUBLIC_HYBRID75_TELEGRAM_URL?.trim() ||
   process.env.NEXT_PUBLIC_FREE_WEEK_TELEGRAM_URL?.trim() ||
-  "https://plan.hybrid-365.com/community";
+  HYBRID75_TELEGRAM_DEFAULT_URL;
+
+/** Alias for Hybrid 75 CTAs (landing, plan dashboard, session logging). */
+export const HYBRID75_TELEGRAM_URL = FREE_WEEK_TELEGRAM_URL;
+
+export const HYBRID75_TELEGRAM_GROUP_LABEL = "Join the Telegram Group";
+
+export const HYBRID75_TELEGRAM_SUPPORTING_COPY =
+  "The weekly Hybrid Hard Challenge, proof posts, leaderboard updates and prize information will be released inside the Telegram group.";
 
 export const FREE_WEEK_PLAN_PATH = (planId: string) => `/plan/${planId}`;
 

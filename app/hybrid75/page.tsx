@@ -20,7 +20,10 @@ import {
 } from "lucide-react";
 import Hybrid75DashboardPreview from "@/components/hybrid75/Hybrid75DashboardPreview";
 import { Hybrid75HeroVsl } from "@/components/hybrid75/Hybrid75HeroVsl";
-import { FREE_WEEK_TELEGRAM_URL } from "@/app/lib/freeWeekChallengeMode";
+import {
+  FREE_WEEK_TELEGRAM_URL,
+  HYBRID75_TELEGRAM_GROUP_LABEL,
+} from "@/app/lib/freeWeekChallengeMode";
 import { COMMUNITY_UPGRADE_URL } from "@/app/lib/freePlanDashboard";
 
 export const metadata: Metadata = {
@@ -135,7 +138,7 @@ function TelegramCta({ className = "" }: { className?: string }) {
       rel="noreferrer"
       className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-[#F4D23C]/40 hover:bg-white/[0.08] sm:px-8 sm:text-base ${className}`}
     >
-      Join the Telegram Group
+      {HYBRID75_TELEGRAM_GROUP_LABEL}
       <ExternalLink className="h-4 w-4 opacity-70" />
     </a>
   );
@@ -150,6 +153,34 @@ function UpgradeCta({ className = "" }: { className?: string }) {
       Unlock the Full 16-Week Programme
       <ArrowRight className="h-4 w-4" />
     </a>
+  );
+}
+
+/** High-intent secondary CTA — visible near hero/VSL without overpowering the free week. */
+function HeroFullProgrammeBanner({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`rounded-2xl border border-[#F4D23C]/30 bg-gradient-to-br from-zinc-950/95 via-zinc-900/70 to-black p-4 shadow-[0_0_32px_rgba(244,210,60,0.06)] sm:p-5 ${className}`}
+    >
+      <span className="inline-flex rounded-full border border-[#F4D23C]/35 bg-[#F4D23C]/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#F4D23C]">
+        Best results
+      </span>
+      <h3 className="mt-3 text-base font-bold leading-snug text-white sm:text-lg">
+        Want your full 16-week personalised programme?
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed text-white/65">
+        Join the full Hybrid365 team for complete structure, coaching support, accountability and progression.
+      </p>
+      <a
+        href={COMMUNITY_UPGRADE_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#F4D23C]/45 bg-[#F4D23C]/10 px-4 py-3 text-sm font-semibold text-[#F4D23C] transition hover:border-[#F4D23C]/65 hover:bg-[#F4D23C]/15 sm:w-auto"
+      >
+        Join the Full Hybrid365 Team
+        <ExternalLink className="h-4 w-4 opacity-90" />
+      </a>
+    </div>
   );
 }
 
@@ -244,8 +275,11 @@ export default function Hybrid75LandingPage() {
               </div>
             </div>
 
-            {/* VSL — below copy on mobile, right column on desktop */}
-            <Hybrid75HeroVsl className="w-full lg:max-w-none" />
+            {/* VSL + full programme CTA — below copy on mobile, right column on desktop */}
+            <div className="flex w-full flex-col gap-4">
+              <Hybrid75HeroVsl className="w-full lg:max-w-none" />
+              <HeroFullProgrammeBanner />
+            </div>
           </div>
         </div>
       </section>

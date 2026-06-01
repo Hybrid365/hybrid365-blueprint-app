@@ -1,6 +1,7 @@
 import type { DayPlan, PlanJson } from "./sessionLibrary";
 import {
   FREE_WEEK_TELEGRAM_URL,
+  HYBRID75_TELEGRAM_GROUP_LABEL,
   HYBRID75_RULES,
   type Hybrid75PlanMeta,
 } from "./freeWeekChallengeMode";
@@ -85,7 +86,7 @@ function buildWeekendPlaceholder(day: DayPlan["day"]): DayPlan {
       reason: "Weekly Hybrid Hard Challenge requirement for Hybrid 75.",
     },
     hybrid75_cta: {
-      label: "Join Telegram to get the workout",
+      label: HYBRID75_TELEGRAM_GROUP_LABEL,
       url: FREE_WEEK_TELEGRAM_URL,
     },
   };
@@ -233,7 +234,7 @@ export function applyHybrid75FreeWeek(plan: PlanJson, input: Hybrid75ApplyInput)
     compression_note,
     telegram_url: FREE_WEEK_TELEGRAM_URL,
     challenge_cta: {
-      label: "Join Telegram to get the workout",
+      label: HYBRID75_TELEGRAM_GROUP_LABEL,
       url: FREE_WEEK_TELEGRAM_URL,
     },
     session_classifications,

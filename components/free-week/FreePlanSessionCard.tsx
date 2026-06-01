@@ -2,6 +2,10 @@
 
 import { ClipboardList } from "lucide-react";
 import {
+  FREE_WEEK_TELEGRAM_URL,
+  HYBRID75_TELEGRAM_GROUP_LABEL,
+} from "@/app/lib/freeWeekChallengeMode";
+import {
   getChallengeFocusLabel,
   type FreePlanSession,
 } from "@/app/lib/freePlanDashboard";
@@ -105,12 +109,12 @@ export function FreePlanSessionCard({
 
       {session.challengeCta ? (
         <a
-          href={session.challengeCta.url}
+          href={FREE_WEEK_TELEGRAM_URL}
           target="_blank"
           rel="noreferrer"
           className="mt-5 inline-block rounded-2xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-black transition hover:opacity-90"
         >
-          {session.challengeCta.label}
+          {HYBRID75_TELEGRAM_GROUP_LABEL}
         </a>
       ) : null}
 
