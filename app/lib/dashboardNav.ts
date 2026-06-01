@@ -12,6 +12,7 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { href: "/dashboard/programme", label: "Programme" },
   { href: "/dashboard/progress", label: "Progress" },
   { href: "/dashboard/habits", label: "Habits" },
+  { href: "/dashboard/check-in", label: "Check-In" },
   { href: "/dashboard/challenge", label: "Challenge" },
   { href: "/dashboard/assessment", label: "Assessment" },
   { href: "/dashboard/testing", label: "Testing" },

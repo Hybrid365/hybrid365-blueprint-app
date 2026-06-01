@@ -1,21 +1,14 @@
 import { getDashboardSession } from "@/app/lib/dashboardAuth";
-import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
+import {
+  fetchCommunityProgrammeInstance,
+  resolveCommunityProgrammeGenerated,
+} from "@/app/lib/communityProgrammeStatus";
 import AssessmentClient, { type AssessmentRow } from "./AssessmentClient";
-
-type ProgrammeInstanceRow = {
-  id: string;
-};
 
 export default async function AssessmentPage() {
   const { supabase, user } = await getDashboardSession("/dashboard/assessment");
 
-  const { data: instance } = await supabase
-    .from("programme_instances")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const typedInstance = instance as ProgrammeInstanceRow | null;
+  const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
 
   let hasGeneratedProgramme = false;
   if (typedInstance?.id) {
@@ -24,8 +17,9 @@ export default async function AssessmentPage() {
       .select("plan_json")
       .eq("programme_instance_id", typedInstance.id)
       .limit(12);
-    hasGeneratedProgramme = (weekRows ?? []).some((w) =>
-      hasMeaningfulPlanJson((w as { plan_json?: unknown }).plan_json)
+    hasGeneratedProgramme = resolveCommunityProgrammeGenerated(
+      typedInstance.id,
+      (weekRows ?? []) as { plan_json?: unknown }[]
     );
   }
 

@@ -1,12 +1,7 @@
 import { getDashboardSession } from "@/app/lib/dashboardAuth";
 import {
-  applyMembershipEntitlementToWeeks,
-  MEMBERSHIP_ACCESS_SELECT,
-  type MembershipForAccess,
-} from "@/app/lib/membershipAccess";
-import {
-  fetchCommunityProgrammeInstance,
-  resolveCommunityProgrammeGenerated,
+  loadCommunityProgrammeContext,
+  logCommunityProgrammeLoadDebug,
 } from "@/app/lib/communityProgrammeStatus";
 import { countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
 import {
@@ -16,11 +11,7 @@ import {
 import { localDateKey, shiftLocalDateKey, type DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
 import { hybridAthleteDisplayName } from "@/app/lib/displayName";
 import type { ChallengeSubmissionRow } from "@/app/lib/hybridChallengeMetrics";
-import {
-  buildTwelveProgrammeWeeks,
-  deriveEffectiveCurrentWeek,
-  type BenchmarkTestLike,
-} from "@/app/lib/progressMetrics";
+import { deriveEffectiveCurrentWeek, type BenchmarkTestLike } from "@/app/lib/progressMetrics";
 import MemberDashboardClient, {
   type WeekPayload,
 } from "./MemberDashboardClient";
@@ -106,9 +97,10 @@ export default async function DashboardPage() {
     return ty.includes("ski") || ty.includes("row");
   });
 
-  const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
+  const programmeCtx = await loadCommunityProgrammeContext(supabase, user.id);
+  const typedInstance = programmeCtx.instance;
+  const weeks: ProgrammeWeekRow[] = programmeCtx.weeksRaw;
 
-  let weeks: ProgrammeWeekRow[] = [];
   let initialSessionLogs: SessionLogRow[] = [];
   let initialWeeklyCheckIns: WeeklyCheckInRow[] = [];
   let habitLogs: DailyHabitLogRow[] = [];
@@ -119,14 +111,6 @@ export default async function DashboardPage() {
   const habitFromYmd = shiftLocalDateKey(todayYmd, -6);
 
   if (typedInstance?.id) {
-    const { data: weekRows } = await supabase
-      .from("programme_weeks")
-      .select("week_number, title, is_unlocked, plan_json")
-      .eq("programme_instance_id", typedInstance.id)
-      .order("week_number", { ascending: true });
-
-    weeks = (weekRows ?? []) as ProgrammeWeekRow[];
-
     const { data: logs } = await supabase
       .from("session_logs")
       .select(
@@ -178,14 +162,10 @@ export default async function DashboardPage() {
     challengeSubmissions = (subRows ?? []) as ChallengeSubmissionRow[];
   }
 
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select(MEMBERSHIP_ACCESS_SELECT)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const membershipRow = membership as MembershipForAccess | null;
-  const entitledWeeks = applyMembershipEntitlementToWeeks(weeks, membershipRow);
+  const membershipRow = programmeCtx.membership;
+  const entitledWeeks = programmeCtx.entitledWeeks;
+  const weeks12 = programmeCtx.weeks12;
+  const programmeGenerated = programmeCtx.programmeGenerated;
 
   const programmeTitle =
     typedInstance?.title?.trim() || "Your Hybrid365 programme";
@@ -202,19 +182,16 @@ export default async function DashboardPage() {
       ? typedInstance.current_week
       : null;
 
-  const weeks12 = buildTwelveProgrammeWeeks(
-    entitledWeeks.map((w) => ({
-      week_number: w.week_number,
-      is_unlocked: w.is_unlocked ?? false,
-      plan_json: w.plan_json,
-    }))
+  await logCommunityProgrammeLoadDebug(
+    supabase,
+    user.id,
+    user.email,
+    "/dashboard",
+    typedInstance,
+    weeks,
+    programmeGenerated
   );
 
-  const programmeGenerated = resolveCommunityProgrammeGenerated(
-    typedInstance?.id ?? null,
-    weeks,
-    weeks12
-  );
   const effectiveWeek = deriveEffectiveCurrentWeek(instanceCurrentWeek, weeks12);
   const challengeTracking =
     programmeGenerated && typedInstance?.id
@@ -244,7 +221,7 @@ export default async function DashboardPage() {
       viewerDisplayName={viewerDisplayName}
       programmeTitle={programmeTitle}
       membershipExpiresAt={
-        membership?.expires_at ? String(membership.expires_at) : null
+        membershipRow?.expires_at ? String(membershipRow.expires_at) : null
       }
       instanceCurrentWeek={instanceCurrentWeek}
       programmeInstanceId={typedInstance?.id ?? null}

@@ -16,6 +16,10 @@ export default function Hybrid75LeaderboardClient() {
           Points come from logged sessions with proof, weekly challenge completion and admin
           adjustments — not from habit ticks.
         </p>
+        <p className="mt-2 text-sm text-[#F4D23C]/90">
+          Week 1 Engine Test: fastest times receive +10 bonus points for top 3 after manual proof
+          check.
+        </p>
       </div>
       <Hybrid75Leaderboard
         planId={planId}

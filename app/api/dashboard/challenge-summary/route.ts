@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchCommunityProgrammeInstance } from "@/app/lib/communityProgrammeStatus";
 import { createClient } from "@/app/lib/supabase/server";
 import { localDateKey } from "@/app/lib/dailyHabitLogs";
 import type { DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
@@ -10,8 +11,6 @@ import {
 } from "@/app/lib/hybridChallengeMetrics";
 import type { SessionLogLike, WeeklyCheckInLike } from "@/app/lib/progressMetrics";
 
-type InstanceRow = { id: string; current_week: number | null; created_at?: string | null };
-
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -22,13 +21,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: instance } = await supabase
-    .from("programme_instances")
-    .select("id, current_week, created_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const typed = instance as InstanceRow | null;
+  const typed = await fetchCommunityProgrammeInstance(supabase, user.id);
   const todayYmd = localDateKey(new Date());
   const from = new Date();
   from.setDate(from.getDate() - 41);

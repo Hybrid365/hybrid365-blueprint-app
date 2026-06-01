@@ -62,6 +62,7 @@ export default function Hybrid75WeekClient() {
             isHybrid75
             allSessions={sessions}
             sessionLog={challengeLogs.logsBySessionId[day.scrollId]}
+            challengeTabHref={`/plan/${planId}/challenge`}
             onLogSession={
               isHybrid75LoggableSession(day) ? () => setLogModalSession(day) : undefined
             }

@@ -66,6 +66,7 @@ import {
 } from "@/components/dashboard/communityOnboardingCopy";
 import { ProgrammeReadyBanner } from "@/components/dashboard/ProgrammeReadyBanner";
 import { ThisWeekTrackingCard } from "@/components/dashboard/ThisWeekTrackingCard";
+import { WeeklyCheckInHomeCard } from "@/components/dashboard/WeeklyCheckInHomeCard";
 import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
 import {
   buildDashboardWeekTrackingSummary,
@@ -934,6 +935,16 @@ export default function MemberDashboardClient({
         <AddToHomeScreenBanner />
 
         {programmeGenerated ? (
+          <div className="mb-8">
+            <WeeklyCheckInHomeCard
+              effectiveWeek={effectiveCurrentWeek}
+              checkIn={getCheckInForWeek(weeklyCheckIns, effectiveCurrentWeek)}
+              programmeGenerated={programmeGenerated}
+            />
+          </div>
+        ) : null}
+
+        {programmeGenerated ? (
           <GoToNextSessionCta
             nextSession={nextSession}
             programmeGenerated={programmeGenerated}
@@ -949,7 +960,7 @@ export default function MemberDashboardClient({
         {programmeGenerated && weekTrackingSummary ? (
           <ThisWeekTrackingCard
             summary={weekTrackingSummary}
-            onCompleteCheckIn={() => openCheckInDrawer(effectiveCurrentWeek)}
+            onCompleteCheckIn={() => router.push("/dashboard/check-in")}
           />
         ) : null}
 

@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckSquare,
   ClipboardCheck,
+  Flame,
   Home,
   Trophy,
   type LucideIcon,
@@ -39,6 +40,12 @@ export default function Hybrid75AppNav({ planId }: { planId: string }) {
       label: "Week",
       icon: CalendarDays,
       match: (path, base) => path.startsWith(`${base}/week`),
+    },
+    {
+      href: `${basePath}/challenge`,
+      label: "Challenge",
+      icon: Flame,
+      match: (path, base) => path.startsWith(`${base}/challenge`),
     },
     {
       href: `${basePath}/habits`,

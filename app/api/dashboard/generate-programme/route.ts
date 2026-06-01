@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import {
+  fetchCommunityProgrammeInstance,
+  countCommunityProgrammeInstances,
+} from "@/app/lib/communityProgrammeStatus";
+import {
   getUnlockedWeekCount,
   getUnlockedWeeksForMembership,
   isMembershipActive,
@@ -102,13 +106,16 @@ export async function POST() {
     has_injury: blueprintInput.has_injury,
   });
 
-  const { data: existingInstance } = await supabase
-    .from("programme_instances")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const existingInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
+  const existingId = existingInstance?.id;
+  const instanceCount = await countCommunityProgrammeInstances(supabase, user.id);
 
-  const existingId = (existingInstance as { id?: string } | null)?.id;
+  console.info("[generate-programme] instance lookup", {
+    userId: user.id.slice(0, 8),
+    emailDomain: user.email?.includes("@") ? user.email.split("@")[1] : null,
+    instanceCount,
+    existingId: existingId?.slice(0, 8) ?? null,
+  });
 
   let hadWeeksAlready = false;
   if (existingId) {
@@ -224,6 +231,18 @@ export async function POST() {
   }
 
   const message = hadWeeksAlready ? "Existing programme updated." : "Programme generated.";
+
+  const { count: savedWeekCount } = await supabase
+    .from("programme_weeks")
+    .select("week_number", { count: "exact", head: true })
+    .eq("programme_instance_id", programmeInstanceId);
+
+  console.info("[generate-programme] saved", {
+    userId: user.id.slice(0, 8),
+    programmeInstanceId: programmeInstanceId.slice(0, 8),
+    weekRows: savedWeekCount ?? 0,
+    hadWeeksAlready,
+  });
 
   return jsonOk({
     ok: true,

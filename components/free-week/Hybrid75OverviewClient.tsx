@@ -24,6 +24,10 @@ import {
   type Hybrid75ChallengeSessionLog,
 } from "@/app/lib/hybrid75ChallengeLogging";
 import {
+  HYBRID75_CHALLENGE_HOME_TEASER,
+  getActiveHybrid75WeeklyChallenge,
+} from "@/app/lib/hybrid75WeeklyChallenges";
+import {
   computeWeekMetrics,
   getChallengeFocusLabel,
   getNextSession,
@@ -113,6 +117,7 @@ export default function Hybrid75OverviewClient() {
   const eatCleanDays = habitTrend.find((r) => r.key === "eat_clean")?.completedDays ?? 0;
   const proofDays = habitTrend.find((r) => r.key === "proof")?.completedDays ?? 0;
   const mobilityDays = habitTrend.find((r) => r.key === "mobility")?.completedDays ?? 0;
+  const activeWeeklyChallenge = getActiveHybrid75WeeklyChallenge();
 
   return (
     <div className="space-y-6">
@@ -177,6 +182,25 @@ export default function Hybrid75OverviewClient() {
               </Link>
             </div>
           </div>
+        </SectionCard>
+      ) : null}
+
+      {activeWeeklyChallenge ? (
+        <SectionCard className="border-[#F4D23C]/30 bg-gradient-to-br from-zinc-950 via-zinc-900/90 to-black">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F4D23C]">
+            Current Weekly Challenge
+          </p>
+          <h3 className="mt-2 text-xl font-bold text-white md:text-2xl">
+            Week {activeWeeklyChallenge.weekNumber} — {activeWeeklyChallenge.shortTitle}
+          </h3>
+          <p className="mt-2 text-sm text-zinc-400">{HYBRID75_CHALLENGE_HOME_TEASER}</p>
+          <Link
+            href={`/plan/${planId}/challenge`}
+            className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4D23C]/15 px-5 py-3 text-sm font-semibold text-[#F4D23C] ring-1 ring-[#F4D23C]/35 transition hover:bg-[#F4D23C]/20"
+          >
+            View Weekly Challenge
+            <ChevronRight className="h-4 w-4" />
+          </Link>
         </SectionCard>
       ) : null}
 

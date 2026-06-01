@@ -109,7 +109,7 @@ export async function lookupMemberForProgrammeRefresh(
   if (typedInstance?.id) {
     const { data: weekRows } = await admin
       .from("programme_weeks")
-      .select("week_number, plan_json, created_at, updated_at")
+      .select("week_number, plan_json, created_at")
       .eq("programme_instance_id", typedInstance.id)
       .order("week_number", { ascending: true });
     weeksRaw = (weekRows ?? []) as typeof weeksRaw;
@@ -137,12 +137,12 @@ export async function lookupMemberForProgrammeRefresh(
   for (const w of weeksRaw) {
     if (!hasMeaningfulPlanJson(w.plan_json)) continue;
     weeksWithPlan += 1;
-    weeksMaxUpdatedAt = maxIsoTimestamp([weeksMaxUpdatedAt, w.updated_at, w.created_at]);
+    weeksMaxUpdatedAt = maxIsoTimestamp([weeksMaxUpdatedAt, w.created_at]);
   }
 
   const programmeGeneratedAt = resolveProgrammeGeneratedAt({
     weeksMaxUpdatedAt,
-    instanceUpdatedAt: typedInstance?.updated_at ?? null,
+    instanceUpdatedAt: null,
     instanceCreatedAt: typedInstance?.created_at ?? null,
   });
 

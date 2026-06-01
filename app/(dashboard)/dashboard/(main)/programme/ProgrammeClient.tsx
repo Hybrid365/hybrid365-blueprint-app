@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { communityProgrammeHasUnlockedSchedule } from "@/app/lib/communityProgrammeStatus";
+import type { CommunityProgrammeGateDebug } from "@/app/lib/communityProgrammeStatus";
+import { CommunityProgrammeDevPanel } from "@/components/dashboard/CommunityProgrammeDevPanel";
 import Link from "next/link";
 import {
   Calendar,
@@ -41,6 +42,10 @@ import { SessionShareCardModal } from "@/components/share/SessionShareCardModal"
 import { DashboardSupportCard } from "@/components/dashboard/DashboardSupportCard";
 import { ProgrammeRefreshStaleNote } from "@/components/dashboard/ProgrammeRefreshStaleNote";
 import { MissedSessionGuidanceNote } from "@/components/dashboard/MissedSessionGuidanceNote";
+import {
+  LockedWeekMessage,
+  ProgrammeBlockUnlockNote,
+} from "@/components/dashboard/ProgrammeBlockUnlockNote";
 import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
 import {
   COMMUNITY_BUILD_PROGRAMME,
@@ -72,6 +77,9 @@ type Props = {
   programmeInstanceId: string | null;
   programmeTitle: string;
   programmeGenerated: boolean;
+  /** Server-resolved view gate (matches dashboard home). */
+  canViewProgramme: boolean;
+  gateDebug?: CommunityProgrammeGateDebug;
   assessmentCompleted: boolean;
   effectiveWeek: number;
   defaultSelectedWeek: number;
@@ -117,6 +125,8 @@ export default function ProgrammeClient({
   programmeInstanceId,
   programmeTitle,
   programmeGenerated,
+  canViewProgramme,
+  gateDebug,
   assessmentCompleted,
   effectiveWeek,
   defaultSelectedWeek,
@@ -136,23 +146,6 @@ export default function ProgrammeClient({
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(defaultSelectedWeek);
   const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
-
-  const displayWeeks = useMemo(
-    () =>
-      weeksFromDb.map((w) => ({
-        week_number: w.week_number,
-        is_unlocked: w.is_unlocked,
-        plan_json: w.plan_json,
-      })),
-    [weeksFromDb]
-  );
-
-  const canViewProgramme = useMemo(
-    () =>
-      programmeGenerated ||
-      communityProgrammeHasUnlockedSchedule(programmeInstanceId, displayWeeks),
-    [programmeInstanceId, programmeGenerated, displayWeeks]
-  );
 
   const {
     sessionLogs,
@@ -184,15 +177,76 @@ export default function ProgrammeClient({
   const weekOverview = weekRow?.plan_json ? extractWeekOverviewFromPlan(weekRow.plan_json) : null;
   const weekRationale = weekRow?.plan_json ? extractWeekRationale(weekRow.plan_json) : null;
 
+  const scheduleOptions = useMemo(
+    () => ({ maxHeartRate, hasEngineBenchmark }),
+    [maxHeartRate, hasEngineBenchmark]
+  );
+
   const sessions = useMemo(() => {
     if (!unlocked || !weekRow?.plan_json) return [];
-    return normalizeProgrammeScheduleForWeek(selectedWeek, weekRow.plan_json, {
-      maxHeartRate,
-      hasEngineBenchmark,
-    });
-  }, [unlocked, weekRow?.plan_json, selectedWeek, maxHeartRate, hasEngineBenchmark]);
+    return normalizeProgrammeScheduleForWeek(selectedWeek, weekRow.plan_json, scheduleOptions);
+  }, [unlocked, weekRow?.plan_json, selectedWeek, scheduleOptions]);
+
+  const currentWeekRow = weeksFromDb.find((w) => w.week_number === effectiveWeek) ?? null;
+  const currentWeekUnlocked = Boolean(currentWeekRow?.is_unlocked);
+  const currentWeekSessions = useMemo(() => {
+    if (!currentWeekUnlocked || !currentWeekRow?.plan_json) return [];
+    return normalizeProgrammeScheduleForWeek(effectiveWeek, currentWeekRow.plan_json, scheduleOptions);
+  }, [currentWeekUnlocked, currentWeekRow?.plan_json, effectiveWeek, scheduleOptions]);
 
   const currentBlock = PROGRAMME_BLOCKS.find((b) => b.id === blockIdForWeek(selectedWeek))!;
+  const effectiveBlock = PROGRAMME_BLOCKS.find((b) => b.id === blockIdForWeek(effectiveWeek))!;
+
+  function renderSessionButtons(sessionList: SessionWithKey[]) {
+    if (sessionList.length === 0) {
+      return <p className="text-sm text-zinc-500">No schedule for this week.</p>;
+    }
+    return (
+      <div className="space-y-3">
+        {sessionList.map((session) => {
+          const log = sessionLogs[session.sessionKey];
+          const done = Boolean(log?.completed);
+          return (
+            <button
+              key={session.sessionKey}
+              type="button"
+              onClick={() => openSessionDrawer(session)}
+              className="flex w-full flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 text-left transition hover:border-yellow-500/30 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold uppercase text-zinc-500">{session.day}</span>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${categoryStyle(session.category)}`}
+                  >
+                    {session.category}
+                  </span>
+                  {done ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Done
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1 font-semibold text-white">{session.title}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{session.intent}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3 text-sm text-zinc-400">
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-4 w-4 text-yellow-400/70" />
+                  {session.duration}
+                  {session.timeCap ? ` · ${session.timeCap}` : ""}
+                </span>
+                <span className="rounded-lg bg-yellow-400/15 px-2 py-1 text-xs font-bold text-yellow-300">
+                  View / log
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   const intelChips = programmeIntelligence
     ? (() => {
@@ -238,6 +292,8 @@ export default function ProgrammeClient({
           <div className="mt-4">
             <DashboardSubnav variant="zinc" />
           </div>
+
+          {gateDebug ? <CommunityProgrammeDevPanel debug={gateDebug} /> : null}
 
           {programmeGenerated && assessmentChangedSinceProgramme ? (
             <div className="mx-auto mt-6 max-w-6xl px-4 md:px-8">
@@ -289,126 +345,99 @@ export default function ProgrammeClient({
             <DashboardSupportCard className="mt-6" />
           </div>
         ) : (
-          <div className="mx-auto mt-8 max-w-6xl space-y-10 px-4 pb-20 md:px-8">
-            {effectiveWeek === 1 ? <WeekOneGuidanceCard /> : null}
-            {/* A — Hero */}
-            <section className="rounded-2xl border border-zinc-800/90 bg-zinc-900/70 p-6 sm:p-8">
-              <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="mx-auto mt-6 max-w-6xl space-y-8 px-4 pb-20 md:px-8">
+            {/* Compact header */}
+            <section className="rounded-xl border border-zinc-800/90 bg-zinc-900/60 px-4 py-4 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-zinc-400">{programmeTitle}</p>
-                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Current week</p>
-                  <p className="text-3xl font-bold text-white">Week {effectiveWeek}</p>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    {unlockedCount} week{unlockedCount === 1 ? "" : "s"} unlocked this period
+                  <p className="text-xs text-zinc-500">{programmeTitle}</p>
+                  <p className="text-lg font-bold text-white">
+                    Week {effectiveWeek} · {effectiveBlock.title}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
-                    <p className="text-[10px] font-semibold uppercase text-zinc-500">Block</p>
-                    <p className="mt-1 text-sm font-bold text-white">
-                      {currentBlock.id} · {currentBlock.title}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
-                    <p className="text-[10px] font-semibold uppercase text-zinc-500">Unlocked</p>
-                    <p className="mt-1 text-sm font-bold text-white">{unlockedCount} / 12</p>
-                  </div>
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 sm:col-span-1 col-span-2">
-                    <p className="text-[10px] font-semibold uppercase text-zinc-500">Session completion</p>
-                    <p className="mt-1 text-sm font-bold text-white">
-                      {totalUnlockedSlots > 0
-                        ? `${completedUnlocked}/${totalUnlockedSlots} (${completionPercentage}%)`
-                        : "—"}
-                    </p>
-                  </div>
-                </div>
+                <p className="text-sm text-zinc-400">
+                  {unlockedCount}/12 unlocked · {completionPercentage}% complete
+                </p>
               </div>
             </section>
 
-            {/* B — Roadmap */}
+            <ProgrammeBlockUnlockNote unlockedCount={unlockedCount} />
+
+            {/* Week selector — compact */}
             <section>
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
-                <Calendar className="h-5 w-5 text-yellow-400" />
-                12-week roadmap
-              </h2>
-              <div className="space-y-8">
-                {PROGRAMME_BLOCKS.map((block) => (
-                  <div key={block.id} className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 p-5 sm:p-6">
-                    <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-yellow-400/90">
-                          Block {block.id}
-                        </p>
-                        <h3 className="text-lg font-bold text-white">{block.title}</h3>
-                        <p className="text-sm text-zinc-500">{block.subtitle}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {block.weeks.map((wn) => {
-                        const w = weeksFromDb.find((x) => x.week_number === wn);
-                        const isUnlocked = Boolean(w?.is_unlocked);
-                        const isSel = selectedWeek === wn;
-                        const stats = completedByWeek[wn];
-                        const done = stats?.completed ?? 0;
-                        const tot = stats?.total ?? 0;
-                        const wf = w?.plan_json ? extractWeekOverviewFromPlan(w.plan_json).weekFocus : null;
-                        return (
-                          <button
-                            key={wn}
-                            type="button"
-                            onClick={() => setSelectedWeek(wn)}
-                            className={`rounded-xl border px-3 py-3 text-left transition ${
-                              isSel
-                                ? "border-yellow-400/50 bg-yellow-400/10 ring-1 ring-yellow-400/20"
-                                : "border-zinc-800 bg-zinc-950/50 hover:border-zinc-700"
-                            } ${!isUnlocked ? "opacity-55" : ""}`}
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-xs font-bold text-white">Week {wn}</span>
-                              {!isUnlocked ? (
-                                <Lock className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
-                              ) : isSel ? (
-                                <Play className="h-3.5 w-3.5 shrink-0 text-yellow-400" />
-                              ) : null}
-                            </div>
-                            {isUnlocked ? (
-                              <>
-                                <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-zinc-400">
-                                  {wf ?? w?.title ?? "—"}
-                                </p>
-                                {tot > 0 ? (
-                                  <p className="mt-2 text-[10px] font-medium text-zinc-500">
-                                    {done}/{tot} sessions
-                                  </p>
-                                ) : (
-                                  <p className="mt-2 text-[10px] text-zinc-600">No schedule</p>
-                                )}
-                              </>
-                            ) : (
-                              <p className="mt-2 text-[10px] text-zinc-600">Locked</p>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Select week
+              </p>
+              <div className="-mx-1 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {weeksFromDb.map((w) => {
+                  const week = w.week_number;
+                  const isUnlocked = Boolean(w.is_unlocked);
+                  const isSel = week === selectedWeek;
+                  const isCurrent = week === effectiveWeek;
+                  return (
+                    <button
+                      key={week}
+                      type="button"
+                      disabled={!isUnlocked}
+                      onClick={() => isUnlocked && setSelectedWeek(week)}
+                      className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                        isSel
+                          ? "border-yellow-400/50 bg-yellow-400/15 text-yellow-200"
+                          : isUnlocked
+                            ? "border-zinc-800 bg-zinc-900 text-zinc-300"
+                            : "cursor-not-allowed border-zinc-800/60 bg-zinc-950/40 text-zinc-600"
+                      }`}
+                    >
+                      {isUnlocked ? `W${week}` : <Lock className="mx-auto h-4 w-4" />}
+                      {isCurrent && isUnlocked ? (
+                        <span className="ml-1 text-[10px] text-yellow-400/80">· now</span>
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
             </section>
 
-            {/* C–E — Selected week */}
+            {/* This week's sessions — priority */}
+            <section className="rounded-2xl border border-yellow-500/25 bg-gradient-to-b from-yellow-400/[0.06] to-zinc-900/80 p-5 sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-xl font-bold text-white">
+                  <Dumbbell className="h-5 w-5 text-yellow-400" />
+                  This week&apos;s sessions
+                </h2>
+                <span className="text-sm text-zinc-400">Week {effectiveWeek}</span>
+              </div>
+              {!currentWeekUnlocked ? (
+                <LockedWeekMessage />
+              ) : (
+                renderSessionButtons(currentWeekSessions)
+              )}
+              {checkInsByWeek[effectiveWeek] ? (
+                <p className="mt-4 text-xs text-emerald-300">✓ Weekly check-in logged</p>
+              ) : (
+                <Link
+                  href="/dashboard/check-in"
+                  className="mt-4 inline-block text-sm font-semibold text-yellow-400 hover:text-yellow-300"
+                >
+                  Complete weekly check-in →
+                </Link>
+              )}
+            </section>
+
+            {/* Selected week (when different from current) */}
+            {selectedWeek !== effectiveWeek ? (
+              <section className="rounded-2xl border border-zinc-800/90 bg-zinc-900/60 p-5 sm:p-6">
+                <h3 className="text-base font-bold text-white">Week {selectedWeek} sessions</h3>
+                {!unlocked ? <LockedWeekMessage /> : renderSessionButtons(sessions)}
+              </section>
+            ) : null}
+
+            {effectiveWeek === 1 ? <WeekOneGuidanceCard /> : null}
+
+            {/* Selected week detail */}
             <section className="rounded-2xl border border-zinc-800/90 bg-zinc-900/60 p-6 sm:p-8">
               {!unlocked ? (
-                <div className="flex flex-col items-center py-10 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-950">
-                    <Lock className="h-7 w-7 text-zinc-500" />
-                  </div>
-                  <h3 className="mt-4 text-xl font-bold text-white">Week {selectedWeek} is locked</h3>
-                  <p className="mt-2 max-w-md text-sm text-zinc-400">
-                    Unlocks with your next membership month. Continue your membership to unlock this block.
-                    Session details stay hidden until this week opens.
-                  </p>
-                </div>
+                <LockedWeekMessage />
               ) : (
                 <>
                   <div className="flex flex-wrap items-start justify-between gap-4">
@@ -436,10 +465,10 @@ export default function ProgrammeClient({
                       </span>
                     ) : (
                       <Link
-                        href="/dashboard"
+                        href="/dashboard/check-in"
                         className="text-xs font-semibold text-yellow-400 hover:text-yellow-300"
                       >
-                        Log check-in on dashboard →
+                        Complete weekly check-in →
                       </Link>
                     )}
                   </div>
@@ -533,92 +562,55 @@ export default function ProgrammeClient({
                     </div>
                   ) : null}
 
-                  <div className="mt-8">
-                    <MissedSessionGuidanceNote className="mb-4" />
-                    <h4 className="mb-4 flex items-center gap-2 text-base font-bold text-white">
-                      <Dumbbell className="h-4 w-4 text-yellow-400" />
-                      Sessions
-                    </h4>
-                    {sessions.length === 0 ? (
-                      <p className="text-sm text-zinc-500">No schedule for this week.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {sessions.map((session) => {
-                          const log = sessionLogs[session.sessionKey];
-                          const done = Boolean(log?.completed);
-                          return (
-                            <button
-                              key={session.sessionKey}
-                              type="button"
-                              onClick={() => openSessionDrawer(session)}
-                              className="flex w-full flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 text-left transition hover:border-zinc-700 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-xs font-semibold uppercase text-zinc-500">
-                                    {session.day}
-                                  </span>
-                                  {session.doubleSession ? (
-                                    <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-300">
-                                      Double session
-                                    </span>
-                                  ) : null}
-                                  {done ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
-                                      <CheckCircle2 className="h-3 w-3" />
-                                      Done
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <p className="mt-1 font-semibold text-white">{session.title}</p>
-                                <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{session.intent}</p>
-                                {session.runPrescription?.pace_range ? (
-                                  <p className="mt-2 text-xs font-semibold text-yellow-300/95">
-                                    Target pace: {session.runPrescription.pace_range}
-                                    {session.runPrescription.treadmill_speed_range
-                                      ? ` · Treadmill ${session.runPrescription.treadmill_speed_range}`
-                                      : ""}
-                                  </p>
-                                ) : null}
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  <span
-                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${priorityStyle(session.priorityRank)}`}
-                                  >
-                                    {session.priorityDisplayLabel}
-                                  </span>
-                                  <span
-                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${categoryStyle(session.category)}`}
-                                  >
-                                    {session.category}
-                                  </span>
-                                  {session.tags.slice(0, 2).map((t) => (
-                                    <span
-                                      key={t}
-                                      className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-500"
-                                    >
-                                      {t}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-3 text-sm text-zinc-400">
-                                <span className="inline-flex items-center gap-1">
-                                  <Clock className="h-4 w-4 text-yellow-400/70" />
-                                  {session.duration}
-                                </span>
-                                <ChevronRight className="h-5 w-5 text-zinc-600" />
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                  {selectedWeek === effectiveWeek ? (
+                    <div className="mt-6">
+                      <MissedSessionGuidanceNote />
+                    </div>
+                  ) : null}
                 </>
               )}
             </section>
 
-            {/* F — Programme rationale */}
+            {/* Compact roadmap */}
+            <section>
+              <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-white">
+                <Calendar className="h-4 w-4 text-yellow-400" />
+                12-week roadmap
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {PROGRAMME_BLOCKS.map((block) => (
+                  <div key={block.id} className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase text-yellow-400/80">Block {block.id}</p>
+                    <p className="text-sm font-bold text-white">{block.title}</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {block.weeks.map((wn) => {
+                        const w = weeksFromDb.find((x) => x.week_number === wn);
+                        const isUnlocked = Boolean(w?.is_unlocked);
+                        return (
+                          <button
+                            key={wn}
+                            type="button"
+                            disabled={!isUnlocked}
+                            onClick={() => isUnlocked && setSelectedWeek(wn)}
+                            className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                              selectedWeek === wn
+                                ? "bg-yellow-400/20 text-yellow-200"
+                                : isUnlocked
+                                  ? "text-zinc-400"
+                                  : "text-zinc-600"
+                            }`}
+                          >
+                            {isUnlocked ? wn : <Lock className="inline h-3 w-3" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Programme rationale */}
             {programmeRationale ? (
               <section className="rounded-2xl border border-zinc-800/90 bg-zinc-900/60 p-6 sm:p-8">
                 <div className="mb-4 flex items-center gap-2">

@@ -673,8 +673,8 @@ export default function FreePlanDashboardClient({
                 <Target className="mx-auto h-8 w-8 text-[#F4D23C]" />
                 <h3 className="mt-4 text-2xl font-bold text-white md:text-3xl">Ready for the full programme?</h3>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-zinc-300">
-                  Your free week shows you the structure. The full Hybrid365 programme gives you the complete 12-week
-                  plan, progress tracking, check-ins and community accountability to keep building.
+                  Your free week shows you the structure. The full Hybrid365 membership gives you the complete 16-week
+                  personalised programme, dashboard access, weekly check-ins and community accountability to keep building.
                 </p>
                 <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                   <a

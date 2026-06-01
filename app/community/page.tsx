@@ -2,9 +2,9 @@ import Image from "next/image"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Hybrid365 Community | Become Fast, Fit & Strong",
+  title: "Hybrid365 Community | Full 16-Week Membership",
   description:
-    "Join the Hybrid365 Coaching Community. Personalised 12-week programmes, education, accountability and community. Run a sub-20 5km while still lifting heavy.",
+    "Join Full Hybrid365 Membership — £39.99/month. Complete 16-week personalised programme, member dashboard, weekly check-ins, coaching support and community accountability.",
 }
 
 function CheckIcon() {
@@ -72,7 +72,7 @@ export default function CommunityPage() {
               {/* Left: Copy */}
               <div>
                 <p className="text-[#F4D23C] text-sm font-semibold uppercase tracking-widest mb-4">
-                  Hybrid365 Coaching Community
+                  Full Hybrid365 Membership
                 </p>
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold uppercase tracking-tight leading-[1.1] text-balance">
                   Become{" "}
@@ -81,24 +81,28 @@ export default function CommunityPage() {
                   <span className="text-[#F4D23C]">Strong</span>
                 </h1>
                 <p className="mt-6 text-lg md:text-xl text-white/80 leading-relaxed max-w-xl">
-                  A personalised 12-week hybrid programme with education, community, 
-                  accountability and a training roadmap built around your goals. 
-                  Learn how to run fast without giving up strength and muscle.
+                  Your complete{" "}
+                  <span className="font-semibold text-white">16-week personalised programme</span> with
+                  full dashboard access, weekly check-ins, coaching support and team accountability.
+                  Progress beyond a free week — built around your goals, schedule and hybrid performance.
+                </p>
+                <p className="mt-3 text-base text-[#F4D23C]/90 font-semibold">
+                  £39.99/month · Cancel anytime
                 </p>
                 
                 {/* Trust Points */}
                 <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/60">
                   <span className="flex items-center gap-2">
                     <CheckIcon />
-                    Personalised Programme
+                    16-Week Personalised Programme
                   </span>
                   <span className="flex items-center gap-2">
                     <CheckIcon />
-                    60+ Education Videos
+                    Full Member Dashboard
                   </span>
                   <span className="flex items-center gap-2">
                     <CheckIcon />
-                    5km PB Guarantee
+                    Weekly Check-Ins
                   </span>
                 </div>
                 
@@ -130,6 +134,43 @@ export default function CommunityPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Hybrid 75 bridge */}
+      <section className="px-5 md:px-8 py-16 md:py-20 border-t border-[#F4D23C]/20 bg-gradient-to-b from-[#F4D23C]/8 via-zinc-950 to-black">
+        <div className="max-w-4xl mx-auto">
+          <p className="text-[#F4D23C] text-sm font-semibold uppercase tracking-widest mb-3">
+            Coming from Hybrid 75?
+          </p>
+          <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight text-white">
+            Carry the challenge through properly
+          </h2>
+          <p className="mt-4 text-base md:text-lg leading-relaxed text-white/75">
+            Your free challenge week gives you the start. The full Hybrid365 membership gives you the
+            complete 16-week personalised programme, progression, dashboard, weekly check-ins, coaching
+            support and team accountability to carry the challenge through properly.
+          </p>
+          <ul className="mt-6 space-y-2.5">
+            {[
+              "Continue beyond your free week",
+              "Unlock your full 16-week personalised programme",
+              "Track progress, habits and check-ins",
+              "Train with structure, support and accountability",
+              "Keep building through the Hybrid365 team",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2.5 text-sm text-white/80 md:text-base">
+                <CheckIcon />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+          <a
+            href="#pricing"
+            className="mt-8 inline-flex items-center justify-center rounded-full bg-[#F4D23C] px-8 py-4 text-sm font-bold uppercase tracking-wide text-black transition hover:bg-[#e5c535]"
+          >
+            Join the Full Hybrid365 Team
+          </a>
         </div>
       </section>
 
@@ -188,27 +229,46 @@ export default function CommunityPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 md:mb-16">
             <p className="text-[#F4D23C] text-sm font-semibold uppercase tracking-widest mb-4">
-              Full Access Membership
+              Full Hybrid365 Membership
             </p>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold uppercase tracking-tight text-white text-balance">
               What You Get<span className="text-[#F4D23C]">.</span>
             </h2>
             <p className="mt-4 text-lg text-white/60 max-w-2xl mx-auto">
-              Everything you need to become fast, fit and strong - all in one place.
+              Everything members unlock to progress beyond a free week — programme, dashboard,
+              check-ins, challenges and coaching support in one place.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { title: "Personalised 12-Week Programme", desc: "A training roadmap built around your goals, schedule and focus" },
-              { title: "Hybrid Performance Mastery", desc: "60+ education videos covering training, nutrition & recovery" },
-              { title: "Goal-Specific Training Tracks", desc: "Follow your path: Lean Muscle, Hybrid or Hyrox Performance" },
+              {
+                title: "16-Week Personalised Programme",
+                desc: "Complete hybrid roadmap built around your goals, schedule and focus — not a generic template",
+              },
+              {
+                title: "Full Member Dashboard",
+                desc: "Your programme, sessions, habits, progress and check-ins in one place after you join",
+              },
+              {
+                title: "Progression Beyond the Free Week",
+                desc: "Structured blocks that build on your starting point — carry momentum from Hybrid 75 properly",
+              },
+              {
+                title: "Weekly Check-Ins",
+                desc: "Structured accountability, bodyweight trends and coaching review each week",
+              },
+              {
+                title: "Community & Leaderboards",
+                desc: "Monthly challenges, leaderboards and prizes — continue competing with the team",
+              },
+              {
+                title: "Coaching Support & Education",
+                desc: "60+ videos, hybrid performance mastery and guidance so you understand the process",
+              },
+              { title: "Goal-Specific Training Tracks", desc: "Lean Muscle, Hybrid or Hyrox Performance paths" },
               { title: "Complete Running Programmes", desc: "5K, 10K, half marathon and marathon structured plans" },
-              { title: "Strength Training Library", desc: "Progressive programmes for functional strength" },
-              { title: "Nutrition & Recipe Book", desc: "Fuelling education and 50+ performance recipes" },
-              { title: "Community & Leaderboards", desc: "Compete, track progress and stay accountable" },
-              { title: "Monthly Challenges & Prizes", desc: "Push yourself with monthly competitions" },
-              { title: "Weekly Check-Ins", desc: "Structured accountability and progress tracking" },
+              { title: "Strength & Nutrition Library", desc: "Progressive strength work plus fuelling education and recipes" },
             ].map((item) => (
               <div
                 key={item.title}
@@ -229,7 +289,7 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      {/* 12-Week Personalised Programme - with Background Image */}
+      {/* 16-Week Personalised Programme - with Background Image */}
       <section className="relative py-20 md:py-28 overflow-hidden">
         {/* Background Image */}
         <div className="absolute inset-0">
@@ -251,11 +311,11 @@ export default function CommunityPage() {
               </p>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold uppercase tracking-tight text-white">
                 Your Personalised<br />
-                <span className="text-[#F4D23C]">12-Week Programme</span>
+                <span className="text-[#F4D23C]">16-Week Programme</span>
               </h2>
               <p className="mt-6 text-lg text-white/60 leading-relaxed">
                 When you join, you&apos;re not just getting access to a content library. 
-                You&apos;ll receive a <span className="text-white font-semibold">personalised 12-week programme</span> built 
+                You&apos;ll receive a <span className="text-white font-semibold">complete 16-week personalised programme</span> built 
                 around your specific goal, training level, schedule and focus area.
               </p>
               <p className="mt-4 text-lg text-white/60 leading-relaxed">
@@ -283,13 +343,14 @@ export default function CommunityPage() {
                   <span className="inline-block px-3 py-1 text-xs font-bold uppercase bg-[#F4D23C] text-black rounded-full mb-3">
                     Your Programme
                   </span>
-                  <h3 className="text-xl font-bold uppercase text-white">12-Week Blueprint</h3>
+                  <h3 className="text-xl font-bold uppercase text-white">16-Week Blueprint</h3>
                 </div>
                 <div className="space-y-3">
                   {[
                     { week: "Weeks 1-4", phase: "Foundation", focus: "Build base fitness & movement quality" },
                     { week: "Weeks 5-8", phase: "Development", focus: "Progressive overload & intensity" },
-                    { week: "Weeks 9-12", phase: "Performance", focus: "Peak performance & race prep" },
+                    { week: "Weeks 9-12", phase: "Build", focus: "Hybrid volume & race-specific work" },
+                    { week: "Weeks 13-16", phase: "Performance", focus: "Peak performance & consolidation" },
                   ].map((item) => (
                     <div key={item.week} className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
                       <div className="flex items-center justify-between mb-1">
@@ -717,7 +778,7 @@ export default function CommunityPage() {
               <p className="mt-6 text-lg text-white/60 leading-relaxed">
                 This is a community of like-minded people who want to improve, compete and 
                 refuse average. Monthly challenges, community leaderboards and prizes keep 
-                you motivated and accountable.
+                you motivated and accountable — including members continuing from the Hybrid 75 Summer Challenge.
               </p>
               <ul className="mt-8 space-y-4">
                 {[
@@ -725,7 +786,7 @@ export default function CommunityPage() {
                   "Community leaderboards to track progress",
                   "Compete alongside like-minded athletes",
                   "Weekly check-ins for accountability",
-                  "Private community access",
+                  "Private community access & coaching support",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-3">
                     <CheckIcon />
@@ -803,7 +864,7 @@ export default function CommunityPage() {
                   5km PB Guarantee
                 </h2>
                 <p className="mt-4 text-lg text-white/60 leading-relaxed max-w-2xl">
-                  Follow the plan for 12 weeks and if you don&apos;t hit a 5km personal best, 
+                  Follow the plan for 16 weeks and if you don&apos;t hit a 5km personal best, 
                   we&apos;ll refund you. No questions asked. That&apos;s how confident we are 
                   in this system.
                 </p>
@@ -818,24 +879,24 @@ export default function CommunityPage() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-[#F4D23C] text-sm font-semibold uppercase tracking-widest mb-4">
-              Join The Community
+              Full Hybrid365 Membership
             </p>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold uppercase tracking-tight text-white">
               Simple Pricing<span className="text-[#F4D23C]">.</span>
             </h2>
             <p className="mt-4 text-lg text-white/60">
-              Everything included. No hidden fees. Cancel anytime.
+              Complete 16-week personalised programme and full member access. Cancel anytime.
             </p>
           </div>
 
           <div className="rounded-3xl border border-[#F4D23C]/20 bg-gradient-to-b from-[#F4D23C]/5 to-transparent p-8 md:p-12">
             <div className="text-center">
               <div className="inline-block px-4 py-1 rounded-full bg-[#F4D23C] text-black text-sm font-bold uppercase mb-6">
-                Full Access
+                Full Hybrid365 Membership
               </div>
 
               <div className="flex items-baseline justify-center gap-2">
-                <span className="text-5xl md:text-7xl font-bold text-white">£29</span>
+                <span className="text-5xl md:text-7xl font-bold text-white">£39.99</span>
                 <span className="text-xl text-white/50">/month</span>
               </div>
 
@@ -845,13 +906,13 @@ export default function CommunityPage() {
 
               <div className="mt-8 grid grid-cols-2 gap-3 text-left max-w-md mx-auto">
                 {[
-                  "Personalised 12-Week Programme",
-                  "Performance Mastery Course",
-                  "Goal-Specific Training Tracks",
-                  "All Running Programmes",
-                  "Strength Programmes",
-                  "Nutrition & Recipes",
+                  "16-Week Personalised Programme",
+                  "Full Member Dashboard",
+                  "Weekly Check-Ins",
+                  "Coaching Support & Education",
                   "Community & Leaderboards",
+                  "Monthly Challenges & Prizes",
+                  "Goal-Specific Training Tracks",
                   "5km PB Guarantee",
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-2">
@@ -887,8 +948,8 @@ export default function CommunityPage() {
               <span className="text-[#F4D23C]">Fast, Fit & Strong</span>?
             </h2>
             <p className="mt-6 text-lg md:text-xl text-white/70 leading-relaxed max-w-2xl mx-auto">
-              Join the community of athletes who refuse average. Get your personalised 
-              programme, learn the system and start your transformation today.
+              Join the community of athletes who refuse average. Get your full 16-week personalised 
+              programme, member dashboard, weekly check-ins and team accountability — start today.
             </p>
             <a
               href="https://whop.com/checkout/plan_JdjBrs5xpfpoN"

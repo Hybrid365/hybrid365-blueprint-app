@@ -1,10 +1,9 @@
 import { getDashboardSession } from "@/app/lib/dashboardAuth";
-import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
+import {
+  fetchCommunityProgrammeInstance,
+  resolveCommunityProgrammeGenerated,
+} from "@/app/lib/communityProgrammeStatus";
 import TestingClient, { type BenchmarkTestRow } from "./TestingClient";
-
-type ProgrammeInstanceRow = {
-  id: string;
-};
 
 type AthleteAssessmentRow = {
   completed_at: string | null;
@@ -13,23 +12,18 @@ type AthleteAssessmentRow = {
 export default async function TestingPage() {
   const { supabase, user } = await getDashboardSession("/dashboard/testing");
 
-  const { data: instance } = await supabase
-    .from("programme_instances")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const typedInstance = instance as ProgrammeInstanceRow | null;
+  const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
 
   let programmeGenerated = false;
+  let weekRows: { plan_json?: unknown }[] = [];
   if (typedInstance?.id) {
-    const { data: weekRows } = await supabase
+    const { data: weeks } = await supabase
       .from("programme_weeks")
       .select("plan_json")
       .eq("programme_instance_id", typedInstance.id)
       .limit(12);
-    programmeGenerated = (weekRows ?? []).some((w) =>
-      hasMeaningfulPlanJson((w as { plan_json?: unknown }).plan_json)
-    );
+    weekRows = (weeks ?? []) as { plan_json?: unknown }[];
+    programmeGenerated = resolveCommunityProgrammeGenerated(typedInstance.id, weekRows);
   }
 
   const { data: assess } = await supabase

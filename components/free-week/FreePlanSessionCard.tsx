@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 import {
   FREE_WEEK_TELEGRAM_URL,
@@ -33,12 +34,15 @@ export function FreePlanSessionCard({
   allSessions,
   sessionLog,
   onLogSession,
+  challengeTabHref,
 }: {
   session: FreePlanSession;
   isHybrid75: boolean;
   allSessions: FreePlanSession[];
   sessionLog?: Hybrid75ChallengeSessionLog;
   onLogSession?: () => void;
+  /** Link to /plan/[id]/challenge for Hybrid Hard placeholder sessions */
+  challengeTabHref?: string;
 }) {
   const isChallenge = session.category === "Challenge";
   const focusLabel = isHybrid75 ? getChallengeFocusLabel(session, allSessions) : null;
@@ -66,6 +70,15 @@ export function FreePlanSessionCard({
           </div>
           <h3 className="mt-2 text-2xl font-bold text-white md:text-3xl">{session.title}</h3>
           <p className="mt-3 max-w-3xl leading-7 text-zinc-300">{session.intent}</p>
+          {isChallenge && isHybrid75 && challengeTabHref ? (
+            <p className="mt-3 text-sm text-zinc-400">
+              View the full Week 1 challenge details in the{" "}
+              <Link href={challengeTabHref} className="font-semibold text-[#F4D23C] hover:underline">
+                Challenge tab
+              </Link>
+              .
+            </p>
+          ) : null}
         </div>
         {session.timeCapMinutes ? (
           <div className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">

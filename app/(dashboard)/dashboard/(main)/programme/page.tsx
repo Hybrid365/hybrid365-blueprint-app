@@ -1,23 +1,20 @@
 import { getDashboardSession } from "@/app/lib/dashboardAuth";
-import {
-  applyMembershipEntitlementToWeeks,
-  MEMBERSHIP_ACCESS_SELECT,
-  type MembershipForAccess,
-} from "@/app/lib/membershipAccess";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import {
-  fetchCommunityProgrammeInstance,
-  resolveCommunityProgrammeGenerated,
+  buildCommunityProgrammeGateDebug,
+  loadCommunityProgrammeContext,
+  logCommunityProgrammeBuildCardShown,
+  logCommunityProgrammeLoadDebug,
+  resolveCommunityCanViewProgramme,
 } from "@/app/lib/communityProgrammeStatus";
+import type { CommunityProgrammeGateDebug } from "@/app/lib/communityProgrammeStatus";
 import {
   extractProgrammeIntelligence,
   extractProgrammeRationale,
 } from "@/app/lib/memberDashboardSchedule";
 import {
-  buildTwelveProgrammeWeeks,
   calculateSessionAdherence,
   deriveEffectiveCurrentWeek,
-  type ProgrammeWeekLike,
 } from "@/app/lib/progressMetrics";
 import { getDefaultSelectedWeek } from "@/app/lib/programmePageMetrics";
 import {
@@ -29,15 +26,6 @@ import type { SessionLogLike } from "@/app/lib/progressMetrics";
 import ProgrammeClient from "./ProgrammeClient";
 
 export const dynamic = "force-dynamic";
-
-type ProgrammeWeekRow = {
-  week_number: number;
-  title: string | null;
-  is_unlocked: boolean | null;
-  plan_json: unknown | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
 
 type SessionLogRow = SessionLogLike & {
   id: string;
@@ -60,14 +48,16 @@ type AthleteAssessmentRow = {
 export default async function ProgrammePage() {
   const { supabase, user } = await getDashboardSession("/dashboard/programme");
 
-  const [{ data: assess }, { data: benchTests }] = await Promise.all([
+  const [{ data: assess }, { data: benchTests }, programmeCtx] = await Promise.all([
     supabase
       .from("athlete_assessments")
       .select("completed_at, max_heart_rate, updated_at")
       .eq("user_id", user.id)
       .maybeSingle(),
     supabase.from("benchmark_tests").select("test_type").eq("user_id", user.id),
+    loadCommunityProgrammeContext(supabase, user.id),
   ]);
+
   const typedAssess = assess as AthleteAssessmentRow | null;
   const assessmentCompleted = Boolean(typedAssess?.completed_at);
   const maxHeartRate =
@@ -79,21 +69,18 @@ export default async function ProgrammePage() {
     return ty.includes("ski") || ty.includes("row");
   });
 
-  const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
+  const {
+    instance: typedInstance,
+    weeksRaw,
+    programmeGenerated,
+    entitledWeeks: entitledWeeksRaw,
+    weeks12,
+  } = programmeCtx;
 
-  let weeksRaw: ProgrammeWeekRow[] = [];
   let sessionLogs: SessionLogRow[] = [];
   const checkInsByWeek: Record<number, boolean> = {};
 
   if (typedInstance?.id) {
-    const { data: weekRows } = await supabase
-      .from("programme_weeks")
-      .select("week_number, title, is_unlocked, plan_json, created_at, updated_at")
-      .eq("programme_instance_id", typedInstance.id)
-      .order("week_number", { ascending: true });
-
-    weeksRaw = (weekRows ?? []) as ProgrammeWeekRow[];
-
     const { data: logs } = await supabase
       .from("session_logs")
       .select(
@@ -118,35 +105,61 @@ export default async function ProgrammePage() {
     }
   }
 
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select(MEMBERSHIP_ACCESS_SELECT)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const canViewProgramme = resolveCommunityCanViewProgramme(
+    typedInstance?.id ?? null,
+    programmeGenerated,
+    weeksRaw
+  );
 
-  const membershipRow = membership as MembershipForAccess | null;
-  const entitledWeeksRaw = applyMembershipEntitlementToWeeks(weeksRaw, membershipRow);
-  const weeks12: ProgrammeWeekLike[] = buildTwelveProgrammeWeeks(entitledWeeksRaw);
-
-  const programmeGenerated = resolveCommunityProgrammeGenerated(
+  const gateDebug: CommunityProgrammeGateDebug = buildCommunityProgrammeGateDebug(
     typedInstance?.id ?? null,
     weeksRaw,
-    weeks12
+    programmeGenerated,
+    canViewProgramme
   );
+
+  await logCommunityProgrammeLoadDebug(
+    supabase,
+    user.id,
+    user.email,
+    "/dashboard/programme",
+    typedInstance,
+    weeksRaw,
+    programmeGenerated
+  );
+
+  if (!canViewProgramme) {
+    const entitledUnlockedWithPlanCount = weeks12.filter(
+      (w) => Boolean(w.is_unlocked) && hasMeaningfulPlanJson(w.plan_json)
+    ).length;
+    logCommunityProgrammeBuildCardShown("/dashboard/programme", {
+      programmeInstanceId: typedInstance?.id ?? null,
+      programmeGenerated,
+      canViewProgramme,
+      rawWeekCount: weeksRaw.length,
+      rawMeaningfulWeekCount: weeksRaw.filter((w) => hasMeaningfulPlanJson(w.plan_json)).length,
+      entitledUnlockedWithPlanCount,
+      reason: !typedInstance?.id
+        ? "no_instance"
+        : programmeGenerated
+          ? "unexpected_programme_generated_but_cannot_view"
+          : weeksRaw.some((w) => hasMeaningfulPlanJson(w.plan_json))
+            ? "raw_plan_exists_can_view_should_be_true"
+            : entitledUnlockedWithPlanCount > 0
+              ? "entitled_weeks_only_no_raw_flag"
+              : "no_meaningful_plan_json",
+    });
+  }
 
   let weeksMaxUpdatedAt: string | null = null;
   for (const w of weeksRaw) {
     if (!hasMeaningfulPlanJson(w.plan_json)) continue;
-    weeksMaxUpdatedAt = maxIsoTimestamp([
-      weeksMaxUpdatedAt,
-      w.updated_at,
-      w.created_at,
-    ]);
+    weeksMaxUpdatedAt = maxIsoTimestamp([weeksMaxUpdatedAt, w.created_at]);
   }
 
   const programmeGeneratedAt = resolveProgrammeGeneratedAt({
     weeksMaxUpdatedAt,
-    instanceUpdatedAt: typedInstance?.updated_at ?? null,
+    instanceUpdatedAt: null,
     instanceCreatedAt: typedInstance?.created_at ?? null,
   });
 
@@ -182,6 +195,8 @@ export default async function ProgrammePage() {
       programmeInstanceId={typedInstance?.id ?? null}
       programmeTitle={programmeTitle}
       programmeGenerated={programmeGenerated}
+      canViewProgramme={canViewProgramme}
+      gateDebug={gateDebug}
       assessmentCompleted={assessmentCompleted}
       effectiveWeek={effectiveWeek}
       defaultSelectedWeek={defaultSelectedWeek}

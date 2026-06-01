@@ -1,4 +1,5 @@
 import { getDashboardSession } from "@/app/lib/dashboardAuth";
+import { fetchCommunityProgrammeInstance } from "@/app/lib/communityProgrammeStatus";
 import { localDateKey } from "@/app/lib/dailyHabitLogs";
 import type { DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
 import { displayChallengeWeek } from "@/app/lib/hybridChallengeConfig";
@@ -14,11 +15,6 @@ import {
 import type { SessionLogLike, WeeklyCheckInLike } from "@/app/lib/progressMetrics";
 import ChallengeClient from "./ChallengeClient";
 
-type ProgrammeInstanceRow = {
-  id: string;
-  current_week: number | null;
-};
-
 const SUB_SELECT =
   "id, user_id, programme_instance_id, challenge_key, challenge_week, challenge_title, score_value, score_unit, score_time, proof_url, proof_note, status, points_awarded, admin_notes, submitted_at, reviewed_at";
 
@@ -28,13 +24,7 @@ export default async function ChallengePage() {
   const viewerUserId = user.id;
   const viewerEmail = user.email ?? null;
 
-  const { data: instance } = await supabase
-    .from("programme_instances")
-    .select("id, current_week")
-    .eq("user_id", viewerUserId)
-    .maybeSingle();
-
-  const typedInstance = instance as ProgrammeInstanceRow | null;
+  const typedInstance = await fetchCommunityProgrammeInstance(supabase, viewerUserId);
   const programmeInstanceId = typedInstance?.id ?? null;
   const instanceCurrentWeek =
     typeof typedInstance?.current_week === "number" ? typedInstance.current_week : null;

@@ -133,8 +133,7 @@ export default async function ProgressPage() {
 
   const programmeGenerated = resolveCommunityProgrammeGenerated(
     typedInstance?.id ?? null,
-    weeksRaw,
-    weeks12
+    weeksRaw
   );
 
   const effectiveWeek = deriveEffectiveCurrentWeek(typedInstance?.current_week ?? null, weeks12);
