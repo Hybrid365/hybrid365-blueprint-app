@@ -19,6 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 import Hybrid75DashboardPreview from "@/components/hybrid75/Hybrid75DashboardPreview";
+import { Hybrid75HeroVsl } from "@/components/hybrid75/Hybrid75HeroVsl";
 import { FREE_WEEK_TELEGRAM_URL } from "@/app/lib/freeWeekChallengeMode";
 import { COMMUNITY_UPGRADE_URL } from "@/app/lib/freePlanDashboard";
 
@@ -183,44 +184,68 @@ export default function Hybrid75LandingPage() {
       {/* ── 1. Hero ── */}
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(244,210,60,0.14),transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(244,210,60,0.16),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(244,210,60,0.06),transparent_45%)]" />
           <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-black to-black" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20 lg:py-24">
-          <div className="max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#F4D23C]/30 bg-[#F4D23C]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#F4D23C]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#F4D23C]" />
-              75 Days · Free Challenge · Summer 2026
+        <div className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14 lg:py-16">
+          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-14">
+            {/* Copy — first on mobile */}
+            <div className="min-w-0">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#F4D23C]/35 bg-[#F4D23C]/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#F4D23C] sm:text-xs">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#F4D23C]" />
+                Free Summer Challenge
+              </div>
+
+              <h1 className="text-[2rem] font-black uppercase leading-[0.95] tracking-tight text-white sm:text-5xl lg:text-[3.25rem]">
+                Hybrid 75
+                <br />
+                <span className="text-[#F4D23C]">Summer Challenge</span>
+              </h1>
+
+              <p className="mt-4 text-base font-semibold leading-snug text-white/95 sm:text-lg lg:text-xl">
+                Run 3x per week. Lift 3x per week. Complete the weekly Hybrid Hard Challenge. Track your progress.
+                Compete on the leaderboard.
+              </p>
+
+              <p className="mt-3 text-sm leading-relaxed text-white/65 sm:text-base">
+                Generate your free personalised challenge week, join the Telegram group, post proof, and start
+                building momentum.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <PrimaryCta className="w-full sm:w-auto">Generate My Free Challenge Week</PrimaryCta>
+                <TelegramCta className="w-full sm:w-auto" />
+              </div>
+
+              <p className="mt-5 text-xs leading-relaxed text-white/45 sm:text-sm">
+                <span className="text-white/55">Built from a system used to run</span>{" "}
+                <span className="font-semibold text-[#F4D23C]">16:30 5K</span>
+                <span className="text-white/35"> · </span>
+                <span className="font-semibold text-[#F4D23C]">Sub-60 HYROX Pro</span>
+                <span className="text-white/35"> · </span>
+                <span className="font-semibold text-white/80">Still lifting heavy</span>
+              </p>
+
+              <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/45 sm:text-sm">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#F4D23C]" />
+                  Free personalised week
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#F4D23C]" />
+                  Dashboard + leaderboard
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#F4D23C]" />
+                  Telegram accountability
+                </span>
+              </div>
             </div>
 
-            <h1 className="text-4xl font-black uppercase leading-[0.95] tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Hybrid 75
-              <br />
-              <span className="text-[#F4D23C]">Summer Challenge</span>
-            </h1>
-
-            <p className="mt-5 text-lg font-semibold text-white/90 sm:text-xl">
-              75 days to get fast, fit and strong — with a free personalised week, a real dashboard and a community
-              that pushes you.
-            </p>
-
-            <CtaRow className="mt-8" />
-
-            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/45 sm:text-sm">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#F4D23C]" />
-                Free personalised week
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#F4D23C]" />
-                Hybrid365 dashboard
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#F4D23C]" />
-                Telegram accountability
-              </span>
-            </div>
+            {/* VSL — below copy on mobile, right column on desktop */}
+            <Hybrid75HeroVsl className="w-full lg:max-w-none" />
           </div>
         </div>
       </section>
