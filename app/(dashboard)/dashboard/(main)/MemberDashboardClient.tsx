@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -64,6 +64,7 @@ import {
   COMMUNITY_PROGRAMME_STARTS_WITH_PROFILE,
   COMMUNITY_REVIEW_ATHLETE_PROFILE,
 } from "@/components/dashboard/communityOnboardingCopy";
+import { ProgrammeBeingBuiltCard } from "@/components/dashboard/ProgrammeBeingBuiltCard";
 import { ProgrammeReadyBanner } from "@/components/dashboard/ProgrammeReadyBanner";
 import { ThisWeekTrackingCard } from "@/components/dashboard/ThisWeekTrackingCard";
 import { WeeklyCheckInHomeCard } from "@/components/dashboard/WeeklyCheckInHomeCard";
@@ -113,6 +114,9 @@ export type MemberDashboardClientProps = {
   assessmentCompleted: boolean;
   coreTestsLogged: number;
   programmeGenerated: boolean;
+  canViewProgramme: boolean;
+  programmePendingUnlock: boolean;
+  unlockAtMs: number | null;
   weekTrackingSummary: DashboardWeekTrackingSummary | null;
   habitLogs: DailyHabitLogRow[];
   benchmarkTests: BenchmarkTestLike[];
@@ -338,6 +342,9 @@ export default function MemberDashboardClient({
   assessmentCompleted,
   coreTestsLogged,
   programmeGenerated,
+  canViewProgramme,
+  programmePendingUnlock,
+  unlockAtMs,
   habitLogs,
   benchmarkTests,
   challengeTracking,
@@ -411,7 +418,7 @@ export default function MemberDashboardClient({
   );
 
   const weekTrackingSummary = useMemo(() => {
-    if (!programmeGenerated) return null;
+    if (!canViewProgramme) return null;
     const weeks12 = buildTwelveProgrammeWeeks(
       allWeeks.map((w) => ({
         week_number: w.week_number,
@@ -605,7 +612,27 @@ export default function MemberDashboardClient({
   );
   const hasHabitLog = habitLogs.length > 0;
   const hasCheckIn = Boolean(getCheckInForWeek(weeklyCheckIns, effectiveCurrentWeek));
-  const forceShowStartHere = !assessmentCompleted || !programmeGenerated;
+  const forceShowStartHere = !assessmentCompleted || !canViewProgramme;
+  const showProgrammeBuilding =
+    assessmentCompleted && !canViewProgramme && (programmePendingUnlock || programmeGenerated || generatingProgramme);
+  const queuedGenerateRef = useRef(false);
+
+  useEffect(() => {
+    if (!assessmentCompleted || programmeGenerated || queuedGenerateRef.current) return;
+    queuedGenerateRef.current = true;
+    void (async () => {
+      setGeneratingProgramme(true);
+      setGenerateError(null);
+      const result = await postDashboardGenerateProgramme();
+      setGeneratingProgramme(false);
+      if (!result.ok) {
+        setGenerateError(result.error);
+        queuedGenerateRef.current = false;
+        return;
+      }
+      router.refresh();
+    })();
+  }, [assessmentCompleted, programmeGenerated, router]);
   const allSessionsCompleted = sessions.length > 0 && completedCount === sessions.length;
   const adherencePercent =
     totalSessionsThisWeek > 0 ? Math.round((completedCount / totalSessionsThisWeek) * 100) : null;
@@ -633,13 +660,15 @@ export default function MemberDashboardClient({
       setGeneratingProgramme(false);
       return;
     }
-    try {
-      sessionStorage.setItem("hybrid365-programme-ready", "1");
-    } catch {
-      /* ignore */
+    if (result.status === "live") {
+      try {
+        sessionStorage.setItem("hybrid365-programme-ready", "1");
+      } catch {
+        /* ignore */
+      }
+      setShowProgrammeReadyBanner(true);
     }
     setGenerateSuccess("ready");
-    setShowProgrammeReadyBanner(true);
     setGeneratingProgramme(false);
     router.refresh();
   }
@@ -934,7 +963,7 @@ export default function MemberDashboardClient({
 
         <AddToHomeScreenBanner />
 
-        {programmeGenerated ? (
+        {canViewProgramme ? (
           <div className="mb-8">
             <WeeklyCheckInHomeCard
               effectiveWeek={effectiveCurrentWeek}
@@ -944,10 +973,17 @@ export default function MemberDashboardClient({
           </div>
         ) : null}
 
-        {programmeGenerated ? (
+        {showProgrammeBuilding ? (
+          <div className="mb-8">
+            <ProgrammeBeingBuiltCard unlockAtMs={unlockAtMs} />
+            {generateError ? <p className="mt-3 text-sm text-red-300">{generateError}</p> : null}
+          </div>
+        ) : null}
+
+        {canViewProgramme ? (
           <GoToNextSessionCta
             nextSession={nextSession}
-            programmeGenerated={programmeGenerated}
+            programmeGenerated={canViewProgramme}
             onOpenSession={(session) => {
               if (session.weekNumber !== selectedWeek) {
                 setSelectedWeek(session.weekNumber);
@@ -957,19 +993,19 @@ export default function MemberDashboardClient({
           />
         ) : null}
 
-        {programmeGenerated && weekTrackingSummary ? (
+        {canViewProgramme && weekTrackingSummary ? (
           <ThisWeekTrackingCard
             summary={weekTrackingSummary}
             onCompleteCheckIn={() => router.push("/dashboard/check-in")}
           />
         ) : null}
 
-        {programmeGenerated ? <DashboardRotatingMessage /> : null}
+        {canViewProgramme ? <DashboardRotatingMessage /> : null}
 
         <MemberStartHereChecklist
           assessmentCompleted={assessmentCompleted}
           coreTestsLogged={coreTestsLogged}
-          programmeGenerated={programmeGenerated}
+          programmeGenerated={canViewProgramme}
           hasCompletedSession={hasCompletedSession}
           hasHabitLog={hasHabitLog}
           hasCheckIn={hasCheckIn}
@@ -979,7 +1015,7 @@ export default function MemberDashboardClient({
           generatingProgramme={generatingProgramme}
         />
 
-        {!programmeGenerated ? (
+        {!canViewProgramme ? (
           <section className="mb-10">
             <div className="relative overflow-hidden rounded-2xl border border-yellow-500/20 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-6 shadow-xl shadow-black/40 sm:p-10">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_50%_-30%,rgba(250,204,21,0.14),transparent)]" />
@@ -987,17 +1023,23 @@ export default function MemberDashboardClient({
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-yellow-400/90">Start here</p>
                 <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
                   {assessmentCompleted
-                    ? COMMUNITY_PROFILE_COMPLETE_HEADLINE
+                    ? showProgrammeBuilding
+                      ? "Your programme is being built"
+                      : COMMUNITY_PROFILE_COMPLETE_HEADLINE
                     : COMMUNITY_PROGRAMME_STARTS_WITH_PROFILE}
                 </h2>
                 <p className="mt-3 text-lg font-semibold leading-snug text-yellow-200/95 sm:text-xl">
                   {assessmentCompleted
-                    ? "Hybrid365 builds your plan — you follow the coaching system."
+                    ? showProgrammeBuilding
+                      ? "Your first block unlocks within 12 hours."
+                      : "Hybrid365 builds your plan — you follow the coaching system."
                     : "Refuse average. Build your structure. Become stronger, fitter and faster."}
                 </p>
                 <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
                   {assessmentCompleted
-                    ? COMMUNITY_PROFILE_COMPLETE_BODY
+                    ? showProgrammeBuilding
+                      ? "We're shaping your training around your goals, level, availability and equipment. You'll get an email when it's ready."
+                      : COMMUNITY_PROFILE_COMPLETE_BODY
                     : COMMUNITY_COMPLETE_PROFILE_BODY}
                 </p>
                 <OnboardingWhopEmailNote />
@@ -1017,7 +1059,11 @@ export default function MemberDashboardClient({
                         label: "Baseline",
                         variant: s2 ? "done" : s1 ? "recommended" : "hold",
                       },
-                      { n: 3, label: "Build", variant: s1 ? "active" : "hold" },
+                      {
+                        n: 3,
+                        label: showProgrammeBuilding ? "Building" : "Build",
+                        variant: s1 ? (showProgrammeBuilding ? "recommended" : "active") : "hold",
+                      },
                       { n: 4, label: "Train", variant: "hold" },
                     ];
                     return steps.map((step) => {
@@ -1161,20 +1207,29 @@ export default function MemberDashboardClient({
                         {!assessmentCompleted ? "Locked" : "Ready"}
                       </span>
                     </div>
-                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">Build your personalised programme</h3>
+                    <h3 className="mt-4 text-base font-bold text-white sm:text-lg">
+                      {showProgrammeBuilding ? "Programme in progress" : "Build your personalised programme"}
+                    </h3>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                      Hybrid365 shapes your 12-week plan from your Athlete Profile — hybrid strength, engine and physique
-                      in one coached arc.
+                      {showProgrammeBuilding
+                        ? "Your coached block is being prepared. Check back on your dashboard — we'll notify you by email when it unlocks."
+                        : "Hybrid365 shapes your 12-week plan from your Athlete Profile — hybrid strength, engine and physique in one coached arc."}
                     </p>
-                    <button
-                      type="button"
-                      disabled={!assessmentCompleted || generatingProgramme}
-                      aria-busy={generatingProgramme}
-                      onClick={handleGenerateProgramme}
-                      className="mt-4 inline-flex w-full min-h-[44px] items-center justify-center rounded-xl bg-yellow-400 px-4 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
-                    </button>
+                    {showProgrammeBuilding ? (
+                      <p className="mt-4 text-xs font-medium text-yellow-200/80">
+                        {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : "Usually ready within 12 hours"}
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!assessmentCompleted || generatingProgramme}
+                        aria-busy={generatingProgramme}
+                        onClick={handleGenerateProgramme}
+                        className="mt-4 inline-flex w-full min-h-[44px] items-center justify-center rounded-xl bg-yellow-400 px-4 py-3 text-sm font-bold text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
+                      </button>
+                    )}
                   </div>
 
                   {/* Step 4 */}
@@ -1203,6 +1258,13 @@ export default function MemberDashboardClient({
                       className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-center text-sm font-bold text-zinc-950 shadow-lg shadow-yellow-400/20 transition hover:bg-yellow-300 sm:flex-none sm:px-8"
                     >
                       {COMMUNITY_COMPLETE_ATHLETE_PROFILE}
+                    </Link>
+                  ) : showProgrammeBuilding ? (
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-zinc-600 bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:border-zinc-500 sm:flex-none sm:px-8"
+                    >
+                      View dashboard
                     </Link>
                   ) : (
                     <>

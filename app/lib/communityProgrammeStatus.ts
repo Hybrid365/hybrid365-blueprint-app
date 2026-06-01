@@ -9,6 +9,11 @@ import {
   MEMBERSHIP_ACCESS_SELECT,
   type MembershipForAccess,
 } from "@/app/lib/membershipAccess";
+import {
+  resolveCommunityProgrammeUnlockState,
+  type CommunityProgrammeUnlockState,
+  type ProgrammeInstanceUnlockFields,
+} from "@/app/lib/communityProgrammeUnlock";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import { buildTwelveProgrammeWeeks, type ProgrammeWeekLike } from "@/app/lib/progressMetrics";
 
@@ -18,6 +23,9 @@ export type CommunityProgrammeInstanceRow = {
   current_week?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
+  status?: string | null;
+  unlock_at?: string | null;
+  programme_generated_at?: string | null;
 };
 
 export type CommunityProgrammeWeekRow = {
@@ -41,11 +49,16 @@ export type CommunityProgrammeLoadContext = {
   membership: MembershipForAccess | null;
   /** Canonical gate: raw DB weeks with non-empty plan_json.schedule (before entitlement). */
   programmeGenerated: boolean;
+  /** Member can view sessions (unlock passed or legacy live). */
+  canViewProgramme: boolean;
+  programmePendingUnlock: boolean;
+  unlock: CommunityProgrammeUnlockState;
   entitledWeeks: CommunityProgrammeWeekRow[];
   weeks12: ProgrammeWeekLike[];
 };
 
-const INSTANCE_SELECT = "id, title, current_week, created_at";
+const INSTANCE_SELECT =
+  "id, title, current_week, created_at, status, unlock_at, programme_generated_at";
 
 /** Columns that exist on public.programme_weeks (no updated_at on this table). */
 export const COMMUNITY_PROGRAMME_WEEKS_SELECT =
@@ -224,22 +237,35 @@ export async function loadCommunityProgrammeContext(
     .maybeSingle();
 
   const membershipRow = membership as MembershipForAccess | null;
-  const entitledWeeks = applyMembershipEntitlementToWeeks(weeksRaw, membershipRow);
+
+  const programmeGenerated = resolveCommunityProgrammeGenerated(instance?.id ?? null, weeksRaw);
+  const unlock = resolveCommunityProgrammeUnlockState(instance, programmeGenerated);
+  const canViewProgramme = programmeGenerated && unlock.canViewProgramme;
+
+  const entitledWeeksBase = applyMembershipEntitlementToWeeks(weeksRaw, membershipRow);
+  const entitledWeeks = canViewProgramme
+    ? entitledWeeksBase
+    : entitledWeeksBase.map((w) => ({
+        ...w,
+        plan_json: null,
+      }));
+
   const weeks12 = buildTwelveProgrammeWeeks(
     entitledWeeks.map((w) => ({
       week_number: w.week_number,
-      is_unlocked: w.is_unlocked ?? false,
+      is_unlocked: canViewProgramme ? (w.is_unlocked ?? false) : false,
       plan_json: w.plan_json,
     }))
   );
-
-  const programmeGenerated = resolveCommunityProgrammeGenerated(instance?.id ?? null, weeksRaw);
 
   return {
     instance,
     weeksRaw,
     membership: membershipRow,
     programmeGenerated,
+    canViewProgramme,
+    programmePendingUnlock: unlock.programmePendingUnlock,
+    unlock,
     entitledWeeks,
     weeks12,
   };
@@ -333,11 +359,15 @@ export function resolveCommunityCanViewProgramme(
   programmeInstanceId: string | null | undefined,
   programmeGenerated: boolean,
   weeksRaw: readonly WeekPlanRow[],
+  instance?: ProgrammeInstanceUnlockFields | null,
   displayWeeks?: readonly ProgrammeWeekLike[]
 ): boolean {
-  if (!programmeInstanceId) return false;
-  if (programmeGenerated) return true;
-  if (countMeaningfulCommunityWeeks(weeksRaw) > 0) return true;
+  if (!programmeInstanceId || !programmeGenerated) return false;
+  const unlock = resolveCommunityProgrammeUnlockState(instance ?? null, programmeGenerated);
+  if (unlock.canViewProgramme) return true;
+  if (countMeaningfulCommunityWeeks(weeksRaw) > 0 && !unlock.programmePendingUnlock) {
+    return true;
+  }
   if (displayWeeks?.length) {
     return communityProgrammeHasUnlockedSchedule(programmeInstanceId, displayWeeks);
   }

@@ -16,15 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
-import {
-  COMMUNITY_BUILD_PROGRAMME,
-  COMMUNITY_BUILDING_PROGRAMME,
-  COMMUNITY_POST_PROFILE_NEXT_BODY,
-  COMMUNITY_POST_PROFILE_NEXT_HEADLINE,
-} from "@/components/dashboard/communityOnboardingCopy";
-import { ProgrammeReadyBanner } from "@/components/dashboard/ProgrammeReadyBanner";
+import { ProgrammeBeingBuiltCard } from "@/components/dashboard/ProgrammeBeingBuiltCard";
 import { ProgrammeRefreshAssessmentNote } from "@/components/dashboard/ProgrammeRefreshAssessmentNote";
-import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 import { RUN_VOLUME_BAND_OPTIONS } from "@/app/lib/runVolumePlanner";
 
 export type AssessmentRow = {
@@ -61,6 +54,9 @@ type Props = {
   programmeInstanceId: string | null;
   initialAssessment: AssessmentRow | null;
   hasGeneratedProgramme: boolean;
+  canViewProgramme: boolean;
+  programmePendingUnlock: boolean;
+  unlockAtMs: number | null;
 };
 
 type SectionDef = {
@@ -230,15 +226,15 @@ export default function AssessmentClient({
   programmeInstanceId,
   initialAssessment,
   hasGeneratedProgramme,
+  canViewProgramme,
+  programmePendingUnlock,
+  unlockAtMs,
 }: Props) {
   const router = useRouter();
   const [expandedSection, setExpandedSection] = useState<string | null>("goal");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [generatingProgramme, setGeneratingProgramme] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generateSuccess, setGenerateSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState(() => {
     const doubleSessionDays = initialDoubleSessionDaysFromAssessment(initialAssessment);
     return {
@@ -344,8 +340,15 @@ export default function AssessmentClient({
         console.error("assessment save failed", payload);
         throw new Error(payload.error || "Failed to save assessment");
       }
-      await res.json();
-      setSuccess("Assessment saved.");
+      const payload = (await res.json()) as {
+        programmeQueued?: boolean;
+        programmeUnlockAt?: string | null;
+      };
+      setSuccess(
+        payload.programmeQueued
+          ? "Assessment saved — your programme is being built."
+          : "Assessment saved."
+      );
       router.refresh();
     } catch (e) {
       console.error("assessment save error", e);
@@ -360,26 +363,8 @@ export default function AssessmentClient({
     formData.eventStatus.trim().toLowerCase() !== "no event booked";
   const assessmentMarkedComplete = Boolean(initialAssessment?.completed_at || success);
 
-  async function handleGenerateProgramme() {
-    setGeneratingProgramme(true);
-    setGenerateError(null);
-    setGenerateSuccess(null);
-    const result = await postDashboardGenerateProgramme();
-    if (!result.ok) {
-      setGenerateError(result.error);
-      setGeneratingProgramme(false);
-      return;
-    }
-    try {
-      sessionStorage.setItem("hybrid365-programme-ready", "1");
-    } catch {
-      /* ignore */
-    }
-    setGenerateSuccess("ready");
-    setGeneratingProgramme(false);
-    router.push("/dashboard");
-    router.refresh();
-  }
+  const showProgrammeBuilding =
+    assessmentMarkedComplete && !canViewProgramme && (hasGeneratedProgramme || programmePendingUnlock);
 
   const sections: SectionDef[] = [
     {
@@ -454,55 +439,25 @@ export default function AssessmentClient({
           </div>
         </div>
 
-        {assessmentMarkedComplete && !hasGeneratedProgramme ? (
+        {showProgrammeBuilding ? (
           <div className="px-4 md:px-8">
-            <section className="mb-6 overflow-hidden rounded-2xl border border-yellow-500/25 bg-gradient-to-br from-yellow-400/[0.1] via-zinc-950 to-zinc-950 p-6 shadow-lg shadow-black/30 sm:p-8">
-              <div className="flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 ring-1 ring-emerald-400/35">
-                  <Check className="h-6 w-6 text-emerald-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Athlete Profile complete</p>
-                  <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
-                    {COMMUNITY_POST_PROFILE_NEXT_HEADLINE}
-                  </h2>
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-                    {COMMUNITY_POST_PROFILE_NEXT_BODY}
-                  </p>
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    <button
-                      type="button"
-                      disabled={generatingProgramme}
-                      aria-busy={generatingProgramme}
-                      onClick={handleGenerateProgramme}
-                      className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-md shadow-yellow-400/20 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[200px]"
-                    >
-                      {generatingProgramme ? COMMUNITY_BUILDING_PROGRAMME : COMMUNITY_BUILD_PROGRAMME}
-                    </button>
-                    <Link
-                      href="/dashboard/testing"
-                      className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-zinc-600 bg-zinc-900/90 px-6 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-zinc-500 sm:flex-none sm:min-w-[200px]"
-                    >
-                      Add baseline tests
-                    </Link>
-                    <Link
-                      href="/dashboard"
-                      className="inline-flex min-h-[48px] items-center justify-center rounded-xl px-4 py-3.5 text-sm font-medium text-zinc-400 underline-offset-4 transition hover:text-white hover:underline"
-                    >
-                      Back to dashboard
-                    </Link>
-                  </div>
-                  {generateError ? (
-                    <p className="mt-4 text-sm text-red-400">{generateError}</p>
-                  ) : null}
-                  {generateSuccess ? (
-                    <div className="mt-6">
-                      <ProgrammeReadyBanner />
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </section>
+            <div className="mb-6">
+              <ProgrammeBeingBuiltCard unlockAtMs={unlockAtMs} />
+            </div>
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Link
+                href="/dashboard/testing"
+                className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-zinc-600 bg-zinc-900/90 px-6 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-zinc-500 sm:flex-none sm:min-w-[200px]"
+              >
+                Add baseline tests (optional)
+              </Link>
+              <Link
+                href="/dashboard"
+                className="inline-flex min-h-[48px] items-center justify-center rounded-xl px-4 py-3.5 text-sm font-medium text-zinc-400 underline-offset-4 transition hover:text-white hover:underline"
+              >
+                Back to dashboard
+              </Link>
+            </div>
           </div>
         ) : null}
 

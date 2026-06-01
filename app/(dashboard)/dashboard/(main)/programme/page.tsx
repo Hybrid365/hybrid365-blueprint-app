@@ -5,7 +5,6 @@ import {
   loadCommunityProgrammeContext,
   logCommunityProgrammeBuildCardShown,
   logCommunityProgrammeLoadDebug,
-  resolveCommunityCanViewProgramme,
 } from "@/app/lib/communityProgrammeStatus";
 import type { CommunityProgrammeGateDebug } from "@/app/lib/communityProgrammeStatus";
 import {
@@ -73,8 +72,11 @@ export default async function ProgrammePage() {
     instance: typedInstance,
     weeksRaw,
     programmeGenerated,
+    canViewProgramme: canViewFromCtx,
+    programmePendingUnlock,
     entitledWeeks: entitledWeeksRaw,
     weeks12,
+    unlock,
   } = programmeCtx;
 
   let sessionLogs: SessionLogRow[] = [];
@@ -105,11 +107,7 @@ export default async function ProgrammePage() {
     }
   }
 
-  const canViewProgramme = resolveCommunityCanViewProgramme(
-    typedInstance?.id ?? null,
-    programmeGenerated,
-    weeksRaw
-  );
+  const canViewProgramme = canViewFromCtx;
 
   const gateDebug: CommunityProgrammeGateDebug = buildCommunityProgrammeGateDebug(
     typedInstance?.id ?? null,
@@ -196,6 +194,8 @@ export default async function ProgrammePage() {
       programmeTitle={programmeTitle}
       programmeGenerated={programmeGenerated}
       canViewProgramme={canViewProgramme}
+      programmePendingUnlock={programmePendingUnlock}
+      unlockAtMs={unlock.unlockAtMs}
       gateDebug={gateDebug}
       assessmentCompleted={assessmentCompleted}
       effectiveWeek={effectiveWeek}

@@ -1,7 +1,18 @@
 /** Paid community dashboard onboarding copy (not Hyrox Team). */
 
+/** @deprecated Replaced by coach-build flow; kept for admin/testing regen labels */
 export const COMMUNITY_BUILD_PROGRAMME = "Build my personalised programme";
 export const COMMUNITY_BUILDING_PROGRAMME = "Building your programme…";
+
+export const COMMUNITY_ASSESSMENT_SUBMITTED_HEADLINE = "Assessment submitted";
+
+export const COMMUNITY_PROGRAMME_BEING_BUILT_TITLE = "Your programme is being built";
+
+export const COMMUNITY_PROGRAMME_BEING_BUILT_BODY =
+  "We're using your assessment to build your first Hybrid365 training block around your goals, current level, availability and equipment access.";
+
+export const COMMUNITY_PROGRAMME_BEING_BUILT_EMAIL_NOTE =
+  "Your programme will unlock within 12 hours. You'll receive an email when it's ready.";
 
 export const COMMUNITY_COMPLETE_ATHLETE_PROFILE = "Complete Athlete Profile";
 export const COMMUNITY_REVIEW_ATHLETE_PROFILE = "Review Athlete Profile";

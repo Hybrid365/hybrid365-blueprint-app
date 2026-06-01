@@ -46,6 +46,7 @@ import {
   LockedWeekMessage,
   ProgrammeBlockUnlockNote,
 } from "@/components/dashboard/ProgrammeBlockUnlockNote";
+import { ProgrammeBeingBuiltCard } from "@/components/dashboard/ProgrammeBeingBuiltCard";
 import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
 import {
   COMMUNITY_BUILD_PROGRAMME,
@@ -79,6 +80,8 @@ type Props = {
   programmeGenerated: boolean;
   /** Server-resolved view gate (matches dashboard home). */
   canViewProgramme: boolean;
+  programmePendingUnlock: boolean;
+  unlockAtMs: number | null;
   gateDebug?: CommunityProgrammeGateDebug;
   assessmentCompleted: boolean;
   effectiveWeek: number;
@@ -126,6 +129,8 @@ export default function ProgrammeClient({
   programmeTitle,
   programmeGenerated,
   canViewProgramme,
+  programmePendingUnlock,
+  unlockAtMs,
   gateDebug,
   assessmentCompleted,
   effectiveWeek,
@@ -304,6 +309,9 @@ export default function ProgrammeClient({
 
         {!canViewProgramme ? (
           <div className="mx-auto mt-10 max-w-6xl px-4 md:px-8">
+            {programmePendingUnlock && programmeGenerated ? (
+              <ProgrammeBeingBuiltCard unlockAtMs={unlockAtMs} />
+            ) : (
             <div className="rounded-2xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/[0.07] to-zinc-900/90 p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-400/15 ring-1 ring-yellow-400/25">
                 <LayoutGrid className="h-6 w-6 text-yellow-400" />
@@ -342,6 +350,7 @@ export default function ProgrammeClient({
                 </Link>
               </div>
             </div>
+            )}
             <DashboardSupportCard className="mt-6" />
           </div>
         ) : (

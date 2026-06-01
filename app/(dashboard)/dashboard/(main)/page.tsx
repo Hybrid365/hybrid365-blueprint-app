@@ -166,6 +166,9 @@ export default async function DashboardPage() {
   const entitledWeeks = programmeCtx.entitledWeeks;
   const weeks12 = programmeCtx.weeks12;
   const programmeGenerated = programmeCtx.programmeGenerated;
+  const canViewProgramme = programmeCtx.canViewProgramme;
+  const programmePendingUnlock = programmeCtx.programmePendingUnlock;
+  const unlockAtMs = programmeCtx.unlock.unlockAtMs;
 
   const programmeTitle =
     typedInstance?.title?.trim() || "Your Hybrid365 programme";
@@ -194,7 +197,7 @@ export default async function DashboardPage() {
 
   const effectiveWeek = deriveEffectiveCurrentWeek(instanceCurrentWeek, weeks12);
   const challengeTracking =
-    programmeGenerated && typedInstance?.id
+    canViewProgramme && typedInstance?.id
       ? buildChallengeTrackingSummary({
           habitLogs,
           todayYmd,
@@ -203,7 +206,7 @@ export default async function DashboardPage() {
           submissions: challengeSubmissions,
         })
       : null;
-  const weekTrackingSummary = programmeGenerated
+  const weekTrackingSummary = canViewProgramme
     ? buildDashboardWeekTrackingSummary({
         weeks: weeks12,
         sessionLogs: initialSessionLogs,
@@ -231,6 +234,9 @@ export default async function DashboardPage() {
       assessmentCompleted={assessmentCompleted}
       coreTestsLogged={coreTestsLogged}
       programmeGenerated={programmeGenerated}
+      canViewProgramme={canViewProgramme}
+      programmePendingUnlock={programmePendingUnlock}
+      unlockAtMs={unlockAtMs}
       weekTrackingSummary={weekTrackingSummary}
       habitLogs={habitLogs}
       benchmarkTests={benchmarkTests}

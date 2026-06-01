@@ -286,6 +286,9 @@ export async function fullRegenerateMemberProgramme(
         goal_focus: programmeInstancePayload.goal_focus,
         ability_level: programmeInstancePayload.ability_level,
         weekly_hours_band: programmeInstancePayload.weekly_hours_band,
+        status: "live",
+        unlock_at: null,
+        programme_generated_at: new Date().toISOString(),
       })
       .eq("id", programmeInstanceId)
       .eq("user_id", userId);
@@ -297,7 +300,12 @@ export async function fullRegenerateMemberProgramme(
   } else {
     const { data: inserted, error: insErr } = await admin
       .from("programme_instances")
-      .insert(programmeInstancePayload)
+      .insert({
+        ...programmeInstancePayload,
+        status: "live",
+        unlock_at: null,
+        programme_generated_at: new Date().toISOString(),
+      })
       .select("id")
       .single();
 

@@ -4,6 +4,8 @@ export type GenerateProgrammeSuccess = {
   weeksGenerated: number;
   unlockedWeeks: number[];
   message?: string;
+  unlockAt?: string | null;
+  status?: "pending_unlock" | "live";
 };
 
 export type GenerateProgrammeFailure = {
@@ -46,5 +48,15 @@ export async function postDashboardGenerateProgramme(): Promise<GenerateProgramm
       : [1, 2, 3, 4],
     message:
       typeof payload.message === "string" ? (payload.message as string) : undefined,
+    unlockAt:
+      typeof payload.unlockAt === "string"
+        ? (payload.unlockAt as string)
+        : payload.unlockAt === null
+          ? null
+          : undefined,
+    status:
+      payload.status === "pending_unlock" || payload.status === "live"
+        ? payload.status
+        : undefined,
   };
 }

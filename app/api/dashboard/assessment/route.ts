@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import { runCommunityGenerateProgramme } from "@/app/lib/communityGenerateProgramme";
+import {
+  fetchCommunityProgrammeInstance,
+  loadCommunityProgrammeWeeks,
+  resolveCommunityProgrammeGenerated,
+} from "@/app/lib/communityProgrammeStatus";
 import { createClient } from "@/app/lib/supabase/server";
 
 type AssessmentPayload = {
@@ -125,5 +131,29 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ assessment: data });
+  let programmeQueued = false;
+  let programmeUnlockAt: string | null = null;
+
+  if (upsertPayload.completed_at) {
+    const instance = await fetchCommunityProgrammeInstance(supabase, user.id);
+    const weeksRaw = instance?.id
+      ? await loadCommunityProgrammeWeeks(supabase, instance.id)
+      : [];
+    const hasProgramme = resolveCommunityProgrammeGenerated(instance?.id ?? null, weeksRaw);
+
+    if (!hasProgramme) {
+      const gen = await runCommunityGenerateProgramme(supabase, user);
+      programmeQueued = gen.ok;
+      programmeUnlockAt = gen.ok ? gen.unlockAt : null;
+      if (!gen.ok) {
+        console.warn("[assessment] programme generation after profile save failed", gen.error);
+      }
+    }
+  }
+
+  return NextResponse.json({
+    assessment: data,
+    programmeQueued,
+    programmeUnlockAt,
+  });
 }
