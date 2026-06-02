@@ -44,10 +44,15 @@ import {
 import {
   LockedProgressPreviews,
   MembershipFeaturePreviewsSection,
-  ProgrammeBlocksSection,
+  ProgrammeLockedWeeksPreview,
+  ProgrammeWeekOneUnlocked,
   STANDARD_FREE_WEEK_NAV,
+  StandardQuickActionsBar,
   StandardUpgradeSection,
+  StartHereCard,
   TelegramCommunitySection,
+  TelegramCtaTop,
+  WeekSessionsActionNote,
 } from "@/components/free-week/standard/StandardFreeWeekEnhancements";
 
 type FreePlanDashboardClientProps = {
@@ -274,8 +279,13 @@ export default function FreePlanDashboardClient({
               <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-300 md:text-lg">
                 {isHybrid75
                   ? "Your free week is built around the Hybrid 75 rules — structured training, daily habits, and the weekend Hybrid Hard Challenge."
-                  : "Your structured free week — built around your goal, level, schedule and equipment."}
+                  : "Your free week is ready — train hard, join the community, then unlock your full personalised programme."}
               </p>
+              {!isHybrid75 ? (
+                <p className="mt-3 text-sm font-medium text-yellow-300/90">
+                  {sessions.length} sessions planned this week · instant access
+                </p>
+              ) : null}
               <div className="mt-6 flex flex-wrap gap-2 text-sm">
                 {[
                   { label: "Goal", value: String(profile.goal || "—") },
@@ -292,6 +302,13 @@ export default function FreePlanDashboardClient({
               </div>
             </div>
           </div>
+
+          {!isHybrid75 ? (
+            <>
+              <StandardQuickActionsBar />
+              <TelegramCtaTop />
+            </>
+          ) : null}
 
           {isHybrid75 ? <SaveDashboardBanner planUrl={resolvedPlanUrl} /> : null}
 
@@ -342,6 +359,8 @@ export default function FreePlanDashboardClient({
             </SectionCard>
           ) : null}
 
+          {!isHybrid75 ? <StartHereCard /> : null}
+
           {/* Weekly structure metrics */}
           <div>
             <SectionHeading
@@ -349,7 +368,7 @@ export default function FreePlanDashboardClient({
               subtitle={
                 isHybrid75
                   ? "Planned sessions mapped against Hybrid 75 targets."
-                  : "Planned session mix for your free week."
+                  : "Session mix for your free week — head to Week to start training."
               }
             />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -433,9 +452,10 @@ export default function FreePlanDashboardClient({
           />
 
           {!isHybrid75 ? (
-            <SectionCard>
-              <ProgrammeBlocksSection />
-            </SectionCard>
+            <>
+              <WeekSessionsActionNote />
+              <ProgrammeWeekOneUnlocked />
+            </>
           ) : null}
 
           <div>
@@ -463,6 +483,12 @@ export default function FreePlanDashboardClient({
               />
             ))}
           </div>
+
+          {!isHybrid75 ? (
+            <SectionCard>
+              <ProgrammeLockedWeeksPreview />
+            </SectionCard>
+          ) : null}
         </section>
 
         {/* CHALLENGE */}
@@ -502,13 +528,30 @@ export default function FreePlanDashboardClient({
         {/* PROGRESS */}
         <section id="section-progress" className="scroll-mt-20 mt-12 space-y-6">
           <SectionHeading
-            title="Progress preview"
+            title={isHybrid75 ? "Progress preview" : "Track this week’s consistency"}
             subtitle={
               isHybrid75
                 ? "Planned week preview — live completion tracking unlocks with full membership."
-                : "Your free week snapshot — trend tracking unlocks with full membership."
+                : "Sessions planned, training split and your 7-day grid — deeper trends unlock with membership."
             }
           />
+
+          {!isHybrid75 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <MetricCard
+                label="Sessions planned"
+                value={String(sessions.length)}
+                sub="This free week"
+                highlight
+              />
+              <MetricCard label="Runs" value={String(metrics.runs)} />
+              <MetricCard label="Strength" value={String(metrics.strength)} />
+              <MetricCard
+                label="Conditioning"
+                value={String(metrics.conditioning + metrics.hybrid)}
+              />
+            </div>
+          ) : null}
 
           {/* Training split bar */}
           <SectionCard>
@@ -621,7 +664,7 @@ export default function FreePlanDashboardClient({
 
           {!isHybrid75 ? (
             <SectionCard>
-              <h3 className="mb-4 text-lg font-semibold text-white">Member progress tracking</h3>
+              <h3 className="mb-1 text-lg font-semibold text-white">Full member tracking</h3>
               <LockedProgressPreviews />
             </SectionCard>
           ) : null}
