@@ -41,6 +41,14 @@ import {
   sortSessionsByDay,
   type FreePlanSession,
 } from "@/app/lib/freePlanDashboard";
+import {
+  LockedProgressPreviews,
+  MembershipFeaturePreviewsSection,
+  ProgrammeBlocksSection,
+  STANDARD_FREE_WEEK_NAV,
+  StandardUpgradeSection,
+  TelegramCommunitySection,
+} from "@/components/free-week/standard/StandardFreeWeekEnhancements";
 
 type FreePlanDashboardClientProps = {
   planId: string;
@@ -155,18 +163,17 @@ export default function FreePlanDashboardClient({
   const weekGrid = useMemo(() => buildWeekGrid(sessions), [sessions]);
 
   const navTabs: NavTab[] = useMemo(
-    () => [
-      { id: "section-overview", label: "Overview" },
-      { id: "section-this-week", label: "This Week" },
-      ...(isHybrid75
+    () =>
+      isHybrid75
         ? [
+            { id: "section-overview", label: "Overview" },
+            { id: "section-this-week", label: "This Week" },
             { id: "section-challenge", label: "Challenge" },
             { id: "section-leaderboard", label: "Leaderboard" },
+            { id: "section-progress", label: "Progress" },
+            { id: "section-upgrade", label: "Upgrade" },
           ]
-        : []),
-      { id: "section-progress", label: "Progress" },
-      { id: "section-upgrade", label: "Upgrade" },
-    ],
+        : STANDARD_FREE_WEEK_NAV.map((tab) => ({ id: tab.id, label: tab.label })),
     [isHybrid75]
   );
 
@@ -417,9 +424,19 @@ export default function FreePlanDashboardClient({
         {/* THIS WEEK */}
         <section id="section-this-week" className="scroll-mt-20 mt-12 space-y-6">
           <SectionHeading
-            title="This week’s schedule"
-            subtitle="Tap through each session — full coaching detail below."
+            title={isHybrid75 ? "This week’s schedule" : "Your programme week"}
+            subtitle={
+              isHybrid75
+                ? "Tap through each session — full coaching detail below."
+                : "Week 1 is unlocked — full sessions below. Weeks 2–4 unlock with membership."
+            }
           />
+
+          {!isHybrid75 ? (
+            <SectionCard>
+              <ProgrammeBlocksSection />
+            </SectionCard>
+          ) : null}
 
           <div>
             <p className="mb-3 text-sm uppercase tracking-[0.2em] text-yellow-300">Quick note from Kieran</p>
@@ -476,11 +493,21 @@ export default function FreePlanDashboardClient({
           </section>
         ) : null}
 
+        {!isHybrid75 ? (
+          <section className="scroll-mt-20 mt-12">
+            <TelegramCommunitySection />
+          </section>
+        ) : null}
+
         {/* PROGRESS */}
         <section id="section-progress" className="scroll-mt-20 mt-12 space-y-6">
           <SectionHeading
             title="Progress preview"
-            subtitle="Planned week preview — live completion tracking unlocks with full membership."
+            subtitle={
+              isHybrid75
+                ? "Planned week preview — live completion tracking unlocks with full membership."
+                : "Your free week snapshot — trend tracking unlocks with full membership."
+            }
           />
 
           {/* Training split bar */}
@@ -591,15 +618,27 @@ export default function FreePlanDashboardClient({
               </div>
             </SectionCard>
           ) : null}
+
+          {!isHybrid75 ? (
+            <SectionCard>
+              <h3 className="mb-4 text-lg font-semibold text-white">Member progress tracking</h3>
+              <LockedProgressPreviews />
+            </SectionCard>
+          ) : null}
         </section>
 
         {/* UPGRADE */}
         <section id="section-upgrade" className="scroll-mt-20 mt-12 space-y-6">
-          <SectionHeading
-            title="Unlock the full Hybrid365 experience"
-            subtitle="Your free week is the preview — full membership unlocks progression, tracking and community."
-          />
+          {isHybrid75 ? (
+            <SectionHeading
+              title="Unlock the full Hybrid365 experience"
+              subtitle="Your free week is the preview — full membership unlocks progression, tracking and community."
+            />
+          ) : (
+            <MembershipFeaturePreviewsSection />
+          )}
 
+          {isHybrid75 ? (
           <div id="section-upgrade-features" className="grid gap-4 sm:grid-cols-2">
             {[
               {
@@ -639,9 +678,10 @@ export default function FreePlanDashboardClient({
               </div>
             ))}
           </div>
+          ) : null}
 
+          {isHybrid75 ? (
           <SectionCard className="border-[#F4D23C]/30 bg-gradient-to-br from-zinc-950 via-black to-zinc-950 text-center">
-            {isHybrid75 ? (
               <>
                 <Sparkles className="mx-auto h-8 w-8 text-[#F4D23C]" />
                 <h3 className="mt-4 text-2xl font-bold text-white md:text-3xl">Want the full 16-week version?</h3>
@@ -668,37 +708,12 @@ export default function FreePlanDashboardClient({
                   </button>
                 </div>
               </>
-            ) : (
-              <>
-                <Target className="mx-auto h-8 w-8 text-[#F4D23C]" />
-                <h3 className="mt-4 text-2xl font-bold text-white md:text-3xl">Ready for the full programme?</h3>
-                <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-zinc-300">
-                  Your free week shows you the structure. The full Hybrid365 membership gives you the complete 16-week
-                  personalised programme, dashboard access, weekly check-ins and community accountability to keep building.
-                </p>
-                <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                  <a
-                    href={COMMUNITY_UPGRADE_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#F4D23C] px-6 py-3.5 text-sm font-bold text-black transition hover:opacity-90"
-                  >
-                    Join Hybrid365
-                    <ArrowRight className="h-4 w-4" />
-                  </a>
-                  <a
-                    href={cta.button_url || "https://levelete.com/hybridtrainingmastery"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-                  >
-                    Learn the Method
-                  </a>
-                </div>
-              </>
-            )}
           </SectionCard>
+          ) : (
+            <StandardUpgradeSection />
+          )}
 
+          {isHybrid75 ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-6 text-center">
             <p className="text-sm uppercase tracking-[0.2em] text-yellow-300">Next step</p>
             <p className="mx-auto mt-3 max-w-xl text-zinc-400">
@@ -706,6 +721,7 @@ export default function FreePlanDashboardClient({
                 "Understand the Hybrid365 method — then decide if you want the full progression built for you."}
             </p>
           </div>
+          ) : null}
         </section>
 
         <footer className="mt-12 border-t border-white/10 pt-8 text-center text-sm text-zinc-500">
