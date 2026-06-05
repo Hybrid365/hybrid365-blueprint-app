@@ -4,13 +4,13 @@ import {
   fetchCommunityProgrammeInstance,
 } from "@/app/lib/communityProgrammeStatus";
 import { computeCommunityProgrammeUnlockAt } from "@/app/lib/communityProgrammeUnlock";
+import { generatePaidCommunityProgramme } from "@/app/lib/communityProgrammeGeneration";
 import {
   getUnlockedWeekCount,
   getUnlockedWeeksForMembership,
   isMembershipActive,
   type MembershipForAccess,
 } from "@/app/lib/membershipAccess";
-import { generate12WeekProgramme } from "@/app/lib/generate12WeekProgramme";
 import {
   mapAssessmentToProgrammeInput,
   type AthleteAssessmentRowForProgramme,
@@ -114,17 +114,25 @@ export async function runCommunityGenerateProgramme(
     hadWeeksAlready = (wc ?? []).length > 0;
   }
 
-  let generated;
+  let generatedResult;
   try {
-    generated = generate12WeekProgramme(blueprintInput);
+    generatedResult = generatePaidCommunityProgramme({
+      assessment: typedAssessment,
+      benchmarkTests,
+      email: user.email ?? null,
+      profile,
+      userId: user.id,
+    });
   } catch (e) {
-    console.error("generate12WeekProgramme error:", e);
+    console.error("generatePaidCommunityProgramme error:", e);
     return {
       ok: false,
       error: "Unable to generate programme plan. Try again shortly.",
       status: 500,
     };
   }
+
+  const generated = generatedResult.weeks;
 
   const nowIso = new Date().toISOString();
   const existingUnlockMs = existingInstance?.unlock_at
@@ -244,6 +252,11 @@ export async function runCommunityGenerateProgramme(
     hadWeeksAlready,
     status: instanceStatus,
     unlockAt,
+    trainingTrack: generatedResult.trainingTrack,
+    builder: generatedResult.builder,
+    weeksGenerated: generated.length,
+    totalSessions: generatedResult.totalSessions,
+    paceGuidanceCreated: generatedResult.paceGuidanceCreated,
   });
 
   return {

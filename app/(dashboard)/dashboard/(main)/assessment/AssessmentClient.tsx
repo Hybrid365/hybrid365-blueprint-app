@@ -13,16 +13,30 @@ import {
   ChevronRight,
   Check,
   Save,
+  Route,
+  Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { ProgrammeBeingBuiltCard } from "@/components/dashboard/ProgrammeBeingBuiltCard";
 import { ProgrammeRefreshAssessmentNote } from "@/components/dashboard/ProgrammeRefreshAssessmentNote";
+import { HyroxTrackAssessmentSection } from "@/components/dashboard/assessment/HyroxTrackAssessmentSection";
+import { TrainingTrackSelector } from "@/components/dashboard/assessment/TrainingTrackSelector";
 import { RUN_VOLUME_BAND_OPTIONS } from "@/app/lib/runVolumePlanner";
+import {
+  hydrateHyroxDetailsFromAssessment,
+  isHyroxSectionComplete,
+  parseTrainingTrack,
+  serializeHyroxDetails,
+  validateHyroxAssessment,
+  type CommunityTrainingTrack,
+} from "@/app/lib/communityHyroxAssessment";
 
 export type AssessmentRow = {
   id: string;
   first_name?: string | null;
+  training_track?: string | null;
+  hyrox_details?: unknown;
   goal_focus: string | null;
   event_type: string | null;
   event_date: string | null;
@@ -231,13 +245,17 @@ export default function AssessmentClient({
   unlockAtMs,
 }: Props) {
   const router = useRouter();
-  const [expandedSection, setExpandedSection] = useState<string | null>("goal");
+  const [expandedSection, setExpandedSection] = useState<string | null>("track");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState(() => {
     const doubleSessionDays = initialDoubleSessionDaysFromAssessment(initialAssessment);
+    const trainingTrack = parseTrainingTrack(initialAssessment?.training_track);
+    const hyroxDetails = hydrateHyroxDetailsFromAssessment(initialAssessment);
     return {
+      trainingTrack,
+      hyroxDetails,
       firstName: initialAssessment?.first_name?.trim() ?? "",
       goal: initialAssessment?.goal_focus ?? "",
       eventStatus: initialAssessment?.event_type ?? "",
@@ -276,12 +294,26 @@ export default function AssessmentClient({
     setSaving(true);
     setError(null);
     setSuccess(null);
+
+    const hyroxValidation = validateHyroxAssessment(formData.trainingTrack, formData.hyroxDetails);
+    if (hyroxValidation) {
+      setError(hyroxValidation);
+      setSaving(false);
+      setExpandedSection(formData.trainingTrack === "hyrox" ? "hyrox" : "track");
+      return;
+    }
+
     try {
       const res = await fetch("/api/dashboard/assessment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           programme_instance_id: programmeInstanceId,
+          training_track: formData.trainingTrack,
+          hyrox_details:
+            formData.trainingTrack === "hyrox"
+              ? serializeHyroxDetails(formData.hyroxDetails)
+              : {},
           first_name: formData.firstName.trim() || null,
           goal_focus: formData.goal || initialAssessment?.goal_focus || null,
           event_type: formData.eventStatus || initialAssessment?.event_type || null,
@@ -366,7 +398,25 @@ export default function AssessmentClient({
   const showProgrammeBuilding =
     assessmentMarkedComplete && !canViewProgramme && (hasGeneratedProgramme || programmePendingUnlock);
 
+  const isHyroxTrack = formData.trainingTrack === "hyrox";
+
   const sections: SectionDef[] = [
+    {
+      id: "track",
+      title: "Training Track",
+      icon: <Route className="w-5 h-5" />,
+      isComplete: !!formData.trainingTrack,
+    },
+    ...(isHyroxTrack
+      ? [
+          {
+            id: "hyrox",
+            title: "HYROX Race & Performance Details",
+            icon: <Flag className="w-5 h-5" />,
+            isComplete: isHyroxSectionComplete(formData.hyroxDetails),
+          },
+        ]
+      : []),
     {
       id: "goal",
       title: "Goal & Event",
@@ -383,7 +433,9 @@ export default function AssessmentClient({
       id: "performance",
       title: "Current Performance",
       icon: <Activity className="w-5 h-5" />,
-      isComplete: !!formData.fiveKm,
+      isComplete: isHyroxTrack
+        ? Boolean(formData.hyroxDetails.current_5k_time?.trim() || formData.fiveKm.trim())
+        : !!formData.fiveKm,
     },
     {
       id: "body",
@@ -462,6 +514,68 @@ export default function AssessmentClient({
         ) : null}
 
         <div className="px-4 md:px-8 space-y-3 pb-8">
+          <SectionCard
+            title="Training Track"
+            icon={<Route className="w-5 h-5" />}
+            isComplete={!!formData.trainingTrack}
+            expanded={expandedSection === "track"}
+            onToggle={() => setExpandedSection(expandedSection === "track" ? null : "track")}
+          >
+            <TrainingTrackSelector
+              value={formData.trainingTrack}
+              onChange={(trainingTrack: CommunityTrainingTrack) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  trainingTrack,
+                  hyroxDetails:
+                    trainingTrack === "hyrox" ? prev.hyroxDetails : prev.hyroxDetails,
+                }))
+              }
+            />
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setExpandedSection(isHyroxTrack ? "hyrox" : "goal")}
+                className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-secondary/80"
+              >
+                Continue
+              </button>
+            </div>
+          </SectionCard>
+
+          {isHyroxTrack ? (
+            <SectionCard
+              title="HYROX Race & Performance Details"
+              icon={<Flag className="w-5 h-5" />}
+              isComplete={isHyroxSectionComplete(formData.hyroxDetails)}
+              expanded={expandedSection === "hyrox"}
+              onToggle={() => setExpandedSection(expandedSection === "hyrox" ? null : "hyrox")}
+            >
+              <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+                Tell us about your race, current fitness and station weaknesses so your HYROX track can
+                be built with the right focus.
+              </p>
+              <HyroxTrackAssessmentSection
+                details={formData.hyroxDetails}
+                onChange={(patch) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    hyroxDetails: { ...prev.hyroxDetails, ...patch },
+                  }))
+                }
+              />
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setExpandedSection("goal")}
+                  className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-secondary/80"
+                >
+                  Continue
+                </button>
+              </div>
+            </SectionCard>
+          ) : null}
+
           <SectionCard
             title="Goal & Event"
             icon={<Target className="w-5 h-5" />}
@@ -615,12 +729,20 @@ export default function AssessmentClient({
             </div>
           </SectionCard>
 
-          <SectionCard title="Current Performance" icon={<Activity className="w-5 h-5" />} isComplete={!!formData.fiveKm} expanded={expandedSection === "performance"} onToggle={() => setExpandedSection(expandedSection === "performance" ? null : "performance")}>
+          <SectionCard title="Current Performance" icon={<Activity className="w-5 h-5" />} isComplete={isHyroxTrack ? Boolean(formData.hyroxDetails.current_5k_time?.trim() || formData.fiveKm.trim()) : !!formData.fiveKm} expanded={expandedSection === "performance"} onToggle={() => setExpandedSection(expandedSection === "performance" ? null : "performance")}>
             <div className="space-y-4">
+              {isHyroxTrack ? (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Running times and engine benchmarks are captured in your HYROX section. Add max heart rate
+                  and volume band here if helpful.
+                </p>
+              ) : null}
+              {!isHyroxTrack ? (
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">5km Run Time</label>
                 <input type="text" placeholder="e.g., 25:00" value={formData.fiveKm} onChange={(e) => setFormData({ ...formData, fiveKm: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
+              ) : null}
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">
                   Max heart rate, if known
@@ -649,6 +771,7 @@ export default function AssessmentClient({
                   your plan progresses run mileage.
                 </p>
               </div>
+              {!isHyroxTrack ? (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">1km Row</label>
@@ -659,6 +782,7 @@ export default function AssessmentClient({
                   <input type="text" placeholder="e.g., 4:00" value={formData.skiErg} onChange={(e) => setFormData({ ...formData, skiErg: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
               </div>
+              ) : null}
             </div>
             <div className="mt-4 flex justify-end">
               <button

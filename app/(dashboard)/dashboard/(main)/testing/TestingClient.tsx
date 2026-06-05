@@ -27,6 +27,8 @@ import {
 } from "@/components/dashboard/communityOnboardingCopy";
 import { postDashboardGenerateProgramme } from "@/app/lib/postDashboardGenerateProgramme";
 import { DashboardSubnav } from "@/components/DashboardSubnav";
+import { HyroxBenchmarkPanel } from "@/components/dashboard/hyrox/HyroxBenchmarkPanel";
+import { emptyHyroxDetails } from "@/app/lib/communityHyroxAssessment";
 import { coreBaselineAreaFlags, countCoreBaselineAreas } from "@/app/lib/benchmarkCoreAreas";
 import { parseTimeToSeconds } from "@/app/lib/mapAssessmentToProgrammeInput";
 
@@ -49,6 +51,8 @@ type Props = {
   initialTests: BenchmarkTestRow[];
   assessmentCompleted: boolean;
   programmeGenerated: boolean;
+  isHyroxTrack?: boolean;
+  hyroxDetails?: import("@/app/lib/communityHyroxAssessment").CommunityHyroxDetails;
 };
 
 type CategoryId = "engine" | "strength" | "hybrid" | "body";
@@ -202,6 +206,8 @@ export default function TestingClient({
   initialTests,
   assessmentCompleted,
   programmeGenerated,
+  isHyroxTrack = false,
+  hyroxDetails,
 }: Props) {
   const router = useRouter();
   const [tests, setTests] = useState(initialTests);
@@ -320,6 +326,12 @@ export default function TestingClient({
           <div className="mt-4">
             <DashboardSubnav variant="light" />
           </div>
+
+          {isHyroxTrack ? (
+            <div className="mt-6">
+              <HyroxBenchmarkPanel details={hyroxDetails ?? emptyHyroxDetails()} benchmarkTests={tests} />
+            </div>
+          ) : null}
 
           <div className="mt-6 rounded-2xl border border-border bg-card p-4 md:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

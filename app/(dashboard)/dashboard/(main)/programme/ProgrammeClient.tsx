@@ -47,7 +47,10 @@ import {
   ProgrammeBlockUnlockNote,
 } from "@/components/dashboard/ProgrammeBlockUnlockNote";
 import { ProgrammeBeingBuiltCard } from "@/components/dashboard/ProgrammeBeingBuiltCard";
+import { HyroxProgrammeContextCard } from "@/components/dashboard/hyrox/HyroxProgrammeContextCard";
 import { WeekOneGuidanceCard } from "@/components/dashboard/WeekOneGuidanceCard";
+import type { CommunityHyroxDetails } from "@/app/lib/communityHyroxAssessment";
+import { emptyHyroxDetails } from "@/app/lib/communityHyroxAssessment";
 import {
   COMMUNITY_BUILD_PROGRAMME,
   COMMUNITY_COMPLETE_ATHLETE_PROFILE,
@@ -99,6 +102,8 @@ type Props = {
   maxHeartRate: number | null;
   hasEngineBenchmark: boolean;
   assessmentChangedSinceProgramme: boolean;
+  isHyroxTrack?: boolean;
+  hyroxDetails?: CommunityHyroxDetails;
 };
 
 function blockIdForWeek(week: number): 1 | 2 | 3 {
@@ -148,6 +153,8 @@ export default function ProgrammeClient({
   maxHeartRate,
   hasEngineBenchmark,
   assessmentChangedSinceProgramme,
+  isHyroxTrack = false,
+  hyroxDetails,
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(defaultSelectedWeek);
   const [shareCard, setShareCard] = useState<SessionShareCardProps | null>(null);
@@ -369,6 +376,10 @@ export default function ProgrammeClient({
                 </p>
               </div>
             </section>
+
+            {isHyroxTrack ? (
+              <HyroxProgrammeContextCard details={hyroxDetails ?? emptyHyroxDetails()} />
+            ) : null}
 
             <ProgrammeBlockUnlockNote unlockedCount={unlockedCount} />
 

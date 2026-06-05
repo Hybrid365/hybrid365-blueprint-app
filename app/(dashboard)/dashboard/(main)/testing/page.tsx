@@ -4,6 +4,7 @@ import {
   resolveCommunityProgrammeGenerated,
 } from "@/app/lib/communityProgrammeStatus";
 import TestingClient, { type BenchmarkTestRow } from "./TestingClient";
+import { loadCommunityAssessmentTrack } from "@/app/lib/loadCommunityAssessmentTrack";
 
 type AthleteAssessmentRow = {
   completed_at: string | null;
@@ -11,6 +12,8 @@ type AthleteAssessmentRow = {
 
 export default async function TestingPage() {
   const { supabase, user } = await getDashboardSession("/dashboard/testing");
+
+  const trackCtx = await loadCommunityAssessmentTrack(supabase, user.id);
 
   const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
 
@@ -45,6 +48,8 @@ export default async function TestingPage() {
       initialTests={(tests ?? []) as BenchmarkTestRow[]}
       assessmentCompleted={assessmentCompleted}
       programmeGenerated={programmeGenerated}
+      isHyroxTrack={trackCtx.isHyroxTrack}
+      hyroxDetails={trackCtx.hyroxDetails}
     />
   );
 }

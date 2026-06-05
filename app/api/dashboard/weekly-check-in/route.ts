@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  parseHyroxCheckInDetails,
+  serializeHyroxCheckInDetails,
+  validateHyroxCheckInDetails,
+  type CommunityHyroxCheckInDetails,
+} from "@/app/lib/communityHyroxCheckIn";
 import { createClient } from "@/app/lib/supabase/server";
 
 type WeeklyCheckInPayload = {
@@ -15,6 +21,7 @@ type WeeklyCheckInPayload = {
   biggest_struggle: string | null;
   pain_or_injury: string | null;
   notes: string | null;
+  hyrox_checkin_details?: Record<string, unknown> | null;
 };
 
 function badRequest(message: string) {
@@ -72,6 +79,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const hyroxDetails: CommunityHyroxCheckInDetails = parseHyroxCheckInDetails(
+    payload.hyrox_checkin_details
+  );
+  const hyroxValidation = validateHyroxCheckInDetails(hyroxDetails);
+  if (hyroxValidation) return badRequest(hyroxValidation);
+
   const upsertPayload = {
     user_id: user.id,
     programme_instance_id: payload.programme_instance_id,
@@ -87,6 +100,7 @@ export async function POST(request: Request) {
     biggest_struggle: payload.biggest_struggle?.trim() || null,
     pain_or_injury: payload.pain_or_injury?.trim() || null,
     notes: payload.notes?.trim() || null,
+    hyrox_checkin_details: serializeHyroxCheckInDetails(hyroxDetails),
     submitted_at: new Date().toISOString(),
   };
 
@@ -96,7 +110,7 @@ export async function POST(request: Request) {
       onConflict: "user_id,programme_instance_id,week_number",
     })
     .select(
-      "id, week_number, bodyweight_kg, sleep_hours, energy_score, recovery_score, stress_score, motivation_score, adherence_score, biggest_win, biggest_struggle, pain_or_injury, notes, submitted_at"
+      "id, week_number, bodyweight_kg, sleep_hours, energy_score, recovery_score, stress_score, motivation_score, adherence_score, biggest_win, biggest_struggle, pain_or_injury, notes, hyrox_checkin_details, submitted_at"
     )
     .single();
 

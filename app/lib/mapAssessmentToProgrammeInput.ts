@@ -43,6 +43,7 @@ export type AthleteAssessmentRowForProgramme = {
   preferred_training_days: string[] | null;
   double_session_days: string[] | null;
   recent_5k_time: string | null;
+  recent_10k_time?: string | null;
   max_heart_rate?: number | null;
   strength_experience: string | null;
   hyrox_experience: string | null;
@@ -54,6 +55,8 @@ export type AthleteAssessmentRowForProgramme = {
   hyrox_pb: string | null;
   current_run_volume_band?: string | null;
   completed_at?: string | null;
+  training_track?: string | null;
+  hyrox_details?: unknown;
 };
 
 export type BenchmarkTestRowForProgramme = {

@@ -10,6 +10,7 @@ import {
 } from "@/app/lib/dashboardWeekTracking";
 import { localDateKey, shiftLocalDateKey, type DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
 import { hybridAthleteDisplayName } from "@/app/lib/displayName";
+import { loadCommunityAssessmentTrack } from "@/app/lib/loadCommunityAssessmentTrack";
 import type { ChallengeSubmissionRow } from "@/app/lib/hybridChallengeMetrics";
 import { deriveEffectiveCurrentWeek, type BenchmarkTestLike } from "@/app/lib/progressMetrics";
 import MemberDashboardClient, {
@@ -57,6 +58,7 @@ type AthleteAssessmentRow = {
   completed_at: string | null;
   first_name?: string | null;
   max_heart_rate?: number | null;
+  training_track?: string | null;
 };
 
 type BenchmarkTestRow = BenchmarkTestLike & {
@@ -70,12 +72,13 @@ export default async function DashboardPage() {
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
     supabase
       .from("athlete_assessments")
-      .select("id, completed_at, first_name, max_heart_rate")
+      .select("id, completed_at, first_name, max_heart_rate, training_track")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
   const typedAssessGlobal = assessGlobal as AthleteAssessmentRow | null;
   const assessmentCompleted = Boolean(typedAssessGlobal?.completed_at);
+  const trackCtx = await loadCommunityAssessmentTrack(supabase, user.id);
   const viewerDisplayName = hybridAthleteDisplayName({
     assessmentFirstName: typedAssessGlobal?.first_name,
     profileFullName: (profileRow as { full_name: string | null } | null)?.full_name,
@@ -243,6 +246,9 @@ export default async function DashboardPage() {
       challengeTracking={challengeTracking}
       maxHeartRate={maxHeartRate}
       hasEngineBenchmark={hasEngineBenchmark}
+      trainingTrack={trackCtx.trainingTrack}
+      hyroxDetails={trackCtx.hyroxDetails}
+      isHyroxTrack={trackCtx.isHyroxTrack}
     />
   );
 }

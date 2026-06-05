@@ -23,6 +23,16 @@ import type { DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
 import type { ProgrammeWeekLike, TrendDir } from "@/app/lib/progressMetrics";
 import { getUnlockedWeekCount } from "@/app/lib/membershipAccess";
 import type { MembershipForAccess } from "@/app/lib/membershipAccess";
+import {
+  emptyHyroxCheckInDetails,
+  parseHyroxCheckInDetails,
+  serializeHyroxCheckInDetails,
+  type CommunityHyroxCheckInDetails,
+} from "@/app/lib/communityHyroxCheckIn";
+import {
+  HyroxCheckInSection,
+  HyroxCheckInSummary,
+} from "@/components/dashboard/hyrox/HyroxCheckInSection";
 
 type Props = {
   programmeInstanceId: string | null;
@@ -33,6 +43,7 @@ type Props = {
   initialCheckIns: CommunityWeeklyCheckInRecord[];
   habitLogs: DailyHabitLogRow[];
   completedByWeek: Record<number, { completed: number; total: number }>;
+  isHyroxTrack: boolean;
 };
 
 function TrendIcon({ trend }: { trend: TrendDir }) {
@@ -70,6 +81,7 @@ export default function CheckInClient({
   initialCheckIns,
   habitLogs,
   completedByWeek,
+  isHyroxTrack,
 }: Props) {
   const unlockedMax = getUnlockedWeekCount(membership);
   const defaultWeek =
@@ -97,6 +109,7 @@ export default function CheckInClient({
     pain_or_injury: "",
     notes: "",
   });
+  const [hyroxDraft, setHyroxDraft] = useState<CommunityHyroxCheckInDetails>(emptyHyroxCheckInDetails);
 
   const weekUnlocked = selectedWeek >= 1 && selectedWeek <= unlockedMax;
   const checkInsList = useMemo(() => Object.values(checkIns), [checkIns]);
@@ -120,6 +133,7 @@ export default function CheckInClient({
       pain_or_injury: existing?.pain_or_injury ?? "",
       notes: existing?.notes ?? "",
     });
+    setHyroxDraft(parseHyroxCheckInDetails(existing?.hyrox_checkin_details));
     setError(null);
     setSuccess(null);
     setFormOpen(true);
@@ -162,6 +176,7 @@ export default function CheckInClient({
       biggest_struggle: draft.biggest_struggle.trim() || null,
       pain_or_injury: draft.pain_or_injury.trim() || null,
       notes: draft.notes.trim() || null,
+      hyrox_checkin_details: isHyroxTrack ? serializeHyroxCheckInDetails(hyroxDraft) : {},
     };
     try {
       const res = await fetch("/api/dashboard/weekly-check-in", {
@@ -213,6 +228,7 @@ export default function CheckInClient({
         <h1 className="mt-2 text-3xl font-bold text-white md:text-4xl">Weekly check-in</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400 md:text-base">
           Review recovery, energy and training response — then log how the week actually felt.
+          {isHyroxTrack ? " HYROX prompts are included for station and compromised-running feedback." : ""}
         </p>
         <div className="mt-5">
           <DashboardSubnav variant="zinc" />
@@ -286,6 +302,11 @@ export default function CheckInClient({
           )}
           {success ? <p className="mt-3 text-sm text-emerald-300">{success}</p> : null}
           {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+          {isHyroxTrack && checkIns[selectedWeek] ? (
+            <HyroxCheckInSummary
+              details={parseHyroxCheckInDetails(checkIns[selectedWeek]?.hyrox_checkin_details)}
+            />
+          ) : null}
         </section>
 
         {/* Coach insight */}
@@ -437,6 +458,12 @@ export default function CheckInClient({
                   </label>
                 ))}
               </div>
+              {isHyroxTrack ? (
+                <HyroxCheckInSection
+                  details={hyroxDraft}
+                  onChange={(patch) => setHyroxDraft((prev) => ({ ...prev, ...patch }))}
+                />
+              ) : null}
               {(["biggest_win", "biggest_struggle", "pain_or_injury", "notes"] as const).map((field) => (
                 <label key={field} className="block text-sm">
                   <span className="capitalize text-zinc-400">{field.replace(/_/g, " ")}</span>

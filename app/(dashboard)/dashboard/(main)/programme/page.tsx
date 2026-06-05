@@ -16,6 +16,7 @@ import {
   deriveEffectiveCurrentWeek,
 } from "@/app/lib/progressMetrics";
 import { getDefaultSelectedWeek } from "@/app/lib/programmePageMetrics";
+import { loadCommunityAssessmentTrack } from "@/app/lib/loadCommunityAssessmentTrack";
 import {
   assessmentUpdatedAfterProgramme,
   maxIsoTimestamp,
@@ -46,6 +47,8 @@ type AthleteAssessmentRow = {
 
 export default async function ProgrammePage() {
   const { supabase, user } = await getDashboardSession("/dashboard/programme");
+
+  const trackCtx = await loadCommunityAssessmentTrack(supabase, user.id);
 
   const [{ data: assess }, { data: benchTests }, programmeCtx] = await Promise.all([
     supabase
@@ -213,6 +216,8 @@ export default async function ProgrammePage() {
       maxHeartRate={maxHeartRate}
       hasEngineBenchmark={hasEngineBenchmark}
       assessmentChangedSinceProgramme={assessmentChangedSinceProgramme}
+      isHyroxTrack={trackCtx.isHyroxTrack}
+      hyroxDetails={trackCtx.hyroxDetails}
     />
   );
 }

@@ -5,10 +5,21 @@ import {
   loadCommunityProgrammeWeeks,
   resolveCommunityProgrammeGenerated,
 } from "@/app/lib/communityProgrammeStatus";
+import {
+  DEFAULT_TRAINING_TRACK,
+  hyroxDetailsToAssessmentColumns,
+  parseHyroxDetails,
+  parseTrainingTrack,
+  serializeHyroxDetails,
+  validateHyroxAssessment,
+  type CommunityHyroxDetails,
+} from "@/app/lib/communityHyroxAssessment";
 import { createClient } from "@/app/lib/supabase/server";
 
 type AssessmentPayload = {
   programme_instance_id: string | null;
+  training_track?: string | null;
+  hyrox_details?: Record<string, unknown> | null;
   first_name: string | null;
   goal_focus: string | null;
   event_type: string | null;
@@ -53,9 +64,23 @@ export async function POST(request: Request) {
       ? payload.programme_instance_id.trim()
       : null;
 
+  const trainingTrack = parseTrainingTrack(payload.training_track ?? DEFAULT_TRAINING_TRACK);
+  const hyroxDetails: CommunityHyroxDetails =
+    trainingTrack === "hyrox"
+      ? parseHyroxDetails(payload.hyrox_details)
+      : parseHyroxDetails({});
+
+  const hyroxValidationError = validateHyroxAssessment(trainingTrack, hyroxDetails);
+  if (hyroxValidationError) {
+    return badRequest(hyroxValidationError);
+  }
+
   if (payload.event_date && !/^\d{4}-\d{2}-\d{2}$/.test(payload.event_date)) {
     return badRequest("event_date must be YYYY-MM-DD");
   }
+
+  const hyroxColumns =
+    trainingTrack === "hyrox" ? hyroxDetailsToAssessmentColumns(hyroxDetails) : null;
 
   if (programmeInstanceId) {
     const { data: instance, error: instanceError } = await supabase
@@ -89,22 +114,27 @@ export async function POST(request: Request) {
   const upsertPayload = {
     user_id: user.id,
     programme_instance_id: programmeInstanceId,
+    training_track: trainingTrack,
+    hyrox_details:
+      trainingTrack === "hyrox" ? serializeHyroxDetails(hyroxDetails) : {},
     first_name: payload.first_name?.trim() ? payload.first_name.trim().slice(0, 80) : null,
     goal_focus: payload.goal_focus?.trim() || null,
     event_type: payload.event_type?.trim() || null,
-    event_date: payload.event_date ?? null,
-    target_time: payload.target_time?.trim() || null,
+    event_date: hyroxColumns?.event_date ?? payload.event_date ?? null,
+    target_time: hyroxColumns?.target_time ?? (payload.target_time?.trim() || null),
     training_days_per_week: toNumOrNull(payload.training_days_per_week),
     weekly_hours_band: payload.weekly_hours_band?.trim() || null,
     preferred_training_days: toArrayOrNull(payload.preferred_training_days),
     double_session_days: toArrayOrNull(payload.double_session_days),
     current_run_volume_band: payload.current_run_volume_band?.trim() || null,
-    current_running_volume_km: toNumOrNull(payload.current_running_volume_km),
-    longest_recent_run_km: toNumOrNull(payload.longest_recent_run_km),
-    recent_5k_time: payload.recent_5k_time?.trim() || null,
+    current_running_volume_km:
+      hyroxColumns?.current_running_volume_km ?? toNumOrNull(payload.current_running_volume_km),
+    longest_recent_run_km:
+      hyroxColumns?.longest_recent_run_km ?? toNumOrNull(payload.longest_recent_run_km),
+    recent_5k_time: hyroxColumns?.recent_5k_time ?? (payload.recent_5k_time?.trim() || null),
     max_heart_rate: toMaxHrOrNull(payload.max_heart_rate),
-    recent_10k_time: payload.recent_10k_time?.trim() || null,
-    hyrox_pb: payload.hyrox_pb?.trim() || null,
+    recent_10k_time: hyroxColumns?.recent_10k_time ?? (payload.recent_10k_time?.trim() || null),
+    hyrox_pb: hyroxColumns?.hyrox_pb ?? (payload.hyrox_pb?.trim() || null),
     bodyweight_kg: toNumOrNull(payload.bodyweight_kg),
     target_bodyweight_kg: toNumOrNull(payload.target_bodyweight_kg),
     strength_experience: payload.strength_experience?.trim() || null,

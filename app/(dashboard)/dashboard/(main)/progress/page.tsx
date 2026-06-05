@@ -27,6 +27,8 @@ import {
   type WeeklyCheckInLike,
 } from "@/app/lib/progressMetrics";
 import ProgressClient from "./ProgressClient";
+import { loadCommunityAssessmentTrack } from "@/app/lib/loadCommunityAssessmentTrack";
+import { parseHyroxCheckInDetails } from "@/app/lib/communityHyroxCheckIn";
 
 type ProgrammeWeekRow = {
   week_number: number;
@@ -50,6 +52,7 @@ type WeeklyCheckInRow = WeeklyCheckInLike & {
   biggest_struggle: string | null;
   pain_or_injury: string | null;
   notes: string | null;
+  hyrox_checkin_details?: unknown;
 };
 
 type BenchmarkTestRow = BenchmarkTestLike & {
@@ -62,6 +65,8 @@ type BenchmarkTestRow = BenchmarkTestLike & {
 
 export default async function ProgressPage() {
   const { supabase, user } = await getDashboardSession("/dashboard/progress");
+
+  const trackCtx = await loadCommunityAssessmentTrack(supabase, user.id);
 
   const [{ data: profileRow }, { data: assessName }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
@@ -104,7 +109,7 @@ export default async function ProgressPage() {
     const { data: ci } = await supabase
       .from("weekly_check_ins")
       .select(
-        "id, week_number, bodyweight_kg, sleep_hours, energy_score, recovery_score, stress_score, motivation_score, adherence_score, biggest_win, biggest_struggle, pain_or_injury, notes, submitted_at"
+        "id, week_number, bodyweight_kg, sleep_hours, energy_score, recovery_score, stress_score, motivation_score, adherence_score, biggest_win, biggest_struggle, pain_or_injury, notes, hyrox_checkin_details, submitted_at"
       )
       .eq("user_id", user.id)
       .eq("programme_instance_id", typedInstance.id)
@@ -153,6 +158,13 @@ export default async function ProgressPage() {
 
   const programmeTitle = typedInstance?.title?.trim() || "Your Hybrid365 programme";
   const benchmarkSnapshot = buildBenchmarkSnapshot(benchmarks);
+  const latestHyroxCheckIn = trackCtx.isHyroxTrack
+    ? parseHyroxCheckInDetails(
+        checkIns.length > 0
+          ? checkIns[checkIns.length - 1]?.hyrox_checkin_details
+          : null
+      )
+    : null;
 
   return (
     <ProgressClient
@@ -173,6 +185,10 @@ export default async function ProgressPage() {
       checkInsSubmitted={checkIns.length}
       latestBodyweightKg={latestBodyweightKg}
       benchmarkSnapshot={benchmarkSnapshot}
+      isHyroxTrack={trackCtx.isHyroxTrack}
+      hyroxDetails={trackCtx.hyroxDetails}
+      benchmarkTests={benchmarks}
+      latestHyroxCheckIn={latestHyroxCheckIn}
     />
   );
 }

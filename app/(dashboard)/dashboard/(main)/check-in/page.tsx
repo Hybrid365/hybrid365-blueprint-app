@@ -1,7 +1,6 @@
 import { getDashboardSession } from "@/app/lib/dashboardAuth";
-import {
-  loadCommunityProgrammeContext,
-} from "@/app/lib/communityProgrammeStatus";
+import { loadCommunityProgrammeContext } from "@/app/lib/communityProgrammeStatus";
+import { loadCommunityAssessmentTrack } from "@/app/lib/loadCommunityAssessmentTrack";
 import { MEMBERSHIP_ACCESS_SELECT, type MembershipForAccess } from "@/app/lib/membershipAccess";
 import { localDateKey, shiftLocalDateKey, type DailyHabitLogRow } from "@/app/lib/dailyHabitLogs";
 import {
@@ -19,6 +18,7 @@ export default async function CheckInPage() {
   const { supabase, user } = await getDashboardSession("/dashboard/check-in");
 
   const programmeCtx = await loadCommunityProgrammeContext(supabase, user.id);
+  const trackCtx = await loadCommunityAssessmentTrack(supabase, user.id);
   const { instance, weeksRaw, programmeGenerated, entitledWeeks, weeks12 } = programmeCtx;
 
   let checkIns: CommunityWeeklyCheckInRecord[] = [];
@@ -33,7 +33,7 @@ export default async function CheckInPage() {
       supabase
         .from("weekly_check_ins")
         .select(
-          "id, week_number, bodyweight_kg, sleep_hours, energy_score, recovery_score, stress_score, motivation_score, adherence_score, biggest_win, biggest_struggle, pain_or_injury, notes, submitted_at"
+          "id, week_number, bodyweight_kg, sleep_hours, energy_score, recovery_score, stress_score, motivation_score, adherence_score, biggest_win, biggest_struggle, pain_or_injury, notes, hyrox_checkin_details, submitted_at"
         )
         .eq("user_id", user.id)
         .eq("programme_instance_id", instance.id)
@@ -87,6 +87,7 @@ export default async function CheckInPage() {
       initialCheckIns={checkIns}
       habitLogs={habitLogs}
       completedByWeek={completedByWeek}
+      isHyroxTrack={trackCtx.isHyroxTrack}
     />
   );
 }

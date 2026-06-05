@@ -83,6 +83,7 @@ import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { AddToHomeScreenBanner } from "@/components/dashboard/AddToHomeScreenBanner";
 import { DashboardRotatingMessage } from "@/components/dashboard/DashboardRotatingMessage";
 import { GoToNextSessionCta } from "@/components/dashboard/GoToNextSessionCta";
+import { HyroxTrackHomeSection } from "@/components/dashboard/hyrox/HyroxTrackHomeSection";
 import { MemberSessionDetailDrawer } from "@/components/dashboard/MemberSessionDetailDrawer";
 import { MemberStartHereChecklist } from "@/components/dashboard/MemberStartHereChecklist";
 import { findNextMemberSession } from "@/app/lib/memberNextSession";
@@ -93,6 +94,7 @@ import {
   OnboardingStructureBlock,
   OnboardingWhopEmailNote,
 } from "@/components/dashboard/OnboardingEducation";
+import { emptyHyroxDetails, parseTrainingTrack, trainingTrackLabel, type CommunityHyroxDetails } from "@/app/lib/communityHyroxAssessment";
 
 export type WeekPayload = {
   week_number: number;
@@ -123,6 +125,9 @@ export type MemberDashboardClientProps = {
   challengeTracking: ChallengeTrackingSummary | null;
   maxHeartRate: number | null;
   hasEngineBenchmark: boolean;
+  trainingTrack?: string | null;
+  hyroxDetails?: CommunityHyroxDetails;
+  isHyroxTrack?: boolean;
 };
 
 type SessionLogRecord = {
@@ -350,8 +355,13 @@ export default function MemberDashboardClient({
   challengeTracking,
   maxHeartRate,
   hasEngineBenchmark,
+  trainingTrack: trainingTrackRaw,
+  hyroxDetails,
+  isHyroxTrack: isHyroxTrackProp,
 }: MemberDashboardClientProps) {
   const router = useRouter();
+  const resolvedTrainingTrack = parseTrainingTrack(trainingTrackRaw);
+  const isHyroxCommunityTrack = isHyroxTrackProp ?? resolvedTrainingTrack === "hyrox";
   const [generatingProgramme, setGeneratingProgramme] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateSuccess, setGenerateSuccess] = useState<string | null>(null);
@@ -931,6 +941,11 @@ export default function MemberDashboardClient({
                   <span className="inline-flex items-center rounded-full bg-yellow-400/20 px-3 py-1 text-xs font-semibold text-yellow-400 ring-1 ring-inset ring-yellow-400/30">
                     Active Member
                   </span>
+                  {isHyroxCommunityTrack ? (
+                    <span className="inline-flex items-center rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-300 ring-1 ring-inset ring-amber-500/30">
+                      Track: {trainingTrackLabel(resolvedTrainingTrack)}
+                    </span>
+                  ) : null}
                   <span className="hidden text-sm text-zinc-500 sm:inline">·</span>
                   <span className="hidden max-w-md truncate text-sm text-zinc-400 sm:inline">{programmeTitle}</span>
                 </div>
@@ -962,6 +977,12 @@ export default function MemberDashboardClient({
         </header>
 
         <AddToHomeScreenBanner />
+
+        {isHyroxCommunityTrack && assessmentCompleted ? (
+          <div className="mb-8">
+            <HyroxTrackHomeSection details={hyroxDetails ?? emptyHyroxDetails()} />
+          </div>
+        ) : null}
 
         {canViewProgramme ? (
           <div className="mb-8">

@@ -2,7 +2,7 @@
  * Admin-only community programme refresh (paid app) — service role lookups + regenerate.
  */
 
-import { generate12WeekProgramme } from "@/app/lib/generate12WeekProgramme";
+import { generatePaidCommunityProgramme } from "@/app/lib/communityProgrammeGeneration";
 import {
   getUnlockedWeekCount,
   getUnlockedWeeksForMembership,
@@ -246,20 +246,27 @@ export async function fullRegenerateMemberProgramme(
   const { data: authUserData } = await admin.auth.admin.getUserById(userId);
   const email = authUserData?.user?.email ?? null;
 
+  let generatedResult;
+  try {
+    generatedResult = generatePaidCommunityProgramme({
+      assessment: typedAssessment,
+      benchmarkTests: (testsRaw ?? []) as BenchmarkTestRowForProgramme[],
+      email,
+      profile: profile as { full_name: string | null } | null,
+      userId,
+    });
+  } catch (e) {
+    console.error("[programme refresh] generate failed", e);
+    return { ok: false, error: "Programme generation failed.", status: 500 };
+  }
+
+  const generated = generatedResult.weeks;
   const blueprintInput = mapAssessmentToProgrammeInput({
     assessment: typedAssessment,
     benchmarkTests: (testsRaw ?? []) as BenchmarkTestRowForProgramme[],
     email,
     profile: profile as { full_name: string | null } | null,
   });
-
-  let generated;
-  try {
-    generated = generate12WeekProgramme(blueprintInput);
-  } catch (e) {
-    console.error("[programme refresh] generate failed", e);
-    return { ok: false, error: "Programme generation failed.", status: 500 };
-  }
 
   const existingInstance = await fetchCommunityProgrammeInstance(admin, userId);
   const existingId = existingInstance?.id;

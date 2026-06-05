@@ -22,6 +22,7 @@ export type CommunityWeeklyCheckInRecord = {
   pain_or_injury: string | null;
   notes: string | null;
   submitted_at: string | null;
+  hyrox_checkin_details?: unknown;
 };
 
 export type ScoreTrendCard = {

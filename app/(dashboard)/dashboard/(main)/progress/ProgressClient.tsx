@@ -38,6 +38,8 @@ import { isTimeLowerIsBetterBenchmark } from "@/app/lib/progressMetrics";
 import { isStrengthBenchmarkType } from "@/app/lib/benchmarkCoreAreas";
 import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
 import { BenchmarkSnapshotStrip } from "@/components/dashboard/BenchmarkSnapshotStrip";
+import { HyroxProgressPanel } from "@/components/dashboard/hyrox/HyroxProgressPanel";
+import { emptyHyroxDetails } from "@/app/lib/communityHyroxAssessment";
 
 type AdherenceSnapshot = {
   completedUnlocked: number;
@@ -79,6 +81,10 @@ type Props = {
   checkInsSubmitted: number;
   latestBodyweightKg: number | null;
   benchmarkSnapshot: BenchmarkSnapshotItem[];
+  isHyroxTrack?: boolean;
+  hyroxDetails?: import("@/app/lib/communityHyroxAssessment").CommunityHyroxDetails;
+  benchmarkTests?: { test_type: string | null; test_time: string | null; test_value: number | null; tested_at: string | null }[];
+  latestHyroxCheckIn?: import("@/app/lib/communityHyroxCheckIn").CommunityHyroxCheckInDetails | null;
 };
 
 function TrendGlyph({ trend, label }: { trend: "up" | "down" | "flat" | "none"; label: string }) {
@@ -225,6 +231,10 @@ export default function ProgressClient({
   checkInsSubmitted,
   latestBodyweightKg,
   benchmarkSnapshot,
+  isHyroxTrack = false,
+  hyroxDetails,
+  benchmarkTests = [],
+  latestHyroxCheckIn,
 }: Props) {
   void _email;
   const hasProgramme = Boolean(programmeInstanceId) && programmeGenerated;
@@ -294,6 +304,14 @@ export default function ProgressClient({
               <span className="mx-2 text-zinc-700">·</span>
               Current week <span className="font-semibold text-white">{effectiveWeek}</span>
             </p>
+
+            {isHyroxTrack ? (
+              <HyroxProgressPanel
+                details={hyroxDetails ?? emptyHyroxDetails()}
+                benchmarkTests={benchmarkTests}
+                latestHyroxCheckIn={latestHyroxCheckIn}
+              />
+            ) : null}
 
             <section className="rounded-2xl border border-zinc-800/90 bg-zinc-900/60 p-5 sm:p-6">
               <BenchmarkSnapshotStrip items={benchmarkSnapshot} />
