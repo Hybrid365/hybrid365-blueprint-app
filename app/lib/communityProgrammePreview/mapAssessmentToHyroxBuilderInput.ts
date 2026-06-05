@@ -11,6 +11,10 @@ import {
   type BenchmarkTestRowForProgramme,
 } from "@/app/lib/mapAssessmentToProgrammeInput";
 import type { CommunityPreviewInput, PreviewAbilityLevel } from "./types";
+import {
+  assertHyroxPrimaryGoal,
+  extractHyroxGoalContext,
+} from "./hyroxGoalGuardrail";
 
 const SESSION_LENGTH_FROM_BAND: Record<string, string> = {
   "2-3": "30-45 min",
@@ -91,8 +95,16 @@ export function mapAssessmentToHyroxBuilderInput(params: {
     ...(assessment.movements_to_avoid ?? []),
   ];
 
+  const goalContext = extractHyroxGoalContext(assessment);
+  const primary_goal = assertHyroxPrimaryGoal(goalContext);
+
   return {
     training_track: "hyrox",
+    primary_goal,
+    secondary_goal_context: goalContext.secondary_goal_raw,
+    secondary_goal_kind: goalContext.secondary_goal_kind,
+    secondary_goal_support_note: goalContext.secondary_goal_support_note,
+    emphasise_running_support: goalContext.emphasise_running_support,
     ability_level,
     training_days_per_week: hyroxTrainingDays(assessment.training_days_per_week),
     weekly_training_hours: band || "5-7",

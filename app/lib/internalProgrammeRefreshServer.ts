@@ -15,6 +15,8 @@ import {
   type AthleteAssessmentRowForProgramme,
   type BenchmarkTestRowForProgramme,
 } from "@/app/lib/mapAssessmentToProgrammeInput";
+import { programmeInstanceGoalFocusForHyrox } from "@/app/lib/communityProgrammePreview/hyroxGoalGuardrail";
+import { resolveCommunityTrainingTrack } from "@/app/lib/communityProgrammePreview/mapAssessmentToHyroxBuilderInput";
 import { fetchCommunityProgrammeInstance } from "@/app/lib/communityProgrammeStatus";
 import { hasMeaningfulPlanJson } from "@/app/lib/programmePlan";
 import {
@@ -261,12 +263,17 @@ export async function fullRegenerateMemberProgramme(
   }
 
   const generated = generatedResult.weeks;
+  const trainingTrack = resolveCommunityTrainingTrack(typedAssessment);
   const blueprintInput = mapAssessmentToProgrammeInput({
     assessment: typedAssessment,
     benchmarkTests: (testsRaw ?? []) as BenchmarkTestRowForProgramme[],
     email,
     profile: profile as { full_name: string | null } | null,
   });
+  const instanceGoalFocus =
+    trainingTrack === "hyrox"
+      ? programmeInstanceGoalFocusForHyrox()
+      : blueprintInput.goal_focus;
 
   const existingInstance = await fetchCommunityProgrammeInstance(admin, userId);
   const existingId = existingInstance?.id;
@@ -276,7 +283,7 @@ export async function fullRegenerateMemberProgramme(
     user_id: userId,
     title: "Hybrid365 12-Week Programme",
     current_week: 1,
-    goal_focus: blueprintInput.goal_focus,
+    goal_focus: instanceGoalFocus,
     ability_level: blueprintInput.ability_level,
     weekly_hours_band: blueprintInput.weekly_hours_band,
   };

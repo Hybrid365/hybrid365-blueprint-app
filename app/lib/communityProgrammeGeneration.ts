@@ -11,6 +11,7 @@ import {
   mapAssessmentToHyroxBuilderInput,
   resolveCommunityTrainingTrack,
 } from "@/app/lib/communityProgrammePreview/mapAssessmentToHyroxBuilderInput";
+import { extractHyroxGoalContext } from "@/app/lib/communityProgrammePreview/hyroxGoalGuardrail";
 import type { CommunityTrainingTrack } from "@/app/lib/communityHyroxAssessment";
 
 export type CommunityBuilderKind = "hybrid_performance" | "hyrox";
@@ -48,10 +49,15 @@ export function generatePaidCommunityProgramme(params: {
       generate12WeekHyroxCommunityProgramme(hyroxInput);
 
     if (DEBUG) {
+      const goalContext = extractHyroxGoalContext(params.assessment);
       console.info("[community-programme] HYROX generation", {
         userIdPrefix: params.userId?.slice(0, 8),
         training_track: trainingTrack,
         builder,
+        primary_goal: hyroxInput.primary_goal,
+        secondary_goal_context: goalContext.secondary_goal_raw,
+        secondary_goal_kind: goalContext.secondary_goal_kind,
+        emphasise_running_support: hyroxInput.emphasise_running_support,
         weeksGenerated: weeks.length,
         totalSessions,
         blockPhases: qaSummaries.map((q) => ({

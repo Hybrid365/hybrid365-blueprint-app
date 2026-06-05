@@ -313,6 +313,7 @@ export function hyroxPreviewWeekToPlanJson(args: {
       preview.block_phase_label,
       previewWeek.focus,
       preview.coach_support_note,
+      ...(input.secondary_goal_support_note ? [input.secondary_goal_support_note] : []),
     ],
     schedule: schedule as unknown as PlanJson["schedule"],
     cta: {
@@ -338,6 +339,7 @@ export function hyroxPreviewWeekToPlanJson(args: {
       summary: [
         preview.progression_focus,
         preview.coach_support_note,
+        ...(input.secondary_goal_support_note ? [input.secondary_goal_support_note] : []),
         "Fast. Fit. Strong. Built for HYROX. Not random. Not average.",
       ],
       key_priorities: preview.weakness_focus_block.length
@@ -359,7 +361,12 @@ export function hyroxPreviewWeekToPlanJson(args: {
       impact_risk: input.injury_limitations ? "moderate" : "low",
       benchmark_confidence: paceGuidance ? "medium" : "low",
       engine_biases: ["threshold_run", "erg_aerobic", "compromised_hybrid"],
-      rationale_notes: preview.equipment_substitutions,
+      rationale_notes: [
+        ...preview.equipment_substitutions,
+        ...(input.secondary_goal_context
+          ? [`Secondary athlete context: ${input.secondary_goal_context}`]
+          : []),
+      ],
     };
   }
 

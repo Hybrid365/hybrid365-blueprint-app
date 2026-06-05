@@ -4,6 +4,7 @@ import type {
   HyroxStationWeakness,
   SledPushPullExperience,
 } from "@/app/lib/communityHyroxAssessment";
+import type { SecondaryGoalKind } from "./hyroxGoalGuardrail";
 
 export type PreviewAbilityLevel = "beginner" | "intermediate" | "advanced";
 
@@ -36,6 +37,14 @@ export type HyroxPillar =
 
 export type CommunityPreviewInput = {
   training_track: CommunityTrainingTrack;
+  /** Primary programming identity — always hyrox_performance for HYROX track. */
+  primary_goal: "hyrox_performance";
+  /** General assessment goal (secondary context only). */
+  secondary_goal_context: string | null;
+  secondary_goal_kind: SecondaryGoalKind;
+  secondary_goal_support_note: string | null;
+  /** Extra tempo/run layering from general running goals — never replaces HYROX pillars. */
+  emphasise_running_support: boolean;
   ability_level: PreviewAbilityLevel;
   training_days_per_week: 3 | 4 | 5 | 6;
   weekly_training_hours: string;

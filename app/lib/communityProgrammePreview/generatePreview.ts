@@ -299,6 +299,11 @@ export function generateCommunityProgrammePreview(
 
 export const DEFAULT_PREVIEW_INPUT: CommunityPreviewInput = {
   training_track: "hyrox",
+  primary_goal: "hyrox_performance",
+  secondary_goal_context: null,
+  secondary_goal_kind: "unknown",
+  secondary_goal_support_note: null,
+  emphasise_running_support: false,
   ability_level: "intermediate",
   training_days_per_week: 5,
   weekly_training_hours: "7-10",

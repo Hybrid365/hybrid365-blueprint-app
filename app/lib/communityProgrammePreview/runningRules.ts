@@ -4,6 +4,7 @@ import type { CommunityPreviewInput, PreviewAbilityLevel } from "./types";
 const RUNNING_WEAKNESS_VALUES: HyroxStationWeakness[] = ["running_between_stations"];
 
 export function hasRunningWeakness(input: CommunityPreviewInput): boolean {
+  if (input.emphasise_running_support) return true;
   if (input.station_weaknesses.some((w) => RUNNING_WEAKNESS_VALUES.includes(w))) {
     return true;
   }
