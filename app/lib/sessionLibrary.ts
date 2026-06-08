@@ -228,8 +228,9 @@ export type PlanJson = {
   /** HYROX Pro double-session ladder summary (paid 12-week). */
   double_session_summary?: import("./hyroxDoubleSessionProgression").DoubleSessionWeekSummary;
   /** Free-week lead magnet only */
-  challenge_mode?: "standard" | "hybrid75";
+  challenge_mode?: "standard" | "hybrid75" | "hyrox";
   hybrid75?: import("./freeWeekChallengeMode").Hybrid75PlanMeta;
+  hyrox?: import("./freeWeekChallengeMode").HyroxFreeWeekMeta;
 };
 
 function allEquipment(...items: UserEquipment[]) {

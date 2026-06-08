@@ -24,7 +24,7 @@ import Hybrid75SessionLogModal from "@/components/free-week/Hybrid75SessionLogMo
 import SaveDashboardBanner from "@/components/free-week/SaveDashboardBanner";
 import { FreePlanSessionCard } from "@/components/free-week/FreePlanSessionCard";
 import { useHybrid75ChallengeLogs } from "@/components/free-week/useHybrid75ChallengeLogs";
-import type { Hybrid75PlanMeta } from "@/app/lib/freeWeekChallengeMode";
+import type { Hybrid75PlanMeta, HyroxFreeWeekMeta } from "@/app/lib/freeWeekChallengeMode";
 import {
   isHybrid75LoggableSession,
   type Hybrid75ChallengeSessionLog,
@@ -54,12 +54,20 @@ import {
   TelegramCtaTop,
   WeekSessionsActionNote,
 } from "@/components/free-week/standard/StandardFreeWeekEnhancements";
+import {
+  HyroxFreeWeekHero,
+  HyroxPersonalisationNotes,
+  HyroxTargetCards,
+  HyroxUpgradeSection,
+} from "@/components/free-week/hyrox/HyroxFreeWeekEnhancements";
 
 type FreePlanDashboardClientProps = {
   planId: string;
   planJson: Record<string, unknown>;
   isHybrid75: boolean;
+  isHyrox: boolean;
   hybrid75Meta: Hybrid75PlanMeta | null;
+  hyroxMeta: HyroxFreeWeekMeta | null;
 };
 
 type NavTab = { id: string; label: string };
@@ -140,7 +148,9 @@ export default function FreePlanDashboardClient({
   planId,
   planJson,
   isHybrid75,
+  isHyrox,
   hybrid75Meta,
+  hyroxMeta,
 }: FreePlanDashboardClientProps) {
   const profile = (planJson.profile as Record<string, unknown>) || {};
   const firstName = String(profile.first_name || planJson.first_name || "");
@@ -253,6 +263,13 @@ export default function FreePlanDashboardClient({
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
         {/* OVERVIEW */}
         <section id="section-overview" className="scroll-mt-20 space-y-6">
+          {isHyrox && hyroxMeta ? (
+            <>
+              <HyroxFreeWeekHero meta={hyroxMeta} firstName={firstName} />
+              <HyroxTargetCards meta={hyroxMeta} />
+              <HyroxPersonalisationNotes meta={hyroxMeta} />
+            </>
+          ) : (
           <div className="relative overflow-hidden rounded-[2rem] border border-zinc-800 bg-gradient-to-b from-zinc-900 to-black px-6 py-10 md:px-10 md:py-12">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.12),transparent_30%)]" />
             <div className="relative z-10">
@@ -302,8 +319,9 @@ export default function FreePlanDashboardClient({
               </div>
             </div>
           </div>
+          )}
 
-          {!isHybrid75 ? (
+          {!isHybrid75 && !isHyrox ? (
             <>
               <StandardQuickActionsBar />
               <TelegramCtaTop />
@@ -752,6 +770,8 @@ export default function FreePlanDashboardClient({
                 </div>
               </>
           </SectionCard>
+          ) : isHyrox && hyroxMeta ? (
+            <HyroxUpgradeSection meta={hyroxMeta} />
           ) : (
             <StandardUpgradeSection />
           )}

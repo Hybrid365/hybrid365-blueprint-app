@@ -23,7 +23,9 @@ export default async function PlanLayout({ children, params }: PlanLayoutProps) 
       planId={plan.planId}
       planJson={plan.planJson}
       isHybrid75={plan.isHybrid75}
+      isHyrox={plan.isHyrox}
       hybrid75Meta={plan.hybrid75Meta}
+      hyroxMeta={plan.hyroxMeta}
     >
       {plan.isHybrid75 ? (
         <Hybrid75DashboardShell planId={plan.planId}>{children}</Hybrid75DashboardShell>

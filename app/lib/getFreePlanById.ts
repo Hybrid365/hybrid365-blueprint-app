@@ -1,10 +1,12 @@
-import { normalizeChallengeMode, type Hybrid75PlanMeta } from "./freeWeekChallengeMode";
+import { normalizeChallengeMode, type Hybrid75PlanMeta, type HyroxFreeWeekMeta } from "./freeWeekChallengeMode";
 
 export type FreePlanRecord = {
   planJson: Record<string, unknown>;
   planId: string;
   isHybrid75: boolean;
+  isHyrox: boolean;
   hybrid75Meta: Hybrid75PlanMeta | null;
+  hyroxMeta: HyroxFreeWeekMeta | null;
 };
 
 export async function getFreePlanById(planId: string): Promise<FreePlanRecord | null> {
@@ -46,10 +48,14 @@ export async function getFreePlanById(planId: string): Promise<FreePlanRecord | 
 
   const challengeMode = normalizeChallengeMode(planJson.challenge_mode);
   const isHybrid75 = challengeMode === "hybrid75";
+  const isHyrox = challengeMode === "hyrox";
   const resolvedPlanId = String(planJson.plan_id || planId);
   const hybrid75Meta: Hybrid75PlanMeta | null = isHybrid75
     ? ((planJson.hybrid75 as Hybrid75PlanMeta | undefined) ?? null)
     : null;
+  const hyroxMeta: HyroxFreeWeekMeta | null = isHyrox
+    ? ((planJson.hyrox as HyroxFreeWeekMeta | undefined) ?? null)
+    : null;
 
-  return { planJson, planId: resolvedPlanId, isHybrid75, hybrid75Meta };
+  return { planJson, planId: resolvedPlanId, isHybrid75, isHyrox, hybrid75Meta, hyroxMeta };
 }

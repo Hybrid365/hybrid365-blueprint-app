@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { buildWeekBlueprint } from "@/app/lib/buildWeekBlueprint";
 import { applyHybrid75FreeWeek } from "@/app/lib/applyHybrid75FreeWeek";
+import { generateHyroxFreeWeekPlan } from "@/app/lib/generateHyroxFreeWeekPlan";
+import type { HyroxFreeWeekInput } from "@/app/lib/freeWeekHyroxTypes";
 import {
   normalizeChallengeMode,
   type ChallengeMode,
@@ -11,7 +13,7 @@ import {
 const HYBRID75_KIT_PLAN_BASE = "https://plan.hybrid-365.com";
 
 function kitPlanUrl(planId: string, challengeMode: ChallengeMode): string {
-  if (challengeMode === "hybrid75") {
+  if (challengeMode === "hybrid75" || challengeMode === "hyrox") {
     return `${HYBRID75_KIT_PLAN_BASE}/plan/${planId}`;
   }
   const base = process.env.NEXT_PUBLIC_BASE_URL?.trim();
@@ -37,7 +39,8 @@ const InputSchema = z.object({
   equipment: z.array(z.string()).optional(),
   five_k_time: z.string().optional(),
   notes: z.string().optional(),
-  challenge_mode: z.enum(["standard", "hybrid75"]).optional(),
+  challenge_mode: z.enum(["standard", "hybrid75", "hyrox"]).optional(),
+  hyrox_details: z.record(z.string(), z.unknown()).optional(),
 });
 
 type Input = z.infer<typeof InputSchema>;
@@ -198,6 +201,8 @@ async function kitCreateSubscriber(
 
   if (challengeMode === "hybrid75") {
     fields.challenge_mode = "hybrid75";
+  } else if (challengeMode === "hyrox") {
+    fields.challenge_mode = "hyrox";
   }
 
   const res = await fetch("https://api.kit.com/v4/subscribers", {
@@ -253,26 +258,43 @@ export async function POST(req: Request) {
 
     const challengeMode = normalizeChallengeMode(input.challenge_mode);
 
-    let planJson = buildWeekBlueprint({
-      days_per_week: input.days_per_week,
-      weekly_hours_band: input.weekly_hours_band,
-      goal_focus: input.goal_focus,
-      ability_level: input.ability_level,
-      double_sessions: input.double_sessions,
-      preferred_days: input.preferred_days,
-      equipment: input.equipment,
-      five_k_time: input.five_k_time,
-      notes: input.notes,
-    });
+    let planJson;
 
-    if (challengeMode === "hybrid75") {
-      planJson = applyHybrid75FreeWeek(planJson, {
+    if (challengeMode === "hyrox") {
+      const hyroxInput: HyroxFreeWeekInput = {
         days_per_week: input.days_per_week,
+        weekly_hours_band: input.weekly_hours_band,
         ability_level: input.ability_level,
-        equipment: input.equipment,
-      });
+        equipment: input.equipment ?? [],
+        preferred_days: input.preferred_days,
+        double_sessions: input.double_sessions,
+        five_k_time: input.five_k_time,
+        notes: input.notes,
+        ...(input.hyrox_details as Partial<HyroxFreeWeekInput>),
+      };
+      planJson = generateHyroxFreeWeekPlan(hyroxInput);
     } else {
-      planJson = { ...planJson, challenge_mode: "standard" };
+      planJson = buildWeekBlueprint({
+        days_per_week: input.days_per_week,
+        weekly_hours_band: input.weekly_hours_band,
+        goal_focus: input.goal_focus,
+        ability_level: input.ability_level,
+        double_sessions: input.double_sessions,
+        preferred_days: input.preferred_days,
+        equipment: input.equipment,
+        five_k_time: input.five_k_time,
+        notes: input.notes,
+      });
+
+      if (challengeMode === "hybrid75") {
+        planJson = applyHybrid75FreeWeek(planJson, {
+          days_per_week: input.days_per_week,
+          ability_level: input.ability_level,
+          equipment: input.equipment,
+        });
+      } else {
+        planJson = { ...planJson, challenge_mode: "standard" };
+      }
     }
 
     const planId = generatePlanId();
@@ -300,13 +322,21 @@ export async function POST(req: Request) {
     const kitTagId =
       challengeMode === "hybrid75"
         ? process.env.KIT_HYBRID75_TAG_ID?.trim()
-        : process.env.KIT_TAG_ID?.trim();
+        : challengeMode === "hyrox"
+          ? process.env.KIT_HYROX_TAG_ID?.trim() || process.env.KIT_TAG_ID?.trim()
+          : process.env.KIT_TAG_ID?.trim();
     const kitTagEnvName =
-      challengeMode === "hybrid75" ? "KIT_HYBRID75_TAG_ID" : "KIT_TAG_ID";
+      challengeMode === "hybrid75"
+        ? "KIT_HYBRID75_TAG_ID"
+        : challengeMode === "hyrox"
+          ? "KIT_HYROX_TAG_ID"
+          : "KIT_TAG_ID";
     const kitTagHint =
       challengeMode === "hybrid75"
         ? ' (Kit tag name: "Hybrid 75 Challenge")'
-        : ' (standard free week — e.g. "Hybrid365 Blueprint requested")';
+        : challengeMode === "hyrox"
+          ? ' (HYROX free week — e.g. "HYROX Free Week requested")'
+          : ' (standard free week — e.g. "Hybrid365 Blueprint requested")';
 
     if (!kitTagId) {
       console.warn(

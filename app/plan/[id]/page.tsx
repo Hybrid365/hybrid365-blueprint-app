@@ -26,7 +26,9 @@ export default async function PlanPage({ params }: PlanPageProps) {
       planId={plan.planId}
       planJson={plan.planJson}
       isHybrid75={false}
+      isHyrox={plan.isHyrox}
       hybrid75Meta={null}
+      hyroxMeta={plan.hyroxMeta}
     />
   );
 }

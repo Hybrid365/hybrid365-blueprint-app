@@ -1,13 +1,15 @@
 "use client";
 
 import { createContext, useContext, useMemo } from "react";
-import type { Hybrid75PlanMeta } from "@/app/lib/freeWeekChallengeMode";
+import type { Hybrid75PlanMeta, HyroxFreeWeekMeta } from "@/app/lib/freeWeekChallengeMode";
 
 export type FreePlanContextValue = {
   planId: string;
   planJson: Record<string, unknown>;
   isHybrid75: boolean;
+  isHyrox: boolean;
   hybrid75Meta: Hybrid75PlanMeta | null;
+  hyroxMeta: HyroxFreeWeekMeta | null;
   firstName: string;
   athleteEmail: string;
   athleteName: string;
@@ -19,13 +21,17 @@ export function FreePlanProvider({
   planId,
   planJson,
   isHybrid75,
+  isHyrox,
   hybrid75Meta,
+  hyroxMeta,
   children,
 }: {
   planId: string;
   planJson: Record<string, unknown>;
   isHybrid75: boolean;
+  isHyrox: boolean;
   hybrid75Meta: Hybrid75PlanMeta | null;
+  hyroxMeta: HyroxFreeWeekMeta | null;
   children: React.ReactNode;
 }) {
   const value = useMemo(() => {
@@ -38,12 +44,14 @@ export function FreePlanProvider({
       planId,
       planJson,
       isHybrid75,
+      isHyrox,
       hybrid75Meta,
+      hyroxMeta,
       firstName,
       athleteEmail,
       athleteName,
     };
-  }, [planId, planJson, isHybrid75, hybrid75Meta]);
+  }, [planId, planJson, isHybrid75, isHyrox, hybrid75Meta, hyroxMeta]);
 
   return <FreePlanContext.Provider value={value}>{children}</FreePlanContext.Provider>;
 }

@@ -9,6 +9,11 @@ import {
   HYBRID75_TELEGRAM_SUPPORTING_COPY,
   type ChallengeMode,
 } from "@/app/lib/freeWeekChallengeMode";
+import {
+  emptyHyroxFreeWeekInput,
+  type HyroxFreeWeekInput,
+} from "@/app/lib/freeWeekHyroxTypes";
+import { HyroxFreeWeekFormFields } from "@/components/free-week/HyroxFreeWeekFormFields";
 import SaveDashboardBanner from "@/components/free-week/SaveDashboardBanner";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -26,6 +31,7 @@ function FreeWeekForm() {
   const [fiveK, setFiveK] = useState("");
   const [notes, setNotes] = useState("");
   const [challengeMode, setChallengeMode] = useState<ChallengeMode>("standard");
+  const [hyroxDetails, setHyroxDetails] = useState<HyroxFreeWeekInput>(() => emptyHyroxFreeWeekInput());
 
   const searchParams = useSearchParams();
 
@@ -58,19 +64,35 @@ function FreeWeekForm() {
     setLoading(true);
     setResult(null);
 
+    const isHyrox = challengeMode === "hyrox";
     const payload = {
       first_name: firstName,
       email,
       days_per_week: Number(daysPerWeek),
       preferred_days: preferredDays,
       double_sessions: doubleSessions,
-      goal_focus: goalFocus,
+      goal_focus: isHyrox ? "hybrid" : goalFocus,
       ability_level: abilityLevel,
       equipment,
       weekly_hours_band: weeklyHoursBand,
-      five_k_time: fiveK || undefined,
+      five_k_time: fiveK || hyroxDetails.five_k_time || undefined,
       notes: notes || undefined,
       challenge_mode: challengeMode,
+      ...(isHyrox
+        ? {
+            hyrox_details: {
+              ...hyroxDetails,
+              days_per_week: Number(daysPerWeek),
+              weekly_hours_band: weeklyHoursBand,
+              ability_level: abilityLevel,
+              preferred_days: preferredDays,
+              double_sessions: doubleSessions,
+              equipment,
+              five_k_time: fiveK || hyroxDetails.five_k_time,
+              notes,
+            },
+          }
+        : {}),
     };
 
     try {
@@ -90,6 +112,20 @@ function FreeWeekForm() {
   }
 
   const isHybrid75Challenge = challengeMode === "hybrid75";
+  const isHyroxChallenge = challengeMode === "hyrox";
+
+  function selectTrack(mode: ChallengeMode) {
+    setChallengeMode(mode);
+    if (mode === "hyrox") {
+      setHyroxDetails((prev) => ({
+        ...emptyHyroxFreeWeekInput(),
+        days_per_week: daysPerWeek,
+        weekly_hours_band: weeklyHoursBand,
+        ability_level: abilityLevel,
+        equipment: prev.equipment?.length ? prev.equipment : ["Full gym"],
+      }));
+    }
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -105,10 +141,25 @@ function FreeWeekForm() {
           </div>
         ) : null}
 
+        {isHyroxChallenge ? (
+          <div className="mb-8 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">Free HYROX Week</p>
+            <h2 className="mt-2 text-2xl font-bold text-white">Get your personalised HYROX Week 1 sample</h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-200 sm:text-base">
+              A structured Week 1 built around Hybrid365 HYROX methodology — threshold running, erg development, leg
+              strength endurance, and compromised station work. Not a full 12-week programme or coach-reviewed plan.
+            </p>
+          </div>
+        ) : null}
+
         <div className="mb-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-sm">
             <span className="h-2 w-2 rounded-full bg-yellow-400" />
-            {isHybrid75Challenge ? "Hybrid 75 Challenge Builder" : "Hybrid365 Blueprint"}
+            {isHybrid75Challenge
+              ? "Hybrid 75 Challenge Builder"
+              : isHyroxChallenge
+                ? "Free HYROX Week"
+                : "Hybrid365 Blueprint"}
           </div>
 
           <h1 className="mt-4 text-4xl font-semibold tracking-tight leading-tight">
@@ -116,6 +167,11 @@ function FreeWeekForm() {
               <>
                 Build Your{" "}
                 <span className="text-yellow-400">Hybrid 75 Challenge Week</span>
+              </>
+            ) : isHyroxChallenge ? (
+              <>
+                Get Your Free{" "}
+                <span className="text-yellow-400">HYROX Training Week</span>
               </>
             ) : (
               <>
@@ -129,7 +185,9 @@ function FreeWeekForm() {
           <p className="mt-4 text-zinc-300 text-lg">
             {isHybrid75Challenge
               ? "Answer a few questions and get a structured challenge week personalised to your schedule, level and equipment."
-              : "Answer a few questions and get a structured training week built around your goal, fitness level, and schedule."}
+              : isHyroxChallenge
+                ? "Answer HYROX-specific questions and get a Week 1 sample with targets, station focus and upgrade path to the full HYROX track."
+                : "Answer a few questions and get a structured training week built around your goal, fitness level, and schedule."}
           </p>
 
           <div className="mt-6 space-y-2 text-sm text-zinc-300">
@@ -170,35 +228,48 @@ function FreeWeekForm() {
             </div>
 
             <div>
-              <label className="text-sm text-zinc-200">Are you joining the Hybrid 75 Summer Challenge?</label>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="text-sm text-zinc-200">What are you training for?</label>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <button
                   type="button"
-                  onClick={() => setChallengeMode("standard")}
+                  onClick={() => selectTrack("standard")}
                   className={`rounded-xl border px-4 py-4 text-left transition ${
                     challengeMode === "standard"
                       ? "border-yellow-400 bg-yellow-400/10"
                       : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
                   }`}
                 >
-                  <p className="font-semibold text-white">Standard Free Week</p>
+                  <p className="font-semibold text-white">General hybrid fitness</p>
                   <p className="mt-2 text-sm text-zinc-400">
-                    Build me a personalised Hybrid365 training week.
+                    A personalised Hybrid365 training week for running, strength and hybrid performance.
                   </p>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setChallengeMode("hybrid75")}
+                  onClick={() => selectTrack("hyrox")}
+                  className={`rounded-xl border px-4 py-4 text-left transition ${
+                    challengeMode === "hyrox"
+                      ? "border-yellow-400 bg-yellow-400/10"
+                      : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                  }`}
+                >
+                  <p className="font-semibold text-white">HYROX</p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    HYROX-specific assessment and a free Week 1 sample with pace targets and station focus.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectTrack("hybrid75")}
                   className={`rounded-xl border px-4 py-4 text-left transition ${
                     challengeMode === "hybrid75"
                       ? "border-yellow-400 bg-yellow-400/10"
                       : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
                   }`}
                 >
-                  <p className="font-semibold text-white">Hybrid 75 Summer Challenge</p>
+                  <p className="font-semibold text-white">Hybrid 75 Challenge</p>
                   <p className="mt-2 text-sm text-zinc-400">
-                    Build my week around the challenge rules: 3+ runs, 2–3 lifts, mobility, hydration, clean eating,
-                    accountability and the weekly Hybrid Hard Challenge.
+                    Challenge rules: 3+ runs, 2–3 lifts, mobility, habits and the weekly Hybrid Hard Challenge.
                   </p>
                 </button>
               </div>
@@ -277,20 +348,35 @@ function FreeWeekForm() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm text-zinc-200">Main focus</label>
-                <select
-                  value={goalFocus}
-                  onChange={(e) => setGoalFocus(e.target.value as any)}
-                  className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 outline-none focus:border-yellow-400"
-                >
-                  <option value="running">Run performance</option>
-                  <option value="muscle">Build lean muscle</option>
-                  <option value="hybrid">Hybrid performance (Hyrox-style)</option>
-                </select>
-              </div>
+            {!isHyroxChallenge ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-sm text-zinc-200">Main focus</label>
+                  <select
+                    value={goalFocus}
+                    onChange={(e) => setGoalFocus(e.target.value as any)}
+                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 outline-none focus:border-yellow-400"
+                  >
+                    <option value="running">Run performance</option>
+                    <option value="muscle">Build lean muscle</option>
+                    <option value="hybrid">Hybrid performance (Hyrox-style)</option>
+                  </select>
+                </div>
 
+                <div>
+                  <label className="text-sm text-zinc-200">Training level</label>
+                  <select
+                    value={abilityLevel}
+                    onChange={(e) => setAbilityLevel(e.target.value as any)}
+                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 outline-none focus:border-yellow-400"
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+              </div>
+            ) : (
               <div>
                 <label className="text-sm text-zinc-200">Training level</label>
                 <select
@@ -303,28 +389,37 @@ function FreeWeekForm() {
                   <option value="advanced">Advanced</option>
                 </select>
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="text-sm text-zinc-200">Equipment access</label>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                {equipmentOptions.map((opt) => {
-                  const active = equipment.includes(opt);
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setEquipment(toggle(equipment, opt))}
-                      className={`rounded-xl border px-4 py-3 text-left text-sm ${
-                        active ? "border-yellow-400 bg-yellow-400/10" : "border-zinc-800 bg-zinc-950"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
+            {!isHyroxChallenge ? (
+              <div>
+                <label className="text-sm text-zinc-200">Equipment access</label>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  {equipmentOptions.map((opt) => {
+                    const active = equipment.includes(opt);
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setEquipment(toggle(equipment, opt))}
+                        className={`rounded-xl border px-4 py-3 text-left text-sm ${
+                          active ? "border-yellow-400 bg-yellow-400/10" : "border-zinc-800 bg-zinc-950"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              <HyroxFreeWeekFormFields
+                hyrox={hyroxDetails}
+                onChange={(patch) => setHyroxDetails((prev) => ({ ...prev, ...patch }))}
+                equipment={equipment}
+                onEquipmentChange={setEquipment}
+              />
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -371,8 +466,10 @@ function FreeWeekForm() {
               {loading
                 ? "Building..."
                 : isHybrid75Challenge
-                ? "Build My Hybrid 75 Challenge Week"
-                : "Build My Personalised Week"}
+                  ? "Build My Hybrid 75 Challenge Week"
+                  : isHyroxChallenge
+                    ? "Build My Free HYROX Week"
+                    : "Build My Personalised Week"}
             </button>
 
             {result && result.ok && (

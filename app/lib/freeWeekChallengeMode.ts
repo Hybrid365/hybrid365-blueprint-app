@@ -1,4 +1,4 @@
-export type ChallengeMode = "standard" | "hybrid75";
+export type ChallengeMode = "standard" | "hybrid75" | "hyrox";
 
 /** Official Hybrid 75 Summer Challenge free group — override via env. */
 export const HYBRID75_TELEGRAM_DEFAULT_URL = "https://t.me/+0WAGU5S9BrQxYzQ0";
@@ -77,12 +77,35 @@ export type Hybrid75PlanMeta = {
   hard_easy_summary?: string;
 };
 
+export type HyroxFreeWeekMeta = {
+  limiter: string;
+  station_focus: string;
+  station_weaknesses: string[];
+  race_date: string | null;
+  race_countdown_days: number | null;
+  race_category: string | null;
+  race_target_time: string | null;
+  threshold_pace: string | null;
+  easy_pace: string | null;
+  ski_target: string | null;
+  row_target: string | null;
+  personalisation_lines: string[];
+  methodology_notes: string[];
+  upgrade_cta: {
+    community_url: string;
+    hyrox_team_url: string;
+  };
+};
+
 export function normalizeChallengeMode(value: unknown): ChallengeMode {
   if (value === "hybrid75") return "hybrid75";
+  if (value === "hyrox") return "hyrox";
   return "standard";
 }
 
 export function challengeModeFromSearchParam(value: string | null | undefined): ChallengeMode {
-  if (value?.toLowerCase() === "hybrid75") return "hybrid75";
+  const v = value?.toLowerCase();
+  if (v === "hybrid75") return "hybrid75";
+  if (v === "hyrox") return "hyrox";
   return "standard";
 }
