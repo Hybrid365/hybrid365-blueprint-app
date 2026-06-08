@@ -286,14 +286,14 @@ export default function HyroxFreeWeekDashboardClient({
                 </div>
               )}
 
-              <HyroxWeekTrackingCards tracking={weekTracking} communityUrl={community_url} />
+              <HyroxWeekTrackingCards tracking={weekTracking} onNavigate={scrollToId} />
             </div>
           </div>
 
           <SaveDashboardBanner planUrl={resolvedPlanUrl} />
 
           {/* Block tabs W1–W4 */}
-          <div>
+          <div id="hyrox-block" className="scroll-mt-20">
             <SectionHeading
               title="Your HYROX Training Block"
               subtitle="Week 1 is live. Weeks 2–4 unlock with the full HYROX programme."
@@ -466,7 +466,7 @@ export default function HyroxFreeWeekDashboardClient({
         {/* PROFILE — targets + ability bars + progress + habits + check-in */}
         <section id="hyrox-profile" className="scroll-mt-20 space-y-8">
           {/* Targets */}
-          <div>
+          <div id="hyrox-targets" className="scroll-mt-20">
             <SectionHeading
               title="Your Training Targets"
               subtitle="Generated from your benchmarks where available — RPE overrides pace when needed."
@@ -558,7 +558,7 @@ export default function HyroxFreeWeekDashboardClient({
           </div>
 
           {/* Progress preview */}
-          <div>
+          <div id="hyrox-progress" className="scroll-mt-20">
             <SectionHeading title="Progress Tracking Preview" />
             <div className="grid gap-3 md:grid-cols-2">
               <HyroxLockedCard
@@ -671,9 +671,10 @@ export default function HyroxFreeWeekDashboardClient({
           </div>
 
           {/* Check-in preview */}
+          <div id="hyrox-checkin" className="scroll-mt-20">
           <HyroxLockedCard
             title="Weekly Check-In"
-            description="Track sleep, energy, stress, soreness, motivation, bodyweight, session feedback and niggles. Coach-reviewed weekly check-ins are available for HYROX Team members. Self-check-ins unlock inside the HYROX community track."
+            description="Weekly check-ins track sleep, soreness, bodyweight, stress, energy and training feedback. Coach-reviewed check-ins are available for HYROX Team members. Self-check-ins unlock inside the HYROX community track."
             showCta
             communityUrl={community_url}
             teamUrl={hyrox_team_url}
@@ -691,6 +692,7 @@ export default function HyroxFreeWeekDashboardClient({
               )}
             </div>
           </HyroxLockedCard>
+          </div>
         </section>
 
         {/* UPGRADE */}
