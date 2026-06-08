@@ -6,6 +6,7 @@ import type { CoachDraftWeek, CoachProgrammeStatus } from "@/app/lib/hyroxCoachP
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import { formatRaceCountdown } from "@/app/lib/hyroxCoachMockAthletes";
 import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBlockReviewPanel";
+import { CoachWeeklyReviewPanel } from "@/components/admin-hyrox-athletes/CoachWeeklyReviewPanel";
 import { ProgrammeBuilder } from "@/components/admin-hyrox-athletes/ProgrammeBuilder";
 import { ProfileReviewTab } from "@/components/admin-hyrox-athletes/ProfileReviewTab";
 import { FullAssessmentAnswersTab } from "@/components/admin-hyrox-athletes/FullAssessmentAnswersTab";
@@ -25,6 +26,7 @@ const TABS = [
   "Profile Review",
   "Programme Builder",
   "Block Review",
+  "Weekly Review",
   "Check-Ins",
   "Coach Notes",
 ] as const;
@@ -185,6 +187,23 @@ export function CoachAthleteDashboard({
         <p className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-4 py-6 text-sm text-zinc-400">
           Block review is available for live Supabase athletes. Open an accepted athlete from the
           roster to review blocks 1–3 (weeks 4, 8, 12).
+        </p>
+      ) : null}
+      {tab === "Weekly Review" && programmeWorkflowInject.livePersistence?.athleteId ? (
+        <CoachWeeklyReviewPanel
+          athleteId={programmeWorkflowInject.livePersistence.athleteId}
+          programmeStartDate={programmeWorkflowInject.livePersistence.programmeStartDate}
+          programmeLengthWeeks={programmeWorkflowInject.livePersistence.programmeLengthWeeks ?? 12}
+          suggestedWeek={
+            athlete.programmeBlock && athlete.blockWeek
+              ? (athlete.programmeBlock - 1) * 4 + athlete.blockWeek
+              : undefined
+          }
+        />
+      ) : tab === "Weekly Review" ? (
+        <p className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-4 py-6 text-sm text-zinc-400">
+          Weekly review is available for live Supabase athletes. Open an accepted athlete from the
+          roster to review session logs and check-ins by week.
         </p>
       ) : null}
       {tab === "Check-Ins" && <CheckInsTab athleteId={athlete.id} />}

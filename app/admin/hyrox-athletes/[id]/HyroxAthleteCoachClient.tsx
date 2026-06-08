@@ -37,6 +37,7 @@ const TAB_VALUES: AthleteTab[] = [
   "Profile Review",
   "Programme Builder",
   "Block Review",
+  "Weekly Review",
   "Check-Ins",
   "Coach Notes",
 ];
