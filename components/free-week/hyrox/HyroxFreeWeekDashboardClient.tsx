@@ -19,6 +19,7 @@ import {
   HYROX_BLOCK_WEEKS,
   buildHyroxPerformanceProfile,
   buildHyroxSessionPreviews,
+  buildHyroxWeekTracking,
   extractSessionTarget,
   extractSessionRpe,
   extractThresholdMainSet,
@@ -34,6 +35,7 @@ import {
 import { FreePlanSessionCard } from "@/components/free-week/FreePlanSessionCard";
 import SaveDashboardBanner from "@/components/free-week/SaveDashboardBanner";
 import { HyroxInlineUpgradeStrip, HyroxLockedCard } from "@/components/free-week/hyrox/HyroxLockedCard";
+import { HyroxWeekTrackingCards } from "@/components/free-week/hyrox/HyroxWeekTrackingCards";
 
 const NAV = [
   { id: "hyrox-overview", label: "Overview" },
@@ -138,6 +140,11 @@ export default function HyroxFreeWeekDashboardClient({
         hasBenchmarks,
       }),
     [hyroxMeta, abilityLevel, hasBenchmarks]
+  );
+
+  const weekTracking = useMemo(
+    () => buildHyroxWeekTracking(sessions, hyroxMeta),
+    [sessions, hyroxMeta]
   );
 
   const thresholdPreview = useMemo(() => {
@@ -278,6 +285,8 @@ export default function HyroxFreeWeekDashboardClient({
                   ) : null}
                 </div>
               )}
+
+              <HyroxWeekTrackingCards tracking={weekTracking} communityUrl={community_url} />
             </div>
           </div>
 

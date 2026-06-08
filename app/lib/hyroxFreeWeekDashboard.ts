@@ -240,3 +240,81 @@ export function hyroxOverviewCopy(meta: HyroxFreeWeekMeta): string {
   if (meta.personalisation_lines?.[0]) return meta.personalisation_lines[0];
   return "Your free HYROX week has been built using your assessment responses and HYROX training goal.";
 }
+
+export type HyroxWeekTracking = {
+  sleepLabel: "Good" | "Average" | "Limited" | "Unknown";
+  sleepLocked: boolean;
+  sessionTotal: number;
+  sessionCompleted: number;
+  thresholdMinutes: number | null;
+  thresholdSessionCount: number;
+};
+
+function parseIntervalWorkMinutes(line: string): number | null {
+  const match = line.match(/(\d+)\s*[×x]\s*(\d+)\s*min/i);
+  if (!match) return null;
+  const reps = Number(match[1]);
+  const mins = Number(match[2]);
+  if (!Number.isFinite(reps) || !Number.isFinite(mins) || reps <= 0 || mins <= 0) return null;
+  return reps * mins;
+}
+
+/** Sum planned threshold work minutes from tagged threshold sessions only. */
+export function computePlannedThresholdMinutes(sessions: FreePlanSession[]): number | null {
+  let total = 0;
+  let found = false;
+
+  for (const session of sessions) {
+    const isThreshold = session.tags.some((t) => t.toLowerCase().includes("threshold"));
+    if (!isThreshold) continue;
+
+    for (const line of session.session.main ?? []) {
+      const workMinutes = parseIntervalWorkMinutes(line);
+      if (workMinutes != null) {
+        total += workMinutes;
+        found = true;
+        break;
+      }
+    }
+  }
+
+  return found ? total : null;
+}
+
+export function deriveSleepRecoveryLabel(meta: HyroxFreeWeekMeta): HyroxWeekTracking["sleepLabel"] {
+  const blob = [
+    meta.limiter,
+    ...(meta.personalisation_lines ?? []),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (blob.includes("limited recovery") || meta.limiter.toLowerCase() === "recovery") {
+    return "Limited";
+  }
+  if (blob.includes("good sleep") || blob.includes("sleep quality")) {
+    return "Good";
+  }
+  if (blob.includes("average")) {
+    return "Average";
+  }
+  return "Unknown";
+}
+
+export function buildHyroxWeekTracking(
+  sessions: FreePlanSession[],
+  meta: HyroxFreeWeekMeta
+): HyroxWeekTracking {
+  const thresholdSessions = sessions.filter((s) =>
+    s.tags.some((t) => t.toLowerCase().includes("threshold"))
+  );
+
+  return {
+    sleepLabel: deriveSleepRecoveryLabel(meta),
+    sleepLocked: true,
+    sessionTotal: sessions.length,
+    sessionCompleted: 0,
+    thresholdMinutes: computePlannedThresholdMinutes(sessions),
+    thresholdSessionCount: thresholdSessions.length,
+  };
+}
