@@ -54,12 +54,6 @@ import {
   TelegramCtaTop,
   WeekSessionsActionNote,
 } from "@/components/free-week/standard/StandardFreeWeekEnhancements";
-import {
-  HyroxFreeWeekHero,
-  HyroxPersonalisationNotes,
-  HyroxTargetCards,
-  HyroxUpgradeSection,
-} from "@/components/free-week/hyrox/HyroxFreeWeekEnhancements";
 
 type FreePlanDashboardClientProps = {
   planId: string;
@@ -263,13 +257,6 @@ export default function FreePlanDashboardClient({
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
         {/* OVERVIEW */}
         <section id="section-overview" className="scroll-mt-20 space-y-6">
-          {isHyrox && hyroxMeta ? (
-            <>
-              <HyroxFreeWeekHero meta={hyroxMeta} firstName={firstName} />
-              <HyroxTargetCards meta={hyroxMeta} />
-              <HyroxPersonalisationNotes meta={hyroxMeta} />
-            </>
-          ) : (
           <div className="relative overflow-hidden rounded-[2rem] border border-zinc-800 bg-gradient-to-b from-zinc-900 to-black px-6 py-10 md:px-10 md:py-12">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.12),transparent_30%)]" />
             <div className="relative z-10">
@@ -319,9 +306,8 @@ export default function FreePlanDashboardClient({
               </div>
             </div>
           </div>
-          )}
 
-          {!isHybrid75 && !isHyrox ? (
+          {!isHybrid75 ? (
             <>
               <StandardQuickActionsBar />
               <TelegramCtaTop />
@@ -770,8 +756,6 @@ export default function FreePlanDashboardClient({
                 </div>
               </>
           </SectionCard>
-          ) : isHyrox && hyroxMeta ? (
-            <HyroxUpgradeSection meta={hyroxMeta} />
           ) : (
             <StandardUpgradeSection />
           )}

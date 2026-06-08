@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import FreePlanDashboardClient from "@/components/free-week/FreePlanDashboardClient";
 import Hybrid75OverviewClient from "@/components/free-week/Hybrid75OverviewClient";
+import HyroxFreeWeekDashboardClient from "@/components/free-week/hyrox/HyroxFreeWeekDashboardClient";
 import { getFreePlanById } from "@/app/lib/getFreePlanById";
 
 export const dynamic = "force-dynamic";
@@ -21,14 +22,24 @@ export default async function PlanPage({ params }: PlanPageProps) {
     return <Hybrid75OverviewClient />;
   }
 
+  if (plan.isHyrox && plan.hyroxMeta) {
+    return (
+      <HyroxFreeWeekDashboardClient
+        planId={plan.planId}
+        planJson={plan.planJson}
+        hyroxMeta={plan.hyroxMeta}
+      />
+    );
+  }
+
   return (
     <FreePlanDashboardClient
       planId={plan.planId}
       planJson={plan.planJson}
       isHybrid75={false}
-      isHyrox={plan.isHyrox}
+      isHyrox={false}
       hybrid75Meta={null}
-      hyroxMeta={plan.hyroxMeta}
+      hyroxMeta={null}
     />
   );
 }
