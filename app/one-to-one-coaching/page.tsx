@@ -225,21 +225,37 @@ export default function OneToOneCoachingPage() {
               <p className="mt-3 text-4xl font-black text-white">
                 £150<span className="text-lg font-bold text-zinc-500">/month</span>
               </p>
-              <p className="mt-3 text-sm text-zinc-400">Ongoing coaching month to month.</p>
+              <p className="mt-3 text-sm font-semibold text-zinc-300">Ongoing coaching</p>
+              <p className="mt-2 text-sm text-zinc-400">Flexible month-to-month coaching.</p>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-black/40 p-6">
               <p className="text-xs font-black uppercase tracking-[0.12em] text-zinc-500">3 months</p>
               <p className="mt-3 text-4xl font-black text-white">£399</p>
               <p className="mt-1 text-sm font-semibold text-zinc-400">upfront</p>
-              <p className="mt-3 text-sm text-zinc-400">12-week focused block.</p>
+              <p className="mt-3 text-sm font-semibold text-zinc-300">12-week block</p>
+              <p className="mt-2 inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-300">
+                Save £51 vs monthly
+              </p>
+              <p className="mt-3 text-sm text-zinc-400">Equivalent to £133/month</p>
+              <p className="mt-2 text-sm text-zinc-500">
+                Commit to a focused 12-week block and save £51 compared with paying monthly.
+              </p>
             </div>
-            <div className="rounded-[24px] border border-[#f4d23c]/35 bg-[#f4d23c]/10 p-6">
+            <div className="rounded-[24px] border border-[#f4d23c]/35 bg-[#f4d23c]/10 p-6 ring-1 ring-[#f4d23c]/20">
               <p className="text-xs font-black uppercase tracking-[0.12em] text-[#f4d23c]">
                 Best value · 4 months
               </p>
               <p className="mt-3 text-4xl font-black text-white">£499</p>
               <p className="mt-1 text-sm font-semibold text-zinc-400">upfront</p>
-              <p className="mt-3 text-sm text-zinc-300">Full 16-week transformation block.</p>
+              <p className="mt-3 text-sm font-semibold text-zinc-200">16-week block</p>
+              <p className="mt-2 inline-flex rounded-full border border-[#f4d23c]/40 bg-[#f4d23c]/15 px-2.5 py-0.5 text-xs font-bold text-[#f4d23c]">
+                Save £101 vs monthly
+              </p>
+              <p className="mt-3 text-sm text-zinc-300">Equivalent to £124.75/month</p>
+              <p className="mt-2 text-sm text-zinc-400">
+                Best value. Commit to the full 16-week block and save £101 compared with paying
+                monthly.
+              </p>
             </div>
           </div>
         </Section>
