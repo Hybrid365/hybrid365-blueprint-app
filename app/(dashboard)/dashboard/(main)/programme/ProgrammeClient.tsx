@@ -23,6 +23,10 @@ import {
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { MemberSessionDetailDrawer } from "@/components/dashboard/MemberSessionDetailDrawer";
 import { useMemberSessionLogs } from "@/app/lib/memberSessionLog";
+import { findTodayOrNextSession } from "@/app/lib/memberNextSession";
+import { resolveSessionDisplayState } from "@/app/lib/sessionLogTypes";
+import type { MemberSessionLogRecord } from "@/app/lib/sessionLogTypes";
+import { SessionStateBadge } from "@/components/dashboard/SessionStateBadge";
 import {
   extractWeekRationale,
   type ExtractedProgrammeIntelligence,
@@ -65,17 +69,7 @@ export type WeekPayload = {
   plan_json: unknown | null;
 };
 
-type SessionLogRecord = {
-  id: string;
-  week_number: number;
-  session_key: string;
-  session_title: string | null;
-  session_day: string | null;
-  completed: boolean;
-  completed_at: string | null;
-  rpe: number | null;
-  notes: string | null;
-};
+type SessionLogRecord = MemberSessionLogRecord;
 
 type Props = {
   programmeInstanceId: string | null;
@@ -164,16 +158,24 @@ export default function ProgrammeClient({
     drawerOpen,
     selectedSession,
     selectedLog,
-    draftRpe,
-    setDraftRpe,
-    draftNotes,
-    setDraftNotes,
+    draft,
+    updateDraft,
     saving,
     saveError,
     openSessionDrawer,
     closeSessionDrawer,
     saveSessionLog,
   } = useMemberSessionLogs(programmeInstanceId, initialSessionLogs);
+
+  const todaySessionKey = useMemo(() => {
+    if (selectedWeek !== effectiveWeek) return null;
+    const result = findTodayOrNextSession({
+      weeks: weeksFromDb,
+      sessionLogs,
+      effectiveWeek,
+    });
+    return result.isTodayMatch ? result.session?.sessionKey ?? null : null;
+  }, [weeksFromDb, sessionLogs, effectiveWeek, selectedWeek]);
 
   const selectedPayload = getSelectedProgrammeWeek(
     weeksFromDb.map((w) => ({
@@ -217,7 +219,11 @@ export default function ProgrammeClient({
       <div className="space-y-3">
         {sessionList.map((session) => {
           const log = sessionLogs[session.sessionKey];
-          const done = Boolean(log?.completed);
+          const displayState = resolveSessionDisplayState({
+            log,
+            isTodaySession: todaySessionKey === session.sessionKey,
+          });
+          const hasLog = Boolean(log);
           return (
             <button
               key={session.sessionKey}
@@ -233,12 +239,7 @@ export default function ProgrammeClient({
                   >
                     {session.category}
                   </span>
-                  {done ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Done
-                    </span>
-                  ) : null}
+                  <SessionStateBadge state={displayState} />
                 </div>
                 <p className="mt-1 font-semibold text-white">{session.title}</p>
                 <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{session.intent}</p>
@@ -250,7 +251,7 @@ export default function ProgrammeClient({
                   {session.timeCap ? ` · ${session.timeCap}` : ""}
                 </span>
                 <span className="rounded-lg bg-yellow-400/15 px-2 py-1 text-xs font-bold text-yellow-300">
-                  View / log
+                  {hasLog ? "Edit log" : "Log result"}
                 </span>
               </div>
             </button>
@@ -425,7 +426,22 @@ export default function ProgrammeClient({
                   <Dumbbell className="h-5 w-5 text-yellow-400" />
                   This week&apos;s sessions
                 </h2>
-                <span className="text-sm text-zinc-400">Week {effectiveWeek}</span>
+                <div className="text-right">
+                  <span className="text-sm text-zinc-400">Week {effectiveWeek}</span>
+                  {completedByWeek[effectiveWeek]?.total ? (
+                    <p className="mt-0.5 text-xs font-semibold text-yellow-300/90">
+                      {completedByWeek[effectiveWeek]!.completed}/
+                      {completedByWeek[effectiveWeek]!.total} complete
+                      {completedByWeek[effectiveWeek]!.total > 0
+                        ? ` · ${Math.round(
+                            (completedByWeek[effectiveWeek]!.completed /
+                              completedByWeek[effectiveWeek]!.total) *
+                              100
+                          )}%`
+                        : ""}
+                    </p>
+                  ) : null}
+                </div>
               </div>
               {!currentWeekUnlocked ? (
                 <LockedWeekMessage />
@@ -683,15 +699,13 @@ export default function ProgrammeClient({
           session={selectedSession}
           onClose={closeSessionDrawer}
           log={selectedLog}
-          draftRpe={draftRpe}
-          onDraftRpeChange={setDraftRpe}
-          draftNotes={draftNotes}
-          onDraftNotesChange={setDraftNotes}
+          draft={draft}
+          updateDraft={updateDraft}
           saving={saving}
           saveError={saveError}
           programmeInstanceId={programmeInstanceId}
-          onSaveComplete={() => saveSessionLog(true)}
-          onSaveIncomplete={() => saveSessionLog(false)}
+          isHyroxTrack={isHyroxTrack}
+          onSave={() => saveSessionLog()}
           onShare={
             selectedSession
               ? () =>

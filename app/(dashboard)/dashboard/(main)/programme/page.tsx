@@ -23,17 +23,15 @@ import {
   resolveProgrammeGeneratedAt,
 } from "@/app/lib/programmeRefreshStatus";
 import type { SessionLogLike } from "@/app/lib/progressMetrics";
+import {
+  SESSION_LOG_SELECT,
+  type MemberSessionLogRecord,
+} from "@/app/lib/sessionLogTypes";
 import ProgrammeClient from "./ProgrammeClient";
 
 export const dynamic = "force-dynamic";
 
-type SessionLogRow = SessionLogLike & {
-  id: string;
-  session_title: string | null;
-  session_day: string | null;
-  completed_at: string | null;
-  notes: string | null;
-};
+type SessionLogRow = MemberSessionLogRecord;
 
 type WeeklyCheckInRow = {
   week_number: number;
@@ -88,9 +86,7 @@ export default async function ProgrammePage() {
   if (typedInstance?.id) {
     const { data: logs } = await supabase
       .from("session_logs")
-      .select(
-        "id, week_number, session_key, session_title, session_day, completed, completed_at, rpe, notes"
-      )
+      .select(SESSION_LOG_SELECT)
       .eq("user_id", user.id)
       .eq("programme_instance_id", typedInstance.id)
       .gte("week_number", 1)

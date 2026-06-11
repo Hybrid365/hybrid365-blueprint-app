@@ -82,12 +82,17 @@ import { SessionShareCardModal } from "@/components/share/SessionShareCardModal"
 import { DashboardSubnav } from "@/components/DashboardSubnav";
 import { AddToHomeScreenBanner } from "@/components/dashboard/AddToHomeScreenBanner";
 import { DashboardRotatingMessage } from "@/components/dashboard/DashboardRotatingMessage";
-import { GoToNextSessionCta } from "@/components/dashboard/GoToNextSessionCta";
+import { DashboardTodayCard } from "@/components/dashboard/DashboardTodayCard";
+import { WeeklyProgressSummaryCard } from "@/components/dashboard/WeeklyProgressSummaryCard";
 import { HyroxTrackHomeSection } from "@/components/dashboard/hyrox/HyroxTrackHomeSection";
 import { MemberSessionDetailDrawer } from "@/components/dashboard/MemberSessionDetailDrawer";
 import { MemberStartHereChecklist } from "@/components/dashboard/MemberStartHereChecklist";
-import { findNextMemberSession } from "@/app/lib/memberNextSession";
+import { findNextMemberSession, findTodayOrNextSession } from "@/app/lib/memberNextSession";
 import { useMemberSessionLogs } from "@/app/lib/memberSessionLog";
+import {
+  isSessionLogComplete,
+  type MemberSessionLogRecord,
+} from "@/app/lib/sessionLogTypes";
 import type { MemberSessionDrawerSession } from "@/app/lib/memberSessionTypes";
 import {
   OnboardingHowItWorksCard,
@@ -130,17 +135,7 @@ export type MemberDashboardClientProps = {
   isHyroxTrack?: boolean;
 };
 
-type SessionLogRecord = {
-  id: string;
-  week_number: number;
-  session_key: string;
-  session_title: string | null;
-  session_day: string | null;
-  completed: boolean;
-  completed_at: string | null;
-  rpe: number | null;
-  notes: string | null;
-};
+type SessionLogRecord = MemberSessionLogRecord;
 
 type SessionWithKey = MemberSessionDetail & {
   sessionKey: string;
@@ -396,10 +391,8 @@ export default function MemberDashboardClient({
     setDrawerOpen,
     selectedSession,
     selectedLog,
-    draftRpe,
-    setDraftRpe,
-    draftNotes,
-    setDraftNotes,
+    draft,
+    updateDraft,
     saving,
     saveError,
     openSessionDrawer,
@@ -606,7 +599,9 @@ export default function MemberDashboardClient({
   const progressPercent = Math.min(100, Math.round((effectiveCurrentWeek / 12) * 100));
   const currentBlockMeta = BLOCKS.find((b) => b.id === blockIdForWeek(effectiveCurrentWeek))!;
   const totalSessionsThisWeek = sessions.length;
-  const completedCount = sessions.filter((s) => sessionLogs[s.sessionKey]?.completed).length;
+  const completedCount = sessions.filter((s) =>
+    isSessionLogComplete(sessionLogs[s.sessionKey])
+  ).length;
   const nextSession = useMemo(() => {
     if (!programmeGenerated) return null;
     return findNextMemberSession({
@@ -616,8 +611,19 @@ export default function MemberDashboardClient({
     });
   }, [programmeGenerated, allWeeks, sessionLogs, effectiveCurrentWeek]);
 
+  const todayResult = useMemo(() => {
+    if (!canViewProgramme) {
+      return { session: null, isTodayMatch: false, isRestDay: false, noSessionToday: true };
+    }
+    return findTodayOrNextSession({
+      weeks: allWeeks,
+      sessionLogs,
+      effectiveWeek: effectiveCurrentWeek,
+    });
+  }, [canViewProgramme, allWeeks, sessionLogs, effectiveCurrentWeek]);
+
   const hasCompletedSession = useMemo(
-    () => Object.values(sessionLogs).some((log) => log.completed),
+    () => Object.values(sessionLogs).some((log) => isSessionLogComplete(log)),
     [sessionLogs]
   );
   const hasHabitLog = habitLogs.length > 0;
@@ -1002,15 +1008,41 @@ export default function MemberDashboardClient({
         ) : null}
 
         {canViewProgramme ? (
-          <GoToNextSessionCta
-            nextSession={nextSession}
-            programmeGenerated={canViewProgramme}
-            onOpenSession={(session) => {
+          <DashboardTodayCard
+            todayResult={todayResult}
+            sessionLog={
+              todayResult.session
+                ? sessionLogs[todayResult.session.sessionKey]
+                : undefined
+            }
+            trackLabel={trainingTrackLabel(resolvedTrainingTrack)}
+            isHyroxTrack={isHyroxCommunityTrack}
+            onViewSession={(session) => {
               if (session.weekNumber !== selectedWeek) {
                 setSelectedWeek(session.weekNumber);
               }
               openSessionDrawer(session);
             }}
+            onLogResult={(session) => {
+              if (session.weekNumber !== selectedWeek) {
+                setSelectedWeek(session.weekNumber);
+              }
+              openSessionDrawer(session);
+            }}
+          />
+        ) : null}
+
+        {canViewProgramme && weekTrackingSummary ? (
+          <WeeklyProgressSummaryCard
+            summary={weekTrackingSummary}
+            isHyroxTrack={isHyroxCommunityTrack}
+            onLogSession={
+              todayResult.session
+                ? () => openSessionDrawer(todayResult.session!)
+                : nextSession
+                  ? () => openSessionDrawer(nextSession)
+                  : undefined
+            }
           />
         ) : null}
 
@@ -2159,15 +2191,13 @@ export default function MemberDashboardClient({
         session={selectedSession}
         onClose={closeSessionDrawer}
         log={selectedLog}
-        draftRpe={draftRpe}
-        onDraftRpeChange={setDraftRpe}
-        draftNotes={draftNotes}
-        onDraftNotesChange={setDraftNotes}
+        draft={draft}
+        updateDraft={updateDraft}
         saving={saving}
         saveError={saveError}
         programmeInstanceId={programmeInstanceId}
-        onSaveComplete={() => saveSessionLog(true)}
-        onSaveIncomplete={() => saveSessionLog(false)}
+        isHyroxTrack={isHyroxCommunityTrack}
+        onSave={() => saveSessionLog()}
         onShare={
           selectedSession
             ? () => openSessionShare(selectedSession)

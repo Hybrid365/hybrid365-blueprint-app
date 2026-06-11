@@ -11,6 +11,7 @@ import {
   type MemberSessionDetail,
   type SessionCategoryLabel,
 } from "./memberDashboardSchedule";
+import { isSessionLogComplete } from "./sessionLogTypes";
 import {
   calculateSessionAdherence,
   deriveEffectiveCurrentWeek,
@@ -45,6 +46,7 @@ export type WeekSessionSlot = {
   category: SessionCategoryLabel;
   day: string;
   completed: boolean;
+  sessionStatus: string | null;
 };
 
 export type RunVolumeTracking = {
@@ -82,6 +84,15 @@ export type BenchmarkSnapshotItem = {
   logged: boolean;
 };
 
+export type WeeklyProgressNarrative = {
+  headline: string;
+  body: string;
+  completedCount: number;
+  plannedCount: number;
+  remainingCount: number;
+  completionPct: number | null;
+};
+
 export type DashboardWeekTrackingSummary = {
   programmeWeek: number;
   hasProgrammePlan: boolean;
@@ -91,8 +102,11 @@ export type DashboardWeekTrackingSummary = {
   strength: { completed: number; planned: number };
   hybrid: { completed: number; planned: number };
   aerobicRecovery: { completed: number; planned: number };
+  partialCount: number;
+  skippedCount: number;
   consistencyPct: number | null;
   consistencyLabel: string;
+  weeklyNarrative: WeeklyProgressNarrative;
   weeklyCheckInComplete: boolean;
   runVolume: RunVolumeTracking;
   habit: HabitWeekSummary | null;
@@ -129,10 +143,10 @@ export function listWeekSessionSlots(
   const raw = extractScheduleFromPlanJson(week.plan_json);
   if (!raw?.length) return [];
   const normalized = normalizeMemberSchedule(raw);
-  const logMap = new Map<string, boolean>();
+  const logMap = new Map<string, SessionLogLike>();
   for (const log of logs) {
     if (log.week_number !== week.week_number) continue;
-    logMap.set(log.session_key, Boolean(log.completed));
+    logMap.set(log.session_key, log);
   }
   return normalized.map((session, index) => {
     const sessionKey = buildSessionKey({
@@ -142,12 +156,14 @@ export function listWeekSessionSlots(
       title: session.title,
     });
     const category = classifyCategory(session);
+    const hit = logMap.get(sessionKey);
     return {
       sessionKey,
       title: session.title,
       category,
       day: session.day,
-      completed: logMap.get(sessionKey) ?? false,
+      completed: isSessionLogComplete(hit),
+      sessionStatus: hit?.session_status ?? (hit?.completed ? "completed" : null),
     };
   });
 }
@@ -335,6 +351,8 @@ export function buildDashboardWeekTrackingSummary(args: {
     completed: slots.filter((s) => s.completed).length,
     planned: slots.length,
   };
+  const partialCount = slots.filter((s) => s.sessionStatus === "partial").length;
+  const skippedCount = slots.filter((s) => s.sessionStatus === "skipped").length;
   const runs = countBy(isRunCategory);
   const strength = countBy(isStrengthCategory);
   const hybrid = countBy(isHybridCategory);
@@ -343,6 +361,7 @@ export function buildDashboardWeekTrackingSummary(args: {
   const adherence = calculateSessionAdherence(args.sessionLogs, args.weeks, programmeWeek);
   const consistencyPct =
     adherence.currentWeekTotal > 0 ? adherence.currentWeekPercentage : null;
+  const remainingCount = Math.max(0, sessions.planned - sessions.completed);
 
   let consistencyLabel =
     consistencyPct == null
@@ -350,6 +369,14 @@ export function buildDashboardWeekTrackingSummary(args: {
       : consistencyPct === 0
         ? "Start logging sessions to build your consistency score."
         : `Weekly consistency: ${consistencyPct}%`;
+
+  const weeklyNarrative = buildWeeklyProgressNarrative({
+    completed: sessions.completed,
+    planned: sessions.planned,
+    remaining: remainingCount,
+    completionPct: consistencyPct,
+    isHyrox: false,
+  });
 
   const weeklyCheckInComplete = Boolean(
     args.weeklyCheckIns.find((c) => c.week_number === programmeWeek && c.submitted_at)
@@ -386,13 +413,56 @@ export function buildDashboardWeekTrackingSummary(args: {
     strength,
     hybrid,
     aerobicRecovery,
+    partialCount,
+    skippedCount,
     consistencyPct,
     consistencyLabel,
+    weeklyNarrative,
     weeklyCheckInComplete,
     runVolume,
     habit,
     challenge: args.challenge ?? null,
     benchmarks,
     hasAnyTrackingActivity,
+  };
+}
+
+export function buildWeeklyProgressNarrative(args: {
+  completed: number;
+  planned: number;
+  remaining: number;
+  completionPct: number | null;
+  isHyrox?: boolean;
+}): WeeklyProgressNarrative {
+  const { completed, planned, remaining, completionPct } = args;
+  const headline =
+    planned === 0
+      ? "This week so far"
+      : `${completed} of ${planned} sessions complete`;
+
+  let body: string;
+  if (planned === 0) {
+    body = "Your programme week will show progress here once sessions are available.";
+  } else if (completed === 0) {
+    body = args.isHyrox
+      ? "Log your first session to start tracking threshold work, stations and hybrid performance."
+      : "Log your first session this week — consistency starts with one completed training day.";
+  } else if (remaining === 0) {
+    body = args.isHyrox
+      ? "Week complete. Recover well and stay ready for the next block of race-specific work."
+      : "Week complete. Recover well and carry momentum into next week.";
+  } else {
+    body = args.isHyrox
+      ? `${remaining} session${remaining === 1 ? "" : "s"} remaining. Keep the easy work easy and prioritise your next key session.`
+      : `${remaining} session${remaining === 1 ? "" : "s"} remaining. Training consistency building — complete your next run or lift.`;
+  }
+
+  return {
+    headline,
+    body,
+    completedCount: completed,
+    plannedCount: planned,
+    remainingCount: remaining,
+    completionPct,
   };
 }

@@ -11,6 +11,7 @@ import {
   extractScheduleFromPlanJson,
   normalizeMemberSchedule,
 } from "./memberDashboardSchedule";
+import { isSessionLogComplete } from "./sessionLogTypes";
 import { parseTimeToSeconds } from "./mapAssessmentToProgrammeInput";
 
 export type ProgrammeWeekLike = {
@@ -32,6 +33,7 @@ export type SessionLogLike = {
   session_key: string;
   completed: boolean;
   rpe: number | null;
+  session_status?: string | null;
 };
 
 export type WeeklyCheckInLike = {
@@ -139,7 +141,7 @@ export function calculateSessionAdherence(
     let done = 0;
     for (const key of keys) {
       const hit = logMap.get(`${w.week_number}::${key}`);
-      if (hit?.completed) done += 1;
+      if (isSessionLogComplete(hit)) done += 1;
     }
     completedByWeek[w.week_number] = { completed: done, total };
     completedUnlocked += done;
@@ -191,7 +193,7 @@ export function calculateKeySessionCompletion(
         index,
         title: session.title,
       });
-      if (logMap.get(`${w.week_number}::${key}`)?.completed) done += 1;
+      if (isSessionLogComplete(logMap.get(`${w.week_number}::${key}`))) done += 1;
     });
   }
   return {

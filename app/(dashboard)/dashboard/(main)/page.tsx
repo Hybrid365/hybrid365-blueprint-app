@@ -13,6 +13,10 @@ import { hybridAthleteDisplayName } from "@/app/lib/displayName";
 import { loadCommunityAssessmentTrack } from "@/app/lib/loadCommunityAssessmentTrack";
 import type { ChallengeSubmissionRow } from "@/app/lib/hybridChallengeMetrics";
 import { deriveEffectiveCurrentWeek, type BenchmarkTestLike } from "@/app/lib/progressMetrics";
+import {
+  SESSION_LOG_SELECT,
+  type MemberSessionLogRecord,
+} from "@/app/lib/sessionLogTypes";
 import MemberDashboardClient, {
   type WeekPayload,
 } from "./MemberDashboardClient";
@@ -24,17 +28,7 @@ type ProgrammeWeekRow = {
   plan_json: unknown | null;
 };
 
-type SessionLogRow = {
-  id: string;
-  week_number: number;
-  session_key: string;
-  session_title: string | null;
-  session_day: string | null;
-  completed: boolean;
-  completed_at: string | null;
-  rpe: number | null;
-  notes: string | null;
-};
+type SessionLogRow = MemberSessionLogRecord;
 
 type WeeklyCheckInRow = {
   id: string;
@@ -116,9 +110,7 @@ export default async function DashboardPage() {
   if (typedInstance?.id) {
     const { data: logs } = await supabase
       .from("session_logs")
-      .select(
-        "id, week_number, session_key, session_title, session_day, completed, completed_at, rpe, notes"
-      )
+      .select(SESSION_LOG_SELECT)
       .eq("user_id", user.id)
       .eq("programme_instance_id", typedInstance.id)
       .in(
