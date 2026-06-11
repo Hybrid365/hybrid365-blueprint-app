@@ -39,7 +39,9 @@ import { isStrengthBenchmarkType } from "@/app/lib/benchmarkCoreAreas";
 import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
 import { BenchmarkSnapshotStrip } from "@/components/dashboard/BenchmarkSnapshotStrip";
 import { HyroxProgressPanel } from "@/components/dashboard/hyrox/HyroxProgressPanel";
+import { RunningVolumeProgressCard } from "@/components/dashboard/RunningVolumeProgressCard";
 import { emptyHyroxDetails } from "@/app/lib/communityHyroxAssessment";
+import type { RunningVolumeLog } from "@/app/lib/runningVolumeProgress";
 
 type AdherenceSnapshot = {
   completedUnlocked: number;
@@ -85,6 +87,7 @@ type Props = {
   hyroxDetails?: import("@/app/lib/communityHyroxAssessment").CommunityHyroxDetails;
   benchmarkTests?: { test_type: string | null; test_time: string | null; test_value: number | null; tested_at: string | null }[];
   latestHyroxCheckIn?: import("@/app/lib/communityHyroxCheckIn").CommunityHyroxCheckInDetails | null;
+  runningVolumeLogs: RunningVolumeLog[];
 };
 
 function TrendGlyph({ trend, label }: { trend: "up" | "down" | "flat" | "none"; label: string }) {
@@ -235,6 +238,7 @@ export default function ProgressClient({
   hyroxDetails,
   benchmarkTests = [],
   latestHyroxCheckIn,
+  runningVolumeLogs,
 }: Props) {
   void _email;
   const hasProgramme = Boolean(programmeInstanceId) && programmeGenerated;
@@ -413,6 +417,12 @@ export default function ProgressClient({
                 ) : null}
               </div>
             </section>
+
+            <RunningVolumeProgressCard
+              sessionLogs={runningVolumeLogs}
+              effectiveWeek={effectiveWeek}
+              isHyroxTrack={isHyroxTrack}
+            />
 
             <div className="grid gap-10 lg:grid-cols-2">
               {/* C — Bodyweight */}

@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { CheckCircle2, Clock, Gauge, Share2, Timer, X } from "lucide-react";
 import { RunIntensityGuide } from "@/components/dashboard/RunIntensityGuide";
 import type { SessionLogDraft } from "@/app/lib/memberSessionLog";
+import { sessionIncludesRunning } from "@/app/lib/memberSessionClassification";
 import type { MemberSessionLogRecord } from "@/app/lib/sessionLogTypes";
 import { sessionLogStatusFromRecord } from "@/app/lib/sessionLogTypes";
 import type { SessionLogStatus } from "@/app/lib/sessionLogTypes";
@@ -63,11 +65,21 @@ export function MemberSessionDetailDrawer({
   isHyroxTrack,
   onShare,
 }: Props) {
+  const includesRunning = session ? sessionIncludesRunning(session) : false;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development" || !open || !session) return;
+    console.log("[sessionIncludesRunning]", {
+      title: session.title,
+      category: session.category,
+      includesRunning: sessionIncludesRunning(session),
+    });
+  }, [open, session]);
+
   if (!open || !session) return null;
 
   const existingStatus = sessionLogStatusFromRecord(log);
   const category = session.category;
-  const isRun = category === "Run";
   const isStrength = category === "Strength";
   const isAerobic = category === "Aerobic" || category === "Recovery";
   const isHyroxSession =
@@ -261,35 +273,40 @@ export function MemberSessionDetailDrawer({
               </LogField>
             </div>
 
-            {isRun ? (
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <LogField label="Distance (km)">
-                  <input
-                    type="text"
-                    value={draft.distance_km}
-                    onChange={(e) => updateDraft("distance_km", e.target.value)}
-                    placeholder="e.g. 8.5"
-                    className={inputClass}
-                  />
-                </LogField>
-                <LogField label="Average pace">
-                  <input
-                    type="text"
-                    value={draft.average_pace}
-                    onChange={(e) => updateDraft("average_pace", e.target.value)}
-                    placeholder="e.g. 4:45/km"
-                    className={inputClass}
-                  />
-                </LogField>
-                <LogField label="Average HR">
-                  <input
-                    type="number"
-                    value={draft.average_hr}
-                    onChange={(e) => updateDraft("average_hr", e.target.value)}
-                    placeholder="bpm"
-                    className={inputClass}
-                  />
-                </LogField>
+            {includesRunning ? (
+              <div className="mt-4">
+                <p className="mb-3 text-xs text-zinc-500">
+                  Add your total running distance for this session so your weekly KM graph updates.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <LogField label="Total distance completed (km)">
+                    <input
+                      type="text"
+                      value={draft.distance_km}
+                      onChange={(e) => updateDraft("distance_km", e.target.value)}
+                      placeholder="e.g. 8.5"
+                      className={inputClass}
+                    />
+                  </LogField>
+                  <LogField label="Average pace">
+                    <input
+                      type="text"
+                      value={draft.average_pace}
+                      onChange={(e) => updateDraft("average_pace", e.target.value)}
+                      placeholder="e.g. 4:45/km"
+                      className={inputClass}
+                    />
+                  </LogField>
+                  <LogField label="Average HR">
+                    <input
+                      type="number"
+                      value={draft.average_hr}
+                      onChange={(e) => updateDraft("average_hr", e.target.value)}
+                      placeholder="bpm"
+                      className={inputClass}
+                    />
+                  </LogField>
+                </div>
               </div>
             ) : null}
 

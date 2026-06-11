@@ -29,6 +29,11 @@ import {
 import ProgressClient from "./ProgressClient";
 import { loadCommunityAssessmentTrack } from "@/app/lib/loadCommunityAssessmentTrack";
 import { parseHyroxCheckInDetails } from "@/app/lib/communityHyroxCheckIn";
+import {
+  isCountableRunningVolumeLog,
+  RUNNING_VOLUME_LOG_SELECT,
+  type RunningVolumeLog,
+} from "@/app/lib/runningVolumeProgress";
 
 type ProgrammeWeekRow = {
   week_number: number;
@@ -37,11 +42,9 @@ type ProgrammeWeekRow = {
   plan_json: unknown | null;
 };
 
-type SessionLogRow = SessionLogLike & {
+type SessionLogRow = SessionLogLike & RunningVolumeLog & {
   id: string;
   session_title: string | null;
-  session_day: string | null;
-  completed_at: string | null;
   notes: string | null;
 };
 
@@ -79,6 +82,31 @@ export default async function ProgressPage() {
   });
 
   const typedInstance = await fetchCommunityProgrammeInstance(supabase, user.id);
+
+  const { data: runningVolumeRows, error: runningVolumeError } = await supabase
+    .from("session_logs")
+    .select(RUNNING_VOLUME_LOG_SELECT)
+    .eq("user_id", user.id)
+    .gt("distance_km", 0)
+    .order("completed_at", { ascending: false, nullsFirst: false });
+
+  const runningVolumeLogs = (runningVolumeRows ?? []) as RunningVolumeLog[];
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[progress/runningVolume] fetch", {
+      error: runningVolumeError?.message ?? null,
+      rowCount: runningVolumeLogs.length,
+      withDistance: runningVolumeLogs.filter((l) => Number(l.distance_km) > 0).length,
+      countable: runningVolumeLogs.filter(isCountableRunningVolumeLog).length,
+      sample: runningVolumeLogs.slice(0, 3).map((l) => ({
+        id: l.id,
+        distance_km: l.distance_km,
+        session_status: l.session_status,
+        completed: l.completed,
+        completed_at: l.completed_at,
+      })),
+    });
+  }
 
   let weeksRaw: ProgrammeWeekRow[] = [];
   let sessionLogs: SessionLogRow[] = [];
@@ -189,6 +217,7 @@ export default async function ProgressPage() {
       hyroxDetails={trackCtx.hyroxDetails}
       benchmarkTests={benchmarks}
       latestHyroxCheckIn={latestHyroxCheckIn}
+      runningVolumeLogs={runningVolumeLogs}
     />
   );
 }
