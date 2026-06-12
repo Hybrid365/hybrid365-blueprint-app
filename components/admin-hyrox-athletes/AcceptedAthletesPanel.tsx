@@ -59,6 +59,43 @@ function AthleteLoginLinkCopy() {
   );
 }
 
+function GeneratedOnboardingLinkDisplay({
+  url,
+  expiresAt,
+  onManualCopy,
+  manualCopied,
+}: {
+  url: string;
+  expiresAt: string | null;
+  onManualCopy: () => void;
+  manualCopied: boolean;
+}) {
+  return (
+    <div className="space-y-1.5 rounded-lg border border-zinc-800 bg-zinc-950/60 p-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        Generated onboarding link
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="max-w-full break-all rounded bg-zinc-900 px-2 py-1 text-xs text-zinc-300">
+          {url}
+        </code>
+        <button
+          type="button"
+          onClick={() => void onManualCopy()}
+          className="rounded-full border border-zinc-700 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+        >
+          {manualCopied ? "Copied" : "Copy link"}
+        </button>
+      </div>
+      {expiresAt ? (
+        <p className="text-xs text-zinc-500">
+          Expires: <span className="text-zinc-400">{formatApplicationDate(expiresAt)}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function mergeListItemFromRow(
   prev: HyroxAthleteListItem,
   row: HyroxAthleteListItem
@@ -84,6 +121,8 @@ function AthleteRowActions({
   const [linkEmail, setLinkEmail] = useState(athlete.email);
   const [paymentType, setPaymentType] = useState("");
   const [onboardingCopied, setOnboardingCopied] = useState(false);
+  const [onboardingLinkUrl, setOnboardingLinkUrl] = useState<string | null>(null);
+  const [onboardingLinkExpiresAt, setOnboardingLinkExpiresAt] = useState<string | null>(null);
   const [paymentCopied, setPaymentCopied] = useState(false);
 
   useEffect(() => {
@@ -91,6 +130,8 @@ function AthleteRowActions({
     setLinkEmail(athlete.email);
     setError(null);
     setMessage(null);
+    setOnboardingLinkUrl(null);
+    setOnboardingLinkExpiresAt(null);
     if (process.env.NODE_ENV === "development") {
       console.log("Accepted athlete action id", athlete.id, athlete);
     }
@@ -170,21 +211,39 @@ function AthleteRowActions({
     }
   }
 
+  async function copyOnboardingLinkUrl(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setOnboardingCopied(true);
+      window.setTimeout(() => setOnboardingCopied(false), 2000);
+      setMessage("Onboarding link copied.");
+    } catch {
+      setMessage("Link generated — copy manually.");
+    }
+  }
+
   async function copyOnboardingLink() {
     if (!localAthlete.id) return;
     setBusy(true);
     setError(null);
+    setMessage(null);
     try {
       const res = await fetch(`/api/hyrox/athletes/${localAthlete.id}/onboarding-link`);
-      const data = (await res.json()) as { success?: boolean; url?: string; error?: string };
+      let data: { success?: boolean; url?: string; error?: string; expiresAt?: string };
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        setError("Network error.");
+        return;
+      }
       if (!res.ok || !data.success || !data.url) {
         setError(data.error ?? "Could not generate onboarding link.");
         return;
       }
-      await navigator.clipboard.writeText(data.url);
-      setOnboardingCopied(true);
-      window.setTimeout(() => setOnboardingCopied(false), 2000);
-      setMessage("Personal onboarding link copied.");
+
+      setOnboardingLinkUrl(data.url);
+      setOnboardingLinkExpiresAt(data.expiresAt ?? null);
+      await copyOnboardingLinkUrl(data.url);
     } catch {
       setError("Network error.");
     } finally {
@@ -363,6 +422,14 @@ function AthleteRowActions({
           >
             {onboardingCopied ? "Copied" : "Copy onboarding/assessment link"}
           </button>
+          {onboardingLinkUrl ? (
+            <GeneratedOnboardingLinkDisplay
+              url={onboardingLinkUrl}
+              expiresAt={onboardingLinkExpiresAt}
+              manualCopied={onboardingCopied}
+              onManualCopy={() => void copyOnboardingLinkUrl(onboardingLinkUrl)}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -384,6 +451,14 @@ function AthleteRowActions({
           >
             {onboardingCopied ? "Copied" : "Copy onboarding/assessment link"}
           </button>
+          {onboardingLinkUrl ? (
+            <GeneratedOnboardingLinkDisplay
+              url={onboardingLinkUrl}
+              expiresAt={onboardingLinkExpiresAt}
+              manualCopied={onboardingCopied}
+              onManualCopy={() => void copyOnboardingLinkUrl(onboardingLinkUrl)}
+            />
+          ) : null}
           <button
             type="button"
             disabled={busy}
