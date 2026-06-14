@@ -178,15 +178,22 @@ export function filterCoachLibrary(
   }
 
   if (query.trim()) {
-    const q = query.toLowerCase();
-    list = list.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.abbrev.toLowerCase().includes(q) ||
-        s.tags.some((t) => t.includes(q)) ||
-        s.subcategory.toLowerCase().includes(q) ||
-        s.equipment.some((e) => e.toLowerCase().includes(q))
-    );
+    const q = query.toLowerCase().replace(/_/g, " ");
+    list = list.filter((s) => {
+      const haystack = [
+        s.name,
+        s.abbrev,
+        s.subcategory,
+        ...s.tags,
+        ...s.equipment,
+        s.prescription.objective,
+        s.prescription.coachNote,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .replace(/_/g, " ");
+      return haystack.includes(q);
+    });
   }
 
   return list;
