@@ -15,6 +15,9 @@ import type { CoachAthlete, CoachAthleteProgrammeInputs } from "@/app/lib/hyroxC
 import {
   categoryToSessionType,
   getCoachLibraryEntry,
+  getSessionGuardrailWarnings,
+  getAdjacentSessionWarnings,
+  guardrailContextFromAthlete,
   volumeMetaFromEntry,
   type CoachLibraryEntry,
 } from "@/app/lib/hyroxCoachSessionLibrary";
@@ -852,6 +855,37 @@ export function validateCoachDraft(
         message: `High-density coach staple on ${today.day} before hard work ${tomorrow.day} — check recovery and spacing.`,
       });
       break;
+    }
+
+    // HYROX batch session adjacency guardrails
+    for (const sess of today.sessions) {
+      const entry = sess.coachLibraryId ? getCoachLibraryEntry(sess.coachLibraryId) : null;
+      if (!entry?.hyroxMetadata) continue;
+      const tomorrowTitles = tomorrow.sessions.map((s) => s.title);
+      for (const adj of getAdjacentSessionWarnings(entry, tomorrowTitles, tomorrow.day)) {
+        warnings.push({
+          id: `hyrox_adjacent_${entry.id}_${tomorrow.day}`,
+          severity: "warn",
+          message: `${entry.name}: ${adj.message}`,
+        });
+      }
+    }
+  }
+
+  const guardCtx = guardrailContextFromAthlete(athlete);
+  for (const day of days) {
+    for (const sess of day.sessions) {
+      const entry = sess.coachLibraryId ? getCoachLibraryEntry(sess.coachLibraryId) : null;
+      if (!entry?.hyroxMetadata) continue;
+      for (const g of getSessionGuardrailWarnings(entry, guardCtx)) {
+        if (g.severity === "warn" || g.severity === "block_suggestion") {
+          warnings.push({
+            id: `hyrox_guard_${entry.id}_${g.id}`,
+            severity: "warn",
+            message: `${day.day} · ${entry.name}: ${g.message}`,
+          });
+        }
+      }
     }
   }
 

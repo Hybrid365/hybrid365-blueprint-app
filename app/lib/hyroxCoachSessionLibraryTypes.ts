@@ -31,7 +31,10 @@ export type LibraryQuickFilter =
   | "hyrox"
   | "add_ons"
   | "testing"
-  | "race_week";
+  | "race_week"
+  | "station_overload"
+  | "leg_endurance"
+  | "high_fatigue";
 
 export type CoachSessionSource = "Kieran personal session" | "Hybrid365 library";
 
@@ -56,6 +59,42 @@ export type CoachSessionPrescription = {
   safetyNote?: string;
   progression?: string;
   regression?: string;
+};
+
+/** Rich HYROX programming metadata — optional, backwards-compatible extension. */
+export type CoachSessionHyroxMetadata = {
+  primaryCategory: string;
+  secondaryCategory?: string;
+  sessionType: string;
+  trainingGoals: string[];
+  energySystem: string;
+  fatigueCost: "moderate" | "high" | "very_high";
+  muscleDamageRisk: "low" | "moderate" | "moderate_high" | "high";
+  impactTypeDetail?: string;
+  runningVolume: number | string;
+  runIncluded: boolean;
+  hyroxSpecificity: string;
+  raceSimulation: boolean;
+  stationFocus: string[];
+  weaknessTargets: string[];
+  suitableLevels: string[];
+  notSuitableFor: string[];
+  bestWeekPlacement: string[];
+  avoidAdjacentTo: string[];
+  bestTrainingPhase: string[];
+  progressionMethods: string[];
+  /** Hide from smart/auto suggestions for beginner/low-intermediate unless admin override. */
+  requiresAdvancedOrPro?: boolean;
+  /** Block full-volume use in race week unless coach manually overrides. */
+  blocksRaceWeekFullVolume?: boolean;
+  /** Block full-volume use in deload week unless coach manually overrides. */
+  blocksDeloadWeekFullVolume?: boolean;
+  /** Session includes hill sprints — block if lower-leg issues flagged. */
+  includesHillSprints?: boolean;
+  /** High wall ball volume — warn if adjacent to other WB-heavy days. */
+  highWallBallVolume?: boolean;
+  /** High lower-body muscular load — warn near heavy legs / sled / lunge overload. */
+  highLowerBodyMuscularLoad?: boolean;
 };
 
 export type CoachLibraryEntry = {
@@ -99,6 +138,8 @@ export type CoachLibraryEntry = {
   progressionOptions?: string[];
   regressionOptions?: string[];
   abbrev: string;
+  /** Extended HYROX session metadata for admin display and guardrails. */
+  hyroxMetadata?: CoachSessionHyroxMetadata;
 };
 
 export type CoachSessionVolumeMeta = {

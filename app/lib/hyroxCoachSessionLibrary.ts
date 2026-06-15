@@ -7,16 +7,22 @@ import {
   enrichCoachStapleEntry,
   KIERAN_COACH_SESSIONS,
 } from "@/app/lib/hyroxCoachSessionLibraryKieran";
+import { HYROX_BATCH_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryHyroxBatch";
 import type {
   CoachLibraryEntry,
   LibraryCategory,
   LibraryQuickFilter,
 } from "@/app/lib/hyroxCoachSessionLibraryTypes";
 import { isCoachStapleEntry } from "@/app/lib/hyroxCoachSessionLibraryTypes";
+import {
+  shouldHideFromSmartSuggestions,
+  type CoachLibraryGuardrailContext,
+} from "@/app/lib/hyroxCoachSessionLibraryGuardrails";
 
 export type {
   CoachLibraryEntry,
   CoachSessionPrescription,
+  CoachSessionHyroxMetadata,
   CoachSessionLevel,
   LibraryCategory,
   LibraryQuickFilter,
@@ -30,9 +36,19 @@ export {
   isCoachStapleEntry,
 } from "@/app/lib/hyroxCoachSessionLibraryTypes";
 
+export {
+  getSessionGuardrailWarnings,
+  getAdjacentSessionWarnings,
+  guardrailContextFromAthlete,
+  shouldHideFromSmartSuggestions,
+  type CoachLibraryGuardrailContext,
+  type SessionGuardrailWarning,
+} from "@/app/lib/hyroxCoachSessionLibraryGuardrails";
+
 export const COACH_SESSION_LIBRARY: CoachLibraryEntry[] = [
   ...COACH_SESSION_LIBRARY_DATA.map(enrichCoachStapleEntry),
   ...KIERAN_COACH_SESSIONS,
+  ...HYROX_BATCH_COACH_SESSIONS,
 ];
 
 export const LIBRARY_CATEGORY_LABELS: Record<LibraryCategory, string> = {
@@ -64,6 +80,9 @@ export const LIBRARY_QUICK_FILTER_LABELS: Record<LibraryQuickFilter, string> = {
   add_ons: "Add-Ons",
   testing: "Testing",
   race_week: "Race Week",
+  station_overload: "Station Overload",
+  leg_endurance: "Leg Endurance",
+  high_fatigue: "High Fatigue",
 };
 
 const QUICK_FILTERS: LibraryQuickFilter[] = [
@@ -79,6 +98,9 @@ const QUICK_FILTERS: LibraryQuickFilter[] = [
   "add_ons",
   "testing",
   "race_week",
+  "station_overload",
+  "leg_endurance",
+  "high_fatigue",
 ];
 
 function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter): boolean {
@@ -106,7 +128,33 @@ function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter
         entry.tags.includes("strength")
       );
     case "hyrox":
-      return entry.category === "hyrox_compromised" || entry.tags.includes("compromised");
+      return (
+        entry.category === "hyrox_compromised" ||
+        entry.tags.includes("compromised") ||
+        entry.tags.includes("hyrox") ||
+        Boolean(entry.hyroxMetadata)
+      );
+    case "station_overload":
+      return (
+        entry.tags.includes("station_overload") ||
+        entry.hyroxMetadata?.sessionType === "station_overload" ||
+        entry.intensityType === "station_overload"
+      );
+    case "leg_endurance":
+      return (
+        entry.tags.includes("leg_endurance") ||
+        entry.tags.includes("hyrox_leg_endurance_non_running") ||
+        entry.hyroxMetadata?.primaryCategory === "leg_endurance" ||
+        entry.hyroxMetadata?.primaryCategory === "hyrox_leg_endurance"
+      );
+    case "high_fatigue":
+      return (
+        entry.sessionStress === "very_high" ||
+        entry.tags.includes("high_fatigue_hyrox_key_session") ||
+        entry.tags.includes("very_high_stress") ||
+        entry.hyroxMetadata?.fatigueCost === "very_high" ||
+        entry.hyroxMetadata?.fatigueCost === "high"
+      );
     case "add_ons":
       return entry.isOptionalAddOn === true;
     case "testing":
@@ -160,6 +208,8 @@ export function filterCoachLibrary(
   options?: {
     quickFilter?: LibraryQuickFilter | null;
     equipmentAvailable?: Record<string, boolean>;
+    /** When set without adminManualSelection, hides sessions unsuitable for athlete context. */
+    guardrailContext?: CoachLibraryGuardrailContext;
   }
 ): CoachLibraryEntry[] {
   let list =
@@ -177,9 +227,15 @@ export function filterCoachLibrary(
     list = list.filter((s) => matchesEquipment(s, options.equipmentAvailable));
   }
 
+  // Smart-suggestion guardrails — admin manual library shows all entries; generation can pass context.
+  if (options?.guardrailContext && !options.guardrailContext.adminManualSelection) {
+    list = list.filter((s) => !shouldHideFromSmartSuggestions(s, options.guardrailContext!));
+  }
+
   if (query.trim()) {
     const q = query.toLowerCase().replace(/_/g, " ");
     list = list.filter((s) => {
+      const meta = s.hyroxMetadata;
       const haystack = [
         s.name,
         s.abbrev,
@@ -188,7 +244,14 @@ export function filterCoachLibrary(
         ...s.equipment,
         s.prescription.objective,
         s.prescription.coachNote,
+        meta?.primaryCategory,
+        meta?.secondaryCategory,
+        meta?.sessionType,
+        ...(meta?.trainingGoals ?? []),
+        ...(meta?.weaknessTargets ?? []),
+        ...(meta?.stationFocus ?? []),
       ]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .replace(/_/g, " ");

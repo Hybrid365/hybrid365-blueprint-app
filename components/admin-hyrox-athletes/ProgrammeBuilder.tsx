@@ -343,6 +343,7 @@ export function ProgrammeBuilder({
           addTarget={replaceTarget ? null : addTarget}
           onAdd={replaceTarget ? handleLibraryAddForReplace : handleAdd}
           equipmentAvailable={athlete.programmeInputs.equipment}
+          athlete={athlete}
         />
         <WeeklyScheduleBuilder
           days={draft.days}
