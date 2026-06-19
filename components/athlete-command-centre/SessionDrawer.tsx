@@ -3,6 +3,8 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getSessionDetail, type SessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
+import type { AthleteSessionMainSetBlock } from "@/app/lib/hyroxAthleteSessionMainSetDisplay";
+import { parseMainSetBlocks } from "@/app/lib/hyroxAthleteSessionMainSetDisplay";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 import {
   useHyroxSessionLog,
@@ -192,16 +194,16 @@ export function SessionDrawer({
             </ul>
           </Block>
 
-          <div className="rounded-xl border border-yellow-500/30 bg-yellow-400/5 p-4">
-            <p className="text-xs font-bold uppercase text-yellow-400">Main set</p>
-            <ul className="mt-2 space-y-2">
-              {d.mainSet.map((l, i) => (
-                <li key={l} className={i === 0 ? "text-base font-bold text-white" : "text-sm text-zinc-400"}>
-                  {l}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <MainSetDisplay
+            mainSet={d.mainSet}
+            blocks={d.mainSetBlocks ?? parseMainSetBlocks(d.mainSet)}
+          />
+
+          {d.stationFocus ? (
+            <Block title="Station focus" accent>
+              <p className="text-sm leading-relaxed text-zinc-300">{d.stationFocus}</p>
+            </Block>
+          ) : null}
 
           <Block title="Cool-down">
             <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-zinc-300">
@@ -226,6 +228,14 @@ export function SessionDrawer({
               <p className="text-[10px] font-bold uppercase text-blue-300">Film prompt</p>
               <p className="mt-1 text-sm text-zinc-300">{d.filmPrompt}</p>
             </div>
+          ) : null}
+
+          {d.fullPrescription ? (
+            <Block title="Full session prescription">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
+                {d.fullPrescription}
+              </p>
+            </Block>
           ) : null}
 
           <Block title="What to record">
@@ -363,6 +373,58 @@ function Meta({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/80 p-2">
       <p className="text-[10px] text-zinc-500">{label}</p>
       <p className="font-bold text-white">{value}</p>
+    </div>
+  );
+}
+
+function MainSetDisplay({
+  mainSet,
+  blocks,
+}: {
+  mainSet: string[];
+  blocks: AthleteSessionMainSetBlock[] | null;
+}) {
+  if (blocks && blocks.length >= 2) {
+    return (
+      <div className="space-y-3">
+        {blocks.map((block) => (
+          <div
+            key={block.title}
+            className="rounded-xl border border-yellow-500/30 bg-yellow-400/5 p-4"
+          >
+            <p className="text-xs font-bold uppercase text-yellow-400">{block.title}</p>
+            {block.lines.length > 0 ? (
+              <ul className="mt-2 space-y-2">
+                {block.lines.map((line) => (
+                  <li key={`${block.title}-${line}`} className="text-sm leading-relaxed text-zinc-300">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-yellow-500/30 bg-yellow-400/5 p-4">
+      <p className="text-xs font-bold uppercase text-yellow-400">Main set</p>
+      <ul className="mt-2 space-y-2">
+        {mainSet.map((l, i) => (
+          <li
+            key={l}
+            className={
+              i === 0 && mainSet.length === 1
+                ? "text-base font-bold text-white"
+                : "text-sm leading-relaxed text-zinc-300"
+            }
+          >
+            {l}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

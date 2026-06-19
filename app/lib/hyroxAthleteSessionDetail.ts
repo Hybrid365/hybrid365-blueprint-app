@@ -4,7 +4,13 @@ import { formatProgrammeDayLabel } from "@/app/lib/hyroxAthleteProgrammeSort";
 import type { ProgrammeTimeOfDay } from "@/app/lib/hyroxAthleteProgrammeSort";
 import { resolveAthleteSessionDisplayName } from "@/app/lib/hyroxProgrammeSessionSync";
 import type { CoachSessionEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
-import { deriveMainSetLinesFromEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
+import {
+  parseMainSetBlocks,
+  resolveAthleteMainSetLines,
+  resolveFullPrescriptionText,
+  resolveStationFocus,
+  type AthleteSessionMainSetBlock,
+} from "@/app/lib/hyroxAthleteSessionMainSetDisplay";
 import {
   formatAthleteTargetPaceLoad,
   hasManualPaceLoadOverrides,
@@ -12,12 +18,17 @@ import {
   resolveAthleteRpeTarget,
 } from "@/app/lib/hyroxSessionTargetOverrides";
 
+export type { AthleteSessionMainSetBlock };
+
 export type AthleteSessionDetailContent = {
   title: string;
   objective: string;
   targetPaceLoad: string;
   warmUp: string[];
   mainSet: string[];
+  mainSetBlocks?: AthleteSessionMainSetBlock[] | null;
+  stationFocus?: string;
+  fullPrescription?: string;
   coolDown: string[];
   coachNote: string;
   coachPacingNote?: string;
@@ -62,24 +73,17 @@ export function resolveAthleteSessionDetailFromPublishedRow(
   const edit = cfgAsEditConfig(cfg);
 
   const title = resolveAthleteSessionDisplayName(row);
-  const derivedMain = deriveMainSetLinesFromEditConfig(edit);
+  const overrideMainSet = resolveAthleteMainSetLines(edit, prescription);
+  const mainSetBlocks = parseMainSetBlocks(overrideMainSet);
 
   const overrideObjective =
     (typeof cfg.objective === "string" && cfg.objective.trim()) ||
-    (derivedMain.length ? title : "") ||
+    (overrideMainSet.length ? title : "") ||
     (typeof prescription.objective === "string" && prescription.objective.trim()) ||
     "";
   const overrideWarmUp = asStringArray(cfg.warmUpLines).length
     ? asStringArray(cfg.warmUpLines)
     : asStringArray(prescription.warmup ?? prescription.warmUp);
-  const overrideMainSet = (() => {
-    if (derivedMain.length) return derivedMain;
-    if (asStringArray(prescription.mainSet).length) return asStringArray(prescription.mainSet);
-    if (typeof prescription.keySetSummary === "string" && prescription.keySetSummary.trim()) {
-      return [prescription.keySetSummary.trim()];
-    }
-    return [];
-  })();
   const overrideCoolDown = asStringArray(cfg.coolDownLines).length
     ? asStringArray(cfg.coolDownLines)
     : asStringArray(prescription.cooldown ?? prescription.coolDown);
@@ -113,6 +117,9 @@ export function resolveAthleteSessionDetailFromPublishedRow(
     (typeof prescription.coachNote === "string" && prescription.coachNote) ||
     "";
 
+  const stationFocus = resolveStationFocus(edit, coachNote);
+  const fullPrescription = resolveFullPrescriptionText(prescription, edit, overrideMainSet);
+
   const whatToRecord = asStringArray(cfg.whatToRecord).length
     ? asStringArray(cfg.whatToRecord)
     : asStringArray(prescription.whatToRecord);
@@ -123,6 +130,9 @@ export function resolveAthleteSessionDetailFromPublishedRow(
     targetPaceLoad,
     warmUp: overrideWarmUp.length ? overrideWarmUp : ["Prepare as prescribed in main set"],
     mainSet: overrideMainSet.length ? overrideMainSet : [title],
+    mainSetBlocks,
+    stationFocus,
+    fullPrescription,
     coolDown: overrideCoolDown.length ? overrideCoolDown : ["Easy flush 5–10 min"],
     coachNote:
       coachNote ||
@@ -161,6 +171,9 @@ export function resolveAthleteSessionDetailContent(
       tags: [session.type, session.focus].filter(Boolean),
       warmUp: d.warmUp,
       mainSet: d.mainSet,
+      mainSetBlocks: d.mainSetBlocks,
+      stationFocus: d.stationFocus,
+      fullPrescription: d.fullPrescription,
       coolDown: d.coolDown,
       coachNote: d.coachNote,
       coachPacingNote: d.coachPacingNote,

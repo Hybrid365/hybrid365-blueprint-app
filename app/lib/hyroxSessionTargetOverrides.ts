@@ -117,7 +117,50 @@ export function mainSetStructureLinesFromConfig(
     }
     return lines;
   }
+  if (c.kind === "compromised") {
+    return buildCompromisedMainSetLines(c, { includeTargets });
+  }
   return [];
+}
+
+/** Full Part 1 + Part 2 main-set lines for compromised HYROX sessions. */
+export function buildCompromisedMainSetLines(
+  c: CoachSessionEditConfig,
+  opts?: { includeTargets?: boolean }
+): string[] {
+  const includeTargets = opts?.includeTargets ?? !hasManualPaceLoadOverrides(c);
+  const rest = restRecoveryFromConfig(c);
+  const lines: string[] = [];
+
+  if (c.reps && c.repDurationMinutes) {
+    const pace =
+      includeTargets && (c.targetPaceLoad?.trim() || c.targetPace?.trim())
+        ? ` @ ${(c.targetPaceLoad?.trim() || c.targetPace?.trim())!}`
+        : " @ threshold";
+    lines.push(`Part 1: ${c.reps}×${c.repDurationMinutes} min${pace}`);
+    if (rest) lines.push(`Recovery: ${rest}`);
+  }
+
+  const hasPart2 = Boolean(c.runDistanceM || c.rounds || c.station || c.stationDetail);
+  if (hasPart2) {
+    if (lines.length) lines.push("—");
+    const betweenRest = c.rest?.trim() || "120s";
+    lines.push(`Part 2: After final rep — rest ${betweenRest}`);
+    const runM = c.runDistanceM ?? 750;
+    const stationTime = c.lungeDurationMinutes
+      ? `${c.lungeDurationMinutes} min`
+      : c.bikeDurationMinutes
+        ? `${c.bikeDurationMinutes} min`
+        : "3 min";
+    const station =
+      c.stationDetail?.trim() || c.station?.trim() || "weakness-specific station";
+    const rounds = c.rounds ?? 2;
+    lines.push(
+      `${runM}m run → ${stationTime} ${station} → ${runM}m run · rest ${betweenRest} · ×${rounds} round${rounds === 1 ? "" : "s"}`
+    );
+  }
+
+  return lines;
 }
 
 function normText(s: string): string {

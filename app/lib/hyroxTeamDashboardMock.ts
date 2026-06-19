@@ -406,6 +406,9 @@ export type SessionDetail = {
   tags: string[];
   warmUp: string[];
   mainSet: string[];
+  mainSetBlocks?: import("@/app/lib/hyroxAthleteSessionMainSetDisplay").AthleteSessionMainSetBlock[] | null;
+  stationFocus?: string;
+  fullPrescription?: string;
   coolDown: string[];
   coachNote: string;
   coachPacingNote?: string;
