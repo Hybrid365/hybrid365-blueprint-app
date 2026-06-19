@@ -170,6 +170,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       layoutAuth={serverAuth.layoutAuth}
       serverAuthConfirmed={portalAuth.serverAuthConfirmed}
       serverProgrammePublishedSeed={serverProgrammePublishedSeed}
+      initialLiveProgramme={portalAuth.serverProgramme}
       portalMutationToken={portalMutationToken}
       portalAuthSource={portalAuth.source}
       routeAuthDebug={routeAuthDebug}

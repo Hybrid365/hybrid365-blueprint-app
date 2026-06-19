@@ -15,18 +15,30 @@ type CheckInApiJson = {
   summary?: AthleteCheckInSummary;
 };
 
-export function useAthleteWeeklyCheckIn(enabled: boolean) {
-  const { useMockPreview } = useAthletePortal();
-  const [checkIn, setCheckIn] = useState<AthleteWeeklyCheckInView | null>(null);
-  const [summary, setSummary] = useState<AthleteCheckInSummary | null>(null);
-  const [loading, setLoading] = useState(enabled && !useMockPreview);
+export function useAthleteWeeklyCheckIn(
+  enabled: boolean,
+  options?: {
+    initialCheckIn?: AthleteWeeklyCheckInView | null;
+    initialSummary?: AthleteCheckInSummary | null;
+  }
+) {
+  const { useMockPreview, serverAuthConfirmed } = useAthletePortal();
+  const [checkIn, setCheckIn] = useState<AthleteWeeklyCheckInView | null>(
+    options?.initialCheckIn ?? null
+  );
+  const [summary, setSummary] = useState<AthleteCheckInSummary | null>(
+    options?.initialSummary ?? null
+  );
+  const [loading, setLoading] = useState(enabled && !useMockPreview && !options?.initialCheckIn);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (!enabled || useMockPreview) {
-      setCheckIn(null);
-      setSummary(null);
+      if (!options?.initialCheckIn) {
+        setCheckIn(null);
+        setSummary(null);
+      }
       setLoading(false);
       return;
     }
@@ -39,21 +51,37 @@ export function useAthleteWeeklyCheckIn(enabled: boolean) {
       });
       const json = (await res.json()) as CheckInApiJson;
       if (!res.ok || !json.success || !json.checkIn) {
+        const isAuthFailure =
+          res.status === 401 ||
+          json.error === "Not signed in" ||
+          (json as { reason?: string }).reason?.includes("NO_AUTH");
+        if (isAuthFailure && serverAuthConfirmed && options?.initialCheckIn) {
+          setError(
+            "Could not refresh check-in from the server. Showing your last loaded check-in."
+          );
+          return;
+        }
         setError(json.error ?? "Could not load check-in.");
-        setCheckIn(null);
-        setSummary(null);
+        if (!(isAuthFailure && options?.initialCheckIn)) {
+          setCheckIn(null);
+          setSummary(null);
+        }
         return;
       }
       setCheckIn(json.checkIn);
       setSummary(json.summary ?? null);
     } catch {
-      setError("Network error loading check-in.");
-      setCheckIn(null);
-      setSummary(null);
+      if (serverAuthConfirmed && options?.initialCheckIn) {
+        setError("Network error refreshing check-in. Showing your last loaded check-in.");
+      } else {
+        setError("Network error loading check-in.");
+        setCheckIn(null);
+        setSummary(null);
+      }
     } finally {
       setLoading(false);
     }
-  }, [enabled, useMockPreview]);
+  }, [enabled, useMockPreview, serverAuthConfirmed, options?.initialCheckIn]);
 
   useEffect(() => {
     void reload();

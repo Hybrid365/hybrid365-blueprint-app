@@ -86,6 +86,7 @@ export function AthletePortalProvider({
   layoutAuth = EMPTY_LAYOUT_AUTH,
   serverAuthConfirmed = false,
   serverProgrammePublishedSeed = false,
+  initialLiveProgramme = null,
   portalMutationToken = null,
   portalAuthSource = "none",
   routeAuthDebug = null,
@@ -97,6 +98,8 @@ export function AthletePortalProvider({
   layoutAuth?: PortalLayoutAuth;
   serverAuthConfirmed?: boolean;
   serverProgrammePublishedSeed?: boolean;
+  /** Server-loaded programme — shared across /athlete/* client navigations. */
+  initialLiveProgramme?: AthleteLiveProgrammePayload | null;
   portalMutationToken?: string | null;
   portalAuthSource?: AthletePortalAuthSource;
   routeAuthDebug?: AthleteRouteAuthDebug | null;
@@ -112,6 +115,7 @@ export function AthletePortalProvider({
     reload: reloadLiveProgramme,
   } = useAthleteLiveProgramme(hasLinkedAthlete && hydrated, {
     preserveDataOnAuthFailure: serverAuthConfirmed,
+    initialData: initialLiveProgramme,
   });
 
   useEffect(() => {

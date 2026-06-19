@@ -111,14 +111,18 @@ function mapProgrammeApi(json: ProgrammeApiJson): AthleteLiveProgrammePayload | 
 type UseAthleteLiveProgrammeOptions = {
   /** Keep existing programme data when API auth fails but layout already confirmed session. */
   preserveDataOnAuthFailure?: boolean;
+  /** Server-seeded programme — avoids blank state on mobile client navigation. */
+  initialData?: AthleteLiveProgrammePayload | null;
 };
 
 export function useAthleteLiveProgramme(
   enabled: boolean,
   options?: UseAthleteLiveProgrammeOptions
 ) {
-  const [data, setData] = useState<AthleteLiveProgrammePayload | null>(null);
-  const [loading, setLoading] = useState(enabled);
+  const [data, setData] = useState<AthleteLiveProgrammePayload | null>(
+    options?.initialData ?? null
+  );
+  const [loading, setLoading] = useState(enabled && !options?.initialData);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {

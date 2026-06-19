@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveAthletePortalUserForApi } from "@/app/lib/hyroxAthletePortalApiUser";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
@@ -7,7 +8,7 @@ import {
   hyroxAthleteApiJson,
   type ApiRouteAuthDebug,
 } from "@/app/lib/supabase/apiRoute";
-import { resolveAuthUserForMiddleware } from "@/app/lib/supabase/resolveAuthUser";
+import { readAthleteRouteHandlerCookies } from "@/app/lib/supabase/mergedAthleteCookies";
 
 function devFields(extra: Record<string, unknown>): Record<string, unknown> {
   if (process.env.NODE_ENV !== "development") return {};
@@ -61,21 +62,29 @@ export async function requireCurrentHyroxAthleteForApi(
   const { supabase, withAuthCookies, authDebug } =
     await createApiRouteSupabase(request);
 
+  const { cookies: mergedCookies } = await readAthleteRouteHandlerCookies(request);
+
   const hasAuthCookie =
     authDebug.hasAuthCookieOnRequest || authDebug.hasAuthCookieInHeaderStore;
 
-  const { user, error: userError, retriedWithSession } =
-    await resolveAuthUserForMiddleware(supabase, hasAuthCookie);
+  const resolved = await resolveAthletePortalUserForApi({
+    supabase,
+    mergedCookies,
+    hasAuthCookie,
+  });
 
+  const user = resolved.user;
   authDebug.getUserSucceeded = Boolean(user);
-  authDebug.userError = userError?.message ?? null;
-  if (retriedWithSession && process.env.NODE_ENV === "development") {
+  authDebug.userError = user ? null : "NO_AUTH_USER";
+  if (resolved.retriedWithSession && process.env.NODE_ENV === "development") {
     authDebug.cookiesRefreshed = true;
   }
 
   if (!user) {
     logHyroxAuthDebug("hyrox-api-no-user", {
-      userError: userError?.message ?? null,
+      authSource: resolved.source,
+      h365SessionPresent: resolved.h365SessionPresent,
+      h365SessionValid: resolved.h365SessionValid,
       authDebug,
     });
     return {
@@ -84,11 +93,23 @@ export async function requireCurrentHyroxAthleteForApi(
         error: "Not signed in",
         code: "NO_AUTH",
         source: "api",
-        reason: "NO_AUTH_SESSION",
+        reason: resolved.h365SessionPresent
+          ? "H365_SESSION_UNRESOLVED"
+          : "NO_AUTH_SESSION",
         authEmail: null,
-        ...devFields({ authDebug }),
+        ...devFields({ authDebug, authSource: resolved.source }),
       }, 401),
     };
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[athlete-portal-api] auth resolved", {
+      route: request.nextUrl.pathname,
+      authSource: resolved.source,
+      userId: user.id,
+      email: user.email ?? null,
+      h365Session: resolved.h365SessionValid,
+    });
   }
 
   const authEmail = user.email?.trim().toLowerCase() ?? "";

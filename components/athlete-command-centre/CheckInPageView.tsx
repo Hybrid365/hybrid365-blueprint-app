@@ -3,7 +3,12 @@
 import { Moon, Scale, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { formatSubmittedDate } from "@/app/lib/hyroxAthleteCheckInServer";
-import type { AthleteCheckInFormState } from "@/app/lib/hyroxAthleteCheckInServer";
+import type { CheckInPageServerDebug } from "@/app/lib/hyroxAthleteCheckInPageServer";
+import type {
+  AthleteCheckInFormState,
+  AthleteCheckInSummary,
+  AthleteWeeklyCheckInView,
+} from "@/app/lib/hyroxAthleteCheckInServer";
 import { MOCK_CHECK_IN, MOCK_CHECK_IN_FORM } from "@/app/lib/hyroxTeamDashboardMock";
 import {
   ATHLETE_PAGE_META,
@@ -19,21 +24,70 @@ import {
 import { useAthletePortal } from "./athletePortalContext";
 import { useAthleteWeeklyCheckIn } from "./useAthleteWeeklyCheckIn";
 
-export function CheckInPageView() {
+export function CheckInPageView({
+  initialCheckIn = null,
+  initialSummary = null,
+  serverDebug = null,
+  serverResolved = false,
+}: {
+  initialCheckIn?: AthleteWeeklyCheckInView | null;
+  initialSummary?: AthleteCheckInSummary | null;
+  serverDebug?: CheckInPageServerDebug | null;
+  serverResolved?: boolean;
+}) {
   const meta = ATHLETE_PAGE_META.checkin;
-  const { programmePublishedLive, useMockPreview, reloadLiveProgramme } = useAthletePortal();
-  const useLive = programmePublishedLive && !useMockPreview;
-  const { checkIn, loading, saving, error, submit, useMockPreview: mock } = useAthleteWeeklyCheckIn(useLive);
+  const {
+    programmePublishedLive,
+    useMockPreview,
+    reloadLiveProgramme,
+    liveProgramme,
+    serverAuthConfirmed,
+    serverProgrammePublishedSeed,
+    hasLinkedAthlete,
+  } = useAthletePortal();
+
+  const programmeLive =
+    programmePublishedLive || serverProgrammePublishedSeed || Boolean(liveProgramme?.published);
+  const useLive = programmeLive && !useMockPreview;
+
+  const { checkIn, loading, saving, error, submit, useMockPreview: mock } =
+    useAthleteWeeklyCheckIn(useLive, {
+      initialCheckIn,
+      initialSummary,
+    });
+
+  const activeCheckIn = checkIn ?? initialCheckIn;
+
+  const currentWeekFromProgramme =
+    activeCheckIn?.weekNumber ??
+    serverDebug?.selectedWeekNumber ??
+    liveProgramme?.liveGlobalWeek ??
+    liveProgramme?.weeklyCheckIn?.weekNumber ??
+    liveProgramme?.athlete?.current_week ??
+    null;
 
   const mockForm = MOCK_CHECK_IN_FORM;
-  const weekNumber = useLive && checkIn ? checkIn.weekNumber : 1;
-  const statusLabel = useLive && checkIn ? checkIn.statusLabel : mockForm.status === "Submitted" ? "Completed" : "Needs completing";
-  const isCompleted = useLive && checkIn ? checkIn.status === "completed" : mockForm.status === "Submitted";
-  const needsCompleting = useLive && checkIn ? checkIn.status === "needs_completing" : !isCompleted;
-  const isLocked = useLive && checkIn ? checkIn.status === "locked" : false;
+  const weekNumber =
+    useLive && currentWeekFromProgramme != null ? currentWeekFromProgramme : 1;
+  const statusLabel =
+    useLive && activeCheckIn
+      ? activeCheckIn.statusLabel
+      : mockForm.status === "Submitted"
+        ? "Completed"
+        : "Needs completing";
+  const isCompleted =
+    useLive && activeCheckIn
+      ? activeCheckIn.status === "completed"
+      : mockForm.status === "Submitted";
+  const needsCompleting =
+    useLive && activeCheckIn
+      ? activeCheckIn.status === "needs_completing"
+      : !isCompleted;
+  const isLocked = useLive && activeCheckIn ? activeCheckIn.status === "locked" : false;
 
-  const initialForm: AthleteCheckInFormState = useLive && checkIn
-    ? checkIn.form
+  const initialForm: AthleteCheckInFormState =
+    useLive && activeCheckIn
+      ? activeCheckIn.form
     : {
         sleep: mockForm.sleep,
         energy: mockForm.energy,
@@ -50,20 +104,22 @@ export function CheckInPageView() {
   const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
-    if (useLive && checkIn) {
-      setForm(checkIn.form);
+    if (useLive && activeCheckIn) {
+      setForm(activeCheckIn.form);
     }
-  }, [useLive, checkIn]);
+  }, [useLive, activeCheckIn]);
 
-  const sessionsCompleted = useLive && checkIn ? checkIn.sessionsCompleted : mockForm.sessionsCompleted;
-  const sessionsPlanned = useLive && checkIn ? checkIn.sessionsPlanned : mockForm.sessionsPlanned;
+  const sessionsCompleted =
+    useLive && activeCheckIn ? activeCheckIn.sessionsCompleted : mockForm.sessionsCompleted;
+  const sessionsPlanned =
+    useLive && activeCheckIn ? activeCheckIn.sessionsPlanned : mockForm.sessionsPlanned;
   const completionPct = sessionsPlanned
     ? Math.round((sessionsCompleted / sessionsPlanned) * 100)
     : 0;
 
   const submittedAtLabel =
-    useLive && checkIn?.submittedAt
-      ? formatSubmittedDate(checkIn.submittedAt)
+    useLive && activeCheckIn?.submittedAt
+      ? formatSubmittedDate(activeCheckIn.submittedAt)
       : null;
 
   const headerSubtitle = useLive
@@ -92,16 +148,40 @@ export function CheckInPageView() {
     }
   };
 
-  if (useLive && loading && !checkIn) {
+  if (useLive && loading && !checkIn && !initialCheckIn) {
     return (
       <PageContent width="wide">
-        <PageHeader eyebrow={meta.eyebrow} title={meta.title} subtitle={headerSubtitle} />
-        <p className="text-sm text-zinc-500">Loading check-in…</p>
+        <PageHeader eyebrow={meta.eyebrow} title={meta.title} subtitle="Loading check-in…" />
+        <p className="text-sm text-zinc-500">Checking your session and programme week…</p>
       </PageContent>
     );
   }
 
-  if (useLive && !programmePublishedLive) {
+  if (
+    useLive &&
+    !programmeLive &&
+    !serverResolved &&
+    !serverAuthConfirmed &&
+    !hasLinkedAthlete
+  ) {
+    return (
+      <PageContent width="wide">
+        <PageHeader eyebrow={meta.eyebrow} title={meta.title} subtitle={headerSubtitle} />
+        <div className={`${athleteCard} ${athleteCardPadding}`}>
+          <p className="text-sm text-zinc-400">
+            Sign in to view your weekly check-in.
+          </p>
+          {process.env.NODE_ENV === "development" && serverDebug?.reasonNotSignedIn ? (
+            <p className="mt-2 text-[10px] font-mono text-zinc-600">
+              {serverDebug.reasonNotSignedIn}
+            </p>
+          ) : null}
+        </div>
+      </PageContent>
+    );
+  }
+
+  if (useLive && !programmeLive) {
     return (
       <PageContent width="wide">
         <PageHeader eyebrow={meta.eyebrow} title={meta.title} subtitle={headerSubtitle} />
@@ -136,8 +216,16 @@ export function CheckInPageView() {
       ) : null}
 
       {error ? (
-        <p className="rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-2 text-sm text-red-200">
-          {error}
+        <p
+          className={`rounded-lg border px-3 py-2 text-sm ${
+            error.includes("Not signed in")
+              ? "border-amber-500/30 bg-amber-950/20 text-amber-100"
+              : "border-red-500/30 bg-red-950/20 text-red-200"
+          }`}
+        >
+          {error === "Not signed in" && (serverAuthConfirmed || serverResolved)
+            ? "Could not refresh check-in. Your session may need a page reload."
+            : error}
         </p>
       ) : null}
 
@@ -150,8 +238,8 @@ export function CheckInPageView() {
             {isCompleted && submittedAtLabel
               ? `Submitted on ${submittedAtLabel}`
               : isLocked
-                ? checkIn?.nextCheckInWeekNumber
-                  ? `Your next check-in unlocks in Week ${checkIn.nextCheckInWeekNumber}`
+                ? activeCheckIn?.nextCheckInWeekNumber
+                  ? `Your next check-in unlocks in Week ${activeCheckIn.nextCheckInWeekNumber}`
                   : "Available when this week's sessions are live"
                 : "Complete before your coach plans your next week"}
           </p>
