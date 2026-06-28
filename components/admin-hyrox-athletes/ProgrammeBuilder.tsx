@@ -29,6 +29,7 @@ import { ProgrammeStatusBadge } from "@/components/admin-hyrox-athletes/StatusBa
 import { WeeklyRationalePanel } from "@/components/admin-hyrox-athletes/WeeklyRationalePanel";
 import type { HyroxAthleteProfile } from "@/app/lib/hyroxAthleteProfileTypes";
 import type { LiveProgrammePersistenceProps } from "@/components/admin-hyrox-athletes/CoachAthleteDashboard";
+import { CoachBlockSelector } from "@/components/admin-hyrox-athletes/CoachBlockSelector";
 import { CoachBlockWeekTabs } from "@/components/admin-hyrox-athletes/CoachBlockWeekTabs";
 import { CoachGenerationScopeControl } from "@/components/admin-hyrox-athletes/CoachGenerationScopeControl";
 import { CoachNextBlockPrompt } from "@/components/admin-hyrox-athletes/CoachNextBlockPrompt";
@@ -131,7 +132,11 @@ export function ProgrammeBuilder({
     programmeLengthWeeks,
     blockWeekDateRanges,
     showNextBlockPrompt,
-    prepareNextBlock,
+    generateNextBlock,
+    selectedBlock,
+    selectBlock,
+    blockSummaries,
+    selectedBlockSummary,
   } = block;
 
   const [addTarget, setAddTarget] = useState<{ day: WeekdayName; slot: SandboxTimeOfDay } | null>({
@@ -260,9 +265,20 @@ export function ProgrammeBuilder({
 
       <CoachGenerationScopeControl value={generationScope} onChange={setGenerationScope} />
 
+      {isLive ? (
+        <CoachBlockSelector
+          blocks={blockSummaries}
+          selectedBlock={selectedBlock}
+          programmeLengthWeeks={programmeLengthWeeks}
+          onSelectBlock={(b) => void selectBlock(b)}
+          onGenerateNextBlock={(reviewed) => void generateNextBlock(reviewed)}
+          generating={saving}
+        />
+      ) : null}
+
       <CoachProgrammeStartDateControl
         value={programmeStartDate}
-        blockNumber={athlete.programmeBlock}
+        blockNumber={selectedBlock}
         saving={saving}
         savedStartDate={livePersistence?.programmeStartDate}
         onChange={(ymd) => void saveProgrammeStartDate(ymd)}
@@ -272,25 +288,38 @@ export function ProgrammeBuilder({
         <CoachBlockReviewPanel
           athleteId={livePersistence.athleteId}
           programmeLengthWeeks={programmeLengthWeeks}
-          currentProgrammeBlock={athlete.programmeBlock}
+          currentProgrammeBlock={selectedBlock}
           effectiveProfile={effectiveProfile}
+          onBlockGenerated={(nextBlock) => void selectBlock(nextBlock)}
         />
       ) : null}
 
-      {showNextBlockPrompt ? (
+      {showNextBlockPrompt && !isLive ? (
         <CoachNextBlockPrompt
           currentBlock={athlete.programmeBlock}
           programmeLengthWeeks={programmeLengthWeeks}
           generating={saving}
-          onGenerateNextBlock={() => prepareNextBlock()}
+          onGenerateNextBlock={() => void generateNextBlock(1)}
         />
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-zinc-400">
-            Block {draft.block} · Week {draft.week} (W{selectedCycle} · {weekRole})
+            Block {selectedBlock} · Week {draft.week} (W{selectedCycle} · {weekRole})
           </p>
+          {selectedBlockSummary?.status === "published" ? (
+            <p className="text-[11px] text-emerald-400/90">Block {selectedBlock} published to athlete.</p>
+          ) : selectedBlockSummary?.status === "ready_to_publish" ? (
+            <p className="text-[11px] text-yellow-300/90">
+              Block {selectedBlock} approved and ready to publish.
+            </p>
+          ) : selectedBlockSummary?.status === "draft_available" ||
+            selectedBlockSummary?.status === "needs_approval" ? (
+            <p className="text-[11px] text-sky-300/90">
+              Block {selectedBlock} draft generated. Review and edit before approving.
+            </p>
+          ) : null}
           <p className="text-[11px] text-zinc-600">
             Generated {new Date(draft.generatedAt).toLocaleString()}
           </p>

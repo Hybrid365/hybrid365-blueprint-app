@@ -47,11 +47,13 @@ export function CoachBlockReviewPanel({
   programmeLengthWeeks = 12,
   currentProgrammeBlock = 1,
   effectiveProfile = null,
+  onBlockGenerated,
 }: {
   athleteId: string;
   programmeLengthWeeks?: number;
   currentProgrammeBlock?: number;
   effectiveProfile?: HyroxAthleteProfile | null;
+  onBlockGenerated?: (nextBlockNumber: number) => void;
 }) {
   const maxBlocks = maxReviewBlocks(programmeLengthWeeks === 16 ? 16 : 12);
   const [blockNumber, setBlockNumber] = useState(
@@ -185,6 +187,7 @@ export function CoachBlockReviewPanel({
         programmeBuilderBlock: data.programmeBuilderBlock ?? blockNumber + 1,
       });
       setToast(data.message);
+      onBlockGenerated?.(data.programmeBuilderBlock ?? blockNumber + 1);
     } catch {
       setToast("Network error during block generation.");
     } finally {
@@ -195,8 +198,7 @@ export function CoachBlockReviewPanel({
   const canGenerate =
     Boolean(effectiveProfile) &&
     generationPlan.kind !== "unavailable" &&
-    Boolean(recommendation) &&
-    Boolean(savedReview);
+    Boolean(recommendation || !savedReview);
 
   return (
     <div className="space-y-6">
@@ -432,6 +434,12 @@ export function CoachBlockReviewPanel({
             {!effectiveProfile ? (
               <p className="mt-3 text-xs text-amber-200/80">
                 Complete Profile Review and save the mapped profile before generating drafts.
+              </p>
+            ) : null}
+
+            {!savedReview ? (
+              <p className="mt-3 text-xs text-amber-200/80">
+                Recommended: save Block {blockNumber} review before generating the next block.
               </p>
             ) : null}
 

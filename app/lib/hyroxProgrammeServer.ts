@@ -639,16 +639,29 @@ export function resolveAthleteProgrammeVisibility(params: {
   return "coach_reviewing";
 }
 
+export async function fetchPublishedWeekCountForBlock(
+  supabase: SupabaseClient,
+  athleteId: string,
+  blockNumber: number
+): Promise<number> {
+  const weekNumbers = [1, 2, 3, 4].map((cycle) =>
+    globalWeekForBlock(blockNumber as 1 | 2 | 3, cycle as 1 | 2 | 3 | 4)
+  );
+  const { count, error } = await supabase
+    .from("hyrox_programme_weeks")
+    .select("id", { count: "exact", head: true })
+    .eq("athlete_id", athleteId)
+    .eq("status", "published")
+    .in("week_number", weekNumbers);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function fetchAthletePublishedProgramme(
   supabase: SupabaseClient,
   athlete: HyroxAthleteRow,
   flags: { hasAssessment: boolean; hasTesting: boolean }
 ): Promise<AthletePublishedProgramme> {
-  const blockNumber = athlete.current_block ?? 1;
-  const blockWeekNumbers = [1, 2, 3, 4].map((cycle) =>
-    globalWeekForBlock(blockNumber as 1 | 2 | 3, cycle as 1 | 2 | 3 | 4)
-  );
-
   const [{ data: publishedWeeks }, { data: draft }] = await Promise.all([
     supabase
       .from("hyrox_programme_weeks")
@@ -656,9 +669,7 @@ export async function fetchAthletePublishedProgramme(
         "id, athlete_id, source_draft_id, created_at, updated_at, block_number, week_number, week_start_date, week_end_date, weekly_focus, coach_note, athlete_facing_note, weekly_summary, status, published_at"
       )
       .eq("athlete_id", athlete.id)
-      .eq("block_number", blockNumber)
       .eq("status", "published")
-      .in("week_number", blockWeekNumbers)
       .order("week_number", { ascending: true }),
     supabase
       .from("hyrox_programme_drafts")
@@ -693,14 +704,12 @@ export async function fetchAthletePublishedProgramme(
     ? deriveLiveGlobalWeek(programmeStartDate)
     : 1;
 
-  const weeks: PublishedProgrammeWeekBundle[] = blockWeekNumbers.map((globalWeek) => {
-    const week = weekRows.find((w) => w.week_number === globalWeek) ?? null;
-    const sessionsForWeek = week
-      ? allSessions.filter((s) => s.programme_week_id === week.id)
-      : [];
-    const generated = Boolean(week && sessionsForWeek.length > 0);
-    const dbWeekStart = week?.week_start_date ?? null;
-    const dbWeekEnd = week?.week_end_date ?? null;
+  const weeks: PublishedProgrammeWeekBundle[] = weekRows.map((week) => {
+    const globalWeek = week.week_number;
+    const sessionsForWeek = allSessions.filter((s) => s.programme_week_id === week.id);
+    const generated = Boolean(sessionsForWeek.length > 0);
+    const dbWeekStart = week.week_start_date ?? null;
+    const dbWeekEnd = week.week_end_date ?? null;
     const resolvedDates = resolveAthleteWeekDateRange({
       programmeStartYmd: programmeStartDate,
       weekNumber: globalWeek,
@@ -726,9 +735,12 @@ export async function fetchAthletePublishedProgramme(
 
   const activeWeekNumber = programmeStartDate
     ? liveGlobalWeek
-    : athlete.current_week ?? weekRows[0]?.week_number ?? 1;
+    : athlete.current_week ?? weekRows[weekRows.length - 1]?.week_number ?? 1;
   const publishedWeek =
-    weekRows.find((w) => w.week_number === activeWeekNumber) ?? weekRows[0] ?? null;
+    weekRows.find((w) => w.week_number === activeWeekNumber) ??
+    weekRows.filter((w) => w.week_number <= activeWeekNumber).pop() ??
+    weekRows[0] ??
+    null;
   const sessions = publishedWeek
     ? allSessions.filter((s) => s.programme_week_id === publishedWeek.id)
     : [];

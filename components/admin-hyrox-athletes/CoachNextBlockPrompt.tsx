@@ -21,11 +21,13 @@ export function CoachNextBlockPrompt({
 
   return (
     <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 px-4 py-3">
-      <p className="text-sm font-bold text-cyan-100">Prepare next block: Weeks {startWeek}–{endWeek}</p>
+      <p className="text-sm font-bold text-cyan-100">
+        Block {currentBlock} complete. Review athlete response, then generate Block {next}.
+      </p>
       <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-        Block {next} drafts use assessment, benchmarks, check-ins, and Block {currentBlock}{" "}
-        completion. Generation uses the next block in your {programmeLengthWeeks}-week roadmap —
-        not a restart at Week 1.
+        Block {next} covers Weeks {startWeek}–{endWeek}. Generation uses Block {currentBlock}{" "}
+        completion, RPE, check-ins, and coach review — Block {currentBlock} published sessions are
+        preserved.
       </p>
       <button
         type="button"
@@ -33,12 +35,8 @@ export function CoachNextBlockPrompt({
         onClick={onGenerateNextBlock}
         className="mt-3 rounded-full border border-cyan-400/40 bg-cyan-400/10 px-4 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50"
       >
-        {generating ? "Generating…" : `Generate Block ${next} Draft`}
+        {generating ? "Generating…" : `Generate Block ${next}`}
       </button>
-      <p className="mt-2 text-[10px] text-zinc-600">
-        Coming soon: full auto-generation from progress data. For now, switch generation scope and
-        generate after moving to Block {next} in the athlete profile.
-      </p>
     </div>
   );
 }

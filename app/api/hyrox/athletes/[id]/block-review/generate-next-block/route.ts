@@ -72,6 +72,7 @@ export async function POST(request: Request, context: RouteContext) {
       weeks: result.weeks,
       nextBlockNumber: result.nextBlockNumber,
       message: result.message,
+      reviewWarning: result.reviewWarning ?? null,
       programmeBuilderBlock:
         result.plan.kind === "generate_block" ? result.plan.nextBlockNumber : 3,
       mappedProfileId: mappedProfile?.id ?? null,

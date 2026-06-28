@@ -39,6 +39,8 @@ export async function POST(request: Request, context: RouteContext) {
     /** When true (default), publish all four weeks in the athlete's current block. */
     publish_block?: boolean;
     programme_start_date?: string;
+    /** Explicit block to publish (defaults to draft.block_number). */
+    block_number?: number;
     /** Global week number → session count shown in admin UI (validates DB draft before write). */
     expected_session_counts_by_week?: Record<string, number>;
     /** Single-week publish: expected session count for the draft being published. */
@@ -135,7 +137,10 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     if (publishBlock) {
       const athleteRow = athlete as HyroxAthleteRow;
-      const blockNumber = athleteRow.current_block ?? draft.block_number ?? 1;
+      const maxBlocks = athleteRow.programme_length_weeks === 16 ? 4 : 3;
+      const blockNumber = body.block_number
+        ? Math.min(maxBlocks, Math.max(1, Number(body.block_number)))
+        : (draft.block_number ?? athleteRow.current_block ?? 1);
 
       const blockResult = await publishProgrammeBlock(supabase, {
         athleteRow,

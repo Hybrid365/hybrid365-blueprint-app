@@ -44,6 +44,7 @@ export type GenerateNextBlockResult = {
   weeks: GeneratedWeekResult[];
   nextBlockNumber: number | null;
   message: string;
+  reviewWarning?: string | null;
 };
 
 async function fetchPublishedGlobalWeeks(
@@ -195,14 +196,13 @@ export async function generateNextBlockFromSavedReview(
     params.reviewedBlockNumber
   );
 
+  let reviewWarning: string | null = null;
   if (!savedReview) {
-    throw new Error(
-      `Save a Block ${params.reviewedBlockNumber} review before generating the next block.`
-    );
+    reviewWarning = `Recommended: save Block ${params.reviewedBlockNumber} review before generating the next block.`;
   }
 
   const recommendation =
-    (savedReview.next_block_recommendation as HyroxBlockReviewNextRecommendation | null) ??
+    (savedReview?.next_block_recommendation as HyroxBlockReviewNextRecommendation | null) ??
     "progress_as_planned";
 
   const plan = resolveNextBlockGenerationPlan({
@@ -220,7 +220,7 @@ export async function generateNextBlockFromSavedReview(
   const coachAthlete = mergeProfileIntoCoachAthlete(stub, params.effectiveProfile);
   const mappedProfile = await fetchLatestMappedProfile(supabase, params.athleteRow.id);
 
-  const { summary } = await loadBlockReviewForCoach(
+  const { summary, review } = await loadBlockReviewForCoach(
     supabase,
     params.athleteRow,
     params.reviewedBlockNumber
@@ -229,8 +229,10 @@ export async function generateNextBlockFromSavedReview(
   const genCtx: BlockReviewGenerationContext = {
     reviewedBlockNumber: params.reviewedBlockNumber,
     recommendation,
-    nextBlockFocus: savedReview.next_block_focus,
-    coachNotes: parseCoachNotesJson(savedReview.coach_notes),
+    nextBlockFocus: savedReview?.next_block_focus ?? review?.nextBlockFocus ?? null,
+    coachNotes: savedReview
+      ? parseCoachNotesJson(savedReview.coach_notes)
+      : review?.coachNotes ?? {},
     completionSummary: summary,
     effectiveProfile: params.effectiveProfile,
     raceDate: params.athleteRow.race_date,
@@ -264,6 +266,7 @@ export async function generateNextBlockFromSavedReview(
         weeks[0]?.action === "skipped"
           ? `Week ${plan.globalWeekNumber} was not changed (${weeks[0]?.skipReason}).`
           : `Retest-focused draft for Week ${plan.globalWeekNumber} is ready in Programme Builder.`,
+      reviewWarning,
     };
   }
 
@@ -295,11 +298,14 @@ export async function generateNextBlockFromSavedReview(
   const created = weeks.filter((w) => w.action !== "skipped").length;
   const skipped = weeks.filter((w) => w.action === "skipped").length;
 
+  const baseMessage = `Generated Block ${plan.nextBlockNumber} (W${plan.weeksStart}–${plan.weeksEnd}): ${created} week draft(s)${skipped ? `, ${skipped} skipped (already published)` : ""}. Open Programme Builder to review.`;
+
   return {
     plan,
     weeks,
     nextBlockNumber: plan.nextBlockNumber,
-    message: `Generated Block ${plan.nextBlockNumber} (W${plan.weeksStart}–${plan.weeksEnd}): ${created} week draft(s)${skipped ? `, ${skipped} skipped (already published)` : ""}. Open Programme Builder to review.`,
+    message: reviewWarning ? `${baseMessage} ${reviewWarning}` : baseMessage,
+    reviewWarning,
   };
 }
 
