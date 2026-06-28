@@ -120,6 +120,7 @@ export function ProgrammeBuilder({
     saveFeedback,
     saveDraft,
     persistDraft,
+    applyDraftMutation,
     unsavedChanges,
     draftDirty,
     lastSavedAt,
@@ -178,7 +179,7 @@ export function ProgrammeBuilder({
     [athlete, draft, coachNotes]
   );
 
-  const updateDay = useCallback(
+  const updateDayLocal = useCallback(
     (dayIndex: number, updater: (sessions: CoachDraftSession[]) => CoachDraftSession[]) => {
       setDraft((prev) => ({
         ...prev,
@@ -186,10 +187,34 @@ export function ProgrammeBuilder({
           i === dayIndex ? { ...d, sessions: updater(d.sessions) } : d
         ),
       }));
-      onStatusChange("edited_draft");
-      block.setStatus("edited_draft");
     },
-    [block, onStatusChange, setDraft]
+    [setDraft]
+  );
+
+  const mutateDaySessions = useCallback(
+    (
+      dayIndex: number,
+      updater: (sessions: CoachDraftSession[]) => CoachDraftSession[],
+      successMessage: string
+    ) => {
+      void applyDraftMutation(
+        (prev) => ({
+          ...prev,
+          days: prev.days.map((d, i) =>
+            i === dayIndex ? { ...d, sessions: updater(d.sessions) } : d
+          ),
+        }),
+        { successMessage }
+      );
+    },
+    [applyDraftMutation]
+  );
+
+  const mutateDraft = useCallback(
+    (updater: (prev: CoachDraftWeek) => CoachDraftWeek, successMessage: string) => {
+      void applyDraftMutation(updater, { successMessage });
+    },
+    [applyDraftMutation]
   );
 
   const handleAdd = (entry: CoachLibraryEntry) => {
@@ -198,19 +223,20 @@ export function ProgrammeBuilder({
     if (!session) return;
     const dayIndex = draft.days.findIndex((d) => d.day === addTarget.day);
     if (dayIndex < 0) return;
-    updateDay(dayIndex, (s) => [...s, session]);
-    block.showToast(`Added ${entry.name} to ${addTarget.day} ${addTarget.slot}`);
+    mutateDaySessions(dayIndex, (s) => [...s, session], `Added ${entry.name} to ${addTarget.day} ${addTarget.slot}`);
   };
 
   const handleLibraryAddForReplace = (entry: CoachLibraryEntry) => {
     if (!replaceTarget) return;
     const session = sessionFromLibrary(athlete, entry.id, "Main");
     if (!session) return;
-    updateDay(replaceTarget.dayIndex, (sessions) =>
-      sessions.map((s, i) => (i === replaceTarget.sessionIndex ? session : s))
+    mutateDaySessions(
+      replaceTarget.dayIndex,
+      (sessions) =>
+        sessions.map((s, i) => (i === replaceTarget.sessionIndex ? session : s)),
+      `Replaced with ${entry.name}`
     );
     setReplaceTarget(null);
-    block.showToast(`Replaced with ${entry.name}`);
   };
 
   const editSession = editTarget
@@ -389,17 +415,19 @@ export function ProgrammeBuilder({
           }
           onReplace={(di, si) => setReplaceTarget({ dayIndex: di, sessionIndex: si })}
           onRemove={(di, si) => {
-            updateDay(di, (s) => s.filter((_, i) => i !== si));
-            block.showToast("Session removed");
+            mutateDaySessions(di, (s) => s.filter((_, i) => i !== si), "Session removed.");
           }}
           onDuplicate={(di, si) => {
             const src = draft.days[di]?.sessions[si];
             if (!src) return;
-            updateDay(di, (s) => [...s, duplicateAsOptional(src)]);
-            block.showToast("Duplicated as optional add-on");
+            mutateDaySessions(
+              di,
+              (s) => [...s, duplicateAsOptional(src)],
+              "Duplicated as optional add-on."
+            );
           }}
           onViewDetail={(di, si) => {
-            updateDay(di, (s) =>
+            updateDayLocal(di, (s) =>
               s.map((sess, i) =>
                 i === si ? { ...sess, showDetail: !sess.showDetail } : sess
               )
@@ -463,37 +491,31 @@ export function ProgrammeBuilder({
         onClose={() => setEditTarget(null)}
         onSave={async (config: CoachSessionEditConfig) => {
           if (!editTarget) return;
-          const nextDraft: CoachDraftWeek = {
-            ...draft,
-            days: draft.days.map((d, di) =>
-              di === editTarget.dayIndex
-                ? {
-                    ...d,
-                    sessions: d.sessions.map((s, i) => {
-                      if (i !== editTarget.sessionIndex) return s;
-                      return applyEditConfigToSession({ ...s, editConfig: config });
-                    }),
-                  }
-                : d
-            ),
-          };
-          setDraft(nextDraft);
-          onStatusChange("edited_draft");
-          block.setStatus("edited_draft");
+          const { dayIndex, sessionIndex } = editTarget;
           setEditTarget(null);
-          if (isLive) {
-            const result = await persistDraft({
-              coachStatus: "edited_draft",
-              source: "session_apply",
-              draftOverride: nextDraft,
-            });
-            block.showToast(
-              result.ok
+          const result = await applyDraftMutation(
+            (prev) => ({
+              ...prev,
+              days: prev.days.map((d, di) =>
+                di === dayIndex
+                  ? {
+                      ...d,
+                      sessions: d.sessions.map((s, i) => {
+                        if (i !== sessionIndex) return s;
+                        return applyEditConfigToSession({ ...s, editConfig: config });
+                      }),
+                    }
+                  : d
+              ),
+            }),
+            {
+              successMessage: isLive
                 ? "Session applied and saved to draft."
-                : `Session applied locally — save failed: ${result.error ?? "unknown error"}`
-            );
-          } else {
-            block.showToast("Session updated (local preview)");
+                : "Session updated (local preview)",
+            }
+          );
+          if (!result.ok && isLive) {
+            block.showToast(`Session edit failed: ${result.error ?? "unknown error"}`);
           }
         }}
       />
@@ -510,28 +532,28 @@ export function ProgrammeBuilder({
             if (destIdx < 0) return;
             const fromIdx = moveState.dayIndex;
             const fromSi = moveState.sessionIndex;
-            setDraft((prev) => ({
-              ...prev,
-              days: prev.days.map((d, i) => {
-                if (i === fromIdx) {
-                  return {
-                    ...d,
-                    sessions: d.sessions.filter((_, si) => si !== fromSi),
-                  };
-                }
-                if (i === destIdx) {
-                  return {
-                    ...d,
-                    sessions: [...d.sessions, { ...moving, timeOfDay: targetSlot }],
-                  };
-                }
-                return d;
+            mutateDraft(
+              (prev) => ({
+                ...prev,
+                days: prev.days.map((d, i) => {
+                  if (i === fromIdx) {
+                    return {
+                      ...d,
+                      sessions: d.sessions.filter((_, si) => si !== fromSi),
+                    };
+                  }
+                  if (i === destIdx) {
+                    return {
+                      ...d,
+                      sessions: [...d.sessions, { ...moving, timeOfDay: targetSlot }],
+                    };
+                  }
+                  return d;
+                }),
               }),
-            }));
-            onStatusChange("edited_draft");
-            block.setStatus("edited_draft");
+              `Moved to ${targetDay} ${targetSlot}.`
+            );
             setMoveState(null);
-            block.showToast(`Moved to ${targetDay} ${targetSlot}`);
           }}
         />
       ) : null}
