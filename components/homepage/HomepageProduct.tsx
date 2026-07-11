@@ -27,7 +27,7 @@ export function HomepageProduct() {
 
       <HomepagePhoneCarousel
         items={PRODUCT_PHONE_SCREENS}
-        phoneSize="lg"
+        phoneSize="md"
         className="mt-12"
       />
 

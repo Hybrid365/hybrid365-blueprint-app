@@ -31,7 +31,7 @@ export function HomepageCulture() {
       <div className="mx-auto mt-12 grid max-w-4xl gap-8 sm:grid-cols-2">
         {cultureScreens.map((screen) => (
           <article key={screen.id} className="text-center">
-            <HomepagePhoneVisual screen={screen} size="lg" className="mx-auto" />
+            <HomepagePhoneVisual screen={screen} size="md" className="mx-auto" />
             <h3 className="mt-5 text-sm font-black uppercase tracking-wide text-white">
               {screen.title}
             </h3>

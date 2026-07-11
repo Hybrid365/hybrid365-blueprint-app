@@ -14,17 +14,17 @@ export function HomepageHeroPhoneFan({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-[420px] pb-10 sm:max-w-[460px] lg:max-w-[500px] lg:pb-0",
+        "relative mx-auto w-full max-w-[380px] pb-10 sm:max-w-[400px] lg:max-w-[420px] lg:pb-0",
         className
       )}
     >
       {/* Supporting phone — back left */}
-      <div className="absolute left-0 top-12 z-0 hidden w-[46%] -rotate-[8deg] sm:block lg:left-[-2%]">
+      <div className="absolute left-0 top-12 z-0 hidden w-[44%] -rotate-[6deg] sm:block lg:left-[-2%]">
         <HomepagePhoneVisual screen={supportA} size="sm" className="opacity-90" />
       </div>
 
       {/* Supporting phone — back right */}
-      <div className="absolute right-0 top-16 z-0 hidden w-[46%] rotate-[7deg] sm:block lg:right-[-2%]">
+      <div className="absolute right-0 top-16 z-0 hidden w-[44%] rotate-[5deg] sm:block lg:right-[-2%]">
         <HomepagePhoneVisual screen={supportB} size="sm" className="opacity-[0.88]" />
       </div>
 

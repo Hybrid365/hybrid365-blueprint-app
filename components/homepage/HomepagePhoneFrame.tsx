@@ -3,16 +3,22 @@ import { cn } from "@/lib/utils";
 
 export type HomepagePhoneFrameSize = "sm" | "md" | "lg" | "xl";
 
+/**
+ * Outer frame widths capped so inner screens never upscale beyond 2x asset density.
+ * Assets are ~452px wide (2x); inner screen ≈ outer − 16px padding.
+ */
 const SIZE_CLASS: Record<HomepagePhoneFrameSize, string> = {
-  sm: "w-[clamp(148px,38vw,188px)]",
-  md: "w-[clamp(188px,44vw,238px)]",
-  lg: "w-[clamp(218px,48vw,272px)]",
-  xl: "w-[clamp(248px,52vw,300px)]",
+  sm: "w-[clamp(136px,32vw,164px)]",
+  md: "w-[clamp(164px,36vw,194px)]",
+  lg: "w-[clamp(184px,38vw,214px)]",
+  xl: "w-[clamp(204px,40vw,234px)]",
 };
 
 type HomepagePhoneFrameProps = {
   image: string;
   alt: string;
+  width: number;
+  height: number;
   size?: HomepagePhoneFrameSize;
   className?: string;
   priority?: boolean;
@@ -25,6 +31,8 @@ type HomepagePhoneFrameProps = {
 export function HomepagePhoneFrame({
   image,
   alt,
+  width,
+  height,
   size = "md",
   className,
   priority = false,
@@ -56,10 +64,13 @@ export function HomepagePhoneFrame({
           <Image
             src={image}
             alt={alt}
-            fill
+            width={width}
+            height={height}
+            quality={100}
+            unoptimized
             priority={priority}
-            className="object-cover object-top"
-            sizes="(max-width: 640px) 55vw, (max-width: 1024px) 280px, 300px"
+            className="h-full w-full object-cover object-top"
+            sizes="(max-width: 640px) 40vw, 234px"
           />
         </div>
 

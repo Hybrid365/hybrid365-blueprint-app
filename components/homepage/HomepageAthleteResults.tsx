@@ -28,7 +28,7 @@ export function HomepageAthleteResults() {
 
       <HomepagePhoneCarousel
         items={PROOF_PHONE_SCREENS}
-        phoneSize="lg"
+        phoneSize="md"
         className="mt-12"
       />
 

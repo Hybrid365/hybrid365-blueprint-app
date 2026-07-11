@@ -20,6 +20,8 @@ export function HomepagePhoneVisual({
     <HomepagePhoneFrame
       image={screen.src}
       alt={screen.alt}
+      width={screen.width}
+      height={screen.height}
       size={size}
       className={cn(className)}
       priority={priority}
