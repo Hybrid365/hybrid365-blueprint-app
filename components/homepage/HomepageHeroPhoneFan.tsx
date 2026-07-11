@@ -12,18 +12,23 @@ export function HomepageHeroPhoneFan({ className }: { className?: string }) {
   const [supportA, supportB] = HERO_PHONE_SCREENS.supporting.map(getPhoneScreen);
 
   return (
-    <div className={cn("relative mx-auto w-full max-w-[400px] pb-10 sm:max-w-[440px] lg:max-w-[480px] lg:pb-0", className)}>
+    <div
+      className={cn(
+        "relative mx-auto w-full max-w-[420px] pb-10 sm:max-w-[460px] lg:max-w-[500px] lg:pb-0",
+        className
+      )}
+    >
       {/* Supporting phone — back left */}
-      <div className="absolute left-0 top-10 z-0 hidden w-[48%] -rotate-[8deg] opacity-75 sm:block lg:left-[-4%] lg:top-12">
-        <HomepagePhoneVisual screen={supportA} size="sm" />
+      <div className="absolute left-0 top-12 z-0 hidden w-[46%] -rotate-[8deg] sm:block lg:left-[-2%]">
+        <HomepagePhoneVisual screen={supportA} size="sm" className="opacity-90" />
       </div>
 
       {/* Supporting phone — back right */}
-      <div className="absolute right-0 top-14 z-0 hidden w-[48%] rotate-[7deg] opacity-70 sm:block lg:right-[-4%] lg:top-16">
-        <HomepagePhoneVisual screen={supportB} size="sm" />
+      <div className="absolute right-0 top-16 z-0 hidden w-[46%] rotate-[7deg] sm:block lg:right-[-2%]">
+        <HomepagePhoneVisual screen={supportB} size="sm" className="opacity-[0.88]" />
       </div>
 
-      {/* Primary phone — centre */}
+      {/* Primary phone — centre, full contrast */}
       <div className="relative z-10 mx-auto flex justify-center">
         <HomepagePhoneVisual screen={primary} size="xl" priority />
       </div>

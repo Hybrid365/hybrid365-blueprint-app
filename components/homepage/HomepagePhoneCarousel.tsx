@@ -51,7 +51,7 @@ export function HomepagePhoneCarousel({
             className="w-[min(78vw,300px)] shrink-0 snap-center sm:w-[min(72vw,320px)] md:w-[min(60vw,340px)]"
           >
             <HomepagePhoneVisual screen={screen} size={phoneSize} className="mx-auto" />
-            <div className="mt-4 text-center lg:text-left">
+            <div className="mt-5 text-center lg:text-left">
               {feature ? (
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f4d23c]/80">
                   {feature}
