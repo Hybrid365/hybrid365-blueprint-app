@@ -5,6 +5,7 @@ export const FREE_WEEK_HYROX_URL = "/free-week?challenge=hyrox";
 
 export const HOMEPAGE_NAV = {
   method: "#method",
+  standard: "#standard",
   system: "#system",
   results: "#results",
   team: "#team",

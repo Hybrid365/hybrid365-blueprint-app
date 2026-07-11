@@ -1,8 +1,9 @@
-import Image from "next/image";
+import { HomepageEditorialPhoto } from "./HomepageEditorialPhoto";
+import { ATHLETE_EDITORIAL_PHOTOS } from "@/app/lib/homepage/athletePhotography";
 import {
-  FOUNDER_STORY_IMAGE,
   FOUNDER_TRANSFORMATION,
 } from "@/app/lib/homepage/founderStats";
+import { BRAND_MOTTO, RESULTS_BODY } from "@/app/lib/homepage/brandCopy";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import {
   HomepageSection,
@@ -15,29 +16,34 @@ import {
 
 export function HomepageJourney() {
   return (
-    <HomepageSection variant="accent">
-      <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-14 lg:items-center">
-        <div className="relative mx-auto aspect-[4/5] w-full max-w-md min-h-[320px] overflow-hidden rounded-2xl border border-white/10 sm:min-h-[420px] lg:mx-0 lg:max-w-none">
-          <Image
-            src={FOUNDER_STORY_IMAGE.src}
-            alt={FOUNDER_STORY_IMAGE.alt}
-            fill
-            className="object-cover object-top brightness-[0.85] contrast-[1.05]"
-            sizes="(max-width: 1024px) 100vw, 45vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f4d23c]">
-              Kieran Higgs · Founder
+    <HomepageSection variant="accent" className="overflow-hidden">
+      <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:items-center">
+        <div className="relative mx-auto h-[360px] w-full max-w-md sm:h-[420px] lg:mx-0 lg:h-[480px] lg:max-w-none">
+          <div className="absolute inset-y-[5%] left-[-4%] w-[70%]">
+            <HomepageEditorialPhoto
+              photo={ATHLETE_EDITORIAL_PHOTOS.raceFinish}
+              className="h-full w-full"
+              sizes="(max-width: 1024px) 75vw, 38vw"
+            />
+          </div>
+          <div className="absolute right-0 top-0 z-10 h-[46%] w-[44%] shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
+            <HomepageEditorialPhoto
+              photo={ATHLETE_EDITORIAL_PHOTOS.trainingIntensity}
+              className="h-full w-full border border-white/10"
+              sizes="(max-width: 1024px) 42vw, 22vw"
+            />
+          </div>
+          <div className="absolute bottom-0 right-[8%] z-20 rounded-full border border-[#f4d23c]/30 bg-[#0a0a0a]/90 px-4 py-2 backdrop-blur-sm">
+            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#f4d23c]">
+              {BRAND_MOTTO}
             </p>
-            <p className="mt-1 text-2xl font-black text-white">The standard behind Hybrid365</p>
           </div>
         </div>
 
         <div className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
-          <HomepageEyebrow>Founder proof</HomepageEyebrow>
+          <HomepageEyebrow>The results</HomepageEyebrow>
           <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
-            Built from real progression.
+            Earned — not claimed.
           </HomepageHeading>
 
           <div className="mt-8 flex items-center justify-center gap-4 sm:gap-6 lg:justify-start">
@@ -61,12 +67,11 @@ export function HomepageJourney() {
           </div>
 
           <p className="mt-8 text-base leading-relaxed text-white/65">
-            Years refining running economy, threshold development, strength endurance
-            and race-specific work — tested in HYROX, not theory.
+            {RESULTS_BODY}
           </p>
-          <p className="mt-4 text-base leading-relaxed text-white/65">
-            That same standard shapes every Hybrid365 programme — for hybrid athletes,
-            runners, lifters and HYROX competitors who want structure that delivers.
+          <p className="mt-4 text-base leading-relaxed text-white/50">
+            That same standard shapes every Hybrid365 programme — for hybrid
+            athletes, runners and lifters who already put in the work.
           </p>
 
           <HomepageCtaRow>

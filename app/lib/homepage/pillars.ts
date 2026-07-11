@@ -12,7 +12,7 @@ export const PERFORMANCE_PILLARS: PerformancePillar[] = [
     id: "run-fast",
     title: "Run Fast",
     headline: "Build a real engine",
-    body: "Threshold work, aerobic development and pacing discipline — for HYROX, 5Ks, or hybrid athletes who need a faster run leg.",
+    body: "Threshold work and pacing discipline — for athletes who refuse average on the run leg, whether HYROX, 5K or hybrid.",
   },
   {
     id: "lift-heavy",
@@ -30,7 +30,7 @@ export const PERFORMANCE_PILLARS: PerformancePillar[] = [
     id: "perform-better",
     title: "Perform Better",
     headline: "One integrated system",
-    body: "Running, strength and conditioning sequenced into blocks with recovery, progression and race-day execution — HYROX pathways included.",
+    body: "Running, strength and conditioning sequenced with recovery and progression — clarity for people who already put in the work.",
   },
 ];
 

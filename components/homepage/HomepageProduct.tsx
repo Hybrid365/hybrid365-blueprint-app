@@ -1,3 +1,4 @@
+import { SYSTEM_BODY, SYSTEM_HEADLINE } from "@/app/lib/homepage/brandCopy";
 import { PRODUCT_PHONE_SCREENS } from "@/app/lib/homepage/phoneScreens";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { HomepagePhoneCarousel } from "./HomepagePhoneCarousel";
@@ -14,14 +15,16 @@ export function HomepageProduct() {
   return (
     <HomepageSection id="system" variant="default">
       <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-none lg:text-left">
-        <HomepageEyebrow>The system</HomepageEyebrow>
+        <HomepageEyebrow>{SYSTEM_HEADLINE.eyebrow}</HomepageEyebrow>
         <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
-          Your training, progress and accountability
-          <span className="block text-[#f4d23c]">— all in one place</span>
+          {SYSTEM_HEADLINE.line1}
+          <span className="block text-[#f4d23c]">{SYSTEM_HEADLINE.line2}</span>
         </HomepageHeading>
-        <p className="mt-5 text-base text-white/55">
-          A premium coaching interface — structured sessions, weekly check-ins,
-          progress tracking and benchmarks. The app behind the system.
+        <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/55">
+          {SYSTEM_BODY}
+        </p>
+        <p className="mt-3 text-sm text-white/40">
+          A preview — explore each screen in depth below.
         </p>
       </div>
 

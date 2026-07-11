@@ -6,9 +6,11 @@ import {
   ECOSYSTEM_FEATURE_CARDS,
   HERO_ECOSYSTEM_PHONE,
 } from "@/app/lib/homepage/coachingEcosystem";
+import { HERO_ECOSYSTEM_PHOTOS } from "@/app/lib/homepage/athletePhotography";
 import { getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
 import { HomepagePhoneVisual } from "./HomepagePhoneVisual";
 import { HomepageEcosystemCard } from "./HomepageEcosystemCard";
+import { HomepageEditorialPhoto } from "./HomepageEditorialPhoto";
 import { HomepageHorizontalScroll } from "./HomepageMotion";
 
 function subscribeReducedMotion(onStoreChange: () => void) {
@@ -78,6 +80,45 @@ function EcosystemConnectors({
   );
 }
 
+function EcosystemAthleteEnvironment({ animate }: { animate: boolean }) {
+  const [leftPhoto, rightPhoto] = HERO_ECOSYSTEM_PHOTOS;
+
+  return (
+    <>
+      <div
+        className={cn(
+          "pointer-events-none absolute -left-[18%] top-[6%] z-[1] h-[52%] w-[48%] opacity-70 sm:-left-[14%] lg:-left-[16%]",
+          animate && "homepage-ecosystem-card-enter"
+        )}
+        style={{ animationDelay: animate ? "0.05s" : undefined }}
+      >
+        <HomepageEditorialPhoto
+          photo={leftPhoto}
+          className="h-full w-full"
+          sizes="200px"
+        />
+      </div>
+      <div
+        className={cn(
+          "pointer-events-none absolute -right-[16%] bottom-[4%] z-[1] h-[46%] w-[44%] opacity-65 sm:-right-[12%] lg:-right-[14%]",
+          animate && "homepage-ecosystem-card-enter"
+        )}
+        style={{ animationDelay: animate ? "0.12s" : undefined }}
+      >
+        <HomepageEditorialPhoto
+          photo={rightPhoto}
+          className="h-full w-full"
+          sizes="200px"
+        />
+      </div>
+      <div
+        className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_center,transparent_25%,#050505_72%)]"
+        aria-hidden
+      />
+    </>
+  );
+}
+
 export function HomepageCoachingEcosystem({ className }: { className?: string }) {
   const prefersReducedMotion = useSyncExternalStore(
     subscribeReducedMotion,
@@ -96,11 +137,12 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
       {/* Tablet + desktop */}
       <div
         className={cn(
-          "relative mx-auto hidden sm:block",
+          "relative mx-auto hidden overflow-visible sm:block",
           "h-[340px] w-full max-w-[400px] lg:h-[380px] lg:max-w-[440px]"
         )}
       >
-        <EcosystemConnectors animate={animate} className="z-0 opacity-80" />
+        <EcosystemAthleteEnvironment animate={animate} />
+        <EcosystemConnectors animate={animate} className="z-[3] opacity-80" />
 
         <div
           className={cn(
@@ -132,13 +174,32 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
         ))}
       </div>
 
-      {/* Mobile — phone ~48–52% viewport, 4 floating cards + swipe row */}
-      <div className="relative mx-auto block w-full max-w-[300px] sm:hidden">
-        <div className="relative mx-auto h-[200px] w-full">
+      {/* Mobile */}
+      <div className="relative mx-auto block w-full max-w-[300px] overflow-visible sm:hidden">
+        <div className="relative mx-auto h-[200px] w-full overflow-visible">
+          <div className="pointer-events-none absolute -left-6 top-2 z-[1] h-[55%] w-[38%] opacity-55">
+            <HomepageEditorialPhoto
+              photo={HERO_ECOSYSTEM_PHOTOS[0]}
+              className="h-full w-full"
+              sizes="120px"
+            />
+          </div>
+          <div className="pointer-events-none absolute -right-5 bottom-0 z-[1] h-[50%] w-[36%] opacity-50">
+            <HomepageEditorialPhoto
+              photo={HERO_ECOSYSTEM_PHOTOS[1]}
+              className="h-full w-full"
+              sizes="120px"
+            />
+          </div>
+          <div
+            className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_center,transparent_20%,#050505_75%)]"
+            aria-hidden
+          />
+
           <EcosystemConnectors
             animate={animate}
             visibleCardIds={mobileConnectorIds}
-            className="z-0 opacity-70"
+            className="z-[3] opacity-70"
           />
 
           <div

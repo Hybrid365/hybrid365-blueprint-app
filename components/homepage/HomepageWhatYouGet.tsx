@@ -17,15 +17,16 @@ import {
 
 export function HomepageWhatYouGet() {
   return (
-    <HomepageSection id="community" variant="accent">
+    <HomepageSection id="start" variant="accent">
       <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:max-w-none lg:text-left">
-        <HomepageEyebrow>What you get</HomepageEyebrow>
+        <HomepageEyebrow>Join</HomepageEyebrow>
         <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
-          From free week to full standard
+          Start with structure.
+          <span className="block text-[#f4d23c]">Stay for the standard.</span>
         </HomepageHeading>
         <p className="mt-5 text-base text-white/55">
-          Start with your personalised training week. Progress into the community,
-          then the HYROX Team when you want 1-1 coaching.
+          Your free training week is the entry point — then community, coaching
+          and the full Hybrid365 system when you&apos;re ready.
         </p>
       </div>
 

@@ -19,13 +19,13 @@ export function HomepageTeam() {
     <HomepageSection id="team">
       <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left lg:items-end">
         <div className="mx-auto max-w-xl sm:mx-0 sm:max-w-none">
-          <HomepageEyebrow>Belonging</HomepageEyebrow>
+          <HomepageEyebrow>The team</HomepageEyebrow>
           <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
-            Meet the team
+            Your people.
           </HomepageHeading>
           <p className="mt-5 max-w-xl text-base text-white/55">
-            A living roster training to a standard — structure, accountability and
-            race-day intent. HYROX athletes leading the way.
+            Real athletes training to a shared standard — structure, accountability
+            and quiet confidence. HYROX proof. Hybrid-first identity.
           </p>
         </div>
         <Link
