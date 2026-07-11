@@ -12,15 +12,18 @@ import {
 export function HomepagePhoneVisual({
   screen,
   size = "md",
+  displayWidth: displayWidthOverride,
   className,
   priority = false,
 }: {
   screen: PhoneScreen;
   size?: HomepagePhoneCutoutSize;
+  /** Override preset size — used for hero preview scaling. */
+  displayWidth?: number;
   className?: string;
   priority?: boolean;
 }) {
-  const displayWidth = PHONE_CUTOUT_DISPLAY_WIDTH[size];
+  const displayWidth = displayWidthOverride ?? PHONE_CUTOUT_DISPLAY_WIDTH[size];
 
   return (
     <div

@@ -1,11 +1,11 @@
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import {
   getPhoneScreen,
+  HERO_PHONE_DISPLAY_WIDTH,
   HERO_PHONE_SCREENS,
 } from "@/app/lib/homepage/phoneScreens";
-import { FOUNDER_HERO_IMAGE } from "@/app/lib/homepage/founderStats";
 import { HomepagePhoneVisual } from "./HomepagePhoneVisual";
+import { HomepageHeroProgressCard } from "./HomepageHeroProgressCard";
 
 export function HomepageHeroPhoneFan({ className }: { className?: string }) {
   const primary = getPhoneScreen(HERO_PHONE_SCREENS.primary);
@@ -14,41 +14,40 @@ export function HomepageHeroPhoneFan({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-[360px] pb-10 sm:max-w-[400px] lg:max-w-[440px] lg:pb-0",
+        "relative mx-auto w-full max-w-[280px] pb-6 sm:max-w-[300px] lg:max-w-[320px] lg:pb-0",
         className
       )}
     >
       {/* Supporting phone — back left */}
-      <div className="absolute left-0 top-12 z-0 hidden w-[44%] -rotate-[6deg] sm:block lg:left-[-2%]">
-        <HomepagePhoneVisual screen={supportA} size="sm" className="opacity-90" />
+      <div className="absolute left-0 top-10 z-0 hidden w-[42%] -rotate-[6deg] sm:block lg:left-[-1%]">
+        <HomepagePhoneVisual
+          screen={supportA}
+          displayWidth={HERO_PHONE_DISPLAY_WIDTH.supporting}
+          className="opacity-85"
+        />
       </div>
 
       {/* Supporting phone — back right */}
-      <div className="absolute right-0 top-16 z-0 hidden w-[44%] rotate-[5deg] sm:block lg:right-[-2%]">
-        <HomepagePhoneVisual screen={supportB} size="sm" className="opacity-[0.88]" />
+      <div className="absolute right-0 top-12 z-0 hidden w-[42%] rotate-[5deg] sm:block lg:right-[-1%]">
+        <HomepagePhoneVisual
+          screen={supportB}
+          displayWidth={HERO_PHONE_DISPLAY_WIDTH.supporting}
+          className="opacity-80"
+        />
       </div>
 
-      {/* Primary phone — centre, full contrast */}
+      {/* Primary phone — centre preview */}
       <div className="relative z-10 mx-auto flex justify-center">
-        <HomepagePhoneVisual screen={primary} size="xl" priority />
+        <HomepagePhoneVisual
+          screen={primary}
+          displayWidth={HERO_PHONE_DISPLAY_WIDTH.primary}
+          priority
+        />
       </div>
 
-      {/* Founder proof inset */}
-      <div className="absolute -bottom-2 left-2 z-20 w-[32%] min-w-[96px] max-w-[120px] overflow-hidden rounded-xl border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.55)] sm:-left-2 sm:max-w-[140px] lg:-left-4">
-        <div className="relative aspect-[3/4]">
-          <Image
-            src={FOUNDER_HERO_IMAGE.src}
-            alt={FOUNDER_HERO_IMAGE.alt}
-            fill
-            priority
-            className="object-cover object-top"
-            sizes="140px"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
-          <p className="absolute bottom-2 left-2 right-2 text-[8px] font-bold uppercase tracking-wider text-white/90 sm:text-[9px]">
-            Founder · HYROX Pro
-          </p>
-        </div>
+      {/* Performance progress card — replaces founder inset */}
+      <div className="absolute -bottom-1 right-0 z-20 w-[58%] min-w-[148px] max-w-[188px] sm:-right-2 lg:-right-4">
+        <HomepageHeroProgressCard />
       </div>
     </div>
   );

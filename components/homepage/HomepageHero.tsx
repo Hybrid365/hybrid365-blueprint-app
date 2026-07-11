@@ -1,5 +1,11 @@
 import { HERO_PILLAR_LABELS } from "@/app/lib/homepage/pillars";
-import { BRAND_TAGLINE, HERO_PROOF_COPY, HERO_SUPPORTING_COPY, PROOF_MARQUEE_ITEMS } from "@/app/lib/homepage/brandCopy";
+import {
+  BRAND_TAGLINE_LINES,
+  HERO_PROOF_COPY,
+  HERO_STATS,
+  HERO_SUPPORTING_COPY,
+  PROOF_MARQUEE_ITEMS,
+} from "@/app/lib/homepage/brandCopy";
 import { HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { HomepageProofMarquee } from "./HomepageMotion";
@@ -14,8 +20,6 @@ import {
 } from "./homepageUi";
 
 export function HomepageHero() {
-  const taglineParts = BRAND_TAGLINE.split(". ").filter(Boolean);
-
   return (
     <section className="relative overflow-hidden bg-[#050505] pt-[60px] sm:pt-[68px]">
       <div
@@ -24,21 +28,21 @@ export function HomepageHero() {
       />
 
       <div className="relative mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-10 py-12 sm:gap-12 sm:py-16 lg:grid-cols-[1.15fr_0.85fr] lg:gap-14 lg:py-20">
+        <div className="grid items-center gap-8 py-10 sm:gap-10 sm:py-14 lg:grid-cols-[1.2fr_0.8fr] lg:gap-12 lg:py-16">
           <div className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
             <HomepageEyebrow>High-performance hybrid coaching</HomepageEyebrow>
 
             <HomepageHeading
               as="h1"
-              className="text-[clamp(2rem,6.5vw,3.5rem)]"
+              className="text-[clamp(1.85rem,6vw,3.25rem)]"
             >
-              {taglineParts[0]}.
-              <span className="mt-1 block text-[#f4d23c]">{taglineParts[1]}.</span>
-              <span className="mt-1 block">{taglineParts[2]}.</span>
-              <span className="mt-1 block text-white/95">{taglineParts[3]}.</span>
+              <span className="block">{BRAND_TAGLINE_LINES[0]}.</span>
+              <span className="mt-1 block text-[#f4d23c]">{BRAND_TAGLINE_LINES[1]}.</span>
+              <span className="mt-1 block">{BRAND_TAGLINE_LINES[2]}.</span>
+              <span className="mt-1 block text-white/95">{BRAND_TAGLINE_LINES[3]}.</span>
             </HomepageHeading>
 
-            <ul className="mt-6 flex flex-wrap justify-center gap-2 lg:justify-start">
+            <ul className="mt-5 flex flex-wrap justify-center gap-2 lg:justify-start">
               {HERO_PILLAR_LABELS.map((label) => (
                 <li
                   key={label}
@@ -49,14 +53,14 @@ export function HomepageHero() {
               ))}
             </ul>
 
-            <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/75 sm:text-lg lg:mx-0">
+            <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-white/75 sm:text-lg lg:mx-0">
               {HERO_SUPPORTING_COPY}
             </p>
             <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-white/50 lg:mx-0">
               {HERO_PROOF_COPY}
             </p>
 
-            <HomepageCtaRow size="large" className="mt-8">
+            <HomepageCtaRow size="large" className="mt-6">
               <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large" className={homepageCtaClass}>
                 Start My Free Training Week
               </PrimaryCta>
@@ -64,9 +68,22 @@ export function HomepageHero() {
                 See The Method
               </SecondaryCta>
             </HomepageCtaRow>
+
+            <dl className="mx-auto mt-6 grid max-w-lg grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 lg:mx-0 lg:max-w-none">
+              {HERO_STATS.map((stat) => (
+                <div key={stat.label} className="text-center lg:text-left">
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                    {stat.label}
+                  </dt>
+                  <dd className="mt-1 text-xl font-black tabular-nums text-white sm:text-2xl">
+                    {stat.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
 
-          <HomepageHeroPhoneFan />
+          <HomepageHeroPhoneFan className="lg:justify-self-end" />
         </div>
       </div>
 

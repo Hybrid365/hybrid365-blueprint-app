@@ -111,6 +111,12 @@ export const HERO_PHONE_SCREENS = {
   supporting: ["threshold-run", "progress-overview"] as const,
 };
 
+/** Hero preview sizes — ~25% smaller than standard cutout widths. */
+export const HERO_PHONE_DISPLAY_WIDTH = {
+  primary: 240,
+  supporting: 128,
+} as const;
+
 /** System / product carousel */
 export const PRODUCT_PHONE_SCREENS: PhoneScreenId[] = [
   "programme",

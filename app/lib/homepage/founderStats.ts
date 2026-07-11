@@ -4,8 +4,7 @@ export const FOUNDER_STATS = [
   { value: "59:14", label: "Pro HYROX" },
   { value: "16:00", label: "5K" },
   { value: "9:23", label: "HYROX improvement" },
-  /** Replace with real coached-athlete count when confirmed. */
-  { value: "—", label: "Athletes coached", placeholder: true },
+  { value: "7+", label: "Athletes coached" },
 ] as const;
 
 export const FOUNDER_TRANSFORMATION = {

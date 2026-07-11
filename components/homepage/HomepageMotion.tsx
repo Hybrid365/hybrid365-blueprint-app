@@ -26,12 +26,25 @@ export function HomepageMotionStyles() {
             from { transform: translateX(0); }
             to { transform: translateX(-50%); }
           }
+          @keyframes homepage-sparkline-draw {
+            from { stroke-dashoffset: 100; }
+            to { stroke-dashoffset: 0; }
+          }
           .homepage-marquee-track {
             animation: homepage-marquee 36s linear infinite;
+          }
+          .homepage-sparkline-draw {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: homepage-sparkline-draw 1.8s ease-out forwards;
           }
           @media (prefers-reduced-motion: reduce) {
             .homepage-marquee-track {
               animation: none;
+            }
+            .homepage-sparkline-draw {
+              animation: none;
+              stroke-dashoffset: 0;
             }
           }
         `,
