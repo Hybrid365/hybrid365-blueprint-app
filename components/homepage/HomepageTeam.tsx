@@ -24,8 +24,8 @@ export function HomepageTeam() {
             Meet the team
           </HomepageHeading>
           <p className="mt-5 max-w-xl text-base text-white/55">
-            A living roster of HYROX athletes training with structure, accountability
-            and race-day intent. This is what joining a performance team feels like.
+            A living roster training to a standard — structure, accountability and
+            race-day intent. HYROX athletes leading the way.
           </p>
         </div>
         <Link

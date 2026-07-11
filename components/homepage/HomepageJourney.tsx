@@ -30,17 +30,17 @@ export function HomepageJourney() {
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f4d23c]">
               Kieran Higgs · Founder
             </p>
-            <p className="mt-1 text-2xl font-black text-white">Former pro footballer</p>
+            <p className="mt-1 text-2xl font-black text-white">The standard behind Hybrid365</p>
           </div>
         </div>
 
         <div className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
-          <HomepageEyebrow>My journey</HomepageEyebrow>
+          <HomepageEyebrow>Founder proof</HomepageEyebrow>
           <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
-            This wasn&apos;t luck.
+            Built from real progression.
           </HomepageHeading>
 
-          <div className="mt-8 flex items-center gap-4 sm:gap-6">
+          <div className="mt-8 flex items-center justify-center gap-4 sm:gap-6 lg:justify-start">
             <div className="text-center">
               <p className="text-3xl font-black tabular-nums text-white/70 sm:text-4xl">
                 {FOUNDER_TRANSFORMATION.from}
@@ -49,7 +49,7 @@ export function HomepageJourney() {
                 Start
               </p>
             </div>
-            <div className="flex h-px flex-1 bg-gradient-to-r from-white/20 via-[#f4d23c] to-white/20" aria-hidden />
+            <div className="flex h-px w-12 bg-gradient-to-r from-white/20 via-[#f4d23c] to-white/20 sm:w-auto sm:flex-1" aria-hidden />
             <div className="text-center">
               <p className="text-3xl font-black tabular-nums text-[#f4d23c] sm:text-4xl">
                 {FOUNDER_TRANSFORMATION.to}
@@ -61,14 +61,12 @@ export function HomepageJourney() {
           </div>
 
           <p className="mt-8 text-base leading-relaxed text-white/65">
-            Years of refining running economy, threshold development, aerobic
-            capacity, strength endurance and race-specific work — tested in real
-            HYROX races and hybrid training blocks, not theory.
+            Years refining running economy, threshold development, strength endurance
+            and race-specific work — tested in HYROX, not theory.
           </p>
           <p className="mt-4 text-base leading-relaxed text-white/65">
-            That same methodology now shapes every Hybrid365 programme — whether
-            you are building general hybrid fitness or targeting HYROX performance.
-            Structured blocks. Clear progression. Recovery built in.
+            That same standard shapes every Hybrid365 programme — for hybrid athletes,
+            runners, lifters and HYROX competitors who want structure that delivers.
           </p>
 
           <HomepageCtaRow>

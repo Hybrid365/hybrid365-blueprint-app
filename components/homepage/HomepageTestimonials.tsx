@@ -19,7 +19,7 @@ export function HomepageTestimonials() {
           What athletes say
         </HomepageHeading>
         <p className="mt-5 text-base text-white/55">
-          Specific outcomes from structured coaching — not generic praise.
+          Specific outcomes from structured coaching — effort converted into measurable progress.
         </p>
       </div>
 

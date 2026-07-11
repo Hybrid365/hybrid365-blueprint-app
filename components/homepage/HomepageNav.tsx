@@ -11,9 +11,9 @@ import { PrimaryCta } from "./homepageUi";
 
 const NAV_LINKS = [
   { href: HOMEPAGE_NAV.method, label: "Method" },
+  { href: HOMEPAGE_NAV.system, label: "System" },
   { href: HOMEPAGE_NAV.results, label: "Results" },
   { href: HOMEPAGE_NAV.team, label: "Team" },
-  { href: HOMEPAGE_NAV.community, label: "Community" },
 ] as const;
 
 export function HomepageNav() {

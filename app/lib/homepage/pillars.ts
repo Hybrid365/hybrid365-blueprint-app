@@ -9,30 +9,29 @@ export type PerformancePillar = {
 
 export const PERFORMANCE_PILLARS: PerformancePillar[] = [
   {
-    id: "look-good",
-    title: "Look Good",
-    headline: "Lean muscle that supports performance",
-    body: "Build or retain athletic muscle without sacrificing run quality. Body composition follows structured hybrid training — not random HIIT.",
-  },
-  {
     id: "run-fast",
     title: "Run Fast",
-    headline: "Threshold and aerobic development",
-    body: "Progress running speed through controlled threshold work, aerobic capacity and pacing discipline — the engine behind hybrid performance and HYROX races.",
+    headline: "Build a real engine",
+    body: "Threshold work, aerobic development and pacing discipline — for HYROX, 5Ks, or hybrid athletes who need a faster run leg.",
   },
   {
     id: "lift-heavy",
     title: "Lift Heavy",
-    headline: "Strength that transfers to training and race day",
-    body: "Useful strength and leg endurance for the gym, sled work and compromised running — without turning every session into junk volume.",
+    headline: "Strength that carries over",
+    body: "Useful strength and leg endurance for the gym floor, sled work and compromised running — without junk volume.",
   },
   {
-    id: "perform",
-    title: "Perform",
-    headline: "Integrated hybrid performance",
-    body: "The four pillars combine into one system: running, strength and conditioning sequenced for progression, recovery and race-day execution — including HYROX-specific pathways.",
+    id: "look-athletic",
+    title: "Look Athletic",
+    headline: "Lean, strong, athletic",
+    body: "Body composition that looks the part — muscle that supports performance, not random HIIT that stalls progress.",
+  },
+  {
+    id: "perform-better",
+    title: "Perform Better",
+    headline: "One integrated system",
+    body: "Running, strength and conditioning sequenced into blocks with recovery, progression and race-day execution — HYROX pathways included.",
   },
 ];
 
-/** Short labels for hero pillar strip */
 export const HERO_PILLAR_LABELS = PERFORMANCE_PILLARS.map((p) => p.title);

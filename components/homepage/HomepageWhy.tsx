@@ -1,61 +1,62 @@
-import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
+import { BELIEF_HEADLINE } from "@/app/lib/homepage/brandCopy";
+import { FREE_WEEK_HYROX_URL, HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import {
   HomepageSection,
   HomepageEyebrow,
   HomepageHeading,
   PrimaryCta,
+  SecondaryCta,
   HomepageCtaRow,
   homepageCtaClass,
 } from "./homepageUi";
 
-const PROBLEMS = [
-  "Random Instagram workouts with no progression",
-  "Always training hard — never training smart",
-  "No structure across running, strength and conditioning",
-  "No real threshold or pacing development",
-  "No long-term plan for measurable progress",
+const STRUCTURE_GAPS = [
+  "No progression across running, strength and conditioning",
+  "No threshold development or pacing standards",
+  "No block structure — just hard sessions stacked on hard sessions",
+  "No accountability when life gets busy",
+  "No environment that matches how seriously you train",
 ] as const;
 
 export function HomepageWhy() {
   return (
-    <HomepageSection id="why">
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
-        <div className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
-          <HomepageEyebrow>The athlete&apos;s problem</HomepageEyebrow>
-          <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
-            Hard work isn&apos;t the issue.
-            <span className="mt-2 block text-white/90">Structure is.</span>
-          </HomepageHeading>
-          <p className="mt-5 text-base leading-relaxed text-white/60">
-            Serious hybrid athletes don&apos;t lack effort. They lack a system that
-            connects running development, strength work, threshold training and
-            long-term progression — week after week.
-          </p>
-        </div>
-
-        <ul className="mx-auto w-full max-w-xl space-y-3 lg:mx-0 lg:max-w-none">
-          {PROBLEMS.map((item) => (
-            <li
-              key={item}
-              className="flex gap-4 border-l-2 border-[#f4d23c]/40 py-3 pl-5 text-left text-sm leading-relaxed text-white/80 sm:text-base"
-            >
-              {item}
-            </li>
-          ))}
-        </ul>
+    <HomepageSection id="belief" variant="dark">
+      <div className="mx-auto max-w-3xl text-center">
+        <HomepageEyebrow>The real problem</HomepageEyebrow>
+        <HomepageHeading className="text-[clamp(1.75rem,5vw,3.25rem)]">
+          {BELIEF_HEADLINE.line1}
+          <span className="mt-2 block text-[#f4d23c]">{BELIEF_HEADLINE.line2}</span>
+        </HomepageHeading>
+        <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg">
+          Your work ethic is not the problem. Your structure is. Hybrid365 gives
+          you the system, standards and environment to turn effort into performance.
+        </p>
       </div>
 
-      <p className="mx-auto mt-12 max-w-2xl text-center text-lg font-medium leading-relaxed text-white/90 lg:text-left">
-        Hybrid365 exists to give athletes structured performance coaching —
-        proven through HYROX, running and strength progress, including shaving{" "}
-        <span className="font-bold text-[#f4d23c]">9 minutes 23 seconds</span> off
-        a Pro Solo time — not another random workout list.
+      <div className="mx-auto mt-12 grid max-w-4xl gap-3 sm:grid-cols-2 lg:gap-4">
+        {STRUCTURE_GAPS.map((item) => (
+          <div
+            key={item}
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4 text-left text-sm leading-relaxed text-white/75"
+          >
+            {item}
+          </div>
+        ))}
+      </div>
+
+      <p className="mx-auto mt-10 max-w-2xl text-center text-base font-medium text-white/80">
+        You do not need more random workouts or motivational content. You need a
+        coaching system with clear progression — proven through HYROX, running and
+        strength results.
       </p>
 
-      <HomepageCtaRow>
+      <HomepageCtaRow className="justify-center lg:justify-center">
         <PrimaryCta href={FREE_WEEK_HYROX_URL} className={homepageCtaClass}>
           Start My Free Training Week
         </PrimaryCta>
+        <SecondaryCta href={HOMEPAGE_NAV.system} className={homepageCtaClass}>
+          Explore The System
+        </SecondaryCta>
       </HomepageCtaRow>
     </HomepageSection>
   );

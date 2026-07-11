@@ -9,26 +9,26 @@ export type HowItWorksStep = {
 export const HOW_IT_WORKS_STEPS: HowItWorksStep[] = [
   {
     step: 1,
-    title: "Build your personalised training week",
+    title: "Build your personalised week",
     description:
-      "Answer a short assessment. Your Week 1 sample is built around your level, schedule, equipment and goals — including HYROX-specific options.",
+      "Short assessment. Week 1 built around your level, schedule, equipment and goals.",
   },
   {
     step: 2,
-    title: "Receive your training dashboard",
+    title: "Train from your dashboard",
     description:
-      "Sessions, pacing targets, coaching notes and structure — delivered to your personal plan dashboard.",
+      "Sessions, pacing targets and coaching notes — structured like real coaching.",
   },
   {
     step: 3,
-    title: "Join the free community",
+    title: "Join the community",
     description:
-      "Connect with other Hybrid365 athletes in the free Telegram group for accountability and support.",
+      "Accountability with athletes on the same standard — free Telegram group.",
   },
   {
     step: 4,
-    title: "Progress into the Hybrid365 Team",
+    title: "Level up to HYROX Team",
     description:
-      "When you are ready for 1-1 coaching, race-specific programming and direct coach support — apply for the HYROX Team.",
+      "1-1 coaching, race-specific blocks and direct coach support when ready.",
   },
 ];
