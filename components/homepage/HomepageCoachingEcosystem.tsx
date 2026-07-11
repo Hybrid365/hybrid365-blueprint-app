@@ -60,7 +60,7 @@ function EcosystemConnectors({ animate }: { animate: boolean }) {
           />
         </g>
       ))}
-      <circle cx="50" cy="46" r="1" fill="#f4d23c" fillOpacity={0.75} />
+      <circle cx="50" cy="50" r="1" fill="#f4d23c" fillOpacity={0.75} />
     </svg>
   );
 }
@@ -81,12 +81,12 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
       <div
         className={cn(
           "relative mx-auto hidden overflow-visible sm:block",
-          "h-[460px] w-full max-w-[540px] lg:h-[500px] lg:max-w-[580px]"
+          "h-[560px] w-full max-w-[600px] lg:h-[620px] lg:max-w-[660px]"
         )}
       >
         {/* Subtle hub glow — phone remains visual hero */}
         <div
-          className="pointer-events-none absolute left-1/2 top-[46%] z-0 h-[55%] w-[42%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.14),transparent_68%)]"
+          className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[52%] w-[38%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.14),transparent_68%)]"
           aria-hidden
         />
 
@@ -94,7 +94,7 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
 
         <div
           className={cn(
-            "absolute left-1/2 top-[46%] z-10 -translate-x-1/2 -translate-y-1/2",
+            "absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2",
             animate && "homepage-ecosystem-phone-enter"
           )}
         >
@@ -123,10 +123,10 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
       </div>
 
       {/* Mobile — scaled orbit, same structure */}
-      <div className="relative mx-auto block w-full max-w-[340px] overflow-visible sm:hidden">
-        <div className="relative mx-auto h-[300px] w-full overflow-visible">
+      <div className="relative mx-auto block w-full max-w-[360px] overflow-visible sm:hidden">
+        <div className="relative mx-auto h-[360px] w-full overflow-visible">
           <div
-            className="pointer-events-none absolute left-1/2 top-[48%] z-0 h-[50%] w-[44%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.1),transparent_70%)]"
+            className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[48%] w-[40%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.1),transparent_70%)]"
             aria-hidden
           />
 
@@ -134,7 +134,7 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
 
           <div
             className={cn(
-              "absolute left-1/2 top-[48%] z-10 -translate-x-1/2 -translate-y-1/2",
+              "absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2",
               animate && "homepage-ecosystem-phone-enter"
             )}
             style={{ width: HERO_ECOSYSTEM_PHONE.displayWidth.mobile }}
