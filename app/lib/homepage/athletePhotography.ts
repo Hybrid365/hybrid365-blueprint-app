@@ -4,8 +4,10 @@ export type EditorialPhotoTreatment =
   | "bleed-left"
   | "bleed-right"
   | "fade-bottom"
+  | "fade-edges"
   | "angled-tr"
-  | "soft-mask";
+  | "soft-mask"
+  | "cinematic";
 
 export type AthleteEditorialPhoto = {
   id: string;
@@ -16,35 +18,30 @@ export type AthleteEditorialPhoto = {
   objectPosition?: string;
 };
 
+/** Primary real Hybrid365 athlete photography — attached Jul 2026 */
 export const ATHLETE_EDITORIAL_PHOTOS: Record<string, AthleteEditorialPhoto> = {
-  trainingIntensity: {
-    id: "training-intensity",
-    src: "/images/hyrox-team/Sequence 01.00_37_26_11.Still015.jpg",
-    alt: "Hybrid365 athlete training with focus and intensity",
-    treatment: "bleed-left",
-    objectPosition: "center 30%",
+  strengthSession: {
+    id: "strength-session",
+    src: "/images/homepage/athletes/athlete-strength-session.png",
+    alt: "Hybrid365 athlete — strength session under cinematic gym light",
+    treatment: "cinematic",
+    objectPosition: "center 20%",
   },
-  teamEffort: {
-    id: "team-effort",
-    src: "/images/hyrox-team/Sequence 01.00_45_14_14.Still017.jpg",
-    alt: "Hybrid365 athletes pushing through a hard session",
-    treatment: "bleed-right",
-    objectPosition: "center 40%",
-  },
-  hybridGrind: {
-    id: "hybrid-grind",
-    src: "/images/hyrox-team/dump5.jpg",
-    alt: "Hybrid365 athlete mid-session — discipline in action",
-    treatment: "fade-bottom",
-    objectPosition: "center top",
-  },
-  strengthStandard: {
-    id: "strength-standard",
-    src: "/images/hyrox-team/b-and-ww.jpg",
-    alt: "Hybrid365 athlete — strength and conditioning standard",
-    treatment: "angled-tr",
+  treadmillEffort: {
+    id: "treadmill-effort",
+    src: "/images/homepage/athletes/athlete-treadmill-effort.png",
+    alt: "Hybrid365 athlete — threshold effort on the treadmill",
+    treatment: "cinematic",
     objectPosition: "center center",
   },
+  gritProfile: {
+    id: "grit-profile",
+    src: "/images/homepage/athletes/athlete-grit-profile.png",
+    alt: "Hybrid365 athlete — focused effort, sweat and discipline",
+    treatment: "fade-edges",
+    objectPosition: "center center",
+  },
+  /** Founder proof — retained for results journey */
   raceFinish: {
     id: "race-finish",
     src: "/images/hyrox-team/Hyrox-Result.jpg",
@@ -52,25 +49,23 @@ export const ATHLETE_EDITORIAL_PHOTOS: Record<string, AthleteEditorialPhoto> = {
     treatment: "soft-mask",
     objectPosition: "center top",
   },
-  communityRun: {
-    id: "community-run",
-    src: "/images/community/running.jpg",
-    alt: "Hybrid365 community athlete running",
-    treatment: "fade-bottom",
-    objectPosition: "center center",
-  },
 };
 
-/** Hero ecosystem environment layers */
-export const HERO_ECOSYSTEM_PHOTOS = [
-  ATHLETE_EDITORIAL_PHOTOS.trainingIntensity,
-  ATHLETE_EDITORIAL_PHOTOS.teamEffort,
+/** Hero: one powerful image max — subtle environment only */
+export const HERO_ECOSYSTEM_PHOTO = ATHLETE_EDITORIAL_PHOTOS.gritProfile;
+
+/** Identity / standard section — introduce community through all three */
+export const STANDARD_COLLAGE_PHOTOS = [
+  ATHLETE_EDITORIAL_PHOTOS.strengthSession,
+  ATHLETE_EDITORIAL_PHOTOS.treadmillEffort,
+  ATHLETE_EDITORIAL_PHOTOS.gritProfile,
 ] as const;
 
-/** Standard section collage */
-export const STANDARD_COLLAGE_PHOTOS = [
-  ATHLETE_EDITORIAL_PHOTOS.trainingIntensity,
-  ATHLETE_EDITORIAL_PHOTOS.hybridGrind,
-  ATHLETE_EDITORIAL_PHOTOS.strengthStandard,
-  ATHLETE_EDITORIAL_PHOTOS.teamEffort,
+/** Results section — effort imagery alongside metrics */
+export const RESULTS_EDITORIAL_PHOTOS = [
+  ATHLETE_EDITORIAL_PHOTOS.treadmillEffort,
+  ATHLETE_EDITORIAL_PHOTOS.strengthSession,
 ] as const;
+
+/** Community — strongest visual presence */
+export const COMMUNITY_EDITORIAL_PHOTOS = STANDARD_COLLAGE_PHOTOS;

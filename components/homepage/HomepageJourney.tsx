@@ -1,8 +1,9 @@
 import { HomepageEditorialPhoto } from "./HomepageEditorialPhoto";
-import { ATHLETE_EDITORIAL_PHOTOS } from "@/app/lib/homepage/athletePhotography";
 import {
-  FOUNDER_TRANSFORMATION,
-} from "@/app/lib/homepage/founderStats";
+  ATHLETE_EDITORIAL_PHOTOS,
+  RESULTS_EDITORIAL_PHOTOS,
+} from "@/app/lib/homepage/athletePhotography";
+import { FOUNDER_TRANSFORMATION } from "@/app/lib/homepage/founderStats";
 import { BRAND_MOTTO, RESULTS_BODY } from "@/app/lib/homepage/brandCopy";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import {
@@ -15,25 +16,35 @@ import {
 } from "./homepageUi";
 
 export function HomepageJourney() {
+  const [effortPrimary, effortSecondary] = RESULTS_EDITORIAL_PHOTOS;
+
   return (
     <HomepageSection variant="accent" className="overflow-hidden">
       <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:items-center">
-        <div className="relative mx-auto h-[360px] w-full max-w-md sm:h-[420px] lg:mx-0 lg:h-[480px] lg:max-w-none">
-          <div className="absolute inset-y-[5%] left-[-4%] w-[70%]">
+        <div className="relative mx-auto h-[380px] w-full max-w-md sm:h-[440px] lg:mx-0 lg:h-[500px] lg:max-w-none">
+          <div className="absolute inset-y-[2%] left-[-6%] w-[72%]">
             <HomepageEditorialPhoto
-              photo={ATHLETE_EDITORIAL_PHOTOS.raceFinish}
+              photo={effortPrimary}
               className="h-full w-full"
+              intensity="full"
               sizes="(max-width: 1024px) 75vw, 38vw"
             />
           </div>
-          <div className="absolute right-0 top-0 z-10 h-[46%] w-[44%] shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
+          <div className="absolute right-[-2%] top-[4%] z-10 h-[48%] w-[46%]">
             <HomepageEditorialPhoto
-              photo={ATHLETE_EDITORIAL_PHOTOS.trainingIntensity}
-              className="h-full w-full border border-white/10"
+              photo={ATHLETE_EDITORIAL_PHOTOS.raceFinish}
+              className="h-full w-full"
               sizes="(max-width: 1024px) 42vw, 22vw"
             />
           </div>
-          <div className="absolute bottom-0 right-[8%] z-20 rounded-full border border-[#f4d23c]/30 bg-[#0a0a0a]/90 px-4 py-2 backdrop-blur-sm">
+          <div className="absolute bottom-0 left-[10%] z-20 h-[38%] w-[55%]">
+            <HomepageEditorialPhoto
+              photo={effortSecondary}
+              className="h-full w-full"
+              sizes="(max-width: 1024px) 50vw, 26vw"
+            />
+          </div>
+          <div className="absolute bottom-6 right-6 z-30 rounded-full border border-[#f4d23c]/30 bg-[#050505]/85 px-4 py-2 backdrop-blur-sm">
             <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#f4d23c]">
               {BRAND_MOTTO}
             </p>
@@ -70,8 +81,7 @@ export function HomepageJourney() {
             {RESULTS_BODY}
           </p>
           <p className="mt-4 text-base leading-relaxed text-white/50">
-            That same standard shapes every Hybrid365 programme — for hybrid
-            athletes, runners and lifters who already put in the work.
+            The work looks like this. The results look like 59:14.
           </p>
 
           <HomepageCtaRow>

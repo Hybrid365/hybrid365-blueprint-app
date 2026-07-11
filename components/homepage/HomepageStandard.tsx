@@ -1,4 +1,4 @@
-import { STANDARD_BODY, STANDARD_HEADLINE } from "@/app/lib/homepage/brandCopy";
+import { STANDARD_BODY, STANDARD_HEADLINE, BRAND_MOTTO } from "@/app/lib/homepage/brandCopy";
 import { STANDARD_COLLAGE_PHOTOS } from "@/app/lib/homepage/athletePhotography";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { HomepageEditorialPhoto } from "./HomepageEditorialPhoto";
@@ -12,51 +12,48 @@ import {
 } from "./homepageUi";
 
 export function HomepageStandard() {
-  const [primary, secondary, tertiary, accent] = STANDARD_COLLAGE_PHOTOS;
+  const [primary, secondary, tertiary] = STANDARD_COLLAGE_PHOTOS;
 
   return (
     <HomepageSection id="standard" variant="dark" className="overflow-hidden">
-      <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-        <div className="relative mx-auto h-[340px] w-full max-w-lg sm:h-[400px] lg:mx-0 lg:h-[460px] lg:max-w-none">
-          {/* Primary — large, bleeds left */}
-          <div className="absolute inset-y-[8%] left-0 z-10 w-[72%]">
+      <div className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-14">
+        {/* Editorial collage — no rounded cards */}
+        <div className="relative mx-auto h-[380px] w-full max-w-lg sm:h-[440px] lg:mx-0 lg:h-[520px] lg:max-w-none">
+          <div className="absolute inset-y-0 left-[-5%] z-10 w-[68%]">
             <HomepageEditorialPhoto
               photo={primary}
-              className="h-full w-full rounded-sm"
+              className="h-full w-full"
               priority
-              sizes="(max-width: 1024px) 70vw, 35vw"
+              intensity="full"
+              sizes="(max-width: 1024px) 72vw, 38vw"
             />
           </div>
 
-          {/* Secondary — overlapping top right */}
-          <div className="absolute right-0 top-0 z-20 h-[48%] w-[46%] shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
+          <div className="absolute right-[-3%] top-0 z-20 h-[52%] w-[50%]">
             <HomepageEditorialPhoto
               photo={secondary}
-              className="h-full w-full rounded-sm border border-white/10"
-              sizes="(max-width: 1024px) 40vw, 22vw"
+              className="h-full w-full"
+              intensity="full"
+              sizes="(max-width: 1024px) 44vw, 24vw"
             />
           </div>
 
-          {/* Tertiary — bottom right overlap */}
-          <div className="absolute bottom-0 right-[6%] z-30 h-[42%] w-[40%] shadow-[0_20px_50px_rgba(0,0,0,0.55)]">
+          <div className="absolute bottom-[-2%] right-[8%] z-30 h-[44%] w-[58%]">
             <HomepageEditorialPhoto
               photo={tertiary}
-              className="h-full w-full rounded-sm border border-white/8"
-              sizes="(max-width: 1024px) 38vw, 20vw"
+              className="h-full w-full"
+              intensity="full"
+              sizes="(max-width: 1024px) 55vw, 30vw"
             />
           </div>
 
-          {/* Accent — small depth layer */}
-          <div className="absolute bottom-[18%] left-[4%] z-0 h-[36%] w-[34%] opacity-40 blur-[1px]">
-            <HomepageEditorialPhoto
-              photo={accent}
-              className="h-full w-full rounded-sm"
-              sizes="30vw"
-            />
-          </div>
+          <div
+            className="pointer-events-none absolute inset-0 z-40 bg-gradient-to-r from-transparent via-transparent to-[#050505]/20"
+            aria-hidden
+          />
 
-          <p className="absolute bottom-3 left-3 z-40 text-[9px] font-bold uppercase tracking-[0.2em] text-white/35">
-            Hybrid365 · The standard
+          <p className="absolute bottom-4 left-4 z-50 text-[9px] font-bold uppercase tracking-[0.22em] text-[#f4d23c]/70">
+            {BRAND_MOTTO}
           </p>
         </div>
 
@@ -70,8 +67,8 @@ export function HomepageStandard() {
             {STANDARD_BODY}
           </p>
           <p className="mt-4 text-sm leading-relaxed text-white/45">
-            Effort. Discipline. Commitment. This is what the brand looks like —
-            not stock fitness imagery.
+            These aren&apos;t models. They&apos;re the exact type of people we
+            coach — hybrid athletes who already show up and refuse average.
           </p>
 
           <HomepageCtaRow className="mt-8">

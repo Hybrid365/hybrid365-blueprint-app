@@ -2,8 +2,9 @@ import {
   COMMUNITY_CRITERIA,
   CULTURE_BODY,
   CULTURE_HEADLINE,
+  BRAND_MOTTO,
 } from "@/app/lib/homepage/brandCopy";
-import { ATHLETE_EDITORIAL_PHOTOS } from "@/app/lib/homepage/athletePhotography";
+import { COMMUNITY_EDITORIAL_PHOTOS } from "@/app/lib/homepage/athletePhotography";
 import { FREE_WEEK_HYROX_URL, HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import { HomepageEditorialPhoto } from "./HomepageEditorialPhoto";
 import {
@@ -17,35 +18,60 @@ import {
 } from "./homepageUi";
 
 export function HomepageCulture() {
+  const [left, center, right] = COMMUNITY_EDITORIAL_PHOTOS;
+
   return (
-    <HomepageSection id="community" variant="accent" className="overflow-hidden">
-      <div className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
-        <div className="relative mx-auto h-[320px] w-full max-w-md sm:h-[380px] lg:mx-0 lg:h-[420px] lg:max-w-none">
-          <div className="absolute inset-y-0 left-[-6%] w-[78%]">
-            <HomepageEditorialPhoto
-              photo={ATHLETE_EDITORIAL_PHOTOS.communityRun}
-              className="h-full w-full"
-              sizes="(max-width: 1024px) 80vw, 40vw"
-            />
+    <HomepageSection id="community" variant="accent" className="relative overflow-hidden !px-0">
+      {/* Full-bleed editorial band — photography leads */}
+      <div className="relative mx-auto max-w-[1200px] lg:grid lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="relative min-h-[420px] sm:min-h-[480px] lg:min-h-[560px]">
+          <div className="absolute inset-0 grid grid-cols-12">
+            <div className="relative col-span-5 sm:col-span-4">
+              <HomepageEditorialPhoto
+                photo={left}
+                className="absolute inset-0"
+                intensity="full"
+                sizes="(max-width: 1024px) 40vw, 22vw"
+              />
+            </div>
+            <div className="relative col-span-4 sm:col-span-4">
+              <HomepageEditorialPhoto
+                photo={center}
+                className="absolute inset-0"
+                intensity="full"
+                sizes="(max-width: 1024px) 35vw, 20vw"
+              />
+            </div>
+            <div className="relative col-span-3 sm:col-span-4">
+              <HomepageEditorialPhoto
+                photo={right}
+                className="absolute inset-0"
+                intensity="full"
+                sizes="(max-width: 1024px) 30vw, 18vw"
+              />
+            </div>
           </div>
-          <div className="absolute right-0 top-[10%] z-10 h-[55%] w-[48%] shadow-[0_20px_50px_rgba(0,0,0,0.55)]">
-            <HomepageEditorialPhoto
-              photo={ATHLETE_EDITORIAL_PHOTOS.hybridGrind}
-              className="h-full w-full border border-white/10"
-              sizes="(max-width: 1024px) 45vw, 24vw"
-            />
-          </div>
-          <div className="absolute bottom-6 left-6 z-20">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4d23c]">
-              Hybrid365 Team
+
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#050505]/30 via-[#050505]/55 to-[#080808]/95 lg:bg-gradient-to-r lg:from-transparent lg:via-[#080808]/40 lg:to-[#080808]"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-[#080808]/60"
+            aria-hidden
+          />
+
+          <div className="absolute bottom-8 left-6 z-10 sm:left-10">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#f4d23c]">
+              {BRAND_MOTTO}
             </p>
-            <p className="mt-1 max-w-[200px] text-sm font-semibold text-white/80">
-              Coached individually. Built as a team.
+            <p className="mt-2 max-w-xs text-lg font-black uppercase tracking-tight text-white sm:text-xl">
+              I&apos;ve found my people.
             </p>
           </div>
         </div>
 
-        <div className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
+        <div className="relative z-10 px-4 py-12 sm:px-6 lg:flex lg:flex-col lg:justify-center lg:px-10 lg:py-16">
           <HomepageEyebrow>Community</HomepageEyebrow>
           <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
             {CULTURE_HEADLINE}
@@ -54,14 +80,14 @@ export function HomepageCulture() {
             {CULTURE_BODY}
           </p>
 
-          <div className="mt-8 rounded-2xl border border-white/10 bg-[#0a0a0a]/80 p-5 text-left sm:p-6">
+          <div className="mt-8 border-t border-white/10 pt-6">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
               For people who…
             </p>
             <ul className="mt-4 space-y-3">
               {COMMUNITY_CRITERIA.map((item) => (
                 <li key={item} className="flex gap-3 text-sm leading-relaxed text-white/75">
-                  <span className="mt-0.5 text-[#4ade80]" aria-hidden>
+                  <span className="mt-0.5 shrink-0 text-[#4ade80]" aria-hidden>
                     ✓
                   </span>
                   {item}

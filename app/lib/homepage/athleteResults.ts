@@ -23,8 +23,8 @@ export const ATHLETE_RESULTS: AthleteResult[] = [
   {
     id: "placeholder-1",
     name: "[Athlete name]",
-    photoSrc: "/images/community/running.jpg",
-    photoAlt: "Hybrid365 athlete — replace with client photo",
+    photoSrc: "/images/homepage/athletes/athlete-strength-session.png",
+    photoAlt: "Hybrid365 athlete — strength and discipline",
     hyroxPb: "[Current PB]",
     hyroxStart: "[Starting PB]",
     improvement: "[+Xm improvement]",
@@ -38,8 +38,8 @@ export const ATHLETE_RESULTS: AthleteResult[] = [
   {
     id: "placeholder-2",
     name: "[Athlete name]",
-    photoSrc: "/images/hyrox-team/dump5.jpg",
-    photoAlt: "Hybrid365 athlete — replace with client photo",
+    photoSrc: "/images/homepage/athletes/athlete-treadmill-effort.png",
+    photoAlt: "Hybrid365 athlete — engine work and threshold effort",
     hyroxPb: "[Current PB]",
     hyroxStart: "[Starting PB]",
     improvement: "[+Xm improvement]",
@@ -53,8 +53,8 @@ export const ATHLETE_RESULTS: AthleteResult[] = [
   {
     id: "placeholder-3",
     name: "[Athlete name]",
-    photoSrc: "/images/community/run and lift in one photo.jpg",
-    photoAlt: "Hybrid365 athlete — replace with client photo",
+    photoSrc: "/images/homepage/athletes/athlete-grit-profile.png",
+    photoAlt: "Hybrid365 athlete — earned effort under pressure",
     hyroxPb: "[Current PB]",
     improvement: "[+Xm improvement]",
     testimonial:
