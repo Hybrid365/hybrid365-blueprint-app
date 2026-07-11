@@ -3,8 +3,12 @@
 import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import {
-  HERO_ECOSYSTEM_MINI_CARDS,
-  HERO_ECOSYSTEM_PHONE,
+  HERO_ILLUSTRATION_CARDS,
+  HERO_ILLUSTRATION_CONNECTORS,
+  HERO_ILLUSTRATION_PHONE,
+  HERO_ILLUSTRATION_SIZE,
+  artboardToPercent,
+  artboardWidthPercent,
 } from "@/app/lib/homepage/coachingEcosystem";
 import { getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
 import { HomepagePhoneVisual } from "./HomepagePhoneVisual";
@@ -24,47 +28,68 @@ function getReducedMotionServer() {
   return true;
 }
 
-function EcosystemConnectors({ animate }: { animate: boolean }) {
+function IllustrationConnectors({ animate }: { animate: boolean }) {
+  const { width, height } = HERO_ILLUSTRATION_SIZE;
+
   return (
     <svg
-      viewBox="0 0 100 100"
-      className="pointer-events-none absolute inset-0 z-[12] h-full w-full"
+      viewBox={`0 0 ${width} ${height}`}
+      className="pointer-events-none absolute inset-0 z-[8] h-full w-full"
       aria-hidden
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
     >
       <defs>
-        <linearGradient id="hero-orbit-line" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#f4d23c" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.12" />
+        <linearGradient id="hero-illus-line" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#f4d23c" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#f4d23c" stopOpacity="0.18" />
         </linearGradient>
+        <filter id="hero-illus-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="1.2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
-      {HERO_ECOSYSTEM_MINI_CARDS.map((card, index) => (
-        <g key={card.id}>
+
+      {HERO_ILLUSTRATION_CONNECTORS.map((connector, index) => (
+        <g key={connector.id} filter="url(#hero-illus-glow)">
           <path
-            d={card.connectorPath}
+            d={connector.path}
             fill="none"
-            stroke="url(#hero-orbit-line)"
-            strokeWidth="0.22"
+            stroke="url(#hero-illus-line)"
+            strokeWidth="1.15"
             strokeLinecap="round"
             className={cn(animate && "homepage-ecosystem-connector")}
-            style={{ animationDelay: `${0.35 + index * 0.07}s` }}
+            style={{ animationDelay: `${0.3 + index * 0.06}s` }}
           />
           <circle
-            cx={card.connectorEnd.x}
-            cy={card.connectorEnd.y}
-            r="0.7"
+            cx={connector.phoneAnchor.x}
+            cy={connector.phoneAnchor.y}
+            r="2.6"
             fill="#f4d23c"
-            fillOpacity={0.6}
+            fillOpacity={0.7}
             className={cn(animate && "homepage-ecosystem-connector")}
-            style={{ animationDelay: `${0.42 + index * 0.07}s` }}
+            style={{ animationDelay: `${0.36 + index * 0.06}s` }}
+          />
+          <circle
+            cx={connector.cardAnchor.x}
+            cy={connector.cardAnchor.y}
+            r="2.2"
+            fill="#f4d23c"
+            fillOpacity={0.5}
+            className={cn(animate && "homepage-ecosystem-connector")}
+            style={{ animationDelay: `${0.4 + index * 0.06}s` }}
           />
         </g>
       ))}
-      <circle cx="50" cy="48" r="0.85" fill="#f4d23c" fillOpacity={0.75} />
     </svg>
   );
 }
 
+/**
+ * Single fixed marketing illustration — scales proportionally, never reflows.
+ */
 export function HomepageCoachingEcosystem({ className }: { className?: string }) {
   const prefersReducedMotion = useSyncExternalStore(
     subscribeReducedMotion,
@@ -72,96 +97,72 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
     getReducedMotionServer
   );
 
-  const phone = getPhoneScreen(HERO_ECOSYSTEM_PHONE.screenId);
+  const phone = getPhoneScreen(HERO_ILLUSTRATION_PHONE.screenId);
+  const phonePos = artboardToPercent(HERO_ILLUSTRATION_PHONE.center);
   const animate = !prefersReducedMotion;
 
   return (
-    <div className={cn("w-full", className)} aria-label="Hybrid365 coaching ecosystem preview">
-      {/* Desktop / tablet — tight quadrant composition */}
+    <div
+      className={cn("flex w-full justify-center overflow-visible", className)}
+      aria-label="Hybrid365 coaching ecosystem preview"
+    >
       <div
-        className={cn(
-          "relative mx-auto hidden overflow-visible sm:block",
-          "h-[420px] w-full max-w-[460px] lg:h-[440px] lg:max-w-[480px]"
-        )}
+        className="relative origin-center"
+        style={{
+          width: "100%",
+          maxWidth: HERO_ILLUSTRATION_SIZE.width,
+          aspectRatio: `${HERO_ILLUSTRATION_SIZE.width} / ${HERO_ILLUSTRATION_SIZE.height}`,
+        }}
       >
+        {/* Hub glow — lowest visual weight */}
         <div
-          className="pointer-events-none absolute left-1/2 top-[48%] z-0 h-[72%] w-[52%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.16),transparent_70%)]"
+          className="pointer-events-none absolute z-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.12),transparent_68%)]"
+          style={{
+            ...phonePos,
+            width: artboardWidthPercent(220),
+            height: `${(220 / HERO_ILLUSTRATION_SIZE.height) * 100}%`,
+          }}
           aria-hidden
         />
 
-        <EcosystemConnectors animate={animate} />
+        <IllustrationConnectors animate={animate} />
 
+        {/* Central phone — visual hero */}
         <div
           className={cn(
-            "absolute left-1/2 top-[48%] z-20 -translate-x-1/2 -translate-y-1/2",
+            "absolute z-20 -translate-x-1/2 -translate-y-1/2",
             animate && "homepage-ecosystem-phone-enter"
           )}
+          style={{
+            ...phonePos,
+            width: artboardWidthPercent(HERO_ILLUSTRATION_PHONE.width),
+          }}
         >
           <HomepagePhoneVisual
             screen={phone}
-            displayWidth={HERO_ECOSYSTEM_PHONE.displayWidth.desktop}
+            displayWidth={HERO_ILLUSTRATION_PHONE.width}
+            fillContainer
             priority
           />
         </div>
 
-        {HERO_ECOSYSTEM_MINI_CARDS.map((card, index) => (
+        {/* Satellite cards — manually composed on artboard */}
+        {HERO_ILLUSTRATION_CARDS.map((card) => (
           <div
             key={card.id}
             className={cn(
-              "absolute",
-              card.desktopClass,
-              animate && "homepage-ecosystem-card-enter homepage-ecosystem-float-slow"
+              "absolute z-[14] -translate-x-1/2 -translate-y-1/2",
+              animate && "homepage-ecosystem-card-enter"
             )}
             style={{
-              animationDelay: animate ? `${0.1 + index * 0.06}s` : undefined,
+              ...artboardToPercent(card.center),
+              width: artboardWidthPercent(card.width),
             }}
+            data-hero-illus-card={card.id}
           >
             <HomepageEcosystemMiniCard card={card} />
           </div>
         ))}
-      </div>
-
-      {/* Mobile — same quadrant structure, scaled */}
-      <div className="relative mx-auto block w-full max-w-[320px] overflow-visible sm:hidden">
-        <div className="relative mx-auto h-[320px] w-full overflow-visible">
-          <div
-            className="pointer-events-none absolute left-1/2 top-[48%] z-0 h-[68%] w-[54%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.12),transparent_72%)]"
-            aria-hidden
-          />
-
-          <EcosystemConnectors animate={animate} />
-
-          <div
-            className={cn(
-              "absolute left-1/2 top-[48%] z-20 -translate-x-1/2 -translate-y-1/2",
-              animate && "homepage-ecosystem-phone-enter"
-            )}
-            style={{ width: HERO_ECOSYSTEM_PHONE.displayWidth.mobile }}
-          >
-            <HomepagePhoneVisual
-              screen={phone}
-              displayWidth={HERO_ECOSYSTEM_PHONE.displayWidth.mobile}
-              fillContainer
-              priority
-            />
-          </div>
-
-          {HERO_ECOSYSTEM_MINI_CARDS.map((card, index) => (
-            <div
-              key={card.id}
-              className={cn(
-                "absolute",
-                card.mobileClass,
-                animate && "homepage-ecosystem-card-enter homepage-ecosystem-float-slow"
-              )}
-              style={{
-                animationDelay: animate ? `${0.08 + index * 0.05}s` : undefined,
-              }}
-            >
-              <HomepageEcosystemMiniCard card={card} compact />
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
