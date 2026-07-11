@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Generate high-resolution transparent UI screen assets for homepage phone frames.
+"""Generate transparent UI screen crops from original uploaded homepage screenshots.
 
 Source (unchanged): public/images/homepage/ui-screens/
 Output: public/homepage/ui-mockups/
 
-Extracts the inner screen region (frame chrome is rendered in React) and exports
-at 2x native resolution for crisp display on retina screens.
+Crops the inner screen region at NATIVE resolution — no upscaling, no redesign.
+All dashboard detail from the original uploads is preserved pixel-for-pixel.
 
 Requires: pip install Pillow
 """
@@ -22,12 +22,10 @@ SRC_DIR = ROOT / "public/images/homepage/ui-screens"
 OUT_DIR = ROOT / "public/homepage/ui-mockups"
 MANIFEST = ROOT / "app/lib/homepage/phoneScreenManifest.json"
 
-# Inner screen inset within detected phone bounds (tuned for source mockups).
-SCREEN_INSET_X = 0.085
-SCREEN_INSET_TOP = 0.11
-SCREEN_INSET_BOTTOM = 0.055
-
-SCALE = 2
+# Tight inner-screen crop inside detected phone bounds.
+SCREEN_INSET_X = 0.072
+SCREEN_INSET_TOP = 0.102
+SCREEN_INSET_BOTTOM = 0.048
 
 
 def is_background(r: int, g: int, b: int, *, tolerance: int = 28) -> bool:
@@ -98,12 +96,6 @@ def process_phone_mockup(input_path: Path, output_path: Path) -> tuple[int, int]
 
     screen = img.crop((screen_left, screen_top, screen_right + 1, screen_bottom + 1))
 
-    if SCALE > 1:
-        screen = screen.resize(
-            (screen.size[0] * SCALE, screen.size[1] * SCALE),
-            Image.Resampling.LANCZOS,
-        )
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
     screen.save(output_path, "PNG", compress_level=3)
     return screen.size
@@ -119,7 +111,7 @@ def main() -> None:
         out = OUT_DIR / src.name
         width, height = process_phone_mockup(src, out)
         manifest[src.stem] = {"width": width, "height": height}
-        print(f"{src.name} -> {width}x{height}")
+        print(f"{src.name} -> {width}x{height} (native crop)")
 
     MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote manifest -> {MANIFEST.relative_to(ROOT)}")

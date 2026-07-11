@@ -1,46 +1,46 @@
 {
   "hybrid365-team": {
-    "width": 460,
-    "height": 1002
+    "width": 238,
+    "height": 510
   },
   "performance-testing": {
-    "width": 458,
-    "height": 994
+    "width": 237,
+    "height": 506
   },
   "programme": {
-    "width": 452,
-    "height": 1004
+    "width": 234,
+    "height": 510
   },
   "progress-overview": {
-    "width": 458,
-    "height": 998
+    "width": 237,
+    "height": 508
   },
   "team-athlete-overview": {
-    "width": 454,
-    "height": 994
+    "width": 235,
+    "height": 506
   },
   "threshold-progression": {
-    "width": 462,
-    "height": 1002
+    "width": 239,
+    "height": 510
   },
   "threshold-run": {
-    "width": 452,
-    "height": 1004
+    "width": 234,
+    "height": 510
   },
   "weekly-check-in": {
-    "width": 462,
-    "height": 1004
+    "width": 239,
+    "height": 510
   },
   "weekly-run-volume": {
-    "width": 458,
-    "height": 998
+    "width": 237,
+    "height": 508
   },
   "weight-tracking": {
-    "width": 458,
-    "height": 1002
+    "width": 237,
+    "height": 511
   },
   "your-journey": {
-    "width": 458,
-    "height": 1002
+    "width": 237,
+    "height": 511
   }
 }

@@ -1,29 +1,41 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export type HomepagePhoneFrameSize = "sm" | "md" | "lg" | "xl";
 
-/** Display widths — React screens render natively at device DPR (no raster upscale). */
+/**
+ * Outer frame widths tuned to original screenshot native density (~234px screen crops).
+ * Inner screen ≈ outer − 16px padding. Slight downscale preserves dashboard detail.
+ */
 const SIZE_CLASS: Record<HomepagePhoneFrameSize, string> = {
-  sm: "w-[clamp(140px,32vw,170px)]",
-  md: "w-[clamp(168px,36vw,220px)]",
-  lg: "w-[clamp(188px,38vw,250px)]",
-  xl: "w-[clamp(208px,40vw,270px)]",
+  sm: "w-[clamp(136px,32vw,164px)]",
+  md: "w-[clamp(164px,36vw,200px)]",
+  lg: "w-[clamp(184px,38vw,220px)]",
+  xl: "w-[clamp(200px,40vw,240px)]",
 };
 
 type HomepagePhoneFrameProps = {
-  children: React.ReactNode;
+  image: string;
+  alt: string;
+  width: number;
+  height: number;
   size?: HomepagePhoneFrameSize;
   className?: string;
+  priority?: boolean;
 };
 
 /**
- * Premium iPhone device wrapper for homepage UI screens.
- * Renders live React screen content for maximum sharpness on retina displays.
+ * Premium iPhone device wrapper for original homepage UI screenshots.
+ * Displays native-resolution crops from public/images/homepage/ui-screens/.
  */
 export function HomepagePhoneFrame({
-  children,
+  image,
+  alt,
+  width,
+  height,
   size = "md",
   className,
+  priority = false,
 }: HomepagePhoneFrameProps) {
   return (
     <div className={cn("relative mx-auto shrink-0", SIZE_CLASS[size], className)}>
@@ -47,7 +59,17 @@ export function HomepagePhoneFrame({
         />
 
         <div className="relative h-full w-full overflow-hidden rounded-[1.7rem] bg-black ring-1 ring-inset ring-white/[0.1]">
-          {children}
+          <Image
+            src={image}
+            alt={alt}
+            width={width}
+            height={height}
+            quality={100}
+            unoptimized
+            priority={priority}
+            className="h-full w-full object-cover object-top"
+            sizes="(max-width: 640px) 40vw, 240px"
+          />
         </div>
 
         <div
