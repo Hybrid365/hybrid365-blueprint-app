@@ -1,6 +1,8 @@
 import { ATHLETE_RESULTS } from "@/app/lib/homepage/athleteResults";
+import { PROOF_PHONE_SCREENS } from "@/app/lib/homepage/phoneScreens";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { AthleteResultCard } from "./AthleteResultCard";
+import { HomepagePhoneCarousel } from "./HomepagePhoneCarousel";
 import {
   HomepageSection,
   HomepageEyebrow,
@@ -19,17 +21,28 @@ export function HomepageAthleteResults() {
           Results that compound
         </HomepageHeading>
         <p className="mt-5 text-base text-white/55">
-          When effort meets structure, progress shows up — on the clock, in the gym
-          and on race day. HYROX results are a major proof point.
+          Data-driven coaching — threshold progression, run volume, body composition
+          and benchmarks tracked against targets. Effort turned into measurable progress.
         </p>
       </div>
 
-      <div className="mt-12 -mx-4 flex gap-5 overflow-x-auto px-4 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible lg:px-0 lg:pb-0">
-        {ATHLETE_RESULTS.map((athlete) => (
-          <div key={athlete.id} className="w-[min(88vw,340px)] shrink-0 snap-start lg:w-auto">
-            <AthleteResultCard athlete={athlete} />
-          </div>
-        ))}
+      <HomepagePhoneCarousel
+        items={PROOF_PHONE_SCREENS}
+        phoneSize="lg"
+        className="mt-12"
+      />
+
+      <div className="mt-16">
+        <p className="mb-8 text-center text-xs font-bold uppercase tracking-[0.16em] text-white/40 lg:text-left">
+          Athlete transformations
+        </p>
+        <div className="-mx-4 flex gap-5 overflow-x-auto px-4 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible lg:px-0 lg:pb-0">
+          {ATHLETE_RESULTS.map((athlete) => (
+            <div key={athlete.id} className="w-[min(88vw,340px)] shrink-0 snap-start lg:w-auto">
+              <AthleteResultCard athlete={athlete} />
+            </div>
+          ))}
+        </div>
       </div>
 
       <p className="mt-8 text-center text-xs text-white/35 lg:text-left">

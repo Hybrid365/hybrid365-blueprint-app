@@ -1,5 +1,7 @@
 import { CULTURE_HEADLINE, CULTURE_TRAITS } from "@/app/lib/homepage/brandCopy";
+import { CULTURE_PHONE_SCREENS, getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
 import { FREE_WEEK_HYROX_URL, HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
+import { HomepagePhoneVisual } from "./HomepagePhoneVisual";
 import {
   HomepageSection,
   HomepageEyebrow,
@@ -11,6 +13,8 @@ import {
 } from "./homepageUi";
 
 export function HomepageCulture() {
+  const cultureScreens = CULTURE_PHONE_SCREENS.map(getPhoneScreen);
+
   return (
     <HomepageSection id="culture" variant="accent">
       <div className="mx-auto max-w-3xl text-center">
@@ -19,9 +23,23 @@ export function HomepageCulture() {
           {CULTURE_HEADLINE}
         </HomepageHeading>
         <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-white/55">
-          Hybrid365 is a standard — not a vibe. For athletes who already show up,
-          train hard, and want structure that respects that effort.
+          Hybrid365 is a standard — not a vibe. Join a system and team environment
+          built for athletes who already show up and train hard.
         </p>
+      </div>
+
+      <div className="mx-auto mt-12 grid max-w-4xl gap-8 sm:grid-cols-2">
+        {cultureScreens.map((screen) => (
+          <article key={screen.id} className="text-center">
+            <HomepagePhoneVisual screen={screen} size="lg" className="mx-auto" />
+            <h3 className="mt-5 text-sm font-black uppercase tracking-wide text-white">
+              {screen.title}
+            </h3>
+            <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-white/55">
+              {screen.description}
+            </p>
+          </article>
+        ))}
       </div>
 
       <ul className="mx-auto mt-12 grid max-w-4xl gap-3 sm:grid-cols-2">

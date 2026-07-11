@@ -1,14 +1,9 @@
-import Image from "next/image";
-import { AthleteDashboardMockup } from "@/components/hyrox-landing/AthleteDashboardMockup";
-import {
-  FOUNDER_HERO_IMAGE,
-  FOUNDER_STATS,
-} from "@/app/lib/homepage/founderStats";
 import { HERO_PILLAR_LABELS } from "@/app/lib/homepage/pillars";
 import { BRAND_TAGLINE, PROOF_MARQUEE_ITEMS } from "@/app/lib/homepage/brandCopy";
 import { HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { HomepageProofMarquee } from "./HomepageMotion";
+import { HomepageHeroPhoneFan } from "./HomepageHeroPhoneFan";
 import {
   HomepageHeading,
   HomepageEyebrow,
@@ -64,22 +59,6 @@ export function HomepageHero() {
               Pro Solo.
             </p>
 
-            <ul className="mx-auto mt-8 hidden max-w-lg flex-wrap justify-center gap-x-6 gap-y-3 lg:mx-0 lg:flex lg:justify-start">
-              {FOUNDER_STATS.map((stat) => (
-                <li key={stat.label} className="min-w-[6.5rem] text-center lg:text-left">
-                  <p className="text-xl font-black tabular-nums tracking-tight text-white sm:text-2xl">
-                    {stat.value}
-                    {"placeholder" in stat && stat.placeholder ? (
-                      <span className="ml-1 text-xs font-normal text-white/40">*</span>
-                    ) : null}
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
-                    {stat.label}
-                  </p>
-                </li>
-              ))}
-            </ul>
-
             <HomepageCtaRow size="large" className="mt-8">
               <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large" className={homepageCtaClass}>
                 Start My Free Training Week
@@ -90,33 +69,7 @@ export function HomepageHero() {
             </HomepageCtaRow>
           </div>
 
-          <div className="relative mx-auto flex w-full max-w-[min(100%,380px)] justify-center pb-14 sm:max-w-[400px] lg:mx-0 lg:max-w-none lg:justify-center lg:pb-0">
-            <div className="relative w-full">
-              <AthleteDashboardMockup size="md" className="relative z-10 mx-auto" />
-
-              <div className="absolute -bottom-4 -left-2 z-20 w-[36%] min-w-[100px] max-w-[130px] overflow-hidden rounded-xl border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.55)] sm:-left-6 sm:max-w-[150px]">
-                <div className="relative aspect-[3/4]">
-                  <Image
-                    src={FOUNDER_HERO_IMAGE.src}
-                    alt={FOUNDER_HERO_IMAGE.alt}
-                    fill
-                    priority
-                    className="object-cover object-top"
-                    sizes="150px"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
-                  <p className="absolute bottom-2 left-2 right-2 text-[9px] font-bold uppercase tracking-wider text-white/90">
-                    Founder · HYROX Pro
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className="pointer-events-none absolute -right-2 top-6 z-0 hidden h-[88%] w-[72%] rounded-[2rem] border border-[#f4d23c]/10 bg-[radial-gradient(circle_at_center,rgba(244,210,60,0.08),transparent_70%)] sm:block"
-                aria-hidden
-              />
-            </div>
-          </div>
+          <HomepageHeroPhoneFan />
         </div>
       </div>
 
