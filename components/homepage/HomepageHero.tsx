@@ -12,6 +12,8 @@ import {
   HomepageEyebrow,
   PrimaryCta,
   SecondaryCta,
+  HomepageCtaRow,
+  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepageHero() {
@@ -23,7 +25,7 @@ export function HomepageHero() {
       />
 
       <div className="relative mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-12 py-14 sm:py-16 lg:grid-cols-2 lg:gap-16 lg:py-20">
+        <div className="grid items-center gap-10 py-12 sm:gap-12 sm:py-16 lg:grid-cols-2 lg:gap-16 lg:py-20">
           {/* Copy */}
           <div className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
             <HomepageEyebrow>Hybrid performance coaching</HomepageEyebrow>
@@ -75,16 +77,18 @@ export function HomepageHero() {
               ))}
             </ul>
 
-            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:items-start lg:justify-start">
-              <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large">
+            <HomepageCtaRow size="large" className="mt-8 lg:mt-8">
+              <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large" className={homepageCtaClass}>
                 Start My Free Training Week
               </PrimaryCta>
-              <SecondaryCta href={HOMEPAGE_NAV.method}>Explore the Method</SecondaryCta>
-            </div>
+              <SecondaryCta href={HOMEPAGE_NAV.method} className={homepageCtaClass}>
+                Explore the Method
+              </SecondaryCta>
+            </HomepageCtaRow>
           </div>
 
           {/* Visual: coaching UI + founder proof */}
-          <div className="relative mx-auto flex w-full max-w-[min(100%,360px)] justify-center lg:mx-0 lg:max-w-none lg:justify-center">
+          <div className="relative mx-auto flex w-full max-w-[min(100%,360px)] justify-center pb-12 sm:pb-14 lg:mx-0 lg:max-w-none lg:justify-center lg:pb-0">
             <div className="relative">
               <AthleteDashboardMockup size="md" className="relative z-10" />
 

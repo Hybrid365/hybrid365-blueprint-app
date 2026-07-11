@@ -3,6 +3,8 @@ import {
   HomepageSection,
   HomepageHeading,
   PrimaryCta,
+  HomepageCtaRow,
+  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepageFinalCta() {
@@ -26,11 +28,11 @@ export function HomepageFinalCta() {
           Build a personalised hybrid training week based on your experience, goals
           and available training days — with HYROX-specific pathways available.
         </p>
-        <div className="mt-10 flex justify-center">
-          <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large">
+        <HomepageCtaRow size="large" className="mt-10 justify-center lg:justify-center">
+          <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large" className={`${homepageCtaClass} max-w-sm sm:max-w-none`}>
             Start My Free Training Week
           </PrimaryCta>
-        </div>
+        </HomepageCtaRow>
       </div>
     </HomepageSection>
   );

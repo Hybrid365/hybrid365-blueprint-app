@@ -10,13 +10,15 @@ import {
   HomepageEyebrow,
   HomepageHeading,
   PrimaryCta,
+  HomepageCtaRow,
+  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepageTeam() {
   return (
     <HomepageSection id="team">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left lg:items-end">
+        <div className="mx-auto max-w-xl sm:mx-0 sm:max-w-none">
           <HomepageEyebrow>Belonging</HomepageEyebrow>
           <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
             Meet the team
@@ -40,14 +42,16 @@ export function HomepageTeam() {
         ))}
       </div>
 
-      <p className="mt-8 text-xs text-white/35">
+      <p className="mt-8 text-center text-xs text-white/35 lg:text-left">
         * Placeholder roster — add real athletes in{" "}
         <code className="text-white/50">app/lib/homepage/teamMembers.ts</code>
       </p>
 
-      <div className="mt-8">
-        <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
-      </div>
+      <HomepageCtaRow>
+        <PrimaryCta href={FREE_WEEK_HYROX_URL} className={homepageCtaClass}>
+          Start My Free Training Week
+        </PrimaryCta>
+      </HomepageCtaRow>
     </HomepageSection>
   );
 }

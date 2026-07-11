@@ -9,6 +9,8 @@ import {
   HomepageEyebrow,
   HomepageHeading,
   PrimaryCta,
+  HomepageCtaRow,
+  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepageJourney() {
@@ -69,9 +71,11 @@ export function HomepageJourney() {
             Structured blocks. Clear progression. Recovery built in.
           </p>
 
-          <div className="mt-8 flex justify-center lg:justify-start">
-            <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
-          </div>
+          <HomepageCtaRow>
+            <PrimaryCta href={FREE_WEEK_HYROX_URL} className={homepageCtaClass}>
+              Start My Free Training Week
+            </PrimaryCta>
+          </HomepageCtaRow>
         </div>
       </div>
     </HomepageSection>

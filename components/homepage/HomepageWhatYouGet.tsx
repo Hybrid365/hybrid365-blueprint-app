@@ -10,13 +10,15 @@ import {
   HomepageEyebrow,
   HomepageHeading,
   PrimaryCta,
+  HomepageCtaRow,
+  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepageWhatYouGet() {
   return (
     <HomepageSection id="community" variant="accent">
-      <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
-        <div>
+      <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
+        <div className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
           <HomepageEyebrow>What you get</HomepageEyebrow>
           <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
             From free week to full team
@@ -26,7 +28,7 @@ export function HomepageWhatYouGet() {
             into the community or HYROX Team when you are ready.
           </p>
 
-          <ol className="mt-10 space-y-0">
+          <ol className="mt-10 space-y-0 text-left">
             {HOW_IT_WORKS_STEPS.map((step, index) => (
               <li key={step.step} className="relative flex gap-5 pb-8 last:pb-0">
                 {index < HOW_IT_WORKS_STEPS.length - 1 ? (
@@ -74,12 +76,14 @@ export function HomepageWhatYouGet() {
             ))}
           </ol>
 
-          <div className="mt-10 flex justify-center lg:justify-start">
-            <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
-          </div>
+          <HomepageCtaRow className="mt-10">
+            <PrimaryCta href={FREE_WEEK_HYROX_URL} className={homepageCtaClass}>
+              Start My Free Training Week
+            </PrimaryCta>
+          </HomepageCtaRow>
         </div>
 
-        <div className="relative mx-auto flex w-full max-w-[min(100%,680px)] justify-center lg:mx-0">
+        <div className="relative mx-auto flex w-full max-w-[min(100%,680px)] justify-center pt-2 lg:mx-0 lg:pt-0">
           <AthletePathwayPhoneStack />
         </div>
       </div>

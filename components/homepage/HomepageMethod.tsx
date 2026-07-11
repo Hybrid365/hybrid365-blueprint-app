@@ -5,6 +5,8 @@ import {
   HomepageEyebrow,
   HomepageHeading,
   PrimaryCta,
+  HomepageCtaRow,
+  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepageMethod() {
@@ -48,9 +50,11 @@ export function HomepageMethod() {
         ))}
       </div>
 
-      <div className="mt-10 flex justify-center lg:justify-start">
-        <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
-      </div>
+      <HomepageCtaRow className="mt-10">
+        <PrimaryCta href={FREE_WEEK_HYROX_URL} className={homepageCtaClass}>
+          Start My Free Training Week
+        </PrimaryCta>
+      </HomepageCtaRow>
     </HomepageSection>
   );
 }

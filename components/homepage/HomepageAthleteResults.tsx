@@ -6,6 +6,8 @@ import {
   HomepageEyebrow,
   HomepageHeading,
   PrimaryCta,
+  HomepageCtaRow,
+  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepageAthleteResults() {
@@ -28,14 +30,16 @@ export function HomepageAthleteResults() {
         ))}
       </div>
 
-      <p className="mt-8 text-xs text-white/35">
+      <p className="mt-8 text-center text-xs text-white/35 lg:text-left">
         * Placeholder cards — replace with verified athlete data in{" "}
         <code className="text-white/50">app/lib/homepage/athleteResults.ts</code>
       </p>
 
-      <div className="mt-8 flex justify-center lg:justify-start">
-        <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
-      </div>
+      <HomepageCtaRow>
+        <PrimaryCta href={FREE_WEEK_HYROX_URL} className={homepageCtaClass}>
+          Start My Free Training Week
+        </PrimaryCta>
+      </HomepageCtaRow>
     </HomepageSection>
   );
 }

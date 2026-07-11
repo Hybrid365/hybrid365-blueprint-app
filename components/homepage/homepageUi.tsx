@@ -116,3 +116,28 @@ export function PlaceholderBadge() {
     </span>
   );
 }
+
+/** Consistent CTA row — full-width buttons on mobile, left-aligned from lg up. */
+export function HomepageCtaRow({
+  children,
+  className,
+  size = "default",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  size?: "default" | "large";
+}) {
+  return (
+    <div
+      className={cn(
+        "mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start",
+        size === "large" && "sm:gap-4",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export const homepageCtaClass = "w-full sm:w-auto";
