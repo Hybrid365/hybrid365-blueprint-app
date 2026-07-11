@@ -1,13 +1,13 @@
 {
-  "programme": "public/images/homepage/ui-screens-sources/Hyrox-Ass-8-09ef2888-d73c-4fd6-a52b-e539d440df83.png",
-  "threshold-run": "public/images/homepage/ui-screens-sources/Hyrox-Threshold--fb3bd53f-0d5e-4ac1-bd0b-817283b5826b.png",
-  "progress-overview": "public/images/homepage/ui-screens-sources/Hyrox-Ass-4-d2b93a92-92b4-4267-83ac-5442127e57dd.png",
-  "performance-testing": "public/images/homepage/ui-screens-sources/Hyrox-Ass-1-75fffeb3-b120-4e20-ae76-6ff75b731a4b.png",
-  "hybrid365-team": "public/images/homepage/ui-screens-sources/Hyrox-Ass-2-48488c5a-f524-40fa-ad5c-78edeaee2dfc.png",
+  "programme": "public/images/homepage/ui/sources/chatgpt-programme.png",
+  "threshold-run": "public/images/homepage/ui/sources/chatgpt-threshold-run.png",
+  "progress-overview": "public/images/homepage/ui/sources/chatgpt-progress-overview.png",
+  "performance-testing": "public/images/homepage/ui/sources/chatgpt-performance-testing.png",
+  "hybrid365-team": "public/images/homepage/ui/sources/chatgpt-hybrid365-team.png",
   "your-journey": "public/images/homepage/ui-screens-sources/Hyrox-Ass-3-2788ede0-0b94-417b-9668-1d02ea234a4b.png",
-  "threshold-progression": "public/images/homepage/ui-screens-sources/Hyrox-ass-6-bef8a8b7-eeab-40d8-b292-ef142c828bf5.png",
-  "weekly-run-volume": "public/images/homepage/ui-screens-sources/Hyrox-Ass-7-cd309863-704c-4738-9adb-2748cd50e93b.png",
-  "weight-tracking": "public/images/homepage/ui-screens-sources/Hyrox-Weight--2efe7eb2-4a58-46cb-a848-454281bfce85.png",
-  "weekly-check-in": "public/images/homepage/ui-screens-sources/Hyrox-ass9-4d7a78ef-c85f-48e3-8c84-c184f640452e.png",
-  "team-athlete-overview": "public/images/homepage/ui-screens-sources/Hyrox-ass-10-83b9aab1-b539-4ae2-87fa-4eae8092f606.png"
+  "threshold-progression": "public/images/homepage/ui/sources/chatgpt-threshold-progression.png",
+  "weekly-run-volume": "public/images/homepage/ui/sources/chatgpt-weekly-run-volume.png",
+  "weight-tracking": "public/images/homepage/ui/sources/chatgpt-weight-tracking.png",
+  "weekly-check-in": "public/images/homepage/ui/sources/chatgpt-weekly-check-in.png",
+  "team-athlete-overview": "public/images/homepage/ui/sources/chatgpt-team-athlete-overview.png"
 }

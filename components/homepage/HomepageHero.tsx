@@ -1,5 +1,5 @@
 import { HERO_PILLAR_LABELS } from "@/app/lib/homepage/pillars";
-import { BRAND_TAGLINE, PROOF_MARQUEE_ITEMS } from "@/app/lib/homepage/brandCopy";
+import { BRAND_TAGLINE, HERO_PROOF_COPY, HERO_SUPPORTING_COPY, PROOF_MARQUEE_ITEMS } from "@/app/lib/homepage/brandCopy";
 import { HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { HomepageProofMarquee } from "./HomepageMotion";
@@ -50,13 +50,10 @@ export function HomepageHero() {
             </ul>
 
             <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/75 sm:text-lg lg:mx-0">
-              Built for hard workers who want more from themselves — structure,
-              standards and a coaching environment that matches your mindset.
+              {HERO_SUPPORTING_COPY}
             </p>
             <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-white/50 lg:mx-0">
-              Proven through HYROX, running and strength progress — including{" "}
-              <strong className="font-semibold text-white/80">1:08:37 → 59:14</strong>{" "}
-              Pro Solo.
+              {HERO_PROOF_COPY}
             </p>
 
             <HomepageCtaRow size="large" className="mt-8">

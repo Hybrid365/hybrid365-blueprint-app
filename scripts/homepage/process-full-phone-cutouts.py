@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Create transparent full-phone cutouts from original homepage UI screenshots.
+"""Process homepage iPhone UI PNGs into transparent full-phone cutouts.
 
-Preserves the complete device bezel, rounded corners, shadow and UI detail.
-Removes only the flat outer canvas background.
+Handles checkerboard and flat black/white canvas backgrounds.
+Preserves full device bezel, shadow and UI detail.
 
 Source mapping: scripts/homepage/phone-source-map.json
-Output: public/homepage/phone-cutouts/
+Output: public/images/homepage/ui/
 Manifest: app/lib/homepage/phoneScreenManifest.json
 
 Requires: pip install Pillow
@@ -21,22 +21,27 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 MAP_FILE = ROOT / "scripts/homepage/phone-source-map.json"
-OUT_DIR = ROOT / "public/homepage/phone-cutouts"
-SRC_ARCHIVE = ROOT / "public/images/homepage/ui-screens"
+OUT_DIR = ROOT / "public/images/homepage/ui"
+SRC_ARCHIVE = ROOT / "public/images/homepage/ui/sources"
 MANIFEST = ROOT / "app/lib/homepage/phoneScreenManifest.json"
 
-PADDING = 8
+PADDING = 6
 
 
-def is_background(r: int, g: int, b: int, *, tolerance: int = 28) -> bool:
+def is_background(r: int, g: int, b: int, *, tolerance: int = 32) -> bool:
+    # Flat black canvas
     if r <= tolerance and g <= tolerance and b <= tolerance:
         return True
+    # Flat white canvas
     if r >= 245 and g >= 245 and b >= 245:
+        return True
+    # Checkerboard / neutral light greys (ChatGPT export backgrounds)
+    if r >= 195 and g >= 195 and b >= 195 and max(r, g, b) - min(r, g, b) <= 18:
         return True
     return False
 
 
-def remove_background(img: Image.Image, *, tolerance: int = 28) -> Image.Image:
+def remove_background(img: Image.Image, *, tolerance: int = 32) -> Image.Image:
     rgba = img.convert("RGBA")
     w, h = rgba.size
     px = rgba.load()
@@ -110,7 +115,7 @@ def main() -> None:
         if not source.exists():
             raise SystemExit(f"Missing source for {screen_id}: {source}")
 
-        archive = SRC_ARCHIVE / f"{screen_id}.png"
+        archive = SRC_ARCHIVE / f"{screen_id}{source.suffix}"
         shutil.copy2(source, archive)
 
         out = OUT_DIR / f"{screen_id}.png"

@@ -1,5 +1,5 @@
-/** Full-phone transparent cutouts from latest original uploaded screenshots. */
-export const HOMEPAGE_PHONE_CUTOUT_BASE = "/homepage/phone-cutouts";
+/** Full-phone transparent cutouts — public/images/homepage/ui/ */
+export const HOMEPAGE_PHONE_CUTOUT_BASE = "/images/homepage/ui";
 
 import phoneScreenManifest from "./phoneScreenManifest.json";
 
@@ -152,17 +152,17 @@ export function getPhoneScreen(id: PhoneScreenId): PhoneScreen {
 
 /**
  * Display widths for full-phone cutouts (px).
- * Capped below native asset width (~288px) — always downscales, never upscales.
+ * Native assets ~420–456px wide — always downscale, never upscale.
  */
 export const PHONE_CUTOUT_DISPLAY_WIDTH: Record<HomepagePhoneCutoutSize, number> = {
-  sm: 148,
-  md: 188,
-  lg: 220,
-  xl: 252,
+  sm: 180,
+  md: 220,
+  lg: 280,
+  xl: 320,
 };
 
 /** @deprecated Use PHONE_CUTOUT_DISPLAY_WIDTH */
 export const PHONE_FRAME_DISPLAY_WIDTH = PHONE_CUTOUT_DISPLAY_WIDTH;
 
-/** Original upload canvas size (all screenshots). */
-export const PHONE_SOURCE_CANVAS = { width: 1024, height: 694 } as const;
+/** Original high-res upload size (ChatGPT exports). */
+export const PHONE_SOURCE_CANVAS = { width: 485, height: 1024 } as const;

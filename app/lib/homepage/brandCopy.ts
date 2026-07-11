@@ -1,7 +1,13 @@
 /** Homepage brand messaging — edit copy here. */
 
 export const BRAND_TAGLINE =
-  "Run fast. Lift heavy. Look athletic. Perform better." as const;
+  "Run fast. Lift heavy. Look good. Perform better." as const;
+
+export const HERO_SUPPORTING_COPY =
+  "Structured hybrid coaching for athletes who want to get fitter, faster and stronger — with a proven HYROX performance edge." as const;
+
+export const HERO_PROOF_COPY =
+  "Built from the same system used to progress from 1:08:37 to 59:14 Pro Solo HYROX." as const;
 
 export const BELIEF_HEADLINE = {
   line1: "Most people are training hard.",

@@ -6,8 +6,8 @@ import {
 } from "@/app/lib/homepage/phoneScreens";
 
 /**
- * Renders a full-phone transparent cutout from the original uploaded screenshots.
- * No CSS device frame, no screen-only crop, no clipping wrappers.
+ * Renders a full-phone transparent cutout PNG directly — no CSS device frame.
+ * Uses native <img> for maximum sharpness with explicit dimensions.
  */
 export function HomepagePhoneVisual({
   screen,
@@ -23,7 +23,13 @@ export function HomepagePhoneVisual({
   const displayWidth = PHONE_CUTOUT_DISPLAY_WIDTH[size];
 
   return (
-    <div className={cn("mx-auto shrink-0", className)} style={{ width: displayWidth }}>
+    <div
+      className={cn(
+        "mx-auto shrink-0 drop-shadow-[0_24px_48px_rgba(0,0,0,0.55)]",
+        className
+      )}
+      style={{ width: displayWidth }}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={screen.src}

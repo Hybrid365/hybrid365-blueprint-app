@@ -18,7 +18,7 @@ import { HomepageFinalCta } from "@/components/homepage/HomepageFinalCta";
 export const metadata: Metadata = {
   title: "Hybrid Performance Coaching | Hybrid365",
   description:
-    "Run fast. Lift heavy. Look athletic. Perform better. High-performance hybrid coaching with structure, standards and a proven HYROX edge. Start your free training week.",
+    "Run fast. Lift heavy. Look good. Perform better. Structured hybrid coaching with a premium app, accountability and a proven HYROX performance edge.",
 };
 
 export default function HomePage() {

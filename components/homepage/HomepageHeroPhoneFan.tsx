@@ -14,7 +14,7 @@ export function HomepageHeroPhoneFan({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-[300px] pb-10 sm:max-w-[320px] lg:max-w-[340px] lg:pb-0",
+        "relative mx-auto w-full max-w-[360px] pb-10 sm:max-w-[400px] lg:max-w-[440px] lg:pb-0",
         className
       )}
     >
@@ -30,7 +30,7 @@ export function HomepageHeroPhoneFan({ className }: { className?: string }) {
 
       {/* Primary phone — centre, full contrast */}
       <div className="relative z-10 mx-auto flex justify-center">
-        <HomepagePhoneVisual screen={primary} size="lg" priority />
+        <HomepagePhoneVisual screen={primary} size="xl" priority />
       </div>
 
       {/* Founder proof inset */}

@@ -21,7 +21,7 @@ export function HomepageProduct() {
         </HomepageHeading>
         <p className="mt-5 text-base text-white/55">
           A premium coaching interface — structured sessions, weekly check-ins,
-          progress tracking and benchmarks. Not a PDF. Not a spreadsheet.
+          progress tracking and benchmarks. The app behind the system.
         </p>
       </div>
 
