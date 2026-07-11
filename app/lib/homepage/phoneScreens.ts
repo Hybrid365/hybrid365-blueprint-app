@@ -148,12 +148,12 @@ export function getPhoneScreen(id: PhoneScreenId): PhoneScreen {
   return PHONE_SCREENS[id];
 }
 
-/** Max rendered outer frame widths (px) per size token — inner screen ≈ outer − 16px padding. */
+/** Max rendered outer frame widths (px) — inner screen ≈ outer − 16px; always ≤ native crop width. */
 export const PHONE_FRAME_DISPLAY_WIDTH: Record<"sm" | "md" | "lg" | "xl", number> = {
-  sm: 164,
-  md: 200,
-  lg: 220,
-  xl: 240,
+  sm: 148,
+  md: 188,
+  lg: 208,
+  xl: 220,
 };
 
 /** Original upload canvas size (all screenshots). */

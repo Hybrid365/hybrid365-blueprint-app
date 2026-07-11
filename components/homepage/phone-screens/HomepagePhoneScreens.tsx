@@ -1,3 +1,7 @@
+/**
+ * Export-only simplified React screens — NOT used on the live homepage.
+ * Homepage display uses native-resolution PNG crops from public/images/homepage/ui-screens/.
+ */
 import type { ReactElement } from "react";
 import { cn } from "@/lib/utils";
 import type { PhoneScreenId } from "@/app/lib/homepage/phoneScreens";

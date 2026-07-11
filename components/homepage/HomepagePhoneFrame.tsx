@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils";
 export type HomepagePhoneFrameSize = "sm" | "md" | "lg" | "xl";
 
 /**
- * Outer frame widths tuned to original screenshot native density (~234px screen crops).
- * Inner screen ≈ outer − 16px padding. Slight downscale preserves dashboard detail.
+ * Outer frame widths capped below native screenshot density (~234px UI crops).
+ * Inner screen ≈ outer − 16px padding — always downscales, never upscales.
  */
 const SIZE_CLASS: Record<HomepagePhoneFrameSize, string> = {
-  sm: "w-[clamp(136px,32vw,164px)]",
-  md: "w-[clamp(164px,36vw,200px)]",
-  lg: "w-[clamp(184px,38vw,220px)]",
-  xl: "w-[clamp(200px,40vw,240px)]",
+  sm: "w-[clamp(128px,30vw,148px)]",
+  md: "w-[clamp(156px,34vw,188px)]",
+  lg: "w-[clamp(176px,36vw,208px)]",
+  xl: "w-[clamp(188px,38vw,220px)]",
 };
 
 type HomepagePhoneFrameProps = {
@@ -67,8 +67,8 @@ export function HomepagePhoneFrame({
             quality={100}
             unoptimized
             priority={priority}
-            className="h-full w-full object-cover object-top"
-            sizes="(max-width: 640px) 40vw, 240px"
+            className="h-full w-full object-contain object-top"
+            sizes="(max-width: 640px) 36vw, 208px"
           />
         </div>
 

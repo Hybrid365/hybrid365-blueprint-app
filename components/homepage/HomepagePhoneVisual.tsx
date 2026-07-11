@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import type { PhoneScreen } from "@/app/lib/homepage/phoneScreens";
 import { HomepagePhoneFrame, type HomepagePhoneFrameSize } from "./HomepagePhoneFrame";
 
+/** Renders original uploaded UI screenshots inside the homepage iPhone frame. */
 export function HomepagePhoneVisual({
   screen,
   size = "md",
