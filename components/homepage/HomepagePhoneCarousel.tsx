@@ -48,7 +48,7 @@ export function HomepagePhoneCarousel({
         {normalized.map(({ screen, feature }) => (
           <article
             key={screen.id}
-            className="w-[min(64vw,210px)] shrink-0 snap-center sm:w-[min(60vw,220px)]"
+            className="w-[min(64vw,200px)] shrink-0 snap-center sm:w-[min(60vw,210px)]"
           >
             <HomepagePhoneVisual screen={screen} size={phoneSize} className="mx-auto" />
             <div className="mt-5 text-center lg:text-left">

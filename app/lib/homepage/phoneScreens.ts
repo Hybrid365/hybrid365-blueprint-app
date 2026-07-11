@@ -1,5 +1,5 @@
-/** Native-resolution crops from original uploaded screenshots in public/images/homepage/ui-screens/ */
-export const HOMEPAGE_UI_MOCKUP_BASE = "/homepage/ui-mockups";
+/** Full-phone transparent cutouts from latest original uploaded screenshots. */
+export const HOMEPAGE_PHONE_CUTOUT_BASE = "/homepage/phone-cutouts";
 
 import phoneScreenManifest from "./phoneScreenManifest.json";
 
@@ -15,6 +15,8 @@ export type PhoneScreenId =
   | "weight-tracking"
   | "weekly-check-in"
   | "team-athlete-overview";
+
+export type HomepagePhoneCutoutSize = "sm" | "md" | "lg" | "xl";
 
 export type PhoneScreen = {
   id: PhoneScreenId;
@@ -36,67 +38,67 @@ function screenAsset(
 
 export const PHONE_SCREENS: Record<PhoneScreenId, PhoneScreen> = {
   programme: screenAsset("programme", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/programme.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/programme.png`,
     alt: "Hybrid365 app — Your Programme weekly training plan",
     title: "Your Programme",
     description: "Structured weekly sessions with coach notes — not random workouts.",
   }),
   "threshold-run": screenAsset("threshold-run", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/threshold-run.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/threshold-run.png`,
     alt: "Hybrid365 app — Threshold Run session detail",
     title: "Threshold Run",
     description: "Clear objectives, pacing targets and session structure for every run.",
   }),
   "progress-overview": screenAsset("progress-overview", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/progress-overview.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/progress-overview.png`,
     alt: "Hybrid365 app — Performance Overview dashboard",
     title: "Progress Overview",
     description: "Race readiness, consistency and key performance metrics in one view.",
   }),
   "performance-testing": screenAsset("performance-testing", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/performance-testing.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/performance-testing.png`,
     alt: "Hybrid365 app — Performance Testing benchmarks",
     title: "Performance Testing",
     description: "Running and station benchmarks tracked against targets.",
   }),
   "hybrid365-team": screenAsset("hybrid365-team", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/hybrid365-team.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/hybrid365-team.png`,
     alt: "Hybrid365 app — Hybrid365 Team culture screen",
     title: "Hybrid365 Team",
     description: "Coached individually. Built as a team. Standards, not vibes.",
   }),
   "your-journey": screenAsset("your-journey", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/your-journey.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/your-journey.png`,
     alt: "Hybrid365 app — Your Journey from testing to race day",
     title: "Your Journey",
     description: "From assessment to race day — a clear roadmap with accountability.",
   }),
   "threshold-progression": screenAsset("threshold-progression", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/threshold-progression.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/threshold-progression.png`,
     alt: "Hybrid365 app — Threshold Progression chart",
     title: "Threshold Progression",
     description: "Watch threshold capacity build week over week with planned deloads.",
   }),
   "weekly-run-volume": screenAsset("weekly-run-volume", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/weekly-run-volume.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/weekly-run-volume.png`,
     alt: "Hybrid365 app — Weekly Run Volume progression",
     title: "Weekly Run Volume",
     description: "Progressive running volume managed for race-day performance.",
   }),
   "weight-tracking": screenAsset("weight-tracking", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/weight-tracking.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/weight-tracking.png`,
     alt: "Hybrid365 app — Weight Tracking dashboard",
     title: "Weight Tracking",
     description: "Body composition tracked against targets — look athletic, perform better.",
   }),
   "weekly-check-in": screenAsset("weekly-check-in", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/weekly-check-in.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/weekly-check-in.png`,
     alt: "Hybrid365 app — Weekly Check-In accountability",
     title: "Weekly Check-In",
     description: "Sleep, energy, soreness and adherence — coach feedback every week.",
   }),
   "team-athlete-overview": screenAsset("team-athlete-overview", {
-    src: `${HOMEPAGE_UI_MOCKUP_BASE}/team-athlete-overview.png`,
+    src: `${HOMEPAGE_PHONE_CUTOUT_BASE}/team-athlete-overview.png`,
     alt: "Hybrid365 app — Team Athlete Overview dashboard",
     title: "Team Athlete Overview",
     description: "Your full coaching dashboard — sessions, progress and race countdown.",
@@ -148,13 +150,19 @@ export function getPhoneScreen(id: PhoneScreenId): PhoneScreen {
   return PHONE_SCREENS[id];
 }
 
-/** Max rendered outer frame widths (px) — inner screen ≈ outer − 16px; always ≤ native crop width. */
-export const PHONE_FRAME_DISPLAY_WIDTH: Record<"sm" | "md" | "lg" | "xl", number> = {
+/**
+ * Display widths for full-phone cutouts (px).
+ * Capped below native asset width (~288px) — always downscales, never upscales.
+ */
+export const PHONE_CUTOUT_DISPLAY_WIDTH: Record<HomepagePhoneCutoutSize, number> = {
   sm: 148,
   md: 188,
-  lg: 208,
-  xl: 220,
+  lg: 220,
+  xl: 252,
 };
+
+/** @deprecated Use PHONE_CUTOUT_DISPLAY_WIDTH */
+export const PHONE_FRAME_DISPLAY_WIDTH = PHONE_CUTOUT_DISPLAY_WIDTH;
 
 /** Original upload canvas size (all screenshots). */
 export const PHONE_SOURCE_CANVAS = { width: 1024, height: 694 } as const;

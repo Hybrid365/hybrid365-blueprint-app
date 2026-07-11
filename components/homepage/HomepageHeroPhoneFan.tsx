@@ -14,7 +14,7 @@ export function HomepageHeroPhoneFan({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-[320px] pb-10 sm:max-w-[340px] lg:max-w-[360px] lg:pb-0",
+        "relative mx-auto w-full max-w-[300px] pb-10 sm:max-w-[320px] lg:max-w-[340px] lg:pb-0",
         className
       )}
     >

@@ -1,8 +1,14 @@
 import { cn } from "@/lib/utils";
 import type { PhoneScreen } from "@/app/lib/homepage/phoneScreens";
-import { HomepagePhoneFrame, type HomepagePhoneFrameSize } from "./HomepagePhoneFrame";
+import {
+  PHONE_CUTOUT_DISPLAY_WIDTH,
+  type HomepagePhoneCutoutSize,
+} from "@/app/lib/homepage/phoneScreens";
 
-/** Renders original uploaded UI screenshots inside the homepage iPhone frame. */
+/**
+ * Renders a full-phone transparent cutout from the original uploaded screenshots.
+ * No CSS device frame, no screen-only crop, no clipping wrappers.
+ */
 export function HomepagePhoneVisual({
   screen,
   size = "md",
@@ -10,19 +16,26 @@ export function HomepagePhoneVisual({
   priority = false,
 }: {
   screen: PhoneScreen;
-  size?: HomepagePhoneFrameSize;
+  size?: HomepagePhoneCutoutSize;
   className?: string;
   priority?: boolean;
 }) {
+  const displayWidth = PHONE_CUTOUT_DISPLAY_WIDTH[size];
+
   return (
-    <HomepagePhoneFrame
-      image={screen.src}
-      alt={screen.alt}
-      width={screen.width}
-      height={screen.height}
-      size={size}
-      className={cn(className)}
-      priority={priority}
-    />
+    <div className={cn("mx-auto shrink-0", className)} style={{ width: displayWidth }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={screen.src}
+        alt={screen.alt}
+        width={screen.width}
+        height={screen.height}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        fetchPriority={priority ? "high" : "auto"}
+        className="block h-auto w-full object-contain"
+        style={{ maxWidth: displayWidth }}
+      />
+    </div>
   );
 }
