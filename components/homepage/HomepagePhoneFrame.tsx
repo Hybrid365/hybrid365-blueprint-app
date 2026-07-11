@@ -1,41 +1,29 @@
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export type HomepagePhoneFrameSize = "sm" | "md" | "lg" | "xl";
 
-/**
- * Outer frame widths capped so inner screens never upscale beyond 2x asset density.
- * Assets are ~452px wide (2x); inner screen ≈ outer − 16px padding.
- */
+/** Display widths — React screens render natively at device DPR (no raster upscale). */
 const SIZE_CLASS: Record<HomepagePhoneFrameSize, string> = {
-  sm: "w-[clamp(136px,32vw,164px)]",
-  md: "w-[clamp(164px,36vw,194px)]",
-  lg: "w-[clamp(184px,38vw,214px)]",
-  xl: "w-[clamp(204px,40vw,234px)]",
+  sm: "w-[clamp(140px,32vw,170px)]",
+  md: "w-[clamp(168px,36vw,220px)]",
+  lg: "w-[clamp(188px,38vw,250px)]",
+  xl: "w-[clamp(208px,40vw,270px)]",
 };
 
 type HomepagePhoneFrameProps = {
-  image: string;
-  alt: string;
-  width: number;
-  height: number;
+  children: React.ReactNode;
   size?: HomepagePhoneFrameSize;
   className?: string;
-  priority?: boolean;
 };
 
 /**
- * Premium iPhone device wrapper for homepage UI screenshots.
- * Renders a visible charcoal device body with inner screen clipping.
+ * Premium iPhone device wrapper for homepage UI screens.
+ * Renders live React screen content for maximum sharpness on retina displays.
  */
 export function HomepagePhoneFrame({
-  image,
-  alt,
-  width,
-  height,
+  children,
   size = "md",
   className,
-  priority = false,
 }: HomepagePhoneFrameProps) {
   return (
     <div className={cn("relative mx-auto shrink-0", SIZE_CLASS[size], className)}>
@@ -53,28 +41,15 @@ export function HomepagePhoneFrame({
           "shadow-[0_22px_52px_rgba(0,0,0,0.65),0_0_32px_rgba(244,210,60,0.07)]"
         )}
       >
-        {/* Dynamic island */}
         <div
           className="pointer-events-none absolute left-1/2 top-[10px] z-20 h-[21px] w-[78px] -translate-x-1/2 rounded-full bg-black ring-1 ring-white/12"
           aria-hidden
         />
 
-        {/* Inner screen */}
         <div className="relative h-full w-full overflow-hidden rounded-[1.7rem] bg-black ring-1 ring-inset ring-white/[0.1]">
-          <Image
-            src={image}
-            alt={alt}
-            width={width}
-            height={height}
-            quality={100}
-            unoptimized
-            priority={priority}
-            className="h-full w-full object-cover object-top"
-            sizes="(max-width: 640px) 40vw, 234px"
-          />
+          {children}
         </div>
 
-        {/* Home indicator */}
         <div
           className="pointer-events-none absolute bottom-[10px] left-1/2 z-20 h-[4px] w-[70px] -translate-x-1/2 rounded-full bg-white/30"
           aria-hidden

@@ -13,7 +13,8 @@
     "qa:programme-progression-families": "npx --yes tsx scripts/qa-programme-progression-families.ts",
     "qa:run-prescriptions": "npx --yes tsx scripts/qa-run-prescriptions.ts",
     "qa:hyrox-track-programming": "npx --yes tsx scripts/qa-hyrox-track-programming.ts",
-    "qa:programme-coaching-methodology": "npx --yes tsx scripts/qa-programme-coaching-methodology.ts"
+    "qa:programme-coaching-methodology": "npx --yes tsx scripts/qa-programme-coaching-methodology.ts",
+    "export:homepage-phones": "npx --yes tsx scripts/homepage/export-phone-screens.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -36,6 +37,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "playwright": "^1.61.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

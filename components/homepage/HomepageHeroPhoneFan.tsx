@@ -30,7 +30,7 @@ export function HomepageHeroPhoneFan({ className }: { className?: string }) {
 
       {/* Primary phone — centre, full contrast */}
       <div className="relative z-10 mx-auto flex justify-center">
-        <HomepagePhoneVisual screen={primary} size="xl" priority />
+        <HomepagePhoneVisual screen={primary} size="xl" />
       </div>
 
       {/* Founder proof inset */}
