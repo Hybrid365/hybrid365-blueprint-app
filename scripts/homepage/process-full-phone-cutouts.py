@@ -88,7 +88,12 @@ def content_bounds(img: Image.Image, *, alpha_threshold: int = 8) -> tuple[int, 
 
 
 def process_full_phone(input_path: Path, output_path: Path) -> tuple[int, int]:
-    img = remove_background(Image.open(input_path))
+    src = Image.open(input_path)
+    if src.mode == "RGBA":
+        # Preserve native transparency from file-attached PNGs.
+        img = src
+    else:
+        img = remove_background(src)
     min_x, min_y, max_x, max_y = content_bounds(img)
 
     crop_left = max(0, min_x - PADDING)

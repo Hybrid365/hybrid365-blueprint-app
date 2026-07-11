@@ -6,11 +6,9 @@ import {
   HERO_ECOSYSTEM_MINI_CARDS,
   HERO_ECOSYSTEM_PHONE,
 } from "@/app/lib/homepage/coachingEcosystem";
-import { HERO_ECOSYSTEM_PHOTO } from "@/app/lib/homepage/athletePhotography";
 import { getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
 import { HomepagePhoneVisual } from "./HomepagePhoneVisual";
 import { HomepageEcosystemMiniCard } from "./HomepageEcosystemMiniCard";
-import { HomepageEditorialPhoto } from "./HomepageEditorialPhoto";
 
 function subscribeReducedMotion(onStoreChange: () => void) {
   const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -26,28 +24,44 @@ function getReducedMotionServer() {
   return true;
 }
 
-function EcosystemAthleteEnvironment({ animate }: { animate: boolean }) {
+function EcosystemConnectors({ animate }: { animate: boolean }) {
   return (
-    <>
-      <div
-        className={cn(
-          "pointer-events-none absolute -right-[24%] top-[10%] z-[1] h-[50%] w-[48%] opacity-35",
-          animate && "homepage-ecosystem-card-enter"
-        )}
-        style={{ animationDelay: animate ? "0.05s" : undefined }}
-      >
-        <HomepageEditorialPhoto
-          photo={HERO_ECOSYSTEM_PHOTO}
-          className="h-full w-full"
-          intensity="subtle"
-          sizes="160px"
-        />
-      </div>
-      <div
-        className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_center,transparent_28%,#050505_82%)]"
-        aria-hidden
-      />
-    </>
+    <svg
+      viewBox="0 0 100 100"
+      className="pointer-events-none absolute inset-0 z-[5] h-full w-full"
+      aria-hidden
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <linearGradient id="hero-orbit-line" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#f4d23c" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.1" />
+        </linearGradient>
+      </defs>
+      {HERO_ECOSYSTEM_MINI_CARDS.map((card, index) => (
+        <g key={card.id}>
+          <path
+            d={card.connectorPath}
+            fill="none"
+            stroke="url(#hero-orbit-line)"
+            strokeWidth="0.28"
+            strokeLinecap="round"
+            className={cn(animate && "homepage-ecosystem-connector")}
+            style={{ animationDelay: `${0.35 + index * 0.07}s` }}
+          />
+          <circle
+            cx={card.connectorEnd.x}
+            cy={card.connectorEnd.y}
+            r="0.75"
+            fill="#f4d23c"
+            fillOpacity={0.55}
+            className={cn(animate && "homepage-ecosystem-connector")}
+            style={{ animationDelay: `${0.42 + index * 0.07}s` }}
+          />
+        </g>
+      ))}
+      <circle cx="50" cy="46" r="1" fill="#f4d23c" fillOpacity={0.75} />
+    </svg>
   );
 }
 
@@ -63,18 +77,24 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
 
   return (
     <div className={cn("w-full", className)} aria-label="Hybrid365 coaching ecosystem preview">
-      {/* Tablet + desktop — phone hero, 4 cards at corners, generous spacing */}
+      {/* Desktop / tablet — orbital composition */}
       <div
         className={cn(
           "relative mx-auto hidden overflow-visible sm:block",
-          "h-[400px] w-full max-w-[460px] lg:h-[440px] lg:max-w-[500px]"
+          "h-[460px] w-full max-w-[540px] lg:h-[500px] lg:max-w-[580px]"
         )}
       >
-        <EcosystemAthleteEnvironment animate={animate} />
+        {/* Subtle hub glow — phone remains visual hero */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-[46%] z-0 h-[55%] w-[42%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.14),transparent_68%)]"
+          aria-hidden
+        />
+
+        <EcosystemConnectors animate={animate} />
 
         <div
           className={cn(
-            "absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2",
+            "absolute left-1/2 top-[46%] z-10 -translate-x-1/2 -translate-y-1/2",
             animate && "homepage-ecosystem-phone-enter"
           )}
         >
@@ -89,12 +109,12 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
           <div
             key={card.id}
             className={cn(
-              "absolute z-20",
+              "absolute",
               card.desktopClass,
               animate && "homepage-ecosystem-card-enter homepage-ecosystem-float-slow"
             )}
             style={{
-              animationDelay: animate ? `${0.12 + index * 0.08}s` : undefined,
+              animationDelay: animate ? `${0.1 + index * 0.06}s` : undefined,
             }}
           >
             <HomepageEcosystemMiniCard card={card} />
@@ -102,25 +122,19 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
         ))}
       </div>
 
-      {/* Mobile — phone centre, 4 corner cards with spacing */}
-      <div className="relative mx-auto block w-full max-w-[320px] overflow-visible sm:hidden">
-        <div className="relative mx-auto h-[268px] w-full overflow-visible">
-          <div className="pointer-events-none absolute -right-6 top-2 z-[1] h-[45%] w-[38%] opacity-30">
-            <HomepageEditorialPhoto
-              photo={HERO_ECOSYSTEM_PHOTO}
-              className="h-full w-full"
-              intensity="subtle"
-              sizes="90px"
-            />
-          </div>
+      {/* Mobile — scaled orbit, same structure */}
+      <div className="relative mx-auto block w-full max-w-[340px] overflow-visible sm:hidden">
+        <div className="relative mx-auto h-[300px] w-full overflow-visible">
           <div
-            className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_center,transparent_22%,#050505_80%)]"
+            className="pointer-events-none absolute left-1/2 top-[48%] z-0 h-[50%] w-[44%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.1),transparent_70%)]"
             aria-hidden
           />
 
+          <EcosystemConnectors animate={animate} />
+
           <div
             className={cn(
-              "absolute left-1/2 top-[52%] z-10 -translate-x-1/2 -translate-y-1/2",
+              "absolute left-1/2 top-[48%] z-10 -translate-x-1/2 -translate-y-1/2",
               animate && "homepage-ecosystem-phone-enter"
             )}
             style={{ width: HERO_ECOSYSTEM_PHONE.displayWidth.mobile }}
@@ -137,12 +151,12 @@ export function HomepageCoachingEcosystem({ className }: { className?: string })
             <div
               key={card.id}
               className={cn(
-                "absolute z-20",
+                "absolute",
                 card.mobileClass,
                 animate && "homepage-ecosystem-card-enter homepage-ecosystem-float-slow"
               )}
               style={{
-                animationDelay: animate ? `${0.1 + index * 0.07}s` : undefined,
+                animationDelay: animate ? `${0.08 + index * 0.05}s` : undefined,
               }}
             >
               <HomepageEcosystemMiniCard card={card} compact />

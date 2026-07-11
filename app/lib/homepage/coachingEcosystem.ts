@@ -1,61 +1,71 @@
-/** Homepage hero ecosystem — 4 premium mini UI cards around central phone. */
+/** Homepage hero ecosystem — 5 orbital mini UI cards around central phone. */
 
 import type { PhoneScreenId } from "./phoneScreens";
 
 export type EcosystemMiniCard = {
   id: string;
   title: string;
-  caption: string;
   screenId: PhoneScreenId;
-  /** Visible floating on mobile (max 2 around phone). */
-  mobileFloat: boolean;
+  /** Absolute position within ecosystem container */
   desktopClass: string;
   mobileClass: string;
+  /** SVG connector (viewBox 0 0 100 100) — phone hub at ~50,46 */
+  connectorPath: string;
+  connectorEnd: { x: number; y: number };
 };
 
 export const HERO_ECOSYSTEM_MINI_CARDS: EcosystemMiniCard[] = [
   {
-    id: "today-session",
-    title: "Today's Session",
-    caption: "Hyrox Conditioning",
-    screenId: "threshold-run",
-    mobileFloat: true,
-    desktopClass: "top-[10%] left-0 w-[108px] lg:w-[118px]",
-    mobileClass: "top-[6%] left-0 w-[96px]",
+    id: "weekly-programme",
+    title: "Weekly Programme",
+    screenId: "programme",
+    desktopClass: "left-1/2 top-0 z-20 w-[120px] -translate-x-1/2",
+    mobileClass: "left-1/2 top-0 z-20 w-[88px] -translate-x-1/2",
+    connectorPath: "M50 46 Q50 34 50 16",
+    connectorEnd: { x: 50, y: 16 },
   },
   {
     id: "weekly-check-in",
     title: "Weekly Check-In",
-    caption: "Sleep · Energy · Soreness",
     screenId: "weekly-check-in",
-    mobileFloat: true,
-    desktopClass: "top-[10%] right-0 w-[108px] lg:w-[118px]",
-    mobileClass: "top-[6%] right-0 w-[96px]",
+    desktopClass: "left-0 top-[16%] z-20 w-[118px]",
+    mobileClass: "left-0 top-[12%] z-20 w-[86px]",
+    connectorPath: "M50 46 Q32 38 18 26",
+    connectorEnd: { x: 18, y: 26 },
+  },
+  {
+    id: "today-session",
+    title: "Today's Session",
+    screenId: "threshold-run",
+    desktopClass: "right-0 top-[16%] z-20 w-[118px]",
+    mobileClass: "right-0 top-[12%] z-20 w-[86px]",
+    connectorPath: "M50 46 Q68 38 82 26",
+    connectorEnd: { x: 82, y: 26 },
+  },
+  {
+    id: "performance-testing",
+    title: "Performance Testing",
+    screenId: "performance-testing",
+    desktopClass: "bottom-0 left-0 z-20 w-[118px]",
+    mobileClass: "bottom-[2%] left-0 z-20 w-[86px]",
+    connectorPath: "M50 46 Q32 58 18 74",
+    connectorEnd: { x: 18, y: 74 },
   },
   {
     id: "progress-tracking",
     title: "Progress Tracking",
-    caption: "Race readiness 82%",
     screenId: "progress-overview",
-    mobileFloat: false,
-    desktopClass: "bottom-[10%] left-0 w-[108px] lg:w-[118px]",
-    mobileClass: "bottom-[4%] left-[4%] w-[96px]",
-  },
-  {
-    id: "benchmark-testing",
-    title: "Benchmark Testing",
-    caption: "5K · Threshold · HYROX",
-    screenId: "performance-testing",
-    mobileFloat: false,
-    desktopClass: "bottom-[10%] right-0 w-[108px] lg:w-[118px]",
-    mobileClass: "bottom-[4%] right-[4%] w-[96px]",
+    desktopClass: "bottom-0 right-0 z-20 w-[118px]",
+    mobileClass: "bottom-[2%] right-0 z-20 w-[86px]",
+    connectorPath: "M50 46 Q68 58 82 74",
+    connectorEnd: { x: 82, y: 74 },
   },
 ];
 
 export const HERO_ECOSYSTEM_PHONE = {
   screenId: "team-athlete-overview" as const,
-  displayWidth: { mobile: 132, tablet: 210, desktop: 220 },
+  displayWidth: { mobile: 148, tablet: 200, desktop: 210 },
 } as const;
 
 /** Mini UI preview width inside floating cards */
-export const HERO_MINI_UI_WIDTH = 52;
+export const HERO_MINI_UI_WIDTH = 56;

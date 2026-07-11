@@ -15,20 +15,20 @@ export function HomepageEcosystemMiniCard({
   className?: string;
 }) {
   const screen = getPhoneScreen(card.screenId);
-  const previewWidth = compact ? 44 : HERO_MINI_UI_WIDTH;
+  const previewWidth = compact ? 42 : HERO_MINI_UI_WIDTH;
 
   return (
     <div
       className={cn(
-        "rounded-2xl border border-white/10 bg-[#0a0a0a]/90 p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.5)] backdrop-blur-md",
-        compact && "p-2",
+        "rounded-xl border border-white/10 bg-[#0a0a0a]/92 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md",
+        compact ? "px-2 py-1.5" : "px-2.5 py-2",
         className
       )}
     >
       <p
         className={cn(
-          "font-bold uppercase tracking-[0.12em] text-white/90",
-          compact ? "text-[7px]" : "text-[8px]"
+          "text-center font-bold uppercase tracking-[0.1em] text-white/85",
+          compact ? "text-[6.5px]" : "text-[7.5px] sm:text-[8px]"
         )}
       >
         {card.title}
@@ -36,10 +36,10 @@ export function HomepageEcosystemMiniCard({
 
       <div
         className={cn(
-          "relative mx-auto mt-2 overflow-hidden rounded-[11px] border border-white/12 bg-black shadow-[0_8px_24px_rgba(0,0,0,0.45)]",
-          compact ? "mt-1.5" : "mt-2"
+          "relative mx-auto overflow-hidden rounded-[10px] border border-white/10 bg-black",
+          compact ? "mt-1" : "mt-1.5"
         )}
-        style={{ width: previewWidth, height: previewWidth * 1.85 }}
+        style={{ width: previewWidth, height: previewWidth * 1.75 }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -53,20 +53,7 @@ export function HomepageEcosystemMiniCard({
           loading="lazy"
           decoding="async"
         />
-        <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0a]/30"
-          aria-hidden
-        />
       </div>
-
-      <p
-        className={cn(
-          "mt-2 text-center leading-tight text-white/45",
-          compact ? "mt-1.5 text-[7px]" : "text-[8px]"
-        )}
-      >
-        {card.caption}
-      </p>
     </div>
   );
 }
