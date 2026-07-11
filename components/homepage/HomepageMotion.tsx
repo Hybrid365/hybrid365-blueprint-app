@@ -30,6 +30,30 @@ export function HomepageMotionStyles() {
             from { stroke-dashoffset: 100; }
             to { stroke-dashoffset: 0; }
           }
+          @keyframes homepage-ecosystem-enter {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes homepage-ecosystem-phone-enter {
+            from { opacity: 0; transform: translateY(14px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes homepage-ecosystem-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+          }
+          @keyframes homepage-ecosystem-float-slow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+          }
+          @keyframes homepage-ecosystem-connector-fade {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes homepage-ecosystem-sparkline-draw {
+            from { stroke-dashoffset: 100; }
+            to { stroke-dashoffset: 0; }
+          }
           .homepage-marquee-track {
             animation: homepage-marquee 36s linear infinite;
           }
@@ -38,13 +62,47 @@ export function HomepageMotionStyles() {
             stroke-dashoffset: 100;
             animation: homepage-sparkline-draw 1.8s ease-out forwards;
           }
+          .homepage-ecosystem-phone-enter {
+            animation: homepage-ecosystem-phone-enter 0.7s ease-out both;
+          }
+          .homepage-ecosystem-card-enter {
+            animation: homepage-ecosystem-enter 0.55s ease-out both;
+          }
+          .homepage-ecosystem-float {
+            animation: homepage-ecosystem-float 7s ease-in-out infinite;
+          }
+          .homepage-ecosystem-float-slow {
+            animation: homepage-ecosystem-float-slow 8s ease-in-out infinite;
+          }
+          .homepage-ecosystem-connector {
+            opacity: 0;
+            animation: homepage-ecosystem-connector-fade 0.8s ease-out forwards;
+          }
+          .homepage-ecosystem-sparkline {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: homepage-ecosystem-sparkline-draw 1.6s ease-out 0.6s forwards;
+          }
           @media (prefers-reduced-motion: reduce) {
             .homepage-marquee-track {
               animation: none;
             }
-            .homepage-sparkline-draw {
+            .homepage-sparkline-draw,
+            .homepage-ecosystem-sparkline {
               animation: none;
               stroke-dashoffset: 0;
+            }
+            .homepage-ecosystem-phone-enter,
+            .homepage-ecosystem-card-enter {
+              animation: none;
+            }
+            .homepage-ecosystem-float,
+            .homepage-ecosystem-float-slow {
+              animation: none;
+            }
+            .homepage-ecosystem-connector {
+              animation: none;
+              opacity: 1;
             }
           }
         `,

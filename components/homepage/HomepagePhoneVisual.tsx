@@ -13,6 +13,7 @@ export function HomepagePhoneVisual({
   screen,
   size = "md",
   displayWidth: displayWidthOverride,
+  fillContainer = false,
   className,
   priority = false,
 }: {
@@ -20,6 +21,8 @@ export function HomepagePhoneVisual({
   size?: HomepagePhoneCutoutSize;
   /** Override preset size — used for hero preview scaling. */
   displayWidth?: number;
+  /** Shrink to parent width (e.g. min(52vw, 188px) hero container). */
+  fillContainer?: boolean;
   className?: string;
   priority?: boolean;
 }) {
@@ -31,7 +34,10 @@ export function HomepagePhoneVisual({
         "mx-auto shrink-0 drop-shadow-[0_24px_48px_rgba(0,0,0,0.55)]",
         className
       )}
-      style={{ width: displayWidth }}
+      style={{
+        width: fillContainer ? "100%" : displayWidth,
+        maxWidth: displayWidth,
+      }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

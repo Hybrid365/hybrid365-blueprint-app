@@ -9,7 +9,7 @@ import {
 import { HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { HomepageProofMarquee } from "./HomepageMotion";
-import { HomepageHeroPhoneFan } from "./HomepageHeroPhoneFan";
+import { HomepageCoachingEcosystem } from "./HomepageCoachingEcosystem";
 import {
   HomepageHeading,
   HomepageEyebrow,
@@ -28,7 +28,7 @@ export function HomepageHero() {
       />
 
       <div className="relative mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-8 py-10 sm:gap-10 sm:py-14 lg:grid-cols-[1.2fr_0.8fr] lg:gap-12 lg:py-16">
+        <div className="grid items-center gap-6 py-8 sm:gap-8 sm:py-12 lg:grid-cols-[1.22fr_0.78fr] lg:gap-10 lg:py-14">
           <div className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
             <HomepageEyebrow>High-performance hybrid coaching</HomepageEyebrow>
 
@@ -83,7 +83,7 @@ export function HomepageHero() {
             </dl>
           </div>
 
-          <HomepageHeroPhoneFan className="lg:justify-self-end" />
+          <HomepageCoachingEcosystem className="lg:justify-self-end" />
         </div>
       </div>
 
