@@ -11,6 +11,10 @@ const SIZE_CLASS: Record<Size, string> = {
   xl: "w-[clamp(260px,55vw,320px)]",
 };
 
+/** Approximate dimensions of cleaned transparent cutouts (~280×607). */
+const CUTOUT_WIDTH = 285;
+const CUTOUT_HEIGHT = 607;
+
 export function HomepagePhoneVisual({
   screen,
   size = "md",
@@ -31,20 +35,18 @@ export function HomepagePhoneVisual({
       )}
     >
       <div
-        className="pointer-events-none absolute -inset-3 rounded-[2.5rem] bg-[radial-gradient(circle_at_center,rgba(244,210,60,0.12),transparent_70%)]"
+        className="pointer-events-none absolute -inset-4 bg-[radial-gradient(circle_at_center,rgba(244,210,60,0.1),transparent_72%)]"
         aria-hidden
       />
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#0a0a0a] shadow-[0_24px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(244,210,60,0.06)]">
-        <Image
-          src={screen.src}
-          alt={screen.alt}
-          width={390}
-          height={844}
-          priority={priority}
-          className="h-auto w-full"
-          sizes="(max-width: 640px) 55vw, (max-width: 1024px) 280px, 320px"
-        />
-      </div>
+      <Image
+        src={screen.src}
+        alt={screen.alt}
+        width={CUTOUT_WIDTH}
+        height={CUTOUT_HEIGHT}
+        priority={priority}
+        className="relative z-10 h-auto w-full drop-shadow-[0_28px_56px_rgba(0,0,0,0.65)]"
+        sizes="(max-width: 640px) 55vw, (max-width: 1024px) 280px, 320px"
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-/** Homepage iPhone UI screen assets — edit paths and copy here. */
+/** Transparent cutout assets — generated from public/images/homepage/ui-screens/ */
+export const HOMEPAGE_UI_MOCKUP_BASE = "/homepage/ui-mockups";
 
 export type PhoneScreenId =
   | "programme"
@@ -24,77 +25,77 @@ export type PhoneScreen = {
 export const PHONE_SCREENS: Record<PhoneScreenId, PhoneScreen> = {
   programme: {
     id: "programme",
-    src: "/images/homepage/ui-screens/programme.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/programme.png`,
     alt: "Hybrid365 app — Your Programme weekly training plan",
     title: "Your Programme",
     description: "Structured weekly sessions with coach notes — not random workouts.",
   },
   "threshold-run": {
     id: "threshold-run",
-    src: "/images/homepage/ui-screens/threshold-run.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/threshold-run.png`,
     alt: "Hybrid365 app — Threshold Run session detail",
     title: "Threshold Run",
     description: "Clear objectives, pacing targets and session structure for every run.",
   },
   "progress-overview": {
     id: "progress-overview",
-    src: "/images/homepage/ui-screens/progress-overview.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/progress-overview.png`,
     alt: "Hybrid365 app — Performance Overview dashboard",
     title: "Progress Overview",
     description: "Race readiness, consistency and key performance metrics in one view.",
   },
   "performance-testing": {
     id: "performance-testing",
-    src: "/images/homepage/ui-screens/performance-testing.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/performance-testing.png`,
     alt: "Hybrid365 app — Performance Testing benchmarks",
     title: "Performance Testing",
     description: "Running and station benchmarks tracked against targets.",
   },
   "hybrid365-team": {
     id: "hybrid365-team",
-    src: "/images/homepage/ui-screens/hybrid365-team.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/hybrid365-team.png`,
     alt: "Hybrid365 app — Hybrid365 Team culture screen",
     title: "Hybrid365 Team",
     description: "Coached individually. Built as a team. Standards, not vibes.",
   },
   "your-journey": {
     id: "your-journey",
-    src: "/images/homepage/ui-screens/your-journey.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/your-journey.png`,
     alt: "Hybrid365 app — Your Journey from testing to race day",
     title: "Your Journey",
     description: "From assessment to race day — a clear roadmap with accountability.",
   },
   "threshold-progression": {
     id: "threshold-progression",
-    src: "/images/homepage/ui-screens/threshold-progression.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/threshold-progression.png`,
     alt: "Hybrid365 app — Threshold Progression chart",
     title: "Threshold Progression",
     description: "Watch threshold capacity build week over week with planned deloads.",
   },
   "weekly-run-volume": {
     id: "weekly-run-volume",
-    src: "/images/homepage/ui-screens/weekly-run-volume.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/weekly-run-volume.png`,
     alt: "Hybrid365 app — Weekly Run Volume progression",
     title: "Weekly Run Volume",
     description: "Progressive running volume managed for race-day performance.",
   },
   "weight-tracking": {
     id: "weight-tracking",
-    src: "/images/homepage/ui-screens/weight-tracking.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/weight-tracking.png`,
     alt: "Hybrid365 app — Weight Tracking dashboard",
     title: "Weight Tracking",
     description: "Body composition tracked against targets — look athletic, perform better.",
   },
   "weekly-check-in": {
     id: "weekly-check-in",
-    src: "/images/homepage/ui-screens/weekly-check-in.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/weekly-check-in.png`,
     alt: "Hybrid365 app — Weekly Check-In accountability",
     title: "Weekly Check-In",
     description: "Sleep, energy, soreness and adherence — coach feedback every week.",
   },
   "team-athlete-overview": {
     id: "team-athlete-overview",
-    src: "/images/homepage/ui-screens/team-athlete-overview.png",
+    src: `${HOMEPAGE_UI_MOCKUP_BASE}/team-athlete-overview.png`,
     alt: "Hybrid365 app — Team Athlete Overview dashboard",
     title: "Team Athlete Overview",
     description: "Your full coaching dashboard — sessions, progress and race countdown.",
