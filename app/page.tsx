@@ -13,9 +13,9 @@ import { HomepageTestimonials } from "@/components/homepage/HomepageTestimonials
 import { HomepageFinalCta } from "@/components/homepage/HomepageFinalCta";
 
 export const metadata: Metadata = {
-  title: "Become a Faster HYROX Athlete",
+  title: "Hybrid Performance Coaching | Hybrid365",
   description:
-    "HYROX-first performance coaching from the system behind 1:08:37 to 59:14 Pro Solo. Build your free personalised training week.",
+    "Run fast. Lift heavy. Look good. Perform better. Structured hybrid coaching with a proven HYROX performance edge. Build your free personalised training week.",
 };
 
 export default function HomePage() {

@@ -24,7 +24,7 @@ export function HomepageStickyCta() {
       aria-label="Quick action"
     >
       <PrimaryCta href={FREE_WEEK_HYROX_URL} className="w-full min-h-[48px]">
-        Build My Free Week
+        Start My Free Training Week
       </PrimaryCta>
     </div>
   );

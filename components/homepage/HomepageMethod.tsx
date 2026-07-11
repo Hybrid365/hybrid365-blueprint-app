@@ -10,15 +10,17 @@ import {
 export function HomepageMethod() {
   return (
     <HomepageSection id="method">
-      <HomepageEyebrow>The method</HomepageEyebrow>
-      <HomepageHeading className="max-w-2xl text-[clamp(1.75rem,5vw,3rem)]">
-        Four foundations.
-        <span className="block text-[#f4d23c]">One performance system.</span>
-      </HomepageHeading>
-      <p className="mt-5 max-w-xl text-base text-white/55">
-        Not four separate programmes — four integrated inputs to becoming a better
-        HYROX athlete.
-      </p>
+      <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:max-w-none lg:text-left">
+        <HomepageEyebrow>The method</HomepageEyebrow>
+        <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
+          Four foundations.
+          <span className="block text-[#f4d23c]">One performance system.</span>
+        </HomepageHeading>
+        <p className="mt-5 text-base text-white/55">
+          Not four separate programmes — four integrated inputs to becoming fitter,
+          faster, stronger and better prepared to perform.
+        </p>
+      </div>
 
       <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2">
         {PERFORMANCE_PILLARS.map((pillar, index) => (
@@ -46,8 +48,8 @@ export function HomepageMethod() {
         ))}
       </div>
 
-      <div className="mt-10">
-        <PrimaryCta href={FREE_WEEK_HYROX_URL}>Build My Free Week</PrimaryCta>
+      <div className="mt-10 flex justify-center lg:justify-start">
+        <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
       </div>
     </HomepageSection>
   );

@@ -15,7 +15,7 @@ export function HomepageJourney() {
   return (
     <HomepageSection variant="accent">
       <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-14 lg:items-center">
-        <div className="relative aspect-[4/5] min-h-[320px] overflow-hidden rounded-2xl border border-white/10 sm:min-h-[420px]">
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-md min-h-[320px] overflow-hidden rounded-2xl border border-white/10 sm:min-h-[420px] lg:mx-0 lg:max-w-none">
           <Image
             src={FOUNDER_STORY_IMAGE.src}
             alt={FOUNDER_STORY_IMAGE.alt}
@@ -32,7 +32,7 @@ export function HomepageJourney() {
           </div>
         </div>
 
-        <div>
+        <div className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
           <HomepageEyebrow>My journey</HomepageEyebrow>
           <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
             This wasn&apos;t luck.
@@ -60,16 +60,17 @@ export function HomepageJourney() {
 
           <p className="mt-8 text-base leading-relaxed text-white/65">
             Years of refining running economy, threshold development, aerobic
-            capacity, strength endurance and race-specific station work — tested in
-            real HYROX races, not theory.
+            capacity, strength endurance and race-specific work — tested in real
+            HYROX races and hybrid training blocks, not theory.
           </p>
           <p className="mt-4 text-base leading-relaxed text-white/65">
-            That same methodology now shapes every programme Hybrid365 athletes
-            follow. Structured blocks. Clear progression. Recovery built in.
+            That same methodology now shapes every Hybrid365 programme — whether
+            you are building general hybrid fitness or targeting HYROX performance.
+            Structured blocks. Clear progression. Recovery built in.
           </p>
 
-          <div className="mt-8">
-            <PrimaryCta href={FREE_WEEK_HYROX_URL}>Build My Free Week</PrimaryCta>
+          <div className="mt-8 flex justify-center lg:justify-start">
+            <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
           </div>
         </div>
       </div>

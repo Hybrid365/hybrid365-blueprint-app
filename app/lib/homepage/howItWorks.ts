@@ -9,9 +9,9 @@ export type HowItWorksStep = {
 export const HOW_IT_WORKS_STEPS: HowItWorksStep[] = [
   {
     step: 1,
-    title: "Build your personalised HYROX week",
+    title: "Build your personalised training week",
     description:
-      "Answer a short assessment. Your Week 1 sample is built around your level, schedule, equipment and race goals.",
+      "Answer a short assessment. Your Week 1 sample is built around your level, schedule, equipment and goals — including HYROX-specific options.",
   },
   {
     step: 2,

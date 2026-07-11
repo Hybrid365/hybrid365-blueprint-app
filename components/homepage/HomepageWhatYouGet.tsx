@@ -22,8 +22,8 @@ export function HomepageWhatYouGet() {
             From free week to full team
           </HomepageHeading>
           <p className="mt-5 text-base text-white/55">
-            One clear path. Start with your personalised HYROX week — progress when
-            you are ready.
+            One clear path. Start with your personalised training week — progress
+            into the community or HYROX Team when you are ready.
           </p>
 
           <ol className="mt-10 space-y-0">
@@ -74,12 +74,12 @@ export function HomepageWhatYouGet() {
             ))}
           </ol>
 
-          <div className="mt-10">
-            <PrimaryCta href={FREE_WEEK_HYROX_URL}>Build My Free Week</PrimaryCta>
+          <div className="mt-10 flex justify-center lg:justify-start">
+            <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative mx-auto flex w-full max-w-[min(100%,680px)] justify-center lg:mx-0">
           <AthletePathwayPhoneStack />
         </div>
       </div>

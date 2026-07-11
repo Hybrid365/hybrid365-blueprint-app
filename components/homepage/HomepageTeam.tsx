@@ -46,7 +46,7 @@ export function HomepageTeam() {
       </p>
 
       <div className="mt-8">
-        <PrimaryCta href={FREE_WEEK_HYROX_URL}>Build My Free Week</PrimaryCta>
+        <PrimaryCta href={FREE_WEEK_HYROX_URL}>Start My Free Training Week</PrimaryCta>
       </div>
     </HomepageSection>
   );

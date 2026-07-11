@@ -72,7 +72,7 @@ export function HomepageNav() {
             Login
           </Link>
           <PrimaryCta href={FREE_WEEK_HYROX_URL} className="min-h-[40px] px-5 text-xs">
-            Build My Free Week
+            Start Free Week
           </PrimaryCta>
         </nav>
 

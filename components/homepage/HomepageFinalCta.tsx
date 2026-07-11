@@ -23,12 +23,12 @@ export function HomepageFinalCta() {
           Stop guessing with your training
         </HomepageHeading>
         <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">
-          Build a personalised HYROX training week based on your experience, goals
-          and available training days.
+          Build a personalised hybrid training week based on your experience, goals
+          and available training days — with HYROX-specific pathways available.
         </p>
         <div className="mt-10 flex justify-center">
           <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large">
-            Build My Free Week
+            Start My Free Training Week
           </PrimaryCta>
         </div>
       </div>
