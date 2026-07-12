@@ -42,9 +42,17 @@ export function HomepageMotionStyles() {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-4px); }
           }
-          @keyframes homepage-ecosystem-float-slow {
+          @keyframes homepage-ecosystem-phone-float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-3px); }
+            50% { transform: translateY(-3.5px); }
+          }
+          @keyframes homepage-ecosystem-card-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2.5px); }
+          }
+          @keyframes homepage-ecosystem-dot-pulse {
+            0%, 100% { opacity: 0.55; }
+            50% { opacity: 0.9; }
           }
           @keyframes homepage-ecosystem-connector-fade {
             from { opacity: 0; }
@@ -71,12 +79,20 @@ export function HomepageMotionStyles() {
           .homepage-ecosystem-float {
             animation: homepage-ecosystem-float 7s ease-in-out infinite;
           }
-          .homepage-ecosystem-float-slow {
-            animation: homepage-ecosystem-float-slow 8s ease-in-out infinite;
+          .homepage-ecosystem-phone-float {
+            animation: homepage-ecosystem-phone-float 7.5s ease-in-out 0.8s infinite;
+          }
+          .homepage-ecosystem-card-float {
+            animation: homepage-ecosystem-card-float 8s ease-in-out infinite;
           }
           .homepage-ecosystem-connector {
             opacity: 0;
             animation: homepage-ecosystem-connector-fade 0.8s ease-out forwards;
+          }
+          .homepage-ecosystem-connector-dot {
+            opacity: 0;
+            animation: homepage-ecosystem-connector-fade 0.8s ease-out forwards,
+              homepage-ecosystem-dot-pulse 3.2s ease-in-out 1s infinite;
           }
           .homepage-ecosystem-sparkline {
             stroke-dasharray: 100;
@@ -97,10 +113,13 @@ export function HomepageMotionStyles() {
               animation: none;
             }
             .homepage-ecosystem-float,
-            .homepage-ecosystem-float-slow {
+            .homepage-ecosystem-float-slow,
+            .homepage-ecosystem-phone-float,
+            .homepage-ecosystem-card-float {
               animation: none;
             }
-            .homepage-ecosystem-connector {
+            .homepage-ecosystem-connector,
+            .homepage-ecosystem-connector-dot {
               animation: none;
               opacity: 1;
             }
