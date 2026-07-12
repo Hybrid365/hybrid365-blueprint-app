@@ -4,6 +4,7 @@ import { HomepageStickyCta } from "@/components/homepage/HomepageStickyCta";
 import { HomepageSmoothScroll } from "@/components/homepage/HomepageSmoothScroll";
 import { HomepageMotionStyles } from "@/components/homepage/HomepageMotion";
 import { HomepageHero } from "@/components/homepage/HomepageHero";
+import { HomepageProof } from "@/components/homepage/HomepageProof";
 import { HomepageWhy } from "@/components/homepage/HomepageWhy";
 import { HomepageStandard } from "@/components/homepage/HomepageStandard";
 import { HomepageMethod } from "@/components/homepage/HomepageMethod";
@@ -30,6 +31,7 @@ export default function HomePage() {
       <HomepageNav />
       <main>
         <HomepageHero />
+        <HomepageProof />
         <HomepageWhy />
         <HomepageStandard />
         <HomepageMethod />

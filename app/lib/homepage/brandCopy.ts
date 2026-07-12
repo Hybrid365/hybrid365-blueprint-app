@@ -25,6 +25,17 @@ export const HERO_SUPPORTING_COPY =
 export const HERO_PROOF_COPY =
   "Built for athletes who refuse average — not another motivational feed." as const;
 
+/** Primary proof band — immediately below hero */
+export const PRIMARY_PROOF_METRICS = [
+  { value: "1:08:37", label: "Start" },
+  { value: "59:14", label: "Pro HYROX", accent: true },
+  { value: "9:23", label: "Improvement" },
+  { value: "16:00", label: "5K PB" },
+] as const;
+
+export const PRIMARY_PROOF_BODY =
+  "From 1:08:37 to 59:14 Pro Solo HYROX. Threshold progression, run volume, body composition and benchmarks—not guesswork." as const;
+
 export const BELIEF_HEADLINE = {
   line1: "You're not afraid of hard work.",
   line2: "You're afraid of wasting it.",
@@ -57,8 +68,7 @@ export const RESULTS_HEADLINE = {
   line2: "Progress measured.",
 } as const;
 
-export const RESULTS_BODY =
-  "From 1:08:37 to 59:14 Pro Solo HYROX. Threshold progression, run volume, body composition and benchmarks — nothing guessed." as const;
+export const RESULTS_BODY = PRIMARY_PROOF_BODY;
 
 export const CULTURE_HEADLINE = "For people who refuse average." as const;
 

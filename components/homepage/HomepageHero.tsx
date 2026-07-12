@@ -3,13 +3,10 @@ import {
   BRAND_MOTTO,
   BRAND_TAGLINE_LINES,
   HERO_PROOF_COPY,
-  HERO_STATS,
   HERO_SUPPORTING_COPY,
-  PROOF_MARQUEE_ITEMS,
 } from "@/app/lib/homepage/brandCopy";
 import { HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
-import { HomepageProofMarquee } from "./HomepageMotion";
 import { HomepageCoachingEcosystem } from "./HomepageCoachingEcosystem";
 import {
   HomepageHeading,
@@ -69,19 +66,6 @@ export function HomepageHero() {
                 See The Method
               </SecondaryCta>
             </HomepageCtaRow>
-
-            <dl className="mx-auto mt-6 grid max-w-lg grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 lg:mx-0 lg:max-w-none">
-              {HERO_STATS.map((stat) => (
-                <div key={stat.label} className="text-center lg:text-left">
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
-                    {stat.label}
-                  </dt>
-                  <dd className="mt-1 text-xl font-black tabular-nums text-white sm:text-2xl">
-                    {stat.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
           </div>
 
           <div className="overflow-visible lg:justify-self-end">
@@ -89,8 +73,6 @@ export function HomepageHero() {
           </div>
         </div>
       </div>
-
-      <HomepageProofMarquee items={PROOF_MARQUEE_ITEMS} />
     </section>
   );
 }
