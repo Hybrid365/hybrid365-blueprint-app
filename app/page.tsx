@@ -4,16 +4,13 @@ import { HomepageStickyCta } from "@/components/homepage/HomepageStickyCta";
 import { HomepageSmoothScroll } from "@/components/homepage/HomepageSmoothScroll";
 import { HomepageMotionStyles } from "@/components/homepage/HomepageMotion";
 import { HomepageHero } from "@/components/homepage/HomepageHero";
+import { HomepageAthletesStrip } from "@/components/homepage/HomepageAthletesStrip";
 import { HomepageProof } from "@/components/homepage/HomepageProof";
-import { HomepageWhy } from "@/components/homepage/HomepageWhy";
-import { HomepageStandard } from "@/components/homepage/HomepageStandard";
+import { HomepageIdentity } from "@/components/homepage/HomepageIdentity";
 import { HomepageMethod } from "@/components/homepage/HomepageMethod";
 import { HomepageProduct } from "@/components/homepage/HomepageProduct";
-import { HomepageJourney } from "@/components/homepage/HomepageJourney";
-import { HomepageCulture } from "@/components/homepage/HomepageCulture";
-import { HomepageAthleteResults } from "@/components/homepage/HomepageAthleteResults";
+import { HomepageHowItWorks } from "@/components/homepage/HomepageHowItWorks";
 import { HomepageTeam } from "@/components/homepage/HomepageTeam";
-import { HomepageWhatYouGet } from "@/components/homepage/HomepageWhatYouGet";
 import { HomepageTestimonials } from "@/components/homepage/HomepageTestimonials";
 import { HomepageFinalCta } from "@/components/homepage/HomepageFinalCta";
 
@@ -31,16 +28,13 @@ export default function HomePage() {
       <HomepageNav />
       <main>
         <HomepageHero />
+        <HomepageAthletesStrip />
         <HomepageProof />
-        <HomepageWhy />
-        <HomepageStandard />
+        <HomepageIdentity />
         <HomepageMethod />
         <HomepageProduct />
-        <HomepageJourney />
-        <HomepageCulture />
-        <HomepageAthleteResults />
+        <HomepageHowItWorks />
         <HomepageTeam />
-        <HomepageWhatYouGet />
         <HomepageTestimonials />
         <HomepageFinalCta />
       </main>

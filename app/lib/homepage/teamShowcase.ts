@@ -3,7 +3,7 @@
 export const TEAM_SHOWCASE_COPY = {
   eyebrow: "The team",
   headline: ["Built by athletes.", "Driven by standards."],
-  body: "Real athletes.\nReal progression.\nOne coaching system.",
+  body: "The full Hybrid365 roster — coached individually, held to the same standard.",
   intakeLine: "Join the next Hybrid365 intake.",
   applyLabel: "Apply For Coaching",
 } as const;

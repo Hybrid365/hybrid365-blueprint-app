@@ -21,7 +21,7 @@ export function HomepageTeam() {
           {TEAM_SHOWCASE_COPY.headline[0]}
           <span className="block text-[#f4d23c]">{TEAM_SHOWCASE_COPY.headline[1]}</span>
         </HomepageHeading>
-        <p className="mt-5 whitespace-pre-line text-base leading-relaxed text-white/55 sm:text-lg">
+        <p className="mt-5 text-base leading-relaxed text-white/55 sm:text-lg">
           {TEAM_SHOWCASE_COPY.body}
         </p>
       </div>

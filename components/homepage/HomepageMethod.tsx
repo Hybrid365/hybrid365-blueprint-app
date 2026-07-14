@@ -1,57 +1,36 @@
 import { PERFORMANCE_PILLARS } from "@/app/lib/homepage/pillars";
-import { BRAND_MOTTO } from "@/app/lib/homepage/brandCopy";
-import { FREE_WEEK_HYROX_URL, HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import {
   HomepageSection,
   HomepageEyebrow,
   HomepageHeading,
-  PrimaryCta,
-  SecondaryCta,
-  HomepageCtaRow,
-  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepageMethod() {
   return (
-    <HomepageSection id="method">
+    <HomepageSection id="method" variant="dark">
       <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:max-w-none lg:text-left">
-        <HomepageEyebrow>Performance identity</HomepageEyebrow>
-        <HomepageHeading className="text-[clamp(1.75rem,5vw,3rem)]">
+        <HomepageEyebrow>The method</HomepageEyebrow>
+        <HomepageHeading className="text-[clamp(1.85rem,5.5vw,3rem)]">
           Four standards.
           <span className="block text-[#f4d23c]">One integrated system.</span>
         </HomepageHeading>
-        <p className="mt-5 text-base text-white/55">
-          Run fast. Lift heavy. Look athletic. Perform better — the identity
-          Hybrid365 is built on. {BRAND_MOTTO}
-        </p>
       </div>
 
-      <div className="mt-12 -mx-4 flex gap-4 overflow-x-auto px-4 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:grid-cols-2 lg:gap-px lg:overflow-hidden lg:rounded-2xl lg:border lg:border-white/10 lg:bg-white/10 lg:px-0 lg:pb-0 xl:grid-cols-4">
-        {PERFORMANCE_PILLARS.map((pillar, index) => (
+      <div className="mt-14 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-6">
+        {PERFORMANCE_PILLARS.map((pillar) => (
           <article
             key={pillar.id}
-            className="w-[min(85vw,280px)] shrink-0 snap-start rounded-2xl border border-white/10 bg-[#0a0a0a] p-6 lg:w-auto lg:rounded-none lg:border-0"
+            className="flex min-h-[140px] flex-col justify-end rounded-2xl border border-white/10 bg-[#0a0a0a]/80 p-5 sm:min-h-[168px] sm:p-6"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4d23c]/80">
-              {String(index + 1).padStart(2, "0")}
-            </p>
-            <h3 className="mt-3 text-xl font-black uppercase tracking-tight text-white">
+            <h3 className="text-[clamp(1.1rem,3vw,1.5rem)] font-black uppercase leading-[0.95] tracking-[-0.03em] text-white">
               {pillar.title}
             </h3>
-            <p className="mt-2 text-sm font-semibold text-white/80">{pillar.headline}</p>
-            <p className="mt-3 text-sm leading-relaxed text-white/55">{pillar.body}</p>
+            <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-white/35">
+              {pillar.headline}
+            </p>
           </article>
         ))}
       </div>
-
-      <HomepageCtaRow className="mt-10">
-        <PrimaryCta href={FREE_WEEK_HYROX_URL} className={homepageCtaClass}>
-          Start My Free Training Week
-        </PrimaryCta>
-        <SecondaryCta href={HOMEPAGE_NAV.system} className={homepageCtaClass}>
-          Explore The System
-        </SecondaryCta>
-      </HomepageCtaRow>
     </HomepageSection>
   );
 }

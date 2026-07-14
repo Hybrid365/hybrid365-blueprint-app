@@ -36,13 +36,19 @@ export const PRIMARY_PROOF_METRICS = [
 export const PRIMARY_PROOF_BODY =
   "From 1:08:37 to 59:14 Pro Solo HYROX. Threshold progression, run volume, body composition and benchmarks—not guesswork." as const;
 
-export const BELIEF_HEADLINE = {
-  line1: "You're not afraid of hard work.",
-  line2: "You're afraid of wasting it.",
+export const IDENTITY_HEADLINE = {
+  line1: "You already work hard.",
+  line2: "Now make it count.",
 } as const;
 
-export const BELIEF_BODY =
-  "The problem isn't effort. It's direction. You're already putting in the work — you just need to know you're maximising your potential." as const;
+export const IDENTITY_BODY =
+  "Hybrid365 isn't built for people looking for motivation. It's built for athletes who already train consistently and now want structure, progression and accountability." as const;
+
+/** @deprecated Use IDENTITY_HEADLINE */
+export const BELIEF_HEADLINE = IDENTITY_HEADLINE;
+
+/** @deprecated Use IDENTITY_BODY */
+export const BELIEF_BODY = IDENTITY_BODY;
 
 export const STANDARD_HEADLINE = {
   eyebrow: "The standard",
@@ -54,13 +60,20 @@ export const STANDARD_BODY =
   "Hybrid365 isn't a vibe. It's a team of people who train when motivation disappears — and hold each other to a higher bar." as const;
 
 export const SYSTEM_HEADLINE = {
-  eyebrow: "The system",
-  line1: "Clarity.",
-  line2: "Structure. Progress.",
+  eyebrow: "The coaching system",
+  line1: "Your programme.",
+  line2: "Your progress.",
 } as const;
 
 export const SYSTEM_BODY =
-  "One integrated platform — programme, tracking, check-ins, benchmarks and coach feedback. Your effort finally has direction." as const;
+  "Programme, check-ins, benchmarks, progress and sessions — one place where your coaching actually lives." as const;
+
+export const HOW_IT_WORKS_STEPS = [
+  { id: "apply", step: "01", title: "Apply", body: "Tell us where you are and where you're going." },
+  { id: "programme", step: "02", title: "Receive Programme", body: "Structured training built around your goals and schedule." },
+  { id: "train", step: "03", title: "Train + Check-in", body: "Execute sessions. Log effort. Stay accountable weekly." },
+  { id: "progress", step: "04", title: "Progress", body: "Benchmarks, trends and coach feedback — measured, not guessed." },
+] as const;
 
 export const RESULTS_HEADLINE = {
   eyebrow: "The results",
@@ -86,10 +99,22 @@ export const COMMUNITY_CRITERIA = [
 
 export const CULTURE_TRAITS = COMMUNITY_CRITERIA;
 
-export const FINAL_CTA_HEADLINE = "Join the standard." as const;
+export const FINAL_CTA_HEADLINE = {
+  line1: "Your hard work",
+  line2: "deserves a system.",
+} as const;
 
 export const FINAL_CTA_BODY =
-  "Structure for people who already show up. A system for athletes who know they're capable of more." as const;
+  "Start with a free training week. See what structured hybrid coaching feels like before you commit." as const;
+
+/** Founder proof progression — single source, no hero duplication */
+export const FOUNDER_PROOF_PROGRESSION = [
+  { value: "1:08:37", label: "Start" },
+  { value: "59:14", label: "Pro HYROX", accent: true },
+  { value: "9:23", label: "Improvement" },
+] as const;
+
+export const FOUNDER_PROOF_SECONDARY = { value: "16:00", label: "5K PB" } as const;
 
 export const PROOF_MARQUEE_ITEMS = [
   { value: "Refuse", label: "Average" },
