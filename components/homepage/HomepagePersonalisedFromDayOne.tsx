@@ -7,6 +7,8 @@ import {
   HomepageSection,
   HomepageEyebrow,
   HomepageHeading,
+  PrimaryCta,
+  homepageCtaClass,
 } from "./homepageUi";
 
 export function HomepagePersonalisedFromDayOne() {
@@ -23,7 +25,6 @@ export function HomepagePersonalisedFromDayOne() {
         </p>
       </div>
 
-      {/* Desktop connected 4-stage */}
       <ol className="relative mt-12 hidden gap-4 lg:grid lg:grid-cols-4">
         <div
           className="pointer-events-none absolute left-[8%] right-[8%] top-5 h-px bg-gradient-to-r from-white/15 via-[#f4d23c]/35 to-white/15"
@@ -52,7 +53,6 @@ export function HomepagePersonalisedFromDayOne() {
         ))}
       </ol>
 
-      {/* Mobile vertical */}
       <ol className="mt-10 space-y-6 lg:hidden">
         {PERSONALISED_STAGES.map((stage) => (
           <li key={stage.number} className="relative border-l border-[#f4d23c]/35 pl-5">
@@ -90,6 +90,16 @@ export function HomepagePersonalisedFromDayOne() {
         {PERSONALISED_COPY.statement[0]}{" "}
         <span className="text-[#f4d23c]">{PERSONALISED_COPY.statement[1]}</span>
       </p>
+
+      <div className="mt-8 flex justify-center lg:justify-start">
+        <PrimaryCta
+          href={PERSONALISED_COPY.ctaHref}
+          size="large"
+          className={homepageCtaClass}
+        >
+          {PERSONALISED_COPY.ctaLabel}
+        </PrimaryCta>
+      </div>
     </HomepageSection>
   );
 }

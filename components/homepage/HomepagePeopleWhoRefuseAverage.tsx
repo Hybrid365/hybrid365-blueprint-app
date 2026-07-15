@@ -56,17 +56,19 @@ function FounderTransformCard() {
             {FOUNDER_TRANSFORM.name}
           </h3>
 
-          <ul className="mt-6 space-y-3">
+          <ul className="mt-6 space-y-4">
             {FOUNDER_TRANSFORM.progressions.map((row) => (
-              <li
-                key={row.from}
-                className="flex flex-wrap items-center gap-2 text-sm font-semibold text-white/80 sm:text-base"
-              >
-                <span className="text-white/45">{row.from}</span>
-                <span className="text-[#f4d23c]" aria-hidden>
-                  →
-                </span>
-                <span className="text-white">{row.to}</span>
+              <li key={row.label}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
+                  {row.label}
+                </p>
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-base font-semibold text-white sm:text-lg">
+                  <span className="text-white/45">{row.from}</span>
+                  <span className="text-[#f4d23c]" aria-hidden>
+                    →
+                  </span>
+                  <span>{row.to}</span>
+                </p>
               </li>
             ))}
           </ul>

@@ -276,6 +276,10 @@ export function HomepageChooseTrack() {
       <p className="mt-6 min-h-[1.5rem] text-center text-sm text-white/50 lg:text-left">
         {active ? active.selectedMessage : null}
       </p>
+      <p className="mt-2 text-center text-sm text-white/40 lg:text-left">
+        Not sure which track fits? Complete the assessment and we&apos;ll recommend the best starting
+        point.
+      </p>
     </HomepageSection>
   );
 }

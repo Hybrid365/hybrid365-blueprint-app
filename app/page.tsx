@@ -8,6 +8,8 @@ import { HomepagePeopleWhoRefuseAverage } from "@/components/homepage/HomepagePe
 import { HomepageChooseTrack } from "@/components/homepage/HomepageChooseTrack";
 import { HomepageProduct } from "@/components/homepage/HomepageProduct";
 import { HomepagePersonalisedFromDayOne } from "@/components/homepage/HomepagePersonalisedFromDayOne";
+import { HomepageTelegramCommunity } from "@/components/homepage/HomepageTelegramCommunity";
+import { HomepageClientQuotes } from "@/components/homepage/HomepageClientQuotes";
 import { HomepageFaq } from "@/components/homepage/HomepageFaq";
 import { HomepageFinalCta } from "@/components/homepage/HomepageFinalCta";
 
@@ -29,6 +31,8 @@ export default function HomePage() {
         <HomepageChooseTrack />
         <HomepageProduct />
         <HomepagePersonalisedFromDayOne />
+        <HomepageTelegramCommunity />
+        <HomepageClientQuotes />
         <HomepageFaq />
         <HomepageFinalCta />
       </main>

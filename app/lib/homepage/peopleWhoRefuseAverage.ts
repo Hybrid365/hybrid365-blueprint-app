@@ -21,12 +21,12 @@ export const FOUNDER_TRANSFORM = {
     alt: "Kieran Higgs — current Hybrid365 standard",
   },
   progressions: [
-    { from: "25-minute 5K", to: "16:00 5K" },
-    { from: "Overweight and directionless", to: "59:14 Pro HYROX" },
+    { from: "25:00", to: "16:00", label: "5K progression" },
+    { from: "1:08:37", to: "59:14", label: "Pro HYROX progression" },
   ],
   copy: [
-    "From overweight and running a 25-minute 5K to becoming stronger, fitter and leaner than ever before.",
-    "The biggest change was having structure, purpose and a clear direction for the work.",
+    "From overweight and lacking direction to stronger, fitter and leaner than ever before.",
+    "The biggest change was giving the work structure, purpose and a clear direction.",
     "No more wasted potential.",
   ],
 } as const;

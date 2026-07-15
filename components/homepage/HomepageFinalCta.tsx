@@ -1,5 +1,5 @@
 import { BRAND_MOTTO, FINAL_CTA_HEADLINE } from "@/app/lib/homepage/brandCopy";
-import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
+import { FREE_WEEK_HYROX_URL, SECONDARY_LINKS } from "@/app/lib/homepage/homepageLinks";
 import {
   HomepageSection,
   HomepageHeading,
@@ -24,14 +24,10 @@ export function HomepageFinalCta() {
           {FINAL_CTA_HEADLINE.line1}
           <span className="block text-[#f4d23c]">{FINAL_CTA_HEADLINE.line2}</span>
         </HomepageHeading>
-        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/55">
-          Personalised around your goal, current level, schedule and equipment.
+        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/50">
+          Choose your priority. Share your starting point. See how Hybrid365 would structure your
+          week.
         </p>
-        <div className="mx-auto mt-4 space-y-1 text-sm text-white/40">
-          <p>No generic template.</p>
-          <p>No random workouts.</p>
-          <p>No payment required.</p>
-        </div>
         <HomepageCtaRow size="large" className="mt-10 justify-center lg:justify-center">
           <PrimaryCta
             href={FREE_WEEK_HYROX_URL}
@@ -41,6 +37,16 @@ export function HomepageFinalCta() {
             Start My Free Training Week
           </PrimaryCta>
         </HomepageCtaRow>
+        <p className="mt-5">
+          <a
+            href={SECONDARY_LINKS.telegram}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-white/40 transition hover:text-white/70"
+          >
+            Already have your training? Join the free Hybrid365 Telegram community →
+          </a>
+        </p>
         <p className="mt-10 text-xs font-black uppercase tracking-[0.22em] text-[#f4d23c]">
           {BRAND_MOTTO}
         </p>

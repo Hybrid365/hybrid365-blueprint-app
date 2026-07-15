@@ -1,13 +1,15 @@
 /** Central links for the Hybrid365 marketing homepage — update here only. */
 
-/** Primary funnel CTA — HYROX free-week builder. */
-export const FREE_WEEK_HYROX_URL = "/free-week?challenge=hyrox";
+/** Primary funnel CTA — free-week builder (HYROX track + existing challenge mode). */
+export const FREE_WEEK_HYROX_URL = "/free-week?track=hyrox&challenge=hyrox";
 
 export const HOMEPAGE_NAV = {
   team: "#team",
   tracks: "#tracks",
   system: "#system",
   screening: "#screening",
+  telegram: "#telegram",
+  quotes: "#quotes",
   faq: "#faq",
   start: "#start",
   freeWeek: "#start",
@@ -19,7 +21,7 @@ export const HOMEPAGE_NAV = {
   identity: "#team",
   method: "#tracks",
   standard: "#team",
-  community: "#tracks",
+  community: "#telegram",
   login: "/login",
 } as const;
 

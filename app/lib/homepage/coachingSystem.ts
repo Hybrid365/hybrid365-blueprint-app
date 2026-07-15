@@ -52,12 +52,6 @@ export const COACHING_GALLERY: CoachingGalleryItem[] = [
     screenId: "performance-testing",
   },
   {
-    id: "progress",
-    title: "Progress Tracking",
-    caption: "Watch threshold, run volume and physique markers move week to week.",
-    screenId: "threshold-progression",
-  },
-  {
     id: "accountability",
     title: "Accountability",
     caption:

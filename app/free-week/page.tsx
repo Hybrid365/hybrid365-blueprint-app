@@ -10,6 +10,10 @@ import {
   type ChallengeMode,
 } from "@/app/lib/freeWeekChallengeMode";
 import {
+  freeWeekTrackFromSearchParam,
+  FREE_WEEK_TRACK_CONFIRMATIONS,
+} from "@/app/lib/homepage/freeWeekRoutes";
+import {
   emptyHyroxFreeWeekInput,
   type HyroxFreeWeekInput,
 } from "@/app/lib/freeWeekHyroxTypes";
@@ -34,6 +38,10 @@ function FreeWeekForm() {
   const [hyroxDetails, setHyroxDetails] = useState<HyroxFreeWeekInput>(() => emptyHyroxFreeWeekInput());
 
   const searchParams = useSearchParams();
+  const selectedTrack = freeWeekTrackFromSearchParam(searchParams.get("track"));
+  const trackConfirmation = selectedTrack
+    ? FREE_WEEK_TRACK_CONFIRMATIONS[selectedTrack]
+    : null;
 
   useEffect(() => {
     setChallengeMode(challengeModeFromSearchParam(searchParams.get("challenge")));
@@ -130,6 +138,17 @@ function FreeWeekForm() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto max-w-3xl px-4 py-12">
+        {trackConfirmation ? (
+          <div className="mb-6 rounded-2xl border border-[#f4d23c]/35 bg-[#f4d23c]/[0.08] p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#f4d23c]">
+              {trackConfirmation.label}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-200">
+              {trackConfirmation.body}
+            </p>
+          </div>
+        ) : null}
+
         {isHybrid75Challenge ? (
           <div className="mb-8 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-6">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">Hybrid 75 Summer Challenge</p>

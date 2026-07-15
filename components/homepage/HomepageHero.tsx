@@ -50,6 +50,9 @@ export function HomepageHero() {
                 See The System
               </SecondaryCta>
             </HomepageCtaRow>
+            <p className="mx-auto mt-3 text-[11px] font-medium tracking-wide text-white/40 sm:text-xs lg:mx-0">
+              Free · Personalised to your goal · No payment required
+            </p>
           </div>
 
           <div className="overflow-visible lg:justify-self-end">
