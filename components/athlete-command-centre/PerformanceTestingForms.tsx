@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { performanceTestingApiBase } from "@/app/lib/hyroxPerformanceTestingApiConfig";
+import type { PerformanceTestingViewMode } from "@/app/lib/hyroxPerformanceTestingApiConfig";
 import {
   PERFORMANCE_TEST_DEFINITIONS,
   RECOVERY_BASELINE_COPY,
@@ -14,12 +16,20 @@ type RecoveryBaselineFormProps = {
   baseline: RecoveryBaselineRow | null;
   testWeekId: string;
   onSaved: (baseline: RecoveryBaselineRow) => void;
+  mode?: PerformanceTestingViewMode;
+  athleteId?: string;
+  readOnly?: boolean;
+  showCoachSaveNote?: boolean;
 };
 
 export function RecoveryBaselineForm({
   baseline,
   testWeekId,
   onSaved,
+  mode = "athlete",
+  athleteId,
+  readOnly = false,
+  showCoachSaveNote = false,
 }: RecoveryBaselineFormProps) {
   const [restingHr, setRestingHr] = useState(
     baseline?.resting_hr_baseline != null ? String(baseline.resting_hr_baseline) : ""
@@ -46,11 +56,13 @@ export function RecoveryBaselineForm({
   const [saved, setSaved] = useState(false);
 
   const save = useCallback(async () => {
+    if (readOnly) return;
     setSaving(true);
     setError(null);
     setSaved(false);
     try {
-      const res = await fetch("/api/hyrox/athlete/performance-testing", {
+      const apiBase = performanceTestingApiBase(mode, athleteId);
+      const res = await fetch(apiBase, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -91,8 +103,11 @@ export function RecoveryBaselineForm({
     deviceSource,
     notes,
     onSaved,
+    readOnly,
     restingHr,
     testWeekId,
+    mode,
+    athleteId,
   ]);
 
   return (
@@ -105,7 +120,8 @@ export function RecoveryBaselineForm({
             type="number"
             value={restingHr}
             onChange={(e) => setRestingHr(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            disabled={readOnly}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
             placeholder="e.g. 52"
           />
         </label>
@@ -117,7 +133,8 @@ export function RecoveryBaselineForm({
             max={10}
             value={baselineDays}
             onChange={(e) => setBaselineDays(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            disabled={readOnly}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
           />
         </label>
         <label className="block text-sm">
@@ -126,7 +143,8 @@ export function RecoveryBaselineForm({
             type="number"
             value={averageHrv}
             onChange={(e) => setAverageHrv(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            disabled={readOnly}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
           />
         </label>
         <label className="block text-sm">
@@ -135,7 +153,8 @@ export function RecoveryBaselineForm({
             type="number"
             value={averageSleep}
             onChange={(e) => setAverageSleep(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            disabled={readOnly}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
           />
         </label>
         <label className="block text-sm">
@@ -144,7 +163,8 @@ export function RecoveryBaselineForm({
             type="number"
             value={averageSteps}
             onChange={(e) => setAverageSteps(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            disabled={readOnly}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
           />
         </label>
         <label className="block text-sm">
@@ -154,7 +174,8 @@ export function RecoveryBaselineForm({
             step="0.5"
             value={averageTrainingHours}
             onChange={(e) => setAverageTrainingHours(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            disabled={readOnly}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
           />
         </label>
         <label className="block text-sm sm:col-span-2">
@@ -163,7 +184,8 @@ export function RecoveryBaselineForm({
             type="text"
             value={deviceSource}
             onChange={(e) => setDeviceSource(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            disabled={readOnly}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
             placeholder="e.g. Whoop, Garmin, Oura"
           />
         </label>
@@ -173,15 +195,21 @@ export function RecoveryBaselineForm({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            disabled={readOnly}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
           />
         </label>
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       {saved ? <p className="text-sm text-emerald-300">Recovery baseline saved.</p> : null}
+      {showCoachSaveNote && !readOnly ? (
+        <p className="text-xs text-amber-200/80">
+          Saving in Coach Preview will update this athlete&apos;s real testing record.
+        </p>
+      ) : null}
       <button
         type="button"
-        disabled={saving}
+        disabled={saving || readOnly}
         onClick={() => void save()}
         className="rounded-full bg-yellow-400 px-5 py-2.5 text-sm font-bold text-black disabled:opacity-50"
       >
@@ -206,6 +234,10 @@ type PerformanceTestResultFormProps = {
   programmeWeekId: string | null;
   testWeekId: string;
   locked?: boolean;
+  readOnly?: boolean;
+  mode?: PerformanceTestingViewMode;
+  athleteId?: string;
+  showCoachSaveNote?: boolean;
   onSaved: (result: PerformanceTestResultRow) => void;
 };
 
@@ -215,6 +247,10 @@ export function PerformanceTestResultForm({
   programmeWeekId,
   testWeekId,
   locked = false,
+  readOnly = false,
+  mode = "athlete",
+  athleteId,
+  showCoachSaveNote = false,
   onSaved,
 }: PerformanceTestResultFormProps) {
   const def = PERFORMANCE_TEST_DEFINITIONS[testType];
@@ -235,10 +271,12 @@ export function PerformanceTestResultForm({
   };
 
   const save = async (status: "draft" | "submitted") => {
+    if (readOnly || locked) return;
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/hyrox/athlete/performance-testing", {
+      const apiBase = performanceTestingApiBase(mode, athleteId);
+      const res = await fetch(apiBase, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -280,7 +318,7 @@ export function PerformanceTestResultForm({
           <input
             type="checkbox"
             checked={Boolean(value)}
-            disabled={locked}
+            disabled={locked || readOnly}
             onChange={(e) => updateField(field.key, e.target.checked)}
             className="rounded border-zinc-600"
           />
@@ -298,9 +336,9 @@ export function PerformanceTestResultForm({
           </span>
           <select
             value={String(value ?? "")}
-            disabled={locked}
+            disabled={locked || readOnly}
             onChange={(e) => updateField(field.key, e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
           >
             <option value="">Select…</option>
             {(field.options ?? []).map((opt) => (
@@ -322,11 +360,11 @@ export function PerformanceTestResultForm({
           </span>
           <textarea
             value={String(value ?? "")}
-            disabled={locked}
+            disabled={locked || readOnly}
             onChange={(e) => updateField(field.key, e.target.value)}
             rows={3}
             placeholder={field.placeholder}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
           />
         </label>
       );
@@ -341,10 +379,10 @@ export function PerformanceTestResultForm({
         <input
           type={field.type === "number" ? "number" : "text"}
           value={String(value ?? "")}
-          disabled={locked}
+          disabled={locked || readOnly}
           onChange={(e) => updateField(field.key, e.target.value)}
           placeholder={field.placeholder}
-          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
         />
       </label>
     );
@@ -376,7 +414,7 @@ export function PerformanceTestResultForm({
                   <span className="mb-1 block text-zinc-400">{label}</span>
                   <input
                     type="text"
-                    disabled={locked}
+                    disabled={locked || readOnly}
                     value={String(round[key] ?? "")}
                     onChange={(e) => {
                       const next = [...rounds];
@@ -390,7 +428,7 @@ export function PerformanceTestResultForm({
             </div>
           </div>
         ))}
-        {!locked ? (
+        {!locked && !readOnly ? (
           <button
             type="button"
             onClick={() =>
@@ -432,7 +470,7 @@ export function PerformanceTestResultForm({
                   : "Not started"}
           </p>
         </div>
-        {!locked ? (
+        {!locked && !readOnly ? (
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -468,10 +506,10 @@ export function PerformanceTestResultForm({
             <span className="mb-1 block text-zinc-300">Notes</span>
             <textarea
               value={notes}
-              disabled={locked}
+              disabled={locked || readOnly}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -480,9 +518,9 @@ export function PerformanceTestResultForm({
               <input
                 type="url"
                 value={videoUrl}
-                disabled={locked}
+                disabled={locked || readOnly}
                 onChange={(e) => setVideoUrl(e.target.value)}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
               />
             </label>
             <label className="block text-sm">
@@ -490,17 +528,22 @@ export function PerformanceTestResultForm({
               <input
                 type="url"
                 value={proofUrl}
-                disabled={locked}
+                disabled={locked || readOnly}
                 onChange={(e) => setProofUrl(e.target.value)}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white disabled:opacity-60"
               />
             </label>
           </div>
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
+          {showCoachSaveNote && !readOnly ? (
+            <p className="text-xs text-amber-200/80">
+              Saving in Coach Preview will update this athlete&apos;s real testing record.
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={saving || locked}
+              disabled={saving || locked || readOnly}
               onClick={() => void save("draft")}
               className="rounded-full border border-zinc-600 px-4 py-2 text-sm font-semibold text-zinc-200 disabled:opacity-50"
             >
@@ -508,7 +551,7 @@ export function PerformanceTestResultForm({
             </button>
             <button
               type="button"
-              disabled={saving || locked}
+              disabled={saving || locked || readOnly}
               onClick={() => void save("submitted")}
               className="rounded-full bg-yellow-400 px-4 py-2 text-sm font-bold text-black disabled:opacity-50"
             >

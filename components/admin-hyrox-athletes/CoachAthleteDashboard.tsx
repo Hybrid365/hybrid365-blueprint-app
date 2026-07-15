@@ -19,6 +19,7 @@ import {
 import { DashCard, SectionHeading, StatTile } from "@/components/hyrox-team/HyroxDashboardUi";
 import { Calendar, Target } from "lucide-react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 const TABS = [
   "Overview",
@@ -343,6 +344,23 @@ function OverviewTab({ athlete }: { athlete: CoachAthlete }) {
 function TestingTab({ athlete }: { athlete: CoachAthlete }) {
   return (
     <div className="space-y-4">
+      <DashCard>
+        <SectionHeading title="Performance Testing" />
+        <p className="mt-2 text-sm text-zinc-400">
+          Preview the exact athlete-facing Performance Testing page and test result forms before
+          asking the athlete to complete their test week.
+        </p>
+        <div className="mt-4">
+          <Link
+            href={`/admin/hyrox-athletes/${athlete.id}/performance-testing-preview`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex rounded-full border border-cyan-500/40 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-100 hover:bg-cyan-400/20"
+          >
+            Preview athlete experience
+          </Link>
+        </div>
+      </DashCard>
       <PerformanceTestingCoachPanel athleteId={athlete.id} />
       <DashCard>
         <SectionHeading title="Legacy benchmark targets" />

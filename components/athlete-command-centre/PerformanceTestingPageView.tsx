@@ -1,7 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { HyroxPerformanceProfile } from "@/app/lib/hyroxPerformanceProfile";
+import {
+  performanceTestingApiBase,
+  type PerformanceTestingViewMode,
+} from "@/app/lib/hyroxPerformanceTestingApiConfig";
 import type { AthletePerformanceTestingPayload } from "@/app/lib/hyroxPerformanceTestingServer";
 import {
   PERFORMANCE_TEST_INTRO,
@@ -26,16 +31,34 @@ import {
   RecoveryBaselineForm,
 } from "@/components/athlete-command-centre/PerformanceTestingForms";
 
-export function PerformanceTestingPageView() {
+export type PerformanceTestingPageViewProps = {
+  mode?: PerformanceTestingViewMode;
+  athleteId?: string;
+  athleteName?: string;
+  athleteStatus?: string;
+  readOnly?: boolean;
+  backToAdminHref?: string;
+};
+
+export function PerformanceTestingPageView({
+  mode = "athlete",
+  athleteId,
+  athleteName,
+  athleteStatus,
+  readOnly = false,
+  backToAdminHref,
+}: PerformanceTestingPageViewProps = {}) {
   const [data, setData] = useState<AthletePerformanceTestingPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isCoachPreview = mode === "coach_preview";
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/hyrox/athlete/performance-testing", {
+      const apiBase = performanceTestingApiBase(mode, athleteId);
+      const res = await fetch(apiBase, {
         credentials: "include",
       });
       const json = (await res.json()) as AthletePerformanceTestingPayload & {
@@ -52,7 +75,7 @@ export function PerformanceTestingPageView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [athleteId, mode]);
 
   useEffect(() => {
     void load();
@@ -66,23 +89,26 @@ export function PerformanceTestingPageView() {
     return map;
   }, [data?.results]);
 
-  const handleResultSaved = useCallback((result: PerformanceTestResultRow) => {
-    setData((prev) => {
-      if (!prev) return prev;
-      const results = [...prev.results.filter((r) => r.test_type !== result.test_type), result];
-      return {
-        ...prev,
-        results,
-        completion: {
-          ...prev.completion,
-          submitted: results.filter((r) => r.status === "submitted" || r.status === "reviewed")
-            .length,
-          reviewed: results.filter((r) => r.coach_reviewed || r.status === "reviewed").length,
-        },
-      };
-    });
-    void load();
-  }, [load]);
+  const handleResultSaved = useCallback(
+    (result: PerformanceTestResultRow) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        const results = [...prev.results.filter((r) => r.test_type !== result.test_type), result];
+        return {
+          ...prev,
+          results,
+          completion: {
+            ...prev.completion,
+            submitted: results.filter((r) => r.status === "submitted" || r.status === "reviewed")
+              .length,
+            reviewed: results.filter((r) => r.coach_reviewed || r.status === "reviewed").length,
+          },
+        };
+      });
+      void load();
+    },
+    [load]
+  );
 
   const handleBaselineSaved = useCallback((baseline: RecoveryBaselineRow) => {
     setData((prev) => (prev ? { ...prev, baseline } : prev));
@@ -102,9 +128,56 @@ export function PerformanceTestingPageView() {
 
   const hasPublishedWeek = Boolean(data?.programmeWeekId);
   const profile = data?.profile as HyroxPerformanceProfile | undefined;
+  const adminDashboardHref =
+    backToAdminHref ?? (athleteId ? `/admin/hyrox-athletes/${athleteId}?tab=Testing` : undefined);
+  const programmeBuilderHref =
+    athleteId ? `/admin/hyrox-athletes/${athleteId}?tab=Programme%20Builder` : undefined;
 
   return (
     <div className="space-y-5">
+      {isCoachPreview ? (
+        <div className="rounded-2xl border border-cyan-500/35 bg-cyan-400/10 px-4 py-4 sm:px-5">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-200">Coach Preview</p>
+          <p className="mt-2 text-sm text-zinc-200">
+            You are viewing the Performance Testing page as it appears for this athlete. Actions made
+            here are performed through your coaching account.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400">
+            {athleteName ? (
+              <span>
+                Athlete: <span className="text-white">{athleteName}</span>
+              </span>
+            ) : null}
+            {athleteStatus ? (
+              <span>
+                Status: <span className="text-white">{athleteStatus.replace(/_/g, " ")}</span>
+              </span>
+            ) : null}
+            <span>
+              Testing week:{" "}
+              <span className="text-white">
+                {hasPublishedWeek ? "Published" : "Not published"}
+              </span>
+            </span>
+          </div>
+          {readOnly ? (
+            <p className="mt-2 text-xs text-zinc-500">
+              Preview only — saving is disabled. Enable editing below to test live saves.
+            </p>
+          ) : null}
+          {adminDashboardHref ? (
+            <div className="mt-4">
+              <Link
+                href={adminDashboardHref}
+                className="inline-flex rounded-full border border-zinc-600 px-4 py-2 text-xs font-semibold text-zinc-200 hover:border-cyan-500/40 hover:text-cyan-100"
+              >
+                Back to athlete dashboard
+              </Link>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <HyroxSection>
         <HyroxEyebrow>{PERFORMANCE_TEST_WEEK_LABEL}</HyroxEyebrow>
         <div className="mt-4">
@@ -114,10 +187,34 @@ export function PerformanceTestingPageView() {
           <HyroxLead>{PERFORMANCE_TEST_INTRO}</HyroxLead>
         </div>
         {!hasPublishedWeek ? (
-          <p className="mt-4 rounded-xl border border-zinc-700 bg-zinc-950/60 p-4 text-sm text-zinc-400">
-            Your coach has not published a performance testing week to your programme yet. Once
-            published, your full testing schedule and result forms will appear here.
-          </p>
+          <div className="mt-4 rounded-xl border border-zinc-700 bg-zinc-950/60 p-4 text-sm text-zinc-400">
+            {isCoachPreview ? (
+              <>
+                <p>No Performance Testing Week is currently published for this athlete.</p>
+                {programmeBuilderHref ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link
+                      href={adminDashboardHref ?? "#"}
+                      className="rounded-full border border-zinc-600 px-3 py-1.5 text-xs font-semibold text-zinc-300"
+                    >
+                      Back to athlete dashboard
+                    </Link>
+                    <Link
+                      href={programmeBuilderHref}
+                      className="rounded-full bg-yellow-400 px-3 py-1.5 text-xs font-bold text-black"
+                    >
+                      Add Performance Testing Week
+                    </Link>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p>
+                Your coach has not published a performance testing week to your programme yet. Once
+                published, your full testing schedule and result forms will appear here.
+              </p>
+            )}
+          </div>
         ) : null}
       </HyroxSection>
 
@@ -172,6 +269,10 @@ export function PerformanceTestingPageView() {
             baseline={data?.baseline ?? null}
             testWeekId={data?.testWeekId ?? "test-week-1"}
             onSaved={handleBaselineSaved}
+            mode={mode}
+            athleteId={athleteId}
+            readOnly={readOnly}
+            showCoachSaveNote={isCoachPreview}
           />
         </div>
       </HyroxSection>
@@ -193,6 +294,10 @@ export function PerformanceTestingPageView() {
                     programmeWeekId={data?.programmeWeekId ?? null}
                     testWeekId={data?.testWeekId ?? "test-week-1"}
                     locked={Boolean(resultsByType.get(testType)?.coach_reviewed)}
+                    readOnly={readOnly}
+                    mode={mode}
+                    athleteId={athleteId}
+                    showCoachSaveNote={isCoachPreview}
                     onSaved={handleResultSaved}
                   />
                 ))}
@@ -223,14 +328,8 @@ export function PerformanceTestingPageView() {
             <ProfileTile label="Ski 2 km" value={profile.ski.ski2kTime} />
             <ProfileTile label="Row 2 km" value={profile.row.row2kTime} />
             <ProfileTile label="Dead hang" value={profile.grip.deadHangSeconds} suffix="s" />
-            <ProfileTile
-              label="Primary limiter"
-              value={profile.likelyPrimaryLimiter}
-            />
-            <ProfileTile
-              label="Secondary limiter"
-              value={profile.likelySecondaryLimiter}
-            />
+            <ProfileTile label="Primary limiter" value={profile.likelyPrimaryLimiter} />
+            <ProfileTile label="Secondary limiter" value={profile.likelySecondaryLimiter} />
           </div>
           {profile.suggestedProgrammingEmphasis.length > 0 ? (
             <div className="mt-4">
