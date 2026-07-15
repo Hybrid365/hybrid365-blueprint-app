@@ -10,11 +10,10 @@ import {
 import { PrimaryCta } from "./homepageUi";
 
 const NAV_LINKS = [
-  { href: HOMEPAGE_NAV.athletes, label: "Athletes" },
-  { href: HOMEPAGE_NAV.results, label: "Results" },
-  { href: HOMEPAGE_NAV.method, label: "Method" },
-  { href: HOMEPAGE_NAV.system, label: "System" },
   { href: HOMEPAGE_NAV.team, label: "Team" },
+  { href: HOMEPAGE_NAV.tracks, label: "Tracks" },
+  { href: HOMEPAGE_NAV.system, label: "System" },
+  { href: HOMEPAGE_NAV.howItWorks, label: "How It Works" },
 ] as const;
 
 export function HomepageNav() {

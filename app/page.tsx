@@ -4,13 +4,10 @@ import { HomepageStickyCta } from "@/components/homepage/HomepageStickyCta";
 import { HomepageSmoothScroll } from "@/components/homepage/HomepageSmoothScroll";
 import { HomepageMotionStyles } from "@/components/homepage/HomepageMotion";
 import { HomepageHero } from "@/components/homepage/HomepageHero";
-import { HomepageAthletesStrip } from "@/components/homepage/HomepageAthletesStrip";
-import { HomepageProof } from "@/components/homepage/HomepageProof";
-import { HomepageIdentity } from "@/components/homepage/HomepageIdentity";
-import { HomepageMethod } from "@/components/homepage/HomepageMethod";
+import { HomepageMeetTheTeam } from "@/components/homepage/HomepageMeetTheTeam";
+import { HomepageChooseTrack } from "@/components/homepage/HomepageChooseTrack";
 import { HomepageProduct } from "@/components/homepage/HomepageProduct";
 import { HomepageHowItWorks } from "@/components/homepage/HomepageHowItWorks";
-import { HomepageTeam } from "@/components/homepage/HomepageTeam";
 import { HomepageTestimonials } from "@/components/homepage/HomepageTestimonials";
 import { HomepageFinalCta } from "@/components/homepage/HomepageFinalCta";
 
@@ -28,13 +25,10 @@ export default function HomePage() {
       <HomepageNav />
       <main>
         <HomepageHero />
-        <HomepageAthletesStrip />
-        <HomepageProof />
-        <HomepageIdentity />
-        <HomepageMethod />
+        <HomepageMeetTheTeam />
+        <HomepageChooseTrack />
         <HomepageProduct />
         <HomepageHowItWorks />
-        <HomepageTeam />
         <HomepageTestimonials />
         <HomepageFinalCta />
       </main>

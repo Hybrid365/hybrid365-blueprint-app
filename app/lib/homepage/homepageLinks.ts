@@ -4,17 +4,18 @@
 export const FREE_WEEK_HYROX_URL = "/free-week?challenge=hyrox";
 
 export const HOMEPAGE_NAV = {
-  athletes: "#athletes",
-  results: "#results",
-  identity: "#identity",
-  method: "#method",
+  team: "#team",
+  tracks: "#tracks",
   system: "#system",
   howItWorks: "#how-it-works",
-  team: "#team",
-  /** @deprecated Section removed from homepage flow */
-  standard: "#identity",
-  /** @deprecated Section removed from homepage flow */
-  community: "#team",
+  start: "#start",
+  /** @deprecated Kept for any residual anchors */
+  athletes: "#team",
+  results: "#team",
+  identity: "#team",
+  method: "#tracks",
+  standard: "#team",
+  community: "#tracks",
   login: "/login",
 } as const;
 
