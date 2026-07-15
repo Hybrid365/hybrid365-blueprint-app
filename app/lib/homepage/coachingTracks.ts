@@ -1,66 +1,66 @@
-/** Homepage coaching track selector — product paths, not philosophy. */
+/** Homepage coaching track selector — pathways, not pricing. */
 
-import {
-  FREE_WEEK_HYROX_URL,
-  SECONDARY_LINKS,
-} from "@/app/lib/homepage/homepageLinks";
+import { SECONDARY_LINKS } from "@/app/lib/homepage/homepageLinks";
 
 export const TRACK_SELECTOR_COPY = {
-  eyebrow: "Coaching",
+  eyebrow: "Pathways",
   headline: "Choose your track.",
-  body: "One coaching standard.\nDifferent journeys.\nChoose the path that matches your goals.",
+  body: "Coaching built around your goal — not one generic programme.",
 } as const;
 
 export type HomepageTrackId =
-  | "hyrox-team"
-  | "hybrid-performance"
-  | "community"
-  | "one-to-one";
+  | "hyrox-specific"
+  | "strong-fit-fast"
+  | "run-performance"
+  | "personalised";
 
 export type HomepageTrack = {
   id: HomepageTrackId;
+  number: string;
   title: string;
+  /** Optional multi-line emphasis lines under the title */
+  points?: string[];
   description: string;
   ctaLabel: string;
   href: string;
-  accent: string;
 };
 
 export const HOMEPAGE_TRACKS: HomepageTrack[] = [
   {
-    id: "hyrox-team",
-    title: "HYROX Team",
+    id: "hyrox-specific",
+    number: "01",
+    title: "HYROX Specific",
     description:
-      "Selective 1-1 coaching inside a high-performance team — tested, programmed and race-ready.",
-    ctaLabel: "Explore HYROX Team",
-    href: SECONDARY_LINKS.hyroxTeam,
-    accent: "Team",
+      "For athletes whose goal is racing faster, improving running, building station efficiency and chasing PBs.",
+    ctaLabel: "Explore HYROX",
+    href: SECONDARY_LINKS.hyroxCommunity,
   },
   {
-    id: "hybrid-performance",
-    title: "Hybrid Performance",
+    id: "strong-fit-fast",
+    number: "02",
+    title: "Strong. Fit. Fast.",
+    points: ["Build muscle.", "Improve endurance.", "Look athletic."],
     description:
-      "Structured hybrid programming for athletes who want to look athletic, lift heavy and race with intent.",
-    ctaLabel: "Start free week",
-    href: FREE_WEEK_HYROX_URL,
-    accent: "Structure",
-  },
-  {
-    id: "community",
-    title: "Community",
-    description:
-      "Full membership access — programme, dashboard, check-ins and a community built on standards.",
-    ctaLabel: "Join community",
+      "The complete hybrid athlete. Perfect for people who don't race HYROX but want elite fitness.",
+    ctaLabel: "Explore Hybrid",
     href: SECONDARY_LINKS.paidCommunity,
-    accent: "Membership",
   },
   {
-    id: "one-to-one",
-    title: "1-1 Coaching",
+    id: "run-performance",
+    number: "03",
+    title: "Run Performance",
     description:
-      "Personalised coaching for physique, strength and hybrid performance — built around your life.",
-    ctaLabel: "Apply for 1-1",
+      "Whether your goal is a faster 5K, 10K or Half Marathon. Structured running with strength work that actually supports your running.",
+    ctaLabel: "Explore Running",
+    href: "/free-week",
+  },
+  {
+    id: "personalised",
+    number: "04",
+    title: "Personalised Coaching",
+    description:
+      "Need accountability? Programming adjusted around your life, goals and feedback every week. Closest thing to having a coach in your pocket.",
+    ctaLabel: "Apply",
     href: "/one-to-one-coaching",
-    accent: "Personal",
   },
 ];

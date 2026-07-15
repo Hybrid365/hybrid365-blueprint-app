@@ -11,35 +11,40 @@ import {
 } from "./homepageUi";
 
 function TrackIcon({ id }: { id: HomepageTrack["id"] }) {
-  const className = "h-6 w-6 text-[#f4d23c]";
+  const className = "h-7 w-7 text-[#f4d23c]";
   switch (id) {
-    case "hyrox-team":
+    case "hyrox-specific":
       return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-          <path d="M12 3l2.2 4.5L19 8.2l-3.5 3.4.8 4.9L12 14.3 7.7 16.5l.8-4.9L5 8.2l4.8-.7L12 3z" />
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M4 17l4-10h2l4 10" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M6.5 12h5" strokeLinecap="round" />
+          <path d="M15 7v10" strokeLinecap="round" />
+          <path d="M15 7h3.2a2.3 2.3 0 010 4.6H15" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
-    case "hybrid-performance":
+    case "strong-fit-fast":
       return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-          <path d="M4 16l4-8 4 5 3-4 5 7" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M4 20h16" strokeLinecap="round" />
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M7 8v8M17 8v8M7 12h10" strokeLinecap="round" />
+          <path d="M4.5 9.5v5M19.5 9.5v5" strokeLinecap="round" />
         </svg>
       );
-    case "community":
+    case "run-performance":
       return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-          <circle cx="9" cy="9" r="2.5" />
-          <circle cx="16" cy="10" r="2" />
-          <path d="M4.5 18c.8-2.4 2.7-3.5 4.5-3.5s3.7 1.1 4.5 3.5" strokeLinecap="round" />
-          <path d="M13 18c.5-1.6 1.7-2.5 3-2.5s2.3.7 2.8 2" strokeLinecap="round" />
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <circle cx="14.5" cy="5.5" r="1.6" />
+          <path
+            d="M10 21l2-5 3 2 2-6M8 13l3-1 2 3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       );
-    case "one-to-one":
+    case "personalised":
       return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
           <circle cx="12" cy="8" r="3" />
-          <path d="M6 19c1.2-3 3.2-4.5 6-4.5s4.8 1.5 6 4.5" strokeLinecap="round" />
+          <path d="M5.5 19c1.3-3.2 3.6-4.8 6.5-4.8s5.2 1.6 6.5 4.8" strokeLinecap="round" />
         </svg>
       );
     default:
@@ -51,23 +56,50 @@ function TrackCard({ track }: { track: HomepageTrack }) {
   return (
     <Link
       href={track.href}
-      className="group flex min-h-[280px] w-[min(82vw,300px)] shrink-0 snap-start flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.015] p-6 transition duration-300 hover:-translate-y-1 hover:border-[#f4d23c]/35 hover:bg-white/[0.06] sm:w-auto"
+      className="group relative flex min-h-[340px] w-[min(86vw,340px)] shrink-0 snap-start flex-col justify-between overflow-hidden rounded-[1.75rem] border border-white/[0.1] bg-[#0a0a0a] p-7 shadow-[0_24px_60px_rgba(0,0,0,0.35)] transition duration-500 hover:-translate-y-1.5 hover:border-[#f4d23c]/35 hover:shadow-[0_28px_70px_rgba(0,0,0,0.5)] sm:min-h-[380px] sm:w-auto sm:p-8"
     >
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#f4d23c]/25 bg-[#f4d23c]/[0.07]">
+      <div
+        className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-[#f4d23c]/[0.07] blur-3xl transition duration-500 group-hover:bg-[#f4d23c]/[0.12]"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#f4d23c]/[0.04] to-transparent opacity-80"
+        aria-hidden
+      />
+
+      <div className="relative">
+        <div className="flex items-start justify-between gap-4">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[#f4d23c]/30 bg-[#f4d23c]/[0.08]">
             <TrackIcon id={track.id} />
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
-            {track.accent}
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">
+            Track {track.number}
           </span>
         </div>
-        <h3 className="mt-6 text-xl font-black uppercase tracking-[-0.03em] text-white">
+
+        <h3 className="mt-8 text-[1.35rem] font-black uppercase leading-[0.95] tracking-[-0.04em] text-white sm:text-[1.55rem]">
           {track.title}
         </h3>
-        <p className="mt-3 text-sm leading-relaxed text-white/55">{track.description}</p>
+
+        {track.points?.length ? (
+          <ul className="mt-4 space-y-1.5">
+            {track.points.map((point) => (
+              <li
+                key={point}
+                className="text-sm font-semibold leading-snug text-white/70 sm:text-[15px]"
+              >
+                {point}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <p className="mt-4 text-sm leading-relaxed text-white/50 sm:text-[15px] sm:leading-relaxed">
+          {track.description}
+        </p>
       </div>
-      <p className="mt-8 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#f4d23c] transition group-hover:gap-3">
+
+      <p className="relative mt-10 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#f4d23c] transition duration-300 group-hover:gap-3">
         {track.ctaLabel}
         <span aria-hidden>→</span>
       </p>
@@ -77,18 +109,18 @@ function TrackCard({ track }: { track: HomepageTrack }) {
 
 export function HomepageChooseTrack() {
   return (
-    <HomepageSection id="tracks" variant="accent" className="!py-20 sm:!py-24 lg:!py-28">
+    <HomepageSection id="tracks" variant="dark" className="!py-24 sm:!py-28 lg:!py-32">
       <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-2xl lg:text-left">
         <HomepageEyebrow>{TRACK_SELECTOR_COPY.eyebrow}</HomepageEyebrow>
-        <HomepageHeading className="text-[clamp(1.85rem,5.5vw,3.25rem)]">
+        <HomepageHeading className="text-[clamp(2rem,5.5vw,3.5rem)]">
           {TRACK_SELECTOR_COPY.headline}
         </HomepageHeading>
-        <p className="mt-5 whitespace-pre-line text-base leading-relaxed text-white/55 sm:text-lg">
+        <p className="mt-6 text-base leading-relaxed text-white/55 sm:text-lg">
           {TRACK_SELECTOR_COPY.body}
         </p>
       </div>
 
-      <div className="mt-12 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-14 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-5 lg:overflow-visible lg:px-0">
+      <div className="mt-14 -mx-4 flex gap-5 overflow-x-auto px-4 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-16 lg:mx-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:overflow-visible lg:px-0 xl:grid-cols-4 xl:gap-5">
         {HOMEPAGE_TRACKS.map((track) => (
           <TrackCard key={track.id} track={track} />
         ))}
