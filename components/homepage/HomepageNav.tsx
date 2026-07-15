@@ -13,7 +13,7 @@ const NAV_LINKS = [
   { href: HOMEPAGE_NAV.team, label: "Athletes" },
   { href: HOMEPAGE_NAV.tracks, label: "Tracks" },
   { href: HOMEPAGE_NAV.system, label: "System" },
-  { href: HOMEPAGE_NAV.howItWorks, label: "How It Works" },
+  { href: HOMEPAGE_NAV.freeWeek, label: "Free Week" },
 ] as const;
 
 export function HomepageNav() {

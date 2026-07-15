@@ -6,7 +6,7 @@ export const TRACK_CHASE_COPY = {
   eyebrow: "Personalised coaching tracks",
   headline: "What are you chasing?",
   body: "One coaching system. Different priorities. Every programme built around the individual.",
-  reassurance: "Your track sets the emphasis — it never puts you into a generic template.",
+  reassurance: "Your track sets the emphasis. It does not place you into a generic template.",
 } as const;
 
 export type ChaseTrackId = "hyrox" | "run" | "hybrid";
@@ -33,7 +33,7 @@ export const CHASE_TRACKS: ChaseTrack[] = [
     title: "HYROX Performance",
     identity: "I want to race HYROX faster.",
     description:
-      "Improve compromised running, station efficiency, strength endurance and race execution through programming built around your next event.",
+      "Compromised running, station efficiency and race execution built around your next event.",
     highlights: [
       "Faster HYROX running",
       "Stronger stations",
@@ -41,7 +41,7 @@ export const CHASE_TRACKS: ChaseTrack[] = [
       "Race-specific benchmarks",
     ],
     personalisation:
-      "Built around your race date, division, current PB, individual limiters and available equipment.",
+      "Race date, division, current PB, limiters and equipment.",
     ctaLabel: "Build my free HYROX week",
     href: FREE_WEEK_ROUTES.hyrox,
     selectedMessage: "We'll build your free week around HYROX performance.",
@@ -54,15 +54,14 @@ export const CHASE_TRACKS: ChaseTrack[] = [
     title: "Run Performance",
     identity: "I want to run a PB without losing strength.",
     description:
-      "Structured 5K, 10K or half-marathon development supported by strength work that improves durability rather than compromising running quality.",
+      "Structured 5K, 10K or half development with strength that supports running rather than competing with it.",
     highlights: [
-      "Faster 5K / 10K / half marathon",
+      "Faster 5K / 10K / half",
       "Threshold progression",
-      "Aerobic volume development",
+      "Aerobic volume",
       "Running-supportive strength",
     ],
-    personalisation:
-      "Built around your current PB, weekly mileage, injury history, available days and target event.",
+    personalisation: "Current PB, mileage, injury history, days and target event.",
     ctaLabel: "Build my free run PB week",
     href: FREE_WEEK_ROUTES.run,
     selectedMessage: "We'll build your free week around run performance.",
@@ -75,15 +74,15 @@ export const CHASE_TRACKS: ChaseTrack[] = [
     title: "Strong. Fit. Fast.",
     identity: "I want to look athletic and perform like one.",
     description:
-      "Build muscle, improve conditioning, become leaner and develop the engine to run well — without having to choose between physique and performance.",
+      "Build muscle, get leaner and develop the engine to run well — physique and performance together.",
     highlights: [
-      "Build strength and muscle",
-      "Improve body composition",
-      "Develop aerobic fitness",
-      "Become a complete hybrid athlete",
+      "Strength and muscle",
+      "Body composition",
+      "Aerobic fitness",
+      "Complete hybrid athlete",
     ],
     personalisation:
-      "Built around your physique goal, training history, weekly availability and preferred balance of running and lifting.",
+      "Physique goal, training history, availability and run/lift balance.",
     ctaLabel: "Build my free hybrid week",
     href: FREE_WEEK_ROUTES.hybrid,
     selectedMessage: "We'll build your free week around Strong. Fit. Fast.",

@@ -26,7 +26,7 @@ export const FOUNDER_TRANSFORM = {
   ],
   copy: [
     "From overweight and running a 25-minute 5K to becoming stronger, fitter and leaner than ever before.",
-    "The biggest change was not just physical. Structure, purpose and progression changed my life for the better.",
+    "The biggest change was having structure, purpose and a clear direction for the work.",
     "No more wasted potential.",
   ],
 } as const;

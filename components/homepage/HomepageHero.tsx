@@ -1,8 +1,6 @@
-import { HERO_PILLAR_LABELS } from "@/app/lib/homepage/pillars";
 import {
   BRAND_MOTTO,
   BRAND_TAGLINE_LINES,
-  HERO_PROOF_COPY,
   HERO_SUPPORTING_COPY,
 } from "@/app/lib/homepage/brandCopy";
 import { HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
@@ -40,22 +38,8 @@ export function HomepageHero() {
               <span className="block text-white/95">{BRAND_TAGLINE_LINES[3]}.</span>
             </HomepageHeading>
 
-            <ul className="mt-4 flex flex-wrap justify-center gap-1.5 lg:justify-start">
-              {HERO_PILLAR_LABELS.map((label) => (
-                <li
-                  key={label}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-white/55 sm:text-[10px]"
-                >
-                  {label}
-                </li>
-              ))}
-            </ul>
-
             <p className="mx-auto mt-5 max-w-md text-base font-medium leading-snug text-white/80 sm:text-lg lg:mx-0">
               {HERO_SUPPORTING_COPY}
-            </p>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-white/45 lg:mx-0">
-              {HERO_PROOF_COPY}
             </p>
 
             <HomepageCtaRow size="large" className="mt-6">

@@ -96,13 +96,13 @@ export function HomepageChooseTrack() {
   const active = CHASE_TRACKS.find((t) => t.id === selected);
 
   return (
-    <HomepageSection id="tracks" variant="dark" className="!py-24 sm:!py-28 lg:!py-32">
+    <HomepageSection id="tracks" variant="dark" className="!py-20 sm:!py-24">
       <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-2xl lg:text-left">
         <HomepageEyebrow>{TRACK_CHASE_COPY.eyebrow}</HomepageEyebrow>
-        <HomepageHeading className="text-[clamp(2rem,5.5vw,3.5rem)]">
+        <HomepageHeading className="text-[clamp(2rem,5.5vw,3.25rem)]">
           {TRACK_CHASE_COPY.headline}
         </HomepageHeading>
-        <p className="mt-6 text-base leading-relaxed text-white/55 sm:text-lg">
+        <p className="mt-5 text-base leading-relaxed text-white/55">
           {TRACK_CHASE_COPY.body}
         </p>
         <p className="mt-3 text-sm font-medium text-[#f4d23c]/80">

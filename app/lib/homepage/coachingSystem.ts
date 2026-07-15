@@ -1,50 +1,67 @@
-/** Coaching system phone views — real UI cutouts only. */
+/** Coaching system showcase — real UI cutouts, horizontal gallery. */
 
 import type { PhoneScreenId } from "@/app/lib/homepage/phoneScreens";
+import { FREE_WEEK_ROUTES } from "@/app/lib/homepage/freeWeekRoutes";
 
 export const COACHING_SYSTEM_COPY = {
-  eyebrow: "The coaching system",
+  eyebrow: "What you actually get",
   headline: ["Not a PDF.", "A complete coaching system."],
-  body: "Your sessions, feedback, benchmarks and progress live in one clear coaching experience.",
-  note: "Your programme changes as your performance and recovery change.",
+  body: "Your programme, sessions, feedback, benchmarks and progress—all in one clear coaching experience.",
+  ctaLabel: "See what my free week looks like",
+  ctaHref: FREE_WEEK_ROUTES.default,
 } as const;
 
-export type CoachingSystemView = {
+export type CoachingGalleryItem = {
   id: string;
-  label: string;
-  question: string;
+  title: string;
+  caption: string;
   screenId: PhoneScreenId;
 };
 
-export const COACHING_SYSTEM_VIEWS: CoachingSystemView[] = [
+export const COACHING_GALLERY: CoachingGalleryItem[] = [
   {
     id: "programme",
-    label: "Programme",
-    question: "What am I doing this week?",
+    title: "Your Programme",
+    caption:
+      "A structured training week with session purpose, coach notes and clear progression.",
     screenId: "programme",
   },
   {
     id: "session",
-    label: "Session Detail",
-    question: "Why am I doing this session?",
+    title: "Session Detail",
+    caption:
+      "Know exactly what the session is building, the required intensity and how to execute it.",
     screenId: "threshold-run",
   },
   {
     id: "check-in",
-    label: "Weekly Check-In",
-    question: "How am I recovering?",
+    title: "Weekly Check-In",
+    caption: "Sleep, energy, soreness, bodyweight and adherence shape the next decision.",
     screenId: "weekly-check-in",
   },
   {
-    id: "progress",
-    label: "Progress Tracking",
-    question: "Am I improving?",
+    id: "overview",
+    title: "Performance Overview",
+    caption: "See changes in running, strength, consistency, readiness and body composition.",
     screenId: "progress-overview",
   },
   {
     id: "benchmarks",
-    label: "Benchmark Testing",
-    question: "What needs work next?",
+    title: "Benchmark Testing",
+    caption: "Measure the areas that matter and identify the next limiter.",
     screenId: "performance-testing",
+  },
+  {
+    id: "progress",
+    title: "Progress Tracking",
+    caption: "Watch threshold, run volume and physique markers move week to week.",
+    screenId: "threshold-progression",
+  },
+  {
+    id: "accountability",
+    title: "Accountability",
+    caption:
+      "Session completion, team standards, challenges and leaderboards keep the work visible.",
+    screenId: "hybrid365-team",
   },
 ];

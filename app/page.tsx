@@ -6,20 +6,16 @@ import { HomepageMotionStyles } from "@/components/homepage/HomepageMotion";
 import { HomepageHero } from "@/components/homepage/HomepageHero";
 import { HomepagePeopleWhoRefuseAverage } from "@/components/homepage/HomepagePeopleWhoRefuseAverage";
 import { HomepageChooseTrack } from "@/components/homepage/HomepageChooseTrack";
-import { HomepageScreeningFlow } from "@/components/homepage/HomepageScreeningFlow";
 import { HomepageProduct } from "@/components/homepage/HomepageProduct";
-import { HomepageAccountability } from "@/components/homepage/HomepageAccountability";
-import { HomepageHowItWorks } from "@/components/homepage/HomepageHowItWorks";
-import { HomepageTestimonials } from "@/components/homepage/HomepageTestimonials";
+import { HomepagePersonalisedFromDayOne } from "@/components/homepage/HomepagePersonalisedFromDayOne";
 import { HomepageFreeWeekBreakdown } from "@/components/homepage/HomepageFreeWeekBreakdown";
-import { HomepagePerformancePromise } from "@/components/homepage/HomepagePerformancePromise";
 import { HomepageFaq } from "@/components/homepage/HomepageFaq";
 import { HomepageFinalCta } from "@/components/homepage/HomepageFinalCta";
 
 export const metadata: Metadata = {
   title: "Hybrid365 — Refuse Average | Personalised Hybrid Coaching",
   description:
-    "You already have the work ethic. Hybrid365 gives that effort a system — personalised coaching, structured programming, data-led decisions and daily accountability.",
+    "You already have the work ethic. Hybrid365 gives that effort a system — personalised coaching, structured programming and daily accountability.",
 };
 
 export default function HomePage() {
@@ -32,13 +28,9 @@ export default function HomePage() {
         <HomepageHero />
         <HomepagePeopleWhoRefuseAverage />
         <HomepageChooseTrack />
-        <HomepageScreeningFlow />
         <HomepageProduct />
-        <HomepageAccountability />
-        <HomepageHowItWorks />
-        <HomepageTestimonials />
+        <HomepagePersonalisedFromDayOne />
         <HomepageFreeWeekBreakdown />
-        <HomepagePerformancePromise />
         <HomepageFaq />
         <HomepageFinalCta />
       </main>

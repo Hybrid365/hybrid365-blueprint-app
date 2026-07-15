@@ -12,7 +12,7 @@ import {
 
 export function HomepageFreeWeekBreakdown() {
   return (
-    <HomepageSection id="free-week" variant="accent">
+    <HomepageSection id="free-week" variant="accent" className="!py-20 sm:!py-24">
       <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-2xl lg:text-left">
         <HomepageEyebrow>{FREE_WEEK_BREAKDOWN_COPY.eyebrow}</HomepageEyebrow>
         <HomepageHeading className="text-[clamp(1.85rem,5.5vw,3.25rem)]">
@@ -22,7 +22,6 @@ export function HomepageFreeWeekBreakdown() {
         <p className="mt-5 text-base leading-relaxed text-white/55 sm:text-lg">
           {FREE_WEEK_BREAKDOWN_COPY.body}
         </p>
-        <p className="mt-3 text-sm text-white/40">{FREE_WEEK_BREAKDOWN_COPY.note}</p>
       </div>
 
       <ul className="mt-10 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
