@@ -8,9 +8,9 @@ export const HOMEPAGE_NAV = {
   tracks: "#tracks",
   system: "#system",
   screening: "#screening",
-  freeWeek: "#free-week",
   faq: "#faq",
   start: "#start",
+  freeWeek: "#start",
   howItWorks: "#screening",
   accountability: "#screening",
   /** @deprecated Kept for any residual anchors */

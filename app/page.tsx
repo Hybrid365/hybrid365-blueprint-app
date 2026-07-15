@@ -8,7 +8,6 @@ import { HomepagePeopleWhoRefuseAverage } from "@/components/homepage/HomepagePe
 import { HomepageChooseTrack } from "@/components/homepage/HomepageChooseTrack";
 import { HomepageProduct } from "@/components/homepage/HomepageProduct";
 import { HomepagePersonalisedFromDayOne } from "@/components/homepage/HomepagePersonalisedFromDayOne";
-import { HomepageFreeWeekBreakdown } from "@/components/homepage/HomepageFreeWeekBreakdown";
 import { HomepageFaq } from "@/components/homepage/HomepageFaq";
 import { HomepageFinalCta } from "@/components/homepage/HomepageFinalCta";
 
@@ -30,7 +29,6 @@ export default function HomePage() {
         <HomepageChooseTrack />
         <HomepageProduct />
         <HomepagePersonalisedFromDayOne />
-        <HomepageFreeWeekBreakdown />
         <HomepageFaq />
         <HomepageFinalCta />
       </main>

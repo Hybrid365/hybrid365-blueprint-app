@@ -24,10 +24,14 @@ export function HomepageFinalCta() {
           {FINAL_CTA_HEADLINE.line1}
           <span className="block text-[#f4d23c]">{FINAL_CTA_HEADLINE.line2}</span>
         </HomepageHeading>
-        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/50">
-          Choose your priority. Share your starting point. See how Hybrid365 would structure your
-          week.
+        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/55">
+          Personalised around your goal, current level, schedule and equipment.
         </p>
+        <div className="mx-auto mt-4 space-y-1 text-sm text-white/40">
+          <p>No generic template.</p>
+          <p>No random workouts.</p>
+          <p>No payment required.</p>
+        </div>
         <HomepageCtaRow size="large" className="mt-10 justify-center lg:justify-center">
           <PrimaryCta
             href={FREE_WEEK_HYROX_URL}
