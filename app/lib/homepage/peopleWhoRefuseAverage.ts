@@ -46,7 +46,7 @@ export const ATHLETE_PROFILES: AthleteProfile[] = [
   {
     id: "ben-kelly",
     name: "Ben Kelly",
-    photoSrc: "/images/homepage/team/ben-kelly-training.png",
+    photoSrc: "/images/homepage/team/ben-kelly.jpg",
     photoAlt: "Ben Kelly — Hybrid365 athlete",
     metric: { label: "5K", value: "16:16" },
     secondaryMetric: { label: "HYROX", value: "1:03 Pro Doubles" },
@@ -55,7 +55,7 @@ export const ATHLETE_PROFILES: AthleteProfile[] = [
   {
     id: "ricci-lee-jarvis",
     name: "Ricci-Lee Jarvis",
-    photoSrc: "/images/homepage/team/ricci-lee-jarvis-training.png",
+    photoSrc: "/images/homepage/team/ben-kelly-training.png",
     photoAlt: "Ricci-Lee Jarvis — Hybrid365 athlete",
     metric: { label: "5K", value: "18:45" },
     focus: "Strength + Load Tolerance",
