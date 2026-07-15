@@ -58,11 +58,20 @@ export type CoachSessionEditKind =
   | "easy_aerobic"
   | "strength_endurance"
   | "compromised"
+  | "performance_test"
   | "generic";
 
 export type CoachSessionEditConfig = {
   kind: CoachSessionEditKind;
   sessionName: string;
+  /** Performance testing week identifier (e.g. test-week-1). */
+  performanceTestWeekId?: string;
+  /** Performance test type slug stored in programme metadata. */
+  testType?: string;
+  protocol?: string;
+  requiredFields?: string[];
+  optionalFields?: string[];
+  scalingNotes?: string;
   reps?: number;
   repDurationMinutes?: number;
   recovery?: string;
@@ -111,6 +120,12 @@ export type CoachSessionEditConfig = {
   coolDownLines?: string[];
 };
 
+export type PerformanceTestSessionMetadata = {
+  isPerformanceTest: boolean;
+  performanceTestType: string;
+  performanceTestWeekId: string;
+};
+
 export type CoachDraftSession = SandboxSessionBlock & {
   draftId: string;
   coachNote: string;
@@ -120,6 +135,7 @@ export type CoachDraftSession = SandboxSessionBlock & {
   /** Coach library id when added from expanded library */
   coachLibraryId?: string;
   volumeMeta?: CoachSessionVolumeMeta;
+  performanceMetadata?: PerformanceTestSessionMetadata;
 };
 
 /** @deprecated use LibraryCategory from hyroxCoachSessionLibrary */
@@ -305,6 +321,7 @@ export function inferEditKind(
     if (coachEntry?.impactType === "run") return "threshold_run";
     return "compromised";
   }
+  if (sessionId?.startsWith("performance_test_")) return "performance_test";
   if (!sessionId) return "generic";
   if (sessionId.startsWith("coach_")) {
     if (sessionId.includes("compromised")) return "compromised";
@@ -340,7 +357,10 @@ export function defaultEditConfig(session: CoachDraftSession): CoachSessionEditC
   const coachEntry = session.coachLibraryId
     ? getCoachLibraryEntry(session.coachLibraryId)
     : null;
-  const kind = inferEditKind(session.sessionId, session.sessionType, session.coachLibraryId);
+  const kind =
+    session.editConfig?.kind === "performance_test"
+      ? "performance_test"
+      : inferEditKind(session.sessionId, session.sessionType, session.coachLibraryId);
   const base: CoachSessionEditConfig = {
     kind,
     sessionName: session.title,

@@ -45,6 +45,11 @@ export function CoachWeekSessionPreviewList({
                   Key
                 </span>
               ) : null}
+              {s.badges.includes("Performance Test") ? (
+                <span className="rounded-full border border-cyan-500/30 px-1.5 py-0.5 text-[9px] text-cyan-200">
+                  Performance Test
+                </span>
+              ) : null}
               {s.isOptional ? (
                 <span className="rounded-full border border-zinc-600 px-1.5 py-0.5 text-[9px] text-zinc-400">
                   Optional

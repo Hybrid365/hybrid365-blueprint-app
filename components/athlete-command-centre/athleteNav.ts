@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ClipboardCheck,
   Flag,
+  FlaskConical,
   Home,
   MessageSquare,
   Target,
@@ -14,6 +15,7 @@ export type AthleteNavId =
   | "home"
   | "programme"
   | "progress"
+  | "performance-testing"
   | "benchmarks"
   | "checkin"
   | "coach-notes"
@@ -40,6 +42,13 @@ export const ATHLETE_NAV_ITEMS: AthleteNavItem[] = [
   { id: "home", label: "Home", href: "/athlete/dashboard", icon: Home, mobilePrimary: true },
   { id: "programme", label: "Programme", href: ATHLETE_PROGRAMME_HREF, icon: CalendarDays, mobilePrimary: true },
   { id: "progress", label: "Progress", href: "/athlete/progress", icon: Activity, mobilePrimary: true },
+  {
+    id: "performance-testing",
+    label: "Performance Testing",
+    href: "/athlete/performance-testing",
+    icon: FlaskConical,
+    mobileMore: true,
+  },
   { id: "benchmarks", label: "Benchmarks", href: "/athlete/benchmarks", icon: Target, mobileMore: true },
   { id: "checkin", label: "Check-In", href: "/athlete/check-in", icon: ClipboardCheck, mobilePrimary: true },
   { id: "coach-notes", label: "Coach Notes", href: "/athlete/coach-notes", icon: MessageSquare, mobileMore: true },

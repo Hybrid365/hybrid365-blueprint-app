@@ -469,6 +469,7 @@ export type SandboxSessionBadge =
   | "Key Session"
   | "Optional Add-On"
   | "Support Add-On"
+  | "Performance Test"
   | "AM"
   | "PM"
   | "Main";

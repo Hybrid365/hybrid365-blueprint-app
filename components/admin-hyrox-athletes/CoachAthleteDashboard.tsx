@@ -8,6 +8,7 @@ import { formatRaceCountdown } from "@/app/lib/hyroxCoachMockAthletes";
 import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBlockReviewPanel";
 import { CoachWeeklyReviewPanel } from "@/components/admin-hyrox-athletes/CoachWeeklyReviewPanel";
 import { ProgrammeBuilder } from "@/components/admin-hyrox-athletes/ProgrammeBuilder";
+import { PerformanceTestingCoachPanel } from "@/components/admin-hyrox-athletes/PerformanceTestingCoachPanel";
 import { ProfileReviewTab } from "@/components/admin-hyrox-athletes/ProfileReviewTab";
 import { FullAssessmentAnswersTab } from "@/components/admin-hyrox-athletes/FullAssessmentAnswersTab";
 import type { HyroxApplicationRow, HyroxAssessmentRow } from "@/app/lib/hyroxDatabaseTypes";
@@ -341,8 +342,10 @@ function OverviewTab({ athlete }: { athlete: CoachAthlete }) {
 
 function TestingTab({ athlete }: { athlete: CoachAthlete }) {
   return (
-    <DashCard>
-      <SectionHeading title="Testing & benchmarks" />
+    <div className="space-y-4">
+      <PerformanceTestingCoachPanel athleteId={athlete.id} />
+      <DashCard>
+        <SectionHeading title="Legacy benchmark targets" />
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
@@ -365,7 +368,8 @@ function TestingTab({ athlete }: { athlete: CoachAthlete }) {
           </tbody>
         </table>
       </div>
-    </DashCard>
+      </DashCard>
+    </div>
   );
 }
 

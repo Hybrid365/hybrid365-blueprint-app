@@ -45,6 +45,11 @@ import {
 } from "@/components/admin-hyrox-athletes/CoachProgrammeDraftDebugPanel";
 import { CoachPublishResultPanel } from "@/components/admin-hyrox-athletes/CoachPublishResultPanel";
 import {
+  buildPerformanceTestingWeek1Draft,
+  draftHasSessions,
+  PERFORMANCE_TESTING_WEEK_TEMPLATE_NAME,
+} from "@/app/lib/hyroxPerformanceTestingWeekTemplate";
+import {
   sessionPrescriptionPreview,
 } from "@/app/lib/hyroxCoachProgrammeDraft";
 
@@ -156,6 +161,7 @@ export function ProgrammeBuilder({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [rationaleAutoFilled, setRationaleAutoFilled] = useState(false);
   const rationaleTouched = useRef(false);
+  const [perfWeekConfirmOpen, setPerfWeekConfirmOpen] = useState(false);
 
   const summary = useMemo(() => computeWeeklySummary(draft, athlete), [draft, athlete]);
   const validation = useMemo(() => validateCoachDraft(draft, athlete), [draft, athlete]);
@@ -263,6 +269,36 @@ export function ProgrammeBuilder({
 
   const weekRole = BLOCK_WEEK_FOCUS_LABELS[selectedCycle];
 
+  const applyPerformanceTestingWeek = useCallback(() => {
+    const nextDraft = buildPerformanceTestingWeek1Draft({
+      ...athlete,
+      blockWeek: selectedCycle,
+    });
+    void applyDraftMutation(
+      (prev) => ({
+        ...nextDraft,
+        athleteId: prev.athleteId,
+        block: prev.block,
+        week: prev.week,
+      }),
+      { successMessage: `${PERFORMANCE_TESTING_WEEK_TEMPLATE_NAME} inserted.` }
+    );
+    onCoachNotesChange({
+      weeklyCoachNote: PERFORMANCE_TESTING_WEEK_TEMPLATE_NAME,
+      weekRationale: "Structured Hybrid365 performance testing week — review scaling before publish.",
+      keyFocus: "Baseline testing across run, engine, strength, stations and compromised running.",
+    });
+    setPerfWeekConfirmOpen(false);
+  }, [applyDraftMutation, athlete, onCoachNotesChange, selectedCycle]);
+
+  const handleAddPerformanceTestingWeek = useCallback(() => {
+    if (draftHasSessions(draft)) {
+      setPerfWeekConfirmOpen(true);
+      return;
+    }
+    applyPerformanceTestingWeek();
+  }, [applyPerformanceTestingWeek, draft]);
+
   return (
     <div className="space-y-4">
       {assessmentMappingBanner ? (
@@ -352,6 +388,14 @@ export function ProgrammeBuilder({
         </div>
         <div className="flex flex-wrap gap-2">
           <ProgrammeStatusBadge status={status} />
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleAddPerformanceTestingWeek}
+            className="rounded-full border border-cyan-500/40 bg-cyan-400/10 px-3 py-1.5 text-xs font-bold text-cyan-100 disabled:opacity-50"
+          >
+            Add Performance Testing Week
+          </button>
           <button
             type="button"
             disabled={saving}
@@ -575,6 +619,39 @@ export function ProgrammeBuilder({
             Cancel
           </button>
         </p>
+      ) : null}
+
+      {perfWeekConfirmOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-5">
+            <h3 className="font-bold text-white">Replace current week?</h3>
+            <p className="mt-2 text-sm text-zinc-400">
+              This will replace the current editable week with{" "}
+              <span className="text-cyan-200">{PERFORMANCE_TESTING_WEEK_TEMPLATE_NAME}</span>.
+              Existing sessions in this week will be overwritten in the draft. You can still edit,
+              remove or scale sessions before publishing.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPerfWeekConfirmOpen(false)}
+                className="rounded-full border border-zinc-600 px-4 py-2 text-sm text-zinc-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={applyPerformanceTestingWeek}
+                className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-bold text-black"
+              >
+                Replace with testing week
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

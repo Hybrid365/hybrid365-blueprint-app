@@ -841,6 +841,20 @@ export function buildSessionInsertRowsFromDraftWeek(
         isOptional: sess.isOptional,
         draftId: sess.draftId,
         coachLibraryId: sess.coachLibraryId,
+        ...(sess.performanceMetadata?.isPerformanceTest
+          ? {
+              isPerformanceTest: true,
+              performanceTestType: sess.performanceMetadata.performanceTestType,
+              performanceTestWeekId: sess.performanceMetadata.performanceTestWeekId,
+            }
+          : sess.editConfig.kind === "performance_test" && sess.editConfig.testType
+            ? {
+                isPerformanceTest: true,
+                performanceTestType: sess.editConfig.testType,
+                performanceTestWeekId:
+                  sess.editConfig.performanceTestWeekId ?? sess.performanceMetadata?.performanceTestWeekId,
+              }
+            : {}),
       } as unknown as HyroxJson,
       status: "scheduled" as const,
     }))

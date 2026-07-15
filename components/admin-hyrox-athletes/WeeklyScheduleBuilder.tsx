@@ -169,10 +169,14 @@ function SessionCard({
         <span className="rounded border border-zinc-700 px-1 text-[9px] font-bold text-zinc-400">
           {session.timeOfDay}
         </span>
-        {session.badges.slice(0, 2).map((b) => (
+        {session.badges.slice(0, 3).map((b) => (
           <span
             key={b}
-            className="rounded border border-yellow-500/30 bg-yellow-400/10 px-1 text-[9px] text-yellow-200"
+            className={`rounded border px-1 text-[9px] ${
+              b === "Performance Test"
+                ? "border-cyan-500/40 bg-cyan-400/10 text-cyan-100"
+                : "border-yellow-500/30 bg-yellow-400/10 text-yellow-200"
+            }`}
           >
             {b}
           </span>
