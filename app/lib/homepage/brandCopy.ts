@@ -105,7 +105,7 @@ export const FINAL_CTA_HEADLINE = {
 } as const;
 
 export const FINAL_CTA_BODY =
-  "Start with a free training week. See what structured hybrid coaching feels like before you commit." as const;
+  "Choose your priority. Share your starting point. See how Hybrid365 would structure your week." as const;
 
 /** Founder proof progression — single source, no hero duplication */
 export const FOUNDER_PROOF_PROGRESSION = [

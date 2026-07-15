@@ -1,4 +1,4 @@
-import { FINAL_CTA_BODY, FINAL_CTA_HEADLINE } from "@/app/lib/homepage/brandCopy";
+import { BRAND_MOTTO, FINAL_CTA_HEADLINE } from "@/app/lib/homepage/brandCopy";
 import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import {
   HomepageSection,
@@ -25,7 +25,8 @@ export function HomepageFinalCta() {
           <span className="block text-[#f4d23c]">{FINAL_CTA_HEADLINE.line2}</span>
         </HomepageHeading>
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/50">
-          {FINAL_CTA_BODY}
+          Choose your priority. Share your starting point. See how Hybrid365 would structure your
+          week.
         </p>
         <HomepageCtaRow size="large" className="mt-10 justify-center lg:justify-center">
           <PrimaryCta
@@ -36,6 +37,9 @@ export function HomepageFinalCta() {
             Start My Free Training Week
           </PrimaryCta>
         </HomepageCtaRow>
+        <p className="mt-10 text-xs font-black uppercase tracking-[0.22em] text-[#f4d23c]">
+          {BRAND_MOTTO}
+        </p>
       </div>
     </HomepageSection>
   );

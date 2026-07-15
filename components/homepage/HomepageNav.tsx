@@ -10,7 +10,7 @@ import {
 import { PrimaryCta } from "./homepageUi";
 
 const NAV_LINKS = [
-  { href: HOMEPAGE_NAV.team, label: "Team" },
+  { href: HOMEPAGE_NAV.team, label: "Athletes" },
   { href: HOMEPAGE_NAV.tracks, label: "Tracks" },
   { href: HOMEPAGE_NAV.system, label: "System" },
   { href: HOMEPAGE_NAV.howItWorks, label: "How It Works" },

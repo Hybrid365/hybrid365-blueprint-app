@@ -4,17 +4,22 @@ import { HomepageStickyCta } from "@/components/homepage/HomepageStickyCta";
 import { HomepageSmoothScroll } from "@/components/homepage/HomepageSmoothScroll";
 import { HomepageMotionStyles } from "@/components/homepage/HomepageMotion";
 import { HomepageHero } from "@/components/homepage/HomepageHero";
-import { HomepageMeetTheTeam } from "@/components/homepage/HomepageMeetTheTeam";
+import { HomepagePeopleWhoRefuseAverage } from "@/components/homepage/HomepagePeopleWhoRefuseAverage";
 import { HomepageChooseTrack } from "@/components/homepage/HomepageChooseTrack";
+import { HomepageScreeningFlow } from "@/components/homepage/HomepageScreeningFlow";
 import { HomepageProduct } from "@/components/homepage/HomepageProduct";
+import { HomepageAccountability } from "@/components/homepage/HomepageAccountability";
 import { HomepageHowItWorks } from "@/components/homepage/HomepageHowItWorks";
 import { HomepageTestimonials } from "@/components/homepage/HomepageTestimonials";
+import { HomepageFreeWeekBreakdown } from "@/components/homepage/HomepageFreeWeekBreakdown";
+import { HomepagePerformancePromise } from "@/components/homepage/HomepagePerformancePromise";
+import { HomepageFaq } from "@/components/homepage/HomepageFaq";
 import { HomepageFinalCta } from "@/components/homepage/HomepageFinalCta";
 
 export const metadata: Metadata = {
-  title: "Hybrid365 — Refuse Average | High-Performance Hybrid Coaching",
+  title: "Hybrid365 — Refuse Average | Personalised Hybrid Coaching",
   description:
-    "Run fast. Lift heavy. Look athletic. Perform better. A high-performance brand for athletes who refuse average — structure, community and coaching that matches your work ethic.",
+    "You already have the work ethic. Hybrid365 gives that effort a system — personalised coaching, structured programming, data-led decisions and daily accountability.",
 };
 
 export default function HomePage() {
@@ -25,11 +30,16 @@ export default function HomePage() {
       <HomepageNav />
       <main>
         <HomepageHero />
-        <HomepageMeetTheTeam />
+        <HomepagePeopleWhoRefuseAverage />
         <HomepageChooseTrack />
+        <HomepageScreeningFlow />
         <HomepageProduct />
+        <HomepageAccountability />
         <HomepageHowItWorks />
         <HomepageTestimonials />
+        <HomepageFreeWeekBreakdown />
+        <HomepagePerformancePromise />
+        <HomepageFaq />
         <HomepageFinalCta />
       </main>
       <HomepageStickyCta />

@@ -6,12 +6,16 @@ export const FREE_WEEK_HYROX_URL = "/free-week?challenge=hyrox";
 export const HOMEPAGE_NAV = {
   team: "#team",
   tracks: "#tracks",
+  screening: "#screening",
   system: "#system",
+  accountability: "#accountability",
   howItWorks: "#how-it-works",
+  freeWeek: "#free-week",
+  faq: "#faq",
   start: "#start",
   /** @deprecated Kept for any residual anchors */
   athletes: "#team",
-  results: "#team",
+  results: "#proof",
   identity: "#team",
   method: "#tracks",
   standard: "#team",

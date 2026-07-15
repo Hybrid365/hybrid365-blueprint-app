@@ -62,8 +62,8 @@ export function HomepageHero() {
               <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large" className={homepageCtaClass}>
                 Start My Free Training Week
               </PrimaryCta>
-              <SecondaryCta href={HOMEPAGE_NAV.method} className={homepageCtaClass}>
-                See The Method
+              <SecondaryCta href={HOMEPAGE_NAV.system} className={homepageCtaClass}>
+                See The System
               </SecondaryCta>
             </HomepageCtaRow>
           </div>
