@@ -1,11 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { HyroxPerformanceProfile } from "@/app/lib/hyroxPerformanceProfile";
 import {
-  ALL_PERFORMANCE_TEST_TYPES,
   performanceTestTypeLabel,
-  statusLabel,
+  requiredPerformanceTestTypesForVersion,
   type PerformanceTestResultRow,
   type PerformanceTestType,
   type RecoveryBaselineRow,
@@ -16,6 +16,8 @@ type CoachPerformancePayload = {
   success?: boolean;
   error?: string;
   programmeWeekId: string | null;
+  performanceTestingVersion?: number;
+  isLegacyProtocol?: boolean;
   sessions: Array<{
     id: string;
     dayOfWeek: string;
@@ -26,7 +28,17 @@ type CoachPerformancePayload = {
   results: PerformanceTestResultRow[];
   baseline: RecoveryBaselineRow | null;
   profile: HyroxPerformanceProfile;
+  completion?: { submitted: number; total: number; reviewed: number };
 };
+
+function Metric({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <dt className="text-[10px] font-bold uppercase text-zinc-500">{label}</dt>
+      <dd className="mt-0.5 text-sm text-zinc-200">{value?.trim() ? value : "—"}</dd>
+    </div>
+  );
+}
 
 export function PerformanceTestingCoachPanel({ athleteId }: { athleteId: string }) {
   const [data, setData] = useState<CoachPerformancePayload | null>(null);
@@ -93,11 +105,18 @@ export function PerformanceTestingCoachPanel({ athleteId }: { athleteId: string 
     return <p className="text-sm text-red-300">{error}</p>;
   }
 
-  const submitted = data?.results.filter((r) => r.status === "submitted" || r.status === "reviewed") ?? [];
-  const missing = ALL_PERFORMANCE_TEST_TYPES.filter(
-    (t) => !submitted.some((r) => r.test_type === t)
-  );
+  const version = (data?.performanceTestingVersion ??
+    data?.profile?.performanceTestingVersion ??
+    2) as 1 | 2;
+  const requiredTypes = requiredPerformanceTestTypesForVersion(version);
+  const submitted =
+    data?.results.filter((r) => r.status === "submitted" || r.status === "reviewed") ?? [];
+  const missing = requiredTypes.filter((t) => !submitted.some((r) => r.test_type === t));
   const profile = data?.profile;
+  const simulation = profile?.compromised.simulation;
+  const sundayResult =
+    submitted.find((r) => r.test_type === "compromised_hyrox_benchmark") ??
+    submitted.find((r) => r.test_type === "compromised_sled_run");
 
   return (
     <div className="space-y-4">
@@ -109,12 +128,102 @@ export function PerformanceTestingCoachPanel({ athleteId }: { athleteId: string 
             and publish through the normal workflow.
           </p>
         ) : (
-          <p className="text-sm text-emerald-300/90">
-            Published testing week linked · {data.sessions.length} programme sessions ·{" "}
-            {submitted.length}/{ALL_PERFORMANCE_TEST_TYPES.length} results submitted
-          </p>
+          <div className="space-y-2 text-sm">
+            <p className="text-emerald-300/90">
+              Published testing week linked · {data.sessions.length} programme sessions ·{" "}
+              {data.completion?.submitted ?? submitted.length}/
+              {data.completion?.total ?? requiredTypes.length} results submitted · Protocol v
+              {version}
+            </p>
+            {data.isLegacyProtocol ? (
+              <p className="text-xs text-amber-200/90">
+                Legacy Version 1 protocol — original schedule and result structure preserved.
+              </p>
+            ) : null}
+            <Link
+              href={`/admin/hyrox-athletes/${athleteId}/performance-testing-preview`}
+              className="inline-flex text-xs font-semibold text-cyan-300 underline"
+            >
+              Open athlete preview
+            </Link>
+          </div>
         )}
       </DashCard>
+
+      {simulation ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DashCard>
+            <SectionHeading title="Sunday simulation — raw splits" />
+            <dl className="mt-2 grid grid-cols-2 gap-3">
+              <Metric label="Protocol" value={simulation.protocolVersion} />
+              <Metric label="Total time" value={simulation.totalCompletionTime} />
+              <Metric label="Overall limitation" value={simulation.biggestReportedLimiter} />
+            </dl>
+            <div className="mt-4">
+              <p className="text-[10px] font-bold uppercase text-zinc-500">Run splits</p>
+              <ul className="mt-1 space-y-1 text-xs text-zinc-300">
+                {simulation.runSplits.length ? (
+                  simulation.runSplits.map((line) => <li key={line}>{line}</li>)
+                ) : (
+                  <li className="text-zinc-500">Missing run splits</li>
+                )}
+              </ul>
+            </div>
+            <div className="mt-4">
+              <p className="text-[10px] font-bold uppercase text-zinc-500">Station splits</p>
+              <ul className="mt-1 space-y-1 text-xs text-zinc-300">
+                {simulation.stationSplits.map((s) => (
+                  <li key={s.label}>
+                    {s.label}: {s.time ?? "—"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="mt-4">
+              <p className="text-[10px] font-bold uppercase text-zinc-500">Equipment / setup</p>
+              <dl className="mt-1 grid grid-cols-2 gap-2 text-xs text-zinc-300">
+                {Object.entries(simulation.equipmentSetup).map(([key, value]) => (
+                  <div key={key}>
+                    <dt className="text-zinc-500">{key}</dt>
+                    <dd>{value ?? "—"}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </DashCard>
+
+          <DashCard>
+            <SectionHeading title="Sunday simulation — derived insights" />
+            <p className="text-xs text-zinc-500">
+              Shown only when required inputs exist — no false precision.
+            </p>
+            <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Metric label="Avg compromised run pace" value={simulation.averageCompromisedRunPace} />
+              <Metric label="Fastest run" value={simulation.fastestRun} />
+              <Metric label="Slowest run" value={simulation.slowestRun} />
+              <Metric label="Run 1 vs Run 8" value={simulation.run1VersusRun8} />
+              <Metric label="Avg first-four pace" value={simulation.averageFirstFourRunPace} />
+              <Metric label="Avg last-four pace" value={simulation.averageLastFourRunPace} />
+              <Metric
+                label="Running deterioration"
+                value={simulation.percentageRunningDeterioration}
+              />
+              <Metric
+                label="Largest slowdown after"
+                value={simulation.largestSlowdownAfterStation}
+              />
+              <Metric
+                label="Fresh vs sim SkiErg"
+                value={simulation.freshSkiVersusSimulationSki}
+              />
+              <Metric
+                label="Fresh vs sim RowErg"
+                value={simulation.freshRowVersusSimulationRow}
+              />
+            </dl>
+          </DashCard>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <DashCard>
@@ -132,12 +241,22 @@ export function PerformanceTestingCoachPanel({ athleteId }: { athleteId: string 
                     <span className="text-xs text-zinc-500">
                       {r.coach_reviewed || r.status === "reviewed"
                         ? "Reviewed"
-                        : statusLabel(r.status)}
+                        : r.status === "submitted"
+                          ? "Submitted"
+                          : r.status}
                     </span>
                   </div>
-                  <pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-zinc-950/80 p-2 text-[10px] text-zinc-400">
-                    {JSON.stringify(r.result_json, null, 2)}
-                  </pre>
+                  {r.test_type === "compromised_hyrox_benchmark" ? (
+                    <p className="mt-2 text-xs text-zinc-400">
+                      Protocol: {String(r.result_json.protocolVersion ?? "—")} · Total:{" "}
+                      {String(r.result_json.totalCompletionTime ?? "—")} · RPE:{" "}
+                      {String(r.result_json.overallRpe ?? "—")}
+                    </p>
+                  ) : (
+                    <pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-zinc-950/80 p-2 text-[10px] text-zinc-400">
+                      {JSON.stringify(r.result_json, null, 2)}
+                    </pre>
+                  )}
                   {r.video_url ? (
                     <a
                       href={r.video_url}
@@ -157,6 +276,9 @@ export function PerformanceTestingCoachPanel({ athleteId }: { athleteId: string 
                     >
                       Proof link
                     </a>
+                  ) : null}
+                  {!r.video_url && !r.proof_url && r.test_type === sundayResult?.test_type ? (
+                    <p className="mt-2 text-[11px] text-zinc-500">No proof/video attached</p>
                   ) : null}
                   <textarea
                     value={coachNotesDraft[r.id] ?? r.coach_notes ?? ""}
@@ -198,7 +320,7 @@ export function PerformanceTestingCoachPanel({ athleteId }: { athleteId: string 
           <DashCard>
             <SectionHeading title="Missing tests" />
             {missing.length === 0 ? (
-              <p className="text-sm text-emerald-300/90">All tests submitted.</p>
+              <p className="text-sm text-emerald-300/90">All required tests submitted.</p>
             ) : (
               <ul className="list-inside list-disc text-sm text-zinc-400">
                 {missing.map((t) => (

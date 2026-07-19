@@ -286,7 +286,7 @@ export function ProgrammeBuilder({
     onCoachNotesChange({
       weeklyCoachNote: PERFORMANCE_TESTING_WEEK_TEMPLATE_NAME,
       weekRationale: "Structured Hybrid365 performance testing week — review scaling before publish.",
-      keyFocus: "Baseline testing across run, engine, strength, stations and compromised running.",
+      keyFocus: "Baseline testing across run, engine, strength and continuous HYROX simulation.",
     });
     setPerfWeekConfirmOpen(false);
   }, [applyDraftMutation, athlete, onCoachNotesChange, selectedCycle]);

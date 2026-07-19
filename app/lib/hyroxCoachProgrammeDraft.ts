@@ -124,6 +124,8 @@ export type PerformanceTestSessionMetadata = {
   isPerformanceTest: boolean;
   performanceTestType: string;
   performanceTestWeekId: string;
+  /** Template version — 2 for current schedule; omit/1 for legacy published weeks. */
+  performanceTestingVersion?: number;
 };
 
 export type CoachDraftSession = SandboxSessionBlock & {
@@ -153,6 +155,8 @@ export type CoachDraftWeek = {
   week: number;
   days: CoachDraftDay[];
   generatedAt: string;
+  /** Set when the draft was built from the Performance Testing template (Version 2+). */
+  performanceTestingVersion?: number;
 };
 
 export type CoachDraftSessionCounts = {

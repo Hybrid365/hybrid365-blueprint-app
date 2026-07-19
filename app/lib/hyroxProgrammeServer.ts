@@ -846,13 +846,28 @@ export function buildSessionInsertRowsFromDraftWeek(
               isPerformanceTest: true,
               performanceTestType: sess.performanceMetadata.performanceTestType,
               performanceTestWeekId: sess.performanceMetadata.performanceTestWeekId,
+              ...(sess.performanceMetadata.performanceTestingVersion
+                ? {
+                    performanceTestingVersion:
+                      sess.performanceMetadata.performanceTestingVersion,
+                  }
+                : {}),
             }
           : sess.editConfig.kind === "performance_test" && sess.editConfig.testType
             ? {
                 isPerformanceTest: true,
                 performanceTestType: sess.editConfig.testType,
                 performanceTestWeekId:
-                  sess.editConfig.performanceTestWeekId ?? sess.performanceMetadata?.performanceTestWeekId,
+                  sess.editConfig.performanceTestWeekId ??
+                  sess.performanceMetadata?.performanceTestWeekId,
+                ...(sess.performanceMetadata?.performanceTestingVersion
+                  ? {
+                      performanceTestingVersion:
+                        sess.performanceMetadata.performanceTestingVersion,
+                    }
+                  : draftWeek.performanceTestingVersion
+                    ? { performanceTestingVersion: draftWeek.performanceTestingVersion }
+                    : {}),
               }
             : {}),
       } as unknown as HyroxJson,

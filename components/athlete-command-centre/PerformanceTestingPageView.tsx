@@ -10,10 +10,10 @@ import {
 import type { AthletePerformanceTestingPayload } from "@/app/lib/hyroxPerformanceTestingServer";
 import {
   PERFORMANCE_TEST_INTRO,
-  PERFORMANCE_TEST_WEEK_DAYS,
   PERFORMANCE_TEST_WEEK_LABEL,
   WHY_WE_TEST_CARDS,
   performanceTestTypeLabel,
+  performanceTestWeekDaysForVersion,
   statusLabel,
   type PerformanceTestResultRow,
   type PerformanceTestType,
@@ -128,6 +128,9 @@ export function PerformanceTestingPageView({
 
   const hasPublishedWeek = Boolean(data?.programmeWeekId);
   const profile = data?.profile as HyroxPerformanceProfile | undefined;
+  const weekVersion = data?.performanceTestingVersion ?? 2;
+  const weekDays = performanceTestWeekDaysForVersion(weekVersion);
+  const isLegacyProtocol = Boolean(data?.isLegacyProtocol);
   const adminDashboardHref =
     backToAdminHref ?? (athleteId ? `/admin/hyrox-athletes/${athleteId}?tab=Testing` : undefined);
   const programmeBuilderHref =
@@ -186,6 +189,12 @@ export function PerformanceTestingPageView({
         <div className="mt-4">
           <HyroxLead>{PERFORMANCE_TEST_INTRO}</HyroxLead>
         </div>
+        {isLegacyProtocol ? (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-400/5 p-3 text-sm text-amber-100/90">
+            Legacy testing protocol (Version 1). This published week keeps its original schedule and
+            result forms. Newly added Performance Testing weeks use Version 2.
+          </div>
+        ) : null}
         {!hasPublishedWeek ? (
           <div className="mt-4 rounded-xl border border-zinc-700 bg-zinc-950/60 p-4 text-sm text-zinc-400">
             {isCoachPreview ? (
@@ -235,13 +244,14 @@ export function PerformanceTestingPageView({
           <div>
             <h2 className="text-lg font-bold text-white">Testing week overview</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              {data?.completion.submitted ?? 0} of {data?.completion.total ?? 12} tests submitted
+              {data?.completion.submitted ?? 0} of {data?.completion.total ?? 5} tests submitted
               · {data?.completion.reviewed ?? 0} coach reviewed
+              {weekVersion ? ` · Protocol v${weekVersion}` : ""}
             </p>
           </div>
         </div>
         <ol className="mt-4 space-y-2">
-          {PERFORMANCE_TEST_WEEK_DAYS.map((day) => (
+          {weekDays.map((day) => (
             <li
               key={`${day.day}-${day.title}`}
               className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm"
@@ -250,12 +260,14 @@ export function PerformanceTestingPageView({
                 {day.day} — {day.title}
               </span>
               <span className="text-xs text-zinc-500">
-                {day.testTypes
-                  .map((t) => {
-                    const row = resultsByType.get(t);
-                    return row ? statusLabel(row.status) : "Outstanding";
-                  })
-                  .join(" · ")}
+                {day.testTypes.length === 0
+                  ? (day.overviewNote ?? "No formal result required")
+                  : day.testTypes
+                      .map((t) => {
+                        const row = resultsByType.get(t);
+                        return row ? statusLabel(row.status) : "Outstanding";
+                      })
+                      .join(" · ")}
               </span>
             </li>
           ))}
@@ -280,28 +292,35 @@ export function PerformanceTestingPageView({
       <HyroxSection>
         <h2 className="text-lg font-bold text-white">Daily tests</h2>
         <div className="mt-4 space-y-6">
-          {PERFORMANCE_TEST_WEEK_DAYS.map((day) => (
+          {weekDays.map((day) => (
             <div key={`${day.day}-${day.title}`}>
               <h3 className="text-sm font-bold uppercase tracking-wide text-yellow-400/80">
                 {day.day} — {day.title}
               </h3>
-              <div className="mt-3 space-y-3">
-                {day.testTypes.map((testType) => (
-                  <PerformanceTestResultForm
-                    key={testType}
-                    testType={testType as PerformanceTestType}
-                    existing={resultsByType.get(testType) ?? null}
-                    programmeWeekId={data?.programmeWeekId ?? null}
-                    testWeekId={data?.testWeekId ?? "test-week-1"}
-                    locked={Boolean(resultsByType.get(testType)?.coach_reviewed)}
-                    readOnly={readOnly}
-                    mode={mode}
-                    athleteId={athleteId}
-                    showCoachSaveNote={isCoachPreview}
-                    onSaved={handleResultSaved}
-                  />
-                ))}
-              </div>
+              {day.testTypes.length === 0 ? (
+                <p className="mt-2 text-sm text-zinc-500">
+                  {day.overviewNote ??
+                    "Complete this day via your programme session if prescribed. No formal performance-test result is required."}
+                </p>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  {day.testTypes.map((testType) => (
+                    <PerformanceTestResultForm
+                      key={testType}
+                      testType={testType as PerformanceTestType}
+                      existing={resultsByType.get(testType) ?? null}
+                      programmeWeekId={data?.programmeWeekId ?? null}
+                      testWeekId={data?.testWeekId ?? "test-week-1"}
+                      locked={Boolean(resultsByType.get(testType)?.coach_reviewed)}
+                      readOnly={readOnly}
+                      mode={mode}
+                      athleteId={athleteId}
+                      showCoachSaveNote={isCoachPreview}
+                      onSaved={handleResultSaved}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -327,7 +346,21 @@ export function PerformanceTestingPageView({
             <ProfileTile label="5 km pace" value={profile.running.fiveKPace} />
             <ProfileTile label="Ski 2 km" value={profile.ski.ski2kTime} />
             <ProfileTile label="Row 2 km" value={profile.row.row2kTime} />
-            <ProfileTile label="Dead hang" value={profile.grip.deadHangSeconds} suffix="s" />
+            {profile.compromised.simulation?.totalCompletionTime ? (
+              <ProfileTile
+                label="Simulation total"
+                value={profile.compromised.simulation.totalCompletionTime}
+              />
+            ) : null}
+            {profile.compromised.simulation?.percentageRunningDeterioration ? (
+              <ProfileTile
+                label="Run deterioration"
+                value={profile.compromised.simulation.percentageRunningDeterioration}
+              />
+            ) : null}
+            {profile.grip.deadHangSeconds ? (
+              <ProfileTile label="Dead hang" value={profile.grip.deadHangSeconds} suffix="s" />
+            ) : null}
             <ProfileTile label="Primary limiter" value={profile.likelyPrimaryLimiter} />
             <ProfileTile label="Secondary limiter" value={profile.likelySecondaryLimiter} />
           </div>

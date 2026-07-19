@@ -8,6 +8,7 @@ import {
   KIERAN_COACH_SESSIONS,
 } from "@/app/lib/hyroxCoachSessionLibraryKieran";
 import { HYROX_BATCH_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryHyroxBatch";
+import { HYROX_MINI_COMPROMISED_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryMiniCompromised";
 import type {
   CoachLibraryEntry,
   LibraryCategory,
@@ -49,6 +50,7 @@ export const COACH_SESSION_LIBRARY: CoachLibraryEntry[] = [
   ...COACH_SESSION_LIBRARY_DATA.map(enrichCoachStapleEntry),
   ...KIERAN_COACH_SESSIONS,
   ...HYROX_BATCH_COACH_SESSIONS,
+  ...HYROX_MINI_COMPROMISED_COACH_SESSIONS,
 ];
 
 export const LIBRARY_CATEGORY_LABELS: Record<LibraryCategory, string> = {

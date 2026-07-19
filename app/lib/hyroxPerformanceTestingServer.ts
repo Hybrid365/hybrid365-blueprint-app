@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildHyroxPerformanceProfile } from "@/app/lib/hyroxPerformanceProfile";
 import {
-  ALL_PERFORMANCE_TEST_TYPES,
+  detectPerformanceTestingVersion,
   PERFORMANCE_TEST_WEEK_ID,
+  requiredPerformanceTestTypesForVersion,
   validatePerformanceTestResult,
+  type PerformanceTestingVersion,
   type PerformanceTestResultRow,
   type PerformanceTestStatus,
   type PerformanceTestType,
@@ -24,6 +26,7 @@ export type PerformanceTestingWeekSession = {
   sessionName: string;
   testType: string;
   testWeekId: string;
+  performanceTestingVersion?: number | null;
   prescription: Record<string, unknown> | null;
 };
 
@@ -31,6 +34,8 @@ export type AthletePerformanceTestingPayload = {
   testWeekId: string;
   programmeWeekId: string | null;
   weekLabel: string;
+  performanceTestingVersion: PerformanceTestingVersion;
+  isLegacyProtocol: boolean;
   sessions: PerformanceTestingWeekSession[];
   results: PerformanceTestResultRow[];
   baseline: RecoveryBaselineRow | null;
@@ -85,20 +90,29 @@ export async function findPublishedPerformanceTestingWeek(
     );
 
     if (perfSessions.length >= 3) {
+      const mapped = perfSessions.map((s) => {
+        const meta = (s.metadata ?? {}) as Record<string, unknown>;
+        const versionRaw = meta.performanceTestingVersion;
+        const versionNum =
+          typeof versionRaw === "number"
+            ? versionRaw
+            : typeof versionRaw === "string" && versionRaw.trim()
+              ? Number(versionRaw)
+              : null;
+        return {
+          id: s.id,
+          dayOfWeek: s.day_of_week,
+          sessionSlot: s.session_slot,
+          sessionName: s.session_name,
+          testType: String(meta.performanceTestType ?? ""),
+          testWeekId: String(meta.performanceTestWeekId ?? testWeekId),
+          performanceTestingVersion: Number.isFinite(versionNum) ? versionNum : null,
+          prescription: (s.prescription as Record<string, unknown> | null) ?? null,
+        };
+      });
       return {
         programmeWeekId: week.id,
-        sessions: perfSessions.map((s) => {
-          const meta = (s.metadata ?? {}) as Record<string, unknown>;
-          return {
-            id: s.id,
-            dayOfWeek: s.day_of_week,
-            sessionSlot: s.session_slot,
-            sessionName: s.session_name,
-            testType: String(meta.performanceTestType ?? ""),
-            testWeekId: String(meta.performanceTestWeekId ?? testWeekId),
-            prescription: (s.prescription as Record<string, unknown> | null) ?? null,
-          };
-        }),
+        sessions: mapped,
       };
     }
   }
@@ -151,19 +165,30 @@ export async function buildAthletePerformanceTestingPayload(
 
   const submitted = results.filter((r) => r.status === "submitted" || r.status === "reviewed");
   const reviewed = results.filter((r) => r.coach_reviewed || r.status === "reviewed");
+  const performanceTestingVersion = detectPerformanceTestingVersion({
+    sessionTestTypes: weekInfo.sessions.map((s) => s.testType),
+    metadataVersions: weekInfo.sessions.map((s) => s.performanceTestingVersion),
+  });
+  const requiredTypes = requiredPerformanceTestTypesForVersion(performanceTestingVersion);
+  const submittedRequired = submitted.filter((r) =>
+    requiredTypes.includes(r.test_type as PerformanceTestType)
+  );
 
   return {
     testWeekId,
     programmeWeekId: weekInfo.programmeWeekId,
     weekLabel: "Test Week 1",
+    performanceTestingVersion,
+    isLegacyProtocol: performanceTestingVersion === 1,
     sessions: weekInfo.sessions,
     results,
     baseline,
-    profile: buildHyroxPerformanceProfile(results, baseline),
+    profile: buildHyroxPerformanceProfile(results, baseline, performanceTestingVersion),
     completion: {
-      submitted: submitted.length,
-      total: ALL_PERFORMANCE_TEST_TYPES.length,
-      reviewed: reviewed.length,
+      submitted: submittedRequired.length,
+      total: requiredTypes.length,
+      reviewed: reviewed.filter((r) => requiredTypes.includes(r.test_type as PerformanceTestType))
+        .length,
     },
   };
 }
