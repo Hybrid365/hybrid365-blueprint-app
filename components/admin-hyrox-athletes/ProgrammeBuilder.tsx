@@ -721,8 +721,10 @@ export function ProgrammeBuilder({
             <h3 className="font-bold text-white">Apply missing Performance Testing details?</h3>
             <p className="mt-2 text-sm text-zinc-400">
               This fills empty warm-up, main set, cool-down and recording fields on Version 2
-              testing sessions. Existing coach-written content is preserved. Dates, completion
-              state, athlete logs and Performance Testing results are not deleted.
+              testing sessions. For Sunday, it also appends the full ordered HYROX sequence when
+              that sequence is missing — even if pacing/protocol guidance is already present.
+              Existing coach-written content is preserved. Dates, completion state, athlete logs
+              and Performance Testing results are not deleted.
             </p>
             <p className="mt-2 text-sm text-amber-200/90">
               Because this week is published, the draft will be saved and then republished so

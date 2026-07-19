@@ -34,6 +34,102 @@ export type PerformanceTestingSessionDetailSource = {
 
 const DIVIDER = "—";
 
+export const HYBRID365_COMPROMISED_HYROX_SEQUENCE_V2 =
+  "HYBRID365_COMPROMISED_HYROX_SEQUENCE_V2" as const;
+
+/** Required station markers used to detect an incomplete Sunday main set. */
+export const COMPROMISED_HYROX_SEQUENCE_REQUIRED_MARKERS = [
+  "1,000m SkiErg",
+  "50m Sled Push",
+  "50m Sled Pull",
+  "40m Burpee Broad Jumps",
+  "1,000m RowErg",
+  "100m Farmer",
+  "50m Sandbag Lunges",
+  "50 Wall Balls",
+] as const;
+
+/** Canonical ordered movement block inserted into Sunday mainSet (idempotent via marker). */
+export const COMPROMISED_HYROX_SEQUENCE_MAIN_SET_BLOCK: string[] = [
+  HYBRID365_COMPROMISED_HYROX_SEQUENCE_V2,
+  "Full ordered test",
+  DIVIDER,
+  "STANDARD — 600M RUNS",
+  "1. 600m Run",
+  "2. 1,000m SkiErg",
+  "3. 600m Run",
+  "4. 50m Sled Push",
+  "5. 600m Run",
+  "6. 50m Sled Pull",
+  "7. 600m Run",
+  "8. 40m Burpee Broad Jumps",
+  "9. 600m Run",
+  "10. 1,000m RowErg",
+  "11. 600m Run",
+  "12. 100m Farmer’s Carry",
+  "13. 600m Run",
+  "14. 50m Sandbag Lunges",
+  "15. 600m Run",
+  "16. 50 Wall Balls",
+  "Total running: 4.8km",
+  DIVIDER,
+  "ADVANCED — 800M RUNS",
+  "Use the same station order and station volumes, replacing every 600m run with 800m.",
+  "1. 800m Run",
+  "2. 1,000m SkiErg",
+  "3. 800m Run",
+  "4. 50m Sled Push",
+  "5. 800m Run",
+  "6. 50m Sled Pull",
+  "7. 800m Run",
+  "8. 40m Burpee Broad Jumps",
+  "9. 800m Run",
+  "10. 1,000m RowErg",
+  "11. 800m Run",
+  "12. 100m Farmer’s Carry",
+  "13. 800m Run",
+  "14. 50m Sandbag Lunges",
+  "15. 800m Run",
+  "16. 50 Wall Balls",
+  "Total running: 6.4km",
+  DIVIDER,
+  "SCALED / CUSTOM",
+  "Use the coach-approved run distances, station volumes and equipment loads recorded for the athlete.",
+  "Record the exact scaled protocol on the Performance Testing result form.",
+];
+
+export function mainSetHasCompromisedHyroxSequence(lines: string[] | null | undefined): boolean {
+  if (!lines?.length) return false;
+  const joined = lines.join("\n");
+  if (joined.includes(HYBRID365_COMPROMISED_HYROX_SEQUENCE_V2)) return true;
+  return COMPROMISED_HYROX_SEQUENCE_REQUIRED_MARKERS.every((marker) =>
+    lines.some((line) => line.includes(marker))
+  );
+}
+
+/**
+ * Append the canonical Sunday sequence when absent.
+ * Preserves existing coach/guidance lines and does not duplicate the block.
+ */
+export function mergeCompromisedHyroxSequenceIntoMainSet(existing: string[]): string[] {
+  if (mainSetHasCompromisedHyroxSequence(existing)) {
+    return existing;
+  }
+  const trimmed = existing.map((l) => l.trimEnd()).filter((l, i, arr) => {
+    if (i < arr.length - 1) return true;
+    return l.trim().length > 0;
+  });
+  if (trimmed.length === 0) {
+    return [...COMPROMISED_HYROX_SEQUENCE_MAIN_SET_BLOCK];
+  }
+  const needsDivider = trimmed[trimmed.length - 1] !== DIVIDER;
+  return [
+    ...trimmed,
+    ...(needsDivider ? [DIVIDER] : []),
+    ...COMPROMISED_HYROX_SEQUENCE_MAIN_SET_BLOCK,
+  ];
+}
+
 export const PERFORMANCE_TESTING_SESSION_DETAILS: Record<
   PerformanceTestingDetailKey,
   PerformanceTestingSessionDetailSource
@@ -519,7 +615,15 @@ export const PERFORMANCE_TESTING_SESSION_DETAILS: Record<
       "Do not create fatigue during the warm-up",
     ],
     mainSet: [
-      "Pacing",
+      "Protocol selection — record which you complete",
+      "Standard: 600m runs (total run 4.8km)",
+      "Advanced: 800m runs (total run 6.4km)",
+      "Scaled/custom version if coach-approved",
+      "Do not auto-select advanced based only on gender or division",
+      DIVIDER,
+      ...COMPROMISED_HYROX_SEQUENCE_MAIN_SET_BLOCK,
+      DIVIDER,
+      "Pacing guidance",
       COMPROMISED_HYROX_PACING_GUIDANCE,
       "Do not sprint the opening run",
       "Transitions should be purposeful but controlled",
@@ -527,30 +631,6 @@ export const PERFORMANCE_TESTING_SESSION_DETAILS: Record<
       "Avoid unnecessary station breaks",
       "Try to return to running rhythm quickly after each movement",
       "Record every run and station split",
-      DIVIDER,
-      "Protocol selection — record which you complete",
-      "Standard: 600m runs (total run 4.8km)",
-      "Advanced: 800m runs (total run 6.4km)",
-      "Scaled/custom version if coach-approved",
-      "Do not auto-select advanced based only on gender or division",
-      DIVIDER,
-      "Continuous order (no planned recovery between stations)",
-      "1. Run (600m or 800m)",
-      "2. 1,000m SkiErg",
-      "3. Run",
-      "4. 50m Sled Push",
-      "5. Run",
-      "6. 50m Sled Pull",
-      "7. Run",
-      "8. 40m Burpee Broad Jumps",
-      "9. Run",
-      "10. 1,000m RowErg",
-      "11. Run",
-      "12. 100m Farmer’s Carry",
-      "13. Run",
-      "14. 50m Sandbag Lunges",
-      "15. Run",
-      "16. 50 Wall Balls",
       DIVIDER,
       "Equipment and setup to record",
       "Race division/category",
@@ -717,11 +797,41 @@ export function fillMissingFieldsFromTestingDetail<T extends {
     safetyNote?: string;
     scalingNotes?: string;
     protocol?: string;
+    testType?: string;
+  };
+  performanceMetadata?: {
+    performanceTestType?: string;
   };
 }>(session: T, detail: PerformanceTestingSessionDetailSource, sessionLibraryId: string): T {
   const nextPrescription =
     session.prescription ??
     buildResolvedPrescriptionFromTestingDetail(detail, sessionLibraryId);
+
+  const isSundayBenchmark =
+    session.performanceMetadata?.performanceTestType === "compromised_hyrox_benchmark" ||
+    session.editConfig?.testType === "compromised_hyrox_benchmark" ||
+    sessionLibraryId.includes("compromised_hyrox_benchmark") ||
+    detail.title.includes("Compromised HYROX Benchmark");
+
+  let resolvedMainSet = isEmptyStringArray(nextPrescription.mainSet)
+    ? detail.mainSet
+    : nextPrescription.mainSet;
+  let resolvedMainSetLines = isEmptyStringArray(session.editConfig.mainSetLines)
+    ? detail.mainSet
+    : (session.editConfig.mainSetLines as string[]);
+
+  if (isSundayBenchmark) {
+    resolvedMainSet = mergeCompromisedHyroxSequenceIntoMainSet(resolvedMainSet);
+    resolvedMainSetLines = mergeCompromisedHyroxSequenceIntoMainSet(resolvedMainSetLines);
+    // If still missing the full canonical block (e.g. old vague run lines), replace with
+    // template mainSet only when the sequence marker is absent after merge of empty-ish sets.
+    if (!mainSetHasCompromisedHyroxSequence(resolvedMainSet)) {
+      resolvedMainSet = detail.mainSet;
+    }
+    if (!mainSetHasCompromisedHyroxSequence(resolvedMainSetLines)) {
+      resolvedMainSetLines = detail.mainSet;
+    }
+  }
 
   const prescription: ResolvedSessionPrescription = {
     ...nextPrescription,
@@ -732,9 +842,7 @@ export function fillMissingFieldsFromTestingDetail<T extends {
     warmup: isEmptyStringArray(nextPrescription.warmup)
       ? detail.warmup
       : nextPrescription.warmup,
-    mainSet: isEmptyStringArray(nextPrescription.mainSet)
-      ? detail.mainSet
-      : nextPrescription.mainSet,
+    mainSet: resolvedMainSet,
     cooldown: isEmptyStringArray(nextPrescription.cooldown)
       ? detail.cooldown
       : nextPrescription.cooldown,
@@ -776,9 +884,7 @@ export function fillMissingFieldsFromTestingDetail<T extends {
     warmUpLines: isEmptyStringArray(session.editConfig.warmUpLines)
       ? detail.warmup
       : session.editConfig.warmUpLines,
-    mainSetLines: isEmptyStringArray(session.editConfig.mainSetLines)
-      ? detail.mainSet
-      : session.editConfig.mainSetLines,
+    mainSetLines: resolvedMainSetLines,
     coolDownLines: isEmptyStringArray(session.editConfig.coolDownLines)
       ? detail.cooldown
       : session.editConfig.coolDownLines,

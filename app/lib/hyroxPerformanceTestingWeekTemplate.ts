@@ -26,6 +26,7 @@ import {
   buildResolvedPrescriptionFromTestingDetail,
   detailKeyForPerformanceTestType,
   fillMissingFieldsFromTestingDetail,
+  mainSetHasCompromisedHyroxSequence,
   type PerformanceTestingDetailKey,
 } from "@/app/lib/hyroxPerformanceTestingSessionDetails";
 
@@ -345,6 +346,17 @@ function resolveDetailKeyForSession(session: CoachDraftSession): PerformanceTest
 function sessionNeedsDetailHydration(session: CoachDraftSession): boolean {
   const p = session.prescription;
   const cfg = session.editConfig;
+  const isSunday =
+    session.performanceMetadata?.performanceTestType === "compromised_hyrox_benchmark" ||
+    session.editConfig?.testType === "compromised_hyrox_benchmark" ||
+    Boolean(session.sessionId?.includes("compromised_hyrox_benchmark")) ||
+    session.title.toLowerCase().includes("compromised hyrox");
+
+  if (isSunday) {
+    const main = p?.mainSet ?? cfg.mainSetLines ?? [];
+    if (!mainSetHasCompromisedHyroxSequence(main)) return true;
+  }
+
   return (
     !p ||
     !p.mainSet?.length ||
@@ -387,18 +399,24 @@ export function hydrateMissingPerformanceTestingDetails(
         // Still fill any individually missing fields
       }
       const before = JSON.stringify({
-        p: session.prescription?.mainSet?.length ?? 0,
-        w: session.editConfig.warmUpLines?.length ?? 0,
-        m: session.editConfig.mainSetLines?.length ?? 0,
+        p: session.prescription?.mainSet ?? [],
+        w: session.editConfig.warmUpLines ?? [],
+        m: session.editConfig.mainSetLines ?? [],
+        hasSeq: mainSetHasCompromisedHyroxSequence(
+          session.prescription?.mainSet ?? session.editConfig.mainSetLines
+        ),
       });
       const detail = detailForKey(detailKey);
       const sessionLibraryId =
         session.sessionId ?? `performance_test_${detailKey}`;
       const next = fillMissingFieldsFromTestingDetail(session, detail, sessionLibraryId);
       const after = JSON.stringify({
-        p: next.prescription?.mainSet?.length ?? 0,
-        w: next.editConfig.warmUpLines?.length ?? 0,
-        m: next.editConfig.mainSetLines?.length ?? 0,
+        p: next.prescription?.mainSet ?? [],
+        w: next.editConfig.warmUpLines ?? [],
+        m: next.editConfig.mainSetLines ?? [],
+        hasSeq: mainSetHasCompromisedHyroxSequence(
+          next.prescription?.mainSet ?? next.editConfig.mainSetLines
+        ),
       });
       if (before !== after) hydratedCount += 1;
       return next;

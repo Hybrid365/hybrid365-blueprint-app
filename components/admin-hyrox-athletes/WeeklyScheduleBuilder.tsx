@@ -196,7 +196,7 @@ function SessionCard({
       <p className="mt-0.5 text-[10px] text-zinc-500">{session.rpeHr}</p>
       <p className="mt-1 line-clamp-2 text-[10px] text-zinc-600">{session.rationale}</p>
       {session.showDetail && p ? (
-        <div className="mt-2 max-h-[480px] overflow-y-auto border-t border-zinc-800 pt-2">
+        <div className="mt-2 max-h-[min(70vh,720px)] overflow-y-auto border-t border-zinc-800 pt-2">
           <PrescriptionDetailBlocks p={p} />
         </div>
       ) : null}

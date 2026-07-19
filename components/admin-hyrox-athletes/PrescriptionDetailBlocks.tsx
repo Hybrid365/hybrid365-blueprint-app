@@ -1,6 +1,7 @@
 "use client";
 
 import type { ResolvedSessionPrescription } from "@/src/lib/hyrox/types";
+import { HYBRID365_COMPROMISED_HYROX_SEQUENCE_V2 } from "@/app/lib/hyroxPerformanceTestingSessionDetails";
 
 /**
  * Renders full resolved prescription blocks for coach tools (schedule cards, edit drawer).
@@ -12,6 +13,8 @@ export function PrescriptionDetailBlocks({
   p: ResolvedSessionPrescription;
   className?: string;
 }) {
+  const mainSet = p.mainSet.filter((line) => line !== HYBRID365_COMPROMISED_HYROX_SEQUENCE_V2);
+
   return (
     <div className={`space-y-2 text-[10px] leading-relaxed ${className}`}>
       <p className="text-zinc-300">{p.objective}</p>
@@ -27,11 +30,11 @@ export function PrescriptionDetailBlocks({
         </div>
       ) : null}
 
-      {p.mainSet.length > 0 ? (
+      {mainSet.length > 0 ? (
         <div>
           <p className="font-semibold uppercase tracking-wide text-zinc-500">Main set</p>
           <div className="mt-0.5 space-y-0.5 text-zinc-400">
-            {p.mainSet.map((line, i) =>
+            {mainSet.map((line, i) =>
               line === "—" ? (
                 <div key={`div-${i}`} className="my-1.5 border-t border-zinc-800/80" />
               ) : (

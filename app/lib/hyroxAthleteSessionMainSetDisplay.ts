@@ -3,6 +3,7 @@ import { deriveMainSetLinesFromEditConfig } from "@/app/lib/hyroxCoachProgrammeD
 import {
   buildCompromisedMainSetLines,
 } from "@/app/lib/hyroxSessionTargetOverrides";
+import { HYBRID365_COMPROMISED_HYROX_SEQUENCE_V2 } from "@/app/lib/hyroxPerformanceTestingSessionDetails";
 
 export type AthleteSessionMainSetBlock = {
   title: string;
@@ -12,6 +13,10 @@ export type AthleteSessionMainSetBlock = {
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+}
+
+function stripInternalMarkers(lines: string[]): string[] {
+  return lines.filter((l) => l !== HYBRID365_COMPROMISED_HYROX_SEQUENCE_V2);
 }
 
 function isSeparatorLine(line: string): boolean {
@@ -38,27 +43,27 @@ export function resolveAthleteMainSetLines(
     ? buildCompromisedMainSetLines({ ...edit, kind: "compromised" })
     : [];
 
-  if (manual.length > 0) return manual;
+  if (manual.length > 0) return stripInternalMarkers(manual);
 
   if (prescriptionMain.length > 0 && hasMultiPartMainSetMarkers(prescriptionMain)) {
     if (!derived.length || prescriptionMain.length >= derived.length) {
-      return prescriptionMain;
+      return stripInternalMarkers(prescriptionMain);
     }
   }
 
   if (compromisedBuilt.length > 0) {
     if (prescriptionMain.length > compromisedBuilt.length && hasMultiPartMainSetMarkers(prescriptionMain)) {
-      return prescriptionMain;
+      return stripInternalMarkers(prescriptionMain);
     }
-    if (compromisedBuilt.length >= derived.length) return compromisedBuilt;
+    if (compromisedBuilt.length >= derived.length) return stripInternalMarkers(compromisedBuilt);
   }
 
   if (derived.length > 0) {
-    if (prescriptionMain.length > derived.length) return prescriptionMain;
-    return derived;
+    if (prescriptionMain.length > derived.length) return stripInternalMarkers(prescriptionMain);
+    return stripInternalMarkers(derived);
   }
 
-  if (prescriptionMain.length > 0) return prescriptionMain;
+  if (prescriptionMain.length > 0) return stripInternalMarkers(prescriptionMain);
 
   const keySetSummary = prescription.keySetSummary;
   if (typeof keySetSummary === "string" && keySetSummary.trim()) {
