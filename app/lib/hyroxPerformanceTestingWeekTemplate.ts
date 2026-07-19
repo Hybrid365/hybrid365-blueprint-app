@@ -1,7 +1,9 @@
 /**
  * Builds a standard CoachDraftWeek for Hybrid365 Performance Testing — Test Week 1 (Version 2).
  *
- * Newly created weeks always use performanceTestingVersion: 2.
+ * Newly created weeks always use performanceTestingVersion: 2 and include full
+ * ResolvedSessionPrescription details for Programme Builder View + athlete SessionDrawer.
+ *
  * Do not mutate already-published Version 1 weeks.
  */
 
@@ -15,12 +17,17 @@ import {
 } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { SandboxTimeOfDay } from "@/app/lib/hyroxProgrammeSandbox";
 import {
-  COMPROMISED_HYROX_PACING_GUIDANCE,
-  PERFORMANCE_TEST_DEFINITIONS,
   PERFORMANCE_TEST_WEEK_ID,
   PERFORMANCE_TESTING_VERSION,
   type PerformanceTestType,
 } from "@/app/lib/hyroxPerformanceTestingTypes";
+import {
+  PERFORMANCE_TESTING_SESSION_DETAILS,
+  buildResolvedPrescriptionFromTestingDetail,
+  detailKeyForPerformanceTestType,
+  fillMissingFieldsFromTestingDetail,
+  type PerformanceTestingDetailKey,
+} from "@/app/lib/hyroxPerformanceTestingSessionDetails";
 
 export const PERFORMANCE_TESTING_WEEK_TEMPLATE_NAME =
   "Hybrid365 Performance Testing — Test Week 1";
@@ -29,36 +36,43 @@ function nextDraftId(): string {
   return `pt-${crypto.randomUUID().slice(0, 8)}`;
 }
 
+function detailForKey(key: PerformanceTestingDetailKey) {
+  return PERFORMANCE_TESTING_SESSION_DETAILS[key];
+}
+
 function buildPerformanceTestEditConfig(
   testType: PerformanceTestType,
-  title: string
+  detailKey: PerformanceTestingDetailKey
 ): CoachSessionEditConfig {
-  const def = PERFORMANCE_TEST_DEFINITIONS[testType];
+  const detail = detailForKey(detailKey);
   return {
     kind: "performance_test",
-    sessionName: title,
+    sessionName: detail.title,
     testType,
-    protocol: def.protocol.join("\n"),
-    requiredFields: def.requiredFields.map((f) => f.label),
-    optionalFields: def.optionalFields.map((f) => f.label),
-    scalingNotes: def.scalingNotes.join("\n"),
-    filmPrompt: def.videoPrompt,
-    coachNote: def.coachNote,
-    objective: def.purpose,
-    rpeTarget: def.stressLevel,
-    whatToRecord: [...def.requiredFields.map((f) => f.label), ...def.optionalFields.map((f) => f.label)],
+    protocol: [...detail.warmup, "—", ...detail.mainSet, "—", ...detail.cooldown].join("\n"),
+    requiredFields: detail.whatToRecord,
+    optionalFields: [],
+    scalingNotes: detail.scaling.join("\n"),
+    filmPrompt: detail.filmPrompt,
+    coachNote: detail.coachNote,
+    objective: detail.purpose,
+    rpeTarget: detail.rpeTarget,
+    whatToRecord: detail.whatToRecord,
     performanceTestWeekId: PERFORMANCE_TEST_WEEK_ID,
+    warmUpLines: detail.warmup,
+    mainSetLines: detail.mainSet,
+    coolDownLines: detail.cooldown,
+    coachPacingNote: detail.pacingNote,
   };
 }
 
 function buildPerformanceTestSession(params: {
-  day: string;
   timeOfDay: SandboxTimeOfDay;
   testType: PerformanceTestType;
-  title?: string;
+  detailKey?: PerformanceTestingDetailKey;
 }): CoachDraftSession {
-  const def = PERFORMANCE_TEST_DEFINITIONS[params.testType];
-  const title = params.title ?? def.title;
+  const detailKey = params.detailKey ?? params.testType;
+  const detail = detailForKey(detailKey);
   const badges: CoachDraftSession["badges"] = [
     ...(params.timeOfDay === "AM"
       ? (["AM"] as const)
@@ -68,26 +82,28 @@ function buildPerformanceTestSession(params: {
     "Performance Test",
   ];
 
-  const editConfig = buildPerformanceTestEditConfig(params.testType, title);
+  const sessionLibraryId = `performance_test_${params.testType}`;
+  const prescription = buildResolvedPrescriptionFromTestingDetail(detail, sessionLibraryId);
+  const editConfig = buildPerformanceTestEditConfig(params.testType, detailKey);
 
   return {
     draftId: nextDraftId(),
     timeOfDay: params.timeOfDay,
     badges,
-    title,
+    title: detail.title,
     sessionType: "testing",
-    duration: def.estimatedDuration,
-    intensity: def.stressLevel,
-    rpeHr: def.stressLevel,
-    isKeySession: true,
+    duration: detail.duration,
+    intensity: detail.rpeTarget,
+    rpeHr: detail.rpeTarget,
+    isKeySession: detail.hardDay,
     isOptional: false,
-    rationale: def.purpose,
-    sessionId: `performance_test_${params.testType}`,
-    prescription: null,
+    rationale: detail.purpose,
+    sessionId: sessionLibraryId,
+    prescription,
     sessionDetail: null,
     thresholdMinutes: undefined,
     emom: null,
-    coachNote: def.coachNote ?? "",
+    coachNote: detail.coachNote,
     editConfig,
     showDetail: false,
     performanceMetadata: {
@@ -102,38 +118,43 @@ function buildPerformanceTestSession(params: {
 /** Recovery / prep programme sessions — no formal performance-test result required. */
 function buildRecoveryProgrammeSession(params: {
   timeOfDay: SandboxTimeOfDay;
-  title: string;
-  duration: string;
-  protocol: string[];
-  objective: string;
+  detailKey: "recovery_day" | "mobility_technique" | "saturday_recovery";
 }): CoachDraftSession {
+  const detail = detailForKey(params.detailKey);
+  const sessionLibraryId = `performance_test_${params.detailKey}`;
+  const prescription = buildResolvedPrescriptionFromTestingDetail(detail, sessionLibraryId);
+
   return {
     draftId: nextDraftId(),
     timeOfDay: params.timeOfDay,
     badges: ["Main"],
-    title: params.title,
+    title: detail.title,
     sessionType: "tempo_aerobic_quality",
-    duration: params.duration,
-    intensity: "Easy",
-    rpeHr: "2–4",
+    duration: detail.duration,
+    intensity: detail.rpeTarget,
+    rpeHr: detail.rpeTarget,
     isKeySession: false,
     isOptional: false,
-    rationale: params.objective,
-    sessionId: null,
-    prescription: null,
+    rationale: detail.purpose,
+    sessionId: sessionLibraryId,
+    prescription,
     sessionDetail: null,
     thresholdMinutes: undefined,
     emom: null,
-    coachNote: "Programme-session completion only — no formal performance-test result required.",
+    coachNote: detail.coachNote,
     editConfig: {
       kind: "easy_aerobic",
-      sessionName: params.title,
-      objective: params.objective,
-      mainSetLines: params.protocol,
-      whatToRecord: ["Completion", "RPE", "Notes"],
-      rpeTarget: "2–4",
-      durationMinutes: 45,
+      sessionName: detail.title,
+      objective: detail.purpose,
+      warmUpLines: detail.warmup,
+      mainSetLines: detail.mainSet,
+      coolDownLines: detail.cooldown,
+      whatToRecord: detail.whatToRecord,
+      rpeTarget: detail.rpeTarget,
+      durationMinutes: detail.durationMinutes,
       hrZone: "Z1–Z2",
+      coachNote: detail.coachNote,
+      filmPrompt: detail.filmPrompt,
     },
     showDetail: false,
   };
@@ -179,30 +200,20 @@ export function buildPerformanceTestingWeek1Draft(athlete: CoachAthlete): CoachD
 
   const days: CoachDraftDay[] = [
     {
-      ...buildDayShell("Mon", "5km Run Test", "Performance test"),
+      ...buildDayShell("Mon", "5km Run Performance Test", "Performance test"),
       sessions: [
         buildPerformanceTestSession({
-          day: "Mon",
           timeOfDay: "Main",
           testType: "five_k_run",
-          title: "5km Run Test",
         }),
       ],
     },
     {
-      ...buildDayShell("Tue", "Easy Recovery", "Recovery", "recovery", { hardDay: false }),
+      ...buildDayShell("Tue", "Easy Aerobic Recovery", "Recovery", "recovery", { hardDay: false }),
       sessions: [
         buildRecoveryProgrammeSession({
           timeOfDay: "Main",
-          title: "Easy Recovery",
-          duration: "30–60 min",
-          objective: "Recover from the run test with easy aerobic work and mobility.",
-          protocol: [
-            "30–60 minutes Zone 1/2 aerobic work",
-            "Bike, easy SkiErg, RowErg or mixed aerobic work",
-            "Mobility",
-            "No hard efforts",
-          ],
+          detailKey: "recovery_day",
         }),
       ],
     },
@@ -213,15 +224,7 @@ export function buildPerformanceTestingWeek1Draft(athlete: CoachAthlete): CoachD
       sessions: [
         buildRecoveryProgrammeSession({
           timeOfDay: "Main",
-          title: "Rest, Mobility and Technique",
-          duration: "20–40 min or rest",
-          objective: "Full rest or very light recovery with optional technique practice.",
-          protocol: [
-            "Full rest or very light recovery work",
-            "Mobility",
-            "Optional technique practice",
-            "Optional movement filming for coach review",
-          ],
+          detailKey: "mobility_technique",
         }),
       ],
     },
@@ -229,16 +232,12 @@ export function buildPerformanceTestingWeek1Draft(athlete: CoachAthlete): CoachD
       ...buildDayShell("Thu", "AM SkiErg + PM RowErg", "Engine tests"),
       sessions: [
         buildPerformanceTestSession({
-          day: "Thu",
           timeOfDay: "AM",
           testType: "ski_2k",
-          title: "2km SkiErg Test",
         }),
         buildPerformanceTestSession({
-          day: "Thu",
           timeOfDay: "PM",
           testType: "row_2k",
-          title: "2km RowErg Test",
         }),
       ],
     },
@@ -246,31 +245,20 @@ export function buildPerformanceTestingWeek1Draft(athlete: CoachAthlete): CoachD
       ...buildDayShell("Fri", "Controlled Strength Assessment", "Strength test"),
       sessions: [
         buildPerformanceTestSession({
-          day: "Fri",
           timeOfDay: "Main",
           testType: "strength_assessment",
-          title: "Controlled Strength Assessment",
         }),
       ],
     },
     {
-      ...buildDayShell("Sat", "Recovery and Preparation", "Recovery", "recovery", {
+      ...buildDayShell("Sat", "Recovery and HYROX Benchmark Preparation", "Recovery", "recovery", {
         hardDay: false,
         stationFocus: null,
       }),
       sessions: [
         buildRecoveryProgrammeSession({
           timeOfDay: "Main",
-          title: "Recovery and Preparation",
-          duration: "Rest or 30–45 min",
-          objective: "Prepare for Sunday without hard station testing.",
-          protocol: [
-            "Complete rest or 30–45 minutes very easy aerobic work",
-            "Mobility",
-            "Optional light HYROX movement practice",
-            "No hard station testing",
-            "No formal result submission required",
-          ],
+          detailKey: "saturday_recovery",
         }),
       ],
     },
@@ -280,15 +268,10 @@ export function buildPerformanceTestingWeek1Draft(athlete: CoachAthlete): CoachD
         stationFocus: "Continuous HYROX simulation",
       }),
       sessions: [
-        {
-          ...buildPerformanceTestSession({
-            day: "Sun",
-            timeOfDay: "Main",
-            testType: "compromised_hyrox_benchmark",
-            title: "Hybrid365 Compromised HYROX Benchmark",
-          }),
-          coachNote: COMPROMISED_HYROX_PACING_GUIDANCE,
-        },
+        buildPerformanceTestSession({
+          timeOfDay: "Main",
+          testType: "compromised_hyrox_benchmark",
+        }),
       ],
     },
   ];
@@ -305,4 +288,142 @@ export function buildPerformanceTestingWeek1Draft(athlete: CoachAthlete): CoachD
 
 export function draftHasSessions(draft: CoachDraftWeek): boolean {
   return draft.days.some((d) => d.sessions.length > 0);
+}
+
+function resolveDetailKeyForSession(session: CoachDraftSession): PerformanceTestingDetailKey | null {
+  const testType =
+    session.performanceMetadata?.performanceTestType ??
+    session.editConfig?.testType ??
+    (session.sessionId?.startsWith("performance_test_")
+      ? session.sessionId.replace("performance_test_", "")
+      : null);
+
+  const title = session.title.toLowerCase();
+
+  if (
+    testType === "saturday_recovery" ||
+    title.includes("benchmark preparation") ||
+    (title.includes("recovery") && title.includes("preparation"))
+  ) {
+    return "saturday_recovery";
+  }
+  if (
+    testType === "recovery_day" ||
+    title.includes("easy aerobic recovery") ||
+    title === "easy recovery" ||
+    (title.includes("easy recovery") && !title.includes("preparation"))
+  ) {
+    return "recovery_day";
+  }
+  if (
+    testType === "mobility_technique" ||
+    title.includes("mobility and technique") ||
+    title.includes("rest, mobility")
+  ) {
+    return "mobility_technique";
+  }
+
+  const fromType = detailKeyForPerformanceTestType(testType);
+  if (fromType) return fromType;
+
+  const sid = session.sessionId ?? "";
+  if (sid.includes("saturday_recovery")) return "saturday_recovery";
+  if (sid.includes("recovery_day")) return "recovery_day";
+  if (sid.includes("mobility_technique")) return "mobility_technique";
+
+  if (title.includes("5km") || title.includes("5 km")) return "five_k_run";
+  if (title.includes("skierg") || title.includes("ski erg")) return "ski_2k";
+  if (title.includes("rowerg") || title.includes("row erg")) return "row_2k";
+  if (title.includes("strength assessment")) return "strength_assessment";
+  if (title.includes("compromised hyrox") || title.includes("hyrox benchmark")) {
+    return "compromised_hyrox_benchmark";
+  }
+
+  return null;
+}
+
+function sessionNeedsDetailHydration(session: CoachDraftSession): boolean {
+  const p = session.prescription;
+  const cfg = session.editConfig;
+  return (
+    !p ||
+    !p.mainSet?.length ||
+    !p.warmup?.length ||
+    !cfg.mainSetLines?.length ||
+    !cfg.warmUpLines?.length
+  );
+}
+
+/**
+ * Fill missing Performance Testing prescription details on a draft week.
+ * Only fills empty fields — does not overwrite coach-edited content.
+ * Skips Version 1 legacy weeks unless forceV2Template is true.
+ */
+export function hydrateMissingPerformanceTestingDetails(
+  draft: CoachDraftWeek,
+  options?: { forceV2Template?: boolean }
+): { draft: CoachDraftWeek; hydratedCount: number; skippedLegacy: boolean } {
+  const version = draft.performanceTestingVersion;
+  const looksLikeV1 = draft.days.some((d) =>
+    d.sessions.some(
+      (s) =>
+        s.performanceMetadata?.performanceTestType === "compromised_sled_run" ||
+        s.performanceMetadata?.performanceTestType === "sled_push" ||
+        s.editConfig?.testType === "compromised_sled_run"
+    )
+  );
+
+  if (looksLikeV1 && version !== PERFORMANCE_TESTING_VERSION && !options?.forceV2Template) {
+    return { draft, hydratedCount: 0, skippedLegacy: true };
+  }
+
+  let hydratedCount = 0;
+  const days = draft.days.map((day) => ({
+    ...day,
+    sessions: day.sessions.map((session) => {
+      const detailKey = resolveDetailKeyForSession(session);
+      if (!detailKey) return session;
+      if (!sessionNeedsDetailHydration(session) && !options?.forceV2Template) {
+        // Still fill any individually missing fields
+      }
+      const before = JSON.stringify({
+        p: session.prescription?.mainSet?.length ?? 0,
+        w: session.editConfig.warmUpLines?.length ?? 0,
+        m: session.editConfig.mainSetLines?.length ?? 0,
+      });
+      const detail = detailForKey(detailKey);
+      const sessionLibraryId =
+        session.sessionId ?? `performance_test_${detailKey}`;
+      const next = fillMissingFieldsFromTestingDetail(session, detail, sessionLibraryId);
+      const after = JSON.stringify({
+        p: next.prescription?.mainSet?.length ?? 0,
+        w: next.editConfig.warmUpLines?.length ?? 0,
+        m: next.editConfig.mainSetLines?.length ?? 0,
+      });
+      if (before !== after) hydratedCount += 1;
+      return next;
+    }),
+  }));
+
+  return {
+    draft: {
+      ...draft,
+      days,
+      performanceTestingVersion: draft.performanceTestingVersion ?? PERFORMANCE_TESTING_VERSION,
+    },
+    hydratedCount,
+    skippedLegacy: false,
+  };
+}
+
+export function draftLooksLikePerformanceTestingWeek(draft: CoachDraftWeek): boolean {
+  if (draft.performanceTestingVersion === 1 || draft.performanceTestingVersion === 2) return true;
+  return draft.days.some((d) =>
+    d.sessions.some(
+      (s) =>
+        s.performanceMetadata?.isPerformanceTest === true ||
+        s.editConfig?.kind === "performance_test" ||
+        Boolean(s.sessionId?.startsWith("performance_test_"))
+    )
+  );
 }

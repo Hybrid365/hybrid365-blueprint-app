@@ -510,7 +510,7 @@ const DEAD_HANG_LIMITATIONS = [
 export const PERFORMANCE_TEST_DEFINITIONS: Record<PerformanceTestType, PerformanceTestDefinition> = {
   five_k_run: {
     testType: "five_k_run",
-    title: "5 km Run Test",
+    title: "5km Run Performance Test",
     purpose:
       "Establish current running performance and create a reference point for threshold, tempo and race-pace prescriptions.",
     protocol: [
@@ -542,7 +542,7 @@ export const PERFORMANCE_TEST_DEFINITIONS: Record<PerformanceTestType, Performan
   },
   recovery_day: {
     testType: "recovery_day",
-    title: "Easy Recovery",
+    title: "Easy Aerobic Recovery",
     purpose: "Recover from the run test and avoid carrying unnecessary fatigue into later assessments.",
     protocol: [
       "30–60 min Zone 1/2 Bike, SkiErg, RowErg or easy mixed aerobic work",
@@ -617,7 +617,7 @@ export const PERFORMANCE_TEST_DEFINITIONS: Record<PerformanceTestType, Performan
   },
   ski_2k: {
     testType: "ski_2k",
-    title: "2 km SkiErg Test",
+    title: "2km SkiErg Performance Test",
     purpose: "Establish sustainable erg performance and create training pace targets.",
     protocol: [
       "Full warm-up on SkiErg",
@@ -647,7 +647,7 @@ export const PERFORMANCE_TEST_DEFINITIONS: Record<PerformanceTestType, Performan
   },
   row_2k: {
     testType: "row_2k",
-    title: "2 km RowErg Test",
+    title: "2km RowErg Performance Test",
     purpose: "Establish sustainable erg performance and create training pace targets.",
     protocol: [
       "Full warm-up on RowErg",

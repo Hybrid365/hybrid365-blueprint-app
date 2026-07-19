@@ -64,6 +64,17 @@ export function PrescriptionDetailBlocks({
         </div>
       ) : null}
 
+      {p.equipmentRequired?.length ? (
+        <div>
+          <p className="font-semibold uppercase tracking-wide text-zinc-500">Equipment</p>
+          <ul className="mt-0.5 list-inside list-disc space-y-0.5 text-zinc-400">
+            {p.equipmentRequired.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {p.coachNote ? (
         <div>
           <p className="font-semibold uppercase tracking-wide text-zinc-500">Coach note</p>

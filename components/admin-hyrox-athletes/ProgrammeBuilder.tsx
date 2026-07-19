@@ -47,6 +47,8 @@ import { CoachPublishResultPanel } from "@/components/admin-hyrox-athletes/Coach
 import {
   buildPerformanceTestingWeek1Draft,
   draftHasSessions,
+  draftLooksLikePerformanceTestingWeek,
+  hydrateMissingPerformanceTestingDetails,
   PERFORMANCE_TESTING_WEEK_TEMPLATE_NAME,
 } from "@/app/lib/hyroxPerformanceTestingWeekTemplate";
 import {
@@ -137,6 +139,7 @@ export function ProgrammeBuilder({
     saveProgrammeStartDate,
     programmeLengthWeeks,
     blockWeekDateRanges,
+    showToast,
     showNextBlockPrompt,
     generateNextBlock,
     selectedBlock,
@@ -162,6 +165,12 @@ export function ProgrammeBuilder({
   const [rationaleAutoFilled, setRationaleAutoFilled] = useState(false);
   const rationaleTouched = useRef(false);
   const [perfWeekConfirmOpen, setPerfWeekConfirmOpen] = useState(false);
+  const [hydrateDetailsConfirmOpen, setHydrateDetailsConfirmOpen] = useState(false);
+  const weekIsPublished = Boolean(
+    selectedBlockSummary?.status === "published" ||
+      effectiveBlockWeeks.find((w) => w.cycle === selectedCycle)?.published
+  );
+  const showPerfDetailActions = draftLooksLikePerformanceTestingWeek(draft);
 
   const summary = useMemo(() => computeWeeklySummary(draft, athlete), [draft, athlete]);
   const validation = useMemo(() => validateCoachDraft(draft, athlete), [draft, athlete]);
@@ -299,6 +308,37 @@ export function ProgrammeBuilder({
     applyPerformanceTestingWeek();
   }, [applyPerformanceTestingWeek, draft]);
 
+  const applyMissingPerformanceTestingDetails = useCallback(async () => {
+    const { draft: nextDraft, hydratedCount, skippedLegacy } =
+      hydrateMissingPerformanceTestingDetails(draft);
+    setHydrateDetailsConfirmOpen(false);
+
+    if (skippedLegacy) {
+      showToast("Legacy Version 1 testing week left unchanged.");
+      return;
+    }
+
+    if (hydratedCount === 0) {
+      showToast("All Performance Testing sessions already have full details.");
+      return;
+    }
+
+    const result = await applyDraftMutation(() => nextDraft, {
+      successMessage: weekIsPublished
+        ? `Filled missing details on ${hydratedCount} session(s). Republishing to athlete…`
+        : `Filled missing details on ${hydratedCount} session(s).`,
+    });
+
+    if (!result.ok) {
+      showToast(`Could not save hydrated details: ${result.error ?? "unknown error"}`);
+      return;
+    }
+
+    if (weekIsPublished && isLive) {
+      await publish();
+    }
+  }, [applyDraftMutation, draft, isLive, publish, showToast, weekIsPublished]);
+
   return (
     <div className="space-y-4">
       {assessmentMappingBanner ? (
@@ -396,6 +436,24 @@ export function ProgrammeBuilder({
           >
             Add Performance Testing Week
           </button>
+          {showPerfDetailActions ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                if (weekIsPublished) {
+                  setHydrateDetailsConfirmOpen(true);
+                  return;
+                }
+                void applyMissingPerformanceTestingDetails();
+              }}
+              className="rounded-full border border-amber-500/40 bg-amber-400/10 px-3 py-1.5 text-xs font-bold text-amber-100 disabled:opacity-50"
+            >
+              {weekIsPublished
+                ? "Apply missing Performance Testing details"
+                : "Refresh Performance Testing details"}
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={saving}
@@ -648,6 +706,43 @@ export function ProgrammeBuilder({
                 className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-bold text-black"
               >
                 Replace with testing week
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {hydrateDetailsConfirmOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-5">
+            <h3 className="font-bold text-white">Apply missing Performance Testing details?</h3>
+            <p className="mt-2 text-sm text-zinc-400">
+              This fills empty warm-up, main set, cool-down and recording fields on Version 2
+              testing sessions. Existing coach-written content is preserved. Dates, completion
+              state, athlete logs and Performance Testing results are not deleted.
+            </p>
+            <p className="mt-2 text-sm text-amber-200/90">
+              Because this week is published, the draft will be saved and then republished so
+              athletes receive the updated session details.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setHydrateDetailsConfirmOpen(false)}
+                className="rounded-full border border-zinc-600 px-4 py-2 text-sm text-zinc-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void applyMissingPerformanceTestingDetails()}
+                className="rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-black disabled:opacity-50"
+              >
+                Apply missing details
               </button>
             </div>
           </div>

@@ -378,7 +378,7 @@ export function defaultEditConfig(session: CoachDraftSession): CoachSessionEditC
     filmPrompt: p?.filmPrompt ?? undefined,
     objective: p?.objective,
     warmUpLines: p?.warmup ?? [],
-    mainSetLines: [],
+    mainSetLines: p?.mainSet ?? [],
     coolDownLines: p?.cooldown ?? [],
     targetPaceLoad: p?.targetPace ?? p?.targetSplit ?? p?.targetLoad ?? undefined,
     targetSplitWatts: p?.targetSplit ?? undefined,
@@ -554,6 +554,12 @@ export function deriveMainSetLinesFromEditConfig(c: CoachSessionEditConfig): str
   }
   const structured = mainSetStructureLinesFromConfig(c);
   if (structured.length) return structured;
+  if (c.kind === "performance_test" && c.protocol?.trim()) {
+    return c.protocol
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+  }
   if (c.exercises?.trim()) {
     return c.exercises.split("\n").map((l) => l.trim()).filter(Boolean);
   }

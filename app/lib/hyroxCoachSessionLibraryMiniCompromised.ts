@@ -1,6 +1,9 @@
 /**
  * Mini compromised / diagnostic benchmarks for the coach session library.
  * Not part of Performance Testing Week — manually insertable in later training weeks.
+ *
+ * Prescriptions use the canonical CoachSessionPrescription shape so Programme Builder
+ * View and athlete SessionDrawer render warm-up / main set / cool-down / what-to-record.
  */
 
 import { buildCoachEntry, type CoachLibraryEntry } from "./hyroxCoachSessionLibraryTypes";
@@ -30,6 +33,8 @@ const SHARED_TAGS = [
   "coach_manual_insert",
 ] as const;
 
+const DIVIDER = "—";
+
 export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
   buildCoachEntry({
     id: "hyrox-mini-run-sled-run",
@@ -48,7 +53,7 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     sessionStress: "high",
     runDistanceKm: 2.4,
     stationVolume: 100,
-    equipmentRequired: ["Running space", "Sled push", "Sled pull"],
+    equipmentRequired: ["Running space", "Sled push", "Sled pull", "Timing device"],
     bestFor: ["station_capacity_block", "compromised_running_block", "diagnostic_retest"],
     avoidIf: [...SHARED_AVOID],
     tags: [...SHARED_TAGS, "sled", "compromised_running"],
@@ -86,14 +91,27 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     prescription: {
       objective:
         "Short Run–Sled–Run diagnostic to track sled cost on running without a full race simulation.",
-      warmup: ["10–12 min easy run or bike", "Sled technique feel at light load"],
+      warmup: [
+        "10–12 min easy run or bike",
+        "Hip and ankle mobility",
+        "Sled technique feel at light load (push and pull)",
+        "2 × 20 sec progressive strides",
+      ],
       mainSet: [
-        "2–3 rounds for quality:",
+        "Movement order (2–3 rounds for quality)",
         "600–800 m controlled run",
         "25–50 m sled push @ race or near-race load",
         "25–50 m sled pull @ race or near-race load",
         "600–800 m controlled run",
+        DIVIDER,
+        "Rest",
         "2–3 min easy recovery between rounds",
+        DIVIDER,
+        "Coaching cues",
+        "Keep opening run controlled — this is a diagnostic, not a sprint",
+        "Short forceful sled steps · maintain pressure",
+        "Return to running rhythm quickly after each sled piece",
+        "Record surface and load — times are not comparable across facilities without context",
       ],
       cooldown: ["8–10 min easy", "Hip flexor + calf mobility"],
       targetRPE: "7–8",
@@ -130,7 +148,7 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     sessionStress: "high",
     runDistanceKm: 2.4,
     stationVolume: 80,
-    equipmentRequired: ["Running space", "Open floor for BBJ"],
+    equipmentRequired: ["Running space", "Open floor for BBJ", "Timing device"],
     bestFor: ["compromised_running_block", "burpee_capacity", "diagnostic_retest"],
     avoidIf: [...SHARED_AVOID, "recent_high_volume_burpees"],
     tags: [...SHARED_TAGS, "burpee", "bbj", "compromised_running"],
@@ -159,13 +177,26 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     },
     prescription: {
       objective: "Measure how burpee broad jumps compromise subsequent running.",
-      warmup: ["10 min easy aerobic", "BBJ movement prep"],
+      warmup: [
+        "10 min easy aerobic",
+        "Hip mobility",
+        "BBJ movement prep — chest to floor, efficient rise into jump",
+        "2 progressive run efforts",
+      ],
       mainSet: [
-        "2–3 rounds:",
+        "Movement order (2–3 rounds)",
         "600–800 m controlled run",
         "20–40 m burpee broad jumps",
         "600–800 m controlled run",
+        DIVIDER,
+        "Rest",
         "2–3 min easy recovery between rounds",
+        DIVIDER,
+        "Coaching cues",
+        "Chest reaches the floor each rep",
+        "Maintain a repeatable BBJ rhythm",
+        "Measure the full distance · record significant pauses",
+        "Keep runs controlled and comparable across rounds",
       ],
       cooldown: ["Easy jog or bike", "Hip mobility"],
       targetRPE: "7–8",
@@ -194,7 +225,7 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     sessionStress: "high",
     runDistanceKm: 2.0,
     stationVolume: 100,
-    equipmentRequired: ["Running space", "Sandbag"],
+    equipmentRequired: ["Running space", "Sandbag", "Timing device"],
     bestFor: ["leg_endurance_block", "compromised_running_block", "diagnostic_retest"],
     avoidIf: [...SHARED_AVOID, "knee_pain", "high_quad_doms"],
     tags: [...SHARED_TAGS, "lunges", "sandbag", "compromised_running"],
@@ -224,13 +255,26 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     },
     prescription: {
       objective: "Assess running return after sandbag lunges with controlled volume.",
-      warmup: ["10–12 min easy", "Lunge technique without load"],
+      warmup: [
+        "10–12 min easy",
+        "Dynamic hip and ankle mobility",
+        "Lunge technique without load",
+        "Short loaded feel set",
+      ],
       mainSet: [
-        "2 rounds:",
+        "Movement order (2 rounds)",
         "600–800 m controlled run",
         "40–50 m sandbag lunges @ race or near-race load",
         "600–800 m controlled run",
+        DIVIDER,
+        "Rest",
         "3 min easy recovery between rounds",
+        DIVIDER,
+        "Coaching cues",
+        "Stable foot placement · alternate legs consistently",
+        "Control knee contact standard where applicable",
+        "Record breaks and left/right issues",
+        "Do not grind — leave technique intact for Sunday-quality work later in the week",
       ],
       cooldown: ["Easy aerobic", "Quad / hip flexor mobility"],
       targetRPE: "7–8",
@@ -259,7 +303,7 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     sessionStress: "high",
     runDistanceKm: 2.0,
     stationVolume: 100,
-    equipmentRequired: ["Running space", "Wall ball", "Target"],
+    equipmentRequired: ["Running space", "Wall ball", "Target", "Timing device"],
     bestFor: ["station_capacity_block", "wall_ball_focus", "diagnostic_retest"],
     avoidIf: [...SHARED_AVOID, "recent_high_volume_wall_balls"],
     tags: [...SHARED_TAGS, "wall_ball", "compromised_running"],
@@ -289,13 +333,26 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     },
     prescription: {
       objective: "Track wall-ball set strategy and the cost on subsequent running.",
-      warmup: ["Easy aerobic", "Wall-ball feel sets"],
+      warmup: [
+        "Easy aerobic 8–10 min",
+        "Squat and shoulder prep",
+        "Wall-ball feel sets to target",
+        "2 progressive run efforts",
+      ],
       mainSet: [
-        "2–3 rounds:",
+        "Movement order (2–3 rounds)",
         "600–800 m controlled run",
         "25–50 wall balls @ race weight/target where practical",
         "600–800 m controlled run",
+        DIVIDER,
+        "Rest",
         "2–3 min easy recovery",
+        DIVIDER,
+        "Coaching cues",
+        "Maintain squat depth and target contact",
+        "Choose a sustainable opening set",
+        "Record set breakdown and no-reps separately",
+        "Return to running rhythm quickly after the wall balls",
       ],
       cooldown: ["Easy bike", "Shoulder / hip mobility"],
       targetRPE: "7–8",
@@ -307,7 +364,8 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
         "Target height",
         "RPE",
       ],
-      coachNote: "Diagnostic benchmark — insert manually when useful; do not auto-chain after testing week.",
+      coachNote:
+        "Diagnostic benchmark — insert manually when useful; do not auto-chain after testing week.",
       safetyNote: MINI_BENCHMARK_ADJACENCY,
       progression: "Improve unbroken quality before adding reps.",
       regression: "25 reps and shorter runs.",
@@ -331,7 +389,12 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     sessionStress: "high",
     runDistanceKm: 1.6,
     stationVolume: 200,
-    equipmentRequired: ["Farmer’s handles or DB/KB", "Running space", "Optional dead hang bar"],
+    equipmentRequired: [
+      "Farmer’s handles or DB/KB",
+      "Running space",
+      "Optional dead hang bar",
+      "Timing device",
+    ],
     bestFor: ["grip_endurance", "carry_capacity", "diagnostic_retest"],
     avoidIf: [...SHARED_AVOID, "hand_skin_issues"],
     tags: [...SHARED_TAGS, "farmers_carry", "grip"],
@@ -360,13 +423,25 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     },
     prescription: {
       objective: "Build and diagnose grip/carry durability under light running compromise.",
-      warmup: ["Easy aerobic", "Carry posture drills"],
+      warmup: [
+        "Easy aerobic 8–10 min",
+        "Shoulder and forearm prep",
+        "Carry posture drills with light implements",
+      ],
       mainSet: [
-        "3 rounds:",
+        "Movement order (3 rounds)",
         "400–600 m easy-controlled run",
         "50–100 m farmer’s carry @ race or near-race load",
         "Optional: 20–40 sec dead hang between rounds",
+        DIVIDER,
+        "Rest",
         "2 min easy recovery",
+        DIVIDER,
+        "Coaching cues",
+        "Tall posture · short controlled steps",
+        "Minimise unnecessary grip tension",
+        "Record every drop and where it occurred",
+        "Stop if skin integrity is at risk",
       ],
       cooldown: ["Forearm / shoulder mobility"],
       targetRPE: "6–8",
@@ -401,6 +476,7 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
       "Sled",
       "Wall ball",
       "Farmer’s or sandbag",
+      "Timing device",
     ],
     bestFor: ["hyrox_specificity", "mid_block_diagnostic", "race_prep_check"],
     avoidIf: [...SHARED_AVOID],
@@ -438,16 +514,28 @@ export const HYROX_MINI_COMPROMISED_COACH_SESSIONS: CoachLibraryEntry[] = [
     prescription: {
       objective:
         "Short mixed-station diagnostic that echoes race order without a full Sunday simulation.",
-      warmup: ["12–15 min easy", "Station feel for chosen stations"],
+      warmup: [
+        "12–15 min easy",
+        "Dynamic mobility",
+        "Station feel for chosen stations",
+        "2 progressive run efforts — do not create fatigue",
+      ],
       mainSet: [
-        "One continuous circuit (edit stations as needed):",
+        "One continuous circuit (edit stations as needed)",
         "400–600 m run",
         "500 m Ski or Row",
         "400–600 m run",
         "25–50 m sled push or pull",
         "400–600 m run",
         "25–40 wall balls or 40–50 m lunges/carry",
+        DIVIDER,
         "Optional second abbreviated pass if recovery allows",
+        DIVIDER,
+        "Coaching cues",
+        "Strong controlled effort — not an all-out sprint from the first run",
+        "Purposeful transitions · sustainable technique",
+        "Record every run and station split",
+        "Note loads, surface and any substitutions",
       ],
       cooldown: ["Easy aerobic", "Full mobility"],
       targetRPE: "7–9",
