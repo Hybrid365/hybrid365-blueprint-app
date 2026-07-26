@@ -1,7 +1,7 @@
 "use client";
 
 import { Moon, Scale, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { formatSubmittedDate } from "@/app/lib/hyroxAthleteCheckInServer";
 import type { CheckInPageServerDebug } from "@/app/lib/hyroxAthleteCheckInPageServer";
 import type {
@@ -21,7 +21,8 @@ import {
   athleteCardHighlight,
   athleteCardPadding,
 } from "./athleteUi";
-import { useAthletePortal } from "./athletePortalContext";
+import { useAthletePortalOptional } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 import { useAthleteWeeklyCheckIn } from "./useAthleteWeeklyCheckIn";
 
 export function CheckInPageView({
@@ -29,34 +30,40 @@ export function CheckInPageView({
   initialSummary = null,
   serverDebug = null,
   serverResolved = false,
+  readOnlyPreview = false,
 }: {
   initialCheckIn?: AthleteWeeklyCheckInView | null;
   initialSummary?: AthleteCheckInSummary | null;
   serverDebug?: CheckInPageServerDebug | null;
   serverResolved?: boolean;
+  /** Admin/coach athlete preview — no writes. */
+  readOnlyPreview?: boolean;
 }) {
   const meta = ATHLETE_PAGE_META.checkin;
-  const {
-    programmePublishedLive,
-    useMockPreview,
-    reloadLiveProgramme,
-    liveProgramme,
-    serverAuthConfirmed,
-    serverProgrammePublishedSeed,
-    hasLinkedAthlete,
-  } = useAthletePortal();
+  const adminPreview = useAthleteAdminPreview();
+  const portal = useAthletePortalOptional();
+  const isPreview = readOnlyPreview || Boolean(adminPreview);
+
+  const programmePublishedLive =
+    adminPreview?.programmePublishedLive ?? portal?.programmePublishedLive ?? false;
+  const useMockPreview = adminPreview ? false : Boolean(portal?.useMockPreview);
+  const reloadLiveProgramme = portal?.reloadLiveProgramme ?? (async () => {});
+  const liveProgramme = adminPreview?.liveProgramme ?? portal?.liveProgramme ?? null;
+  const serverAuthConfirmed = portal?.serverAuthConfirmed ?? false;
+  const serverProgrammePublishedSeed = portal?.serverProgrammePublishedSeed ?? false;
 
   const programmeLive =
     programmePublishedLive || serverProgrammePublishedSeed || Boolean(liveProgramme?.published);
-  const useLive = programmeLive && !useMockPreview;
+  const useLive = programmeLive && !useMockPreview && !isPreview;
 
   const { checkIn, loading, saving, error, submit, useMockPreview: mock } =
-    useAthleteWeeklyCheckIn(useLive, {
+    useAthleteWeeklyCheckIn(useLive && Boolean(portal), {
       initialCheckIn,
       initialSummary,
     });
 
   const activeCheckIn = checkIn ?? initialCheckIn;
+  const displayLive = Boolean(activeCheckIn) && (useLive || isPreview);
 
   const currentWeekFromProgramme =
     activeCheckIn?.weekNumber ??
@@ -68,66 +75,78 @@ export function CheckInPageView({
 
   const mockForm = MOCK_CHECK_IN_FORM;
   const weekNumber =
-    useLive && currentWeekFromProgramme != null ? currentWeekFromProgramme : 1;
+    displayLive && currentWeekFromProgramme != null ? currentWeekFromProgramme : 1;
   const statusLabel =
-    useLive && activeCheckIn
+    displayLive && activeCheckIn
       ? activeCheckIn.statusLabel
-      : mockForm.status === "Submitted"
-        ? "Completed"
-        : "Needs completing";
+      : isPreview
+        ? initialSummary
+          ? "Check-in summary"
+          : "No check-in loaded"
+        : mockForm.status === "Submitted"
+          ? "Completed"
+          : "Needs completing";
   const isCompleted =
-    useLive && activeCheckIn
+    displayLive && activeCheckIn
       ? activeCheckIn.status === "completed"
-      : mockForm.status === "Submitted";
+      : isPreview
+        ? false
+        : mockForm.status === "Submitted";
   const needsCompleting =
-    useLive && activeCheckIn
-      ? activeCheckIn.status === "needs_completing"
-      : !isCompleted;
-  const isLocked = useLive && activeCheckIn ? activeCheckIn.status === "locked" : false;
+    isPreview
+      ? false
+      : useLive && activeCheckIn
+        ? activeCheckIn.status === "needs_completing"
+        : !isCompleted;
+  const isLocked = displayLive && activeCheckIn ? activeCheckIn.status === "locked" : false;
+  const hasLinkedAthlete = portal?.hasLinkedAthlete ?? Boolean(adminPreview);
 
   const initialForm: AthleteCheckInFormState =
-    useLive && activeCheckIn
+    displayLive && activeCheckIn
       ? activeCheckIn.form
-    : {
-        sleep: mockForm.sleep,
-        energy: mockForm.energy,
-        stress: mockForm.stress,
-        soreness: mockForm.soreness,
-        recovery: mockForm.recovery,
-        bodyweightKg: mockForm.bodyweightKg,
-        painNiggles: mockForm.painNiggles,
-        biggestWin: mockForm.biggestWin,
-        biggestStruggle: mockForm.biggestStruggle,
-        nextWeekAvailability: mockForm.nextWeekAvailability,
-      };
+      : {
+          sleep: mockForm.sleep,
+          energy: mockForm.energy,
+          stress: mockForm.stress,
+          soreness: mockForm.soreness,
+          recovery: mockForm.recovery,
+          bodyweightKg: mockForm.bodyweightKg,
+          painNiggles: mockForm.painNiggles,
+          biggestWin: mockForm.biggestWin,
+          biggestStruggle: mockForm.biggestStruggle,
+          nextWeekAvailability: mockForm.nextWeekAvailability,
+        };
 
+  const formSourceKey =
+    displayLive && activeCheckIn
+      ? `${activeCheckIn.weekNumber}:${activeCheckIn.status}:${activeCheckIn.submittedAt ?? "open"}`
+      : "mock";
   const [form, setForm] = useState(initialForm);
-
-  useEffect(() => {
-    if (useLive && activeCheckIn) {
-      setForm(activeCheckIn.form);
-    }
-  }, [useLive, activeCheckIn]);
+  const [syncedFormKey, setSyncedFormKey] = useState(formSourceKey);
+  if (syncedFormKey !== formSourceKey) {
+    setSyncedFormKey(formSourceKey);
+    setForm(initialForm);
+  }
 
   const sessionsCompleted =
-    useLive && activeCheckIn ? activeCheckIn.sessionsCompleted : mockForm.sessionsCompleted;
+    displayLive && activeCheckIn ? activeCheckIn.sessionsCompleted : mockForm.sessionsCompleted;
   const sessionsPlanned =
-    useLive && activeCheckIn ? activeCheckIn.sessionsPlanned : mockForm.sessionsPlanned;
+    displayLive && activeCheckIn ? activeCheckIn.sessionsPlanned : mockForm.sessionsPlanned;
   const completionPct = sessionsPlanned
     ? Math.round((sessionsCompleted / sessionsPlanned) * 100)
     : 0;
 
   const submittedAtLabel =
-    useLive && activeCheckIn?.submittedAt
+    displayLive && activeCheckIn?.submittedAt
       ? formatSubmittedDate(activeCheckIn.submittedAt)
       : null;
 
-  const headerSubtitle = useLive
+  const headerSubtitle = displayLive || isPreview
     ? `Week ${weekNumber} check-in`
     : meta.subtitle;
 
   const handleSubmit = async () => {
-    if (mock || isLocked || isCompleted) return;
+    if (isPreview || mock || isLocked || isCompleted) return;
     if (!useLive) {
       return;
     }
@@ -348,17 +367,23 @@ export function CheckInPageView({
         />
       </section>
 
-      {!useLive ? (
+      {!useLive && !isPreview ? (
         <div className={`${athleteCard} ${athleteCardPadding} text-sm text-zinc-500`}>
           <p className="font-semibold text-zinc-300">Last check-in reference</p>
           <p className="mt-2 leading-relaxed">{MOCK_CHECK_IN.lastSummary.note}</p>
         </div>
       ) : null}
 
+      {isPreview ? (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-950/30 px-4 py-3 text-sm text-amber-100/90">
+          Read-only preview — check-in submission is disabled.
+        </p>
+      ) : null}
+
       {needsCompleting ? (
         <div className="sticky bottom-20 z-30 border-t border-zinc-800/80 bg-black/90 py-4 backdrop-blur-md lg:static lg:border-0 lg:bg-transparent lg:py-0 lg:backdrop-blur-none">
           <BtnPrimary
-            disabled={saving || mock}
+            disabled={saving || mock || isPreview}
             onClick={() => void handleSubmit()}
             className="w-full sm:max-w-md"
           >

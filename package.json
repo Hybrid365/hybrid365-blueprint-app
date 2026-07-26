@@ -14,6 +14,9 @@
     "qa:run-prescriptions": "npx --yes tsx scripts/qa-run-prescriptions.ts",
     "qa:hyrox-track-programming": "npx --yes tsx scripts/qa-hyrox-track-programming.ts",
     "qa:programme-coaching-methodology": "npx --yes tsx scripts/qa-programme-coaching-methodology.ts",
+    "qa:hyrox-today-readiness": "npx --yes tsx scripts/qa-hyrox-today-readiness.ts",
+    "qa:hyrox-performance-hub": "npx --yes tsx scripts/qa-hyrox-performance-hub.ts",
+    "qa:hyrox-admin-athlete-preview": "npx --yes tsx scripts/qa-hyrox-admin-athlete-preview.ts",
     "export:homepage-phones": "npx --yes tsx scripts/homepage/export-phone-screens.ts"
   },
   "dependencies": {

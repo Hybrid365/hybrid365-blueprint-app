@@ -192,11 +192,16 @@ export function LinkCta({
   children: React.ReactNode;
   className?: string;
 }) {
+  const classNames = `inline-flex items-center gap-1 text-sm font-semibold text-yellow-400 transition hover:text-yellow-300 ${className}`;
+  if (href.startsWith("/athlete/")) {
+    return (
+      <AthletePortalNavLink href={href} className={classNames}>
+        {children}
+      </AthletePortalNavLink>
+    );
+  }
   return (
-    <Link
-      href={href}
-      className={`inline-flex items-center gap-1 text-sm font-semibold text-yellow-400 transition hover:text-yellow-300 ${className}`}
-    >
+    <Link href={href} className={classNames}>
       {children}
     </Link>
   );

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { AthletePortalNavLink } from "./AthletePortalNavLink";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Activity,
   BarChart3,
@@ -41,6 +41,7 @@ import { CommandCentreHeader } from "./CommandCentreHeader";
 import { HomeStickyActions } from "./HomeStickyActions";
 import { HubLinkCard } from "./HubLinkCard";
 import { SessionDrawer } from "./SessionDrawer";
+import { TodayExperience } from "./today/TodayExperience";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import {
   BtnPrimary,
@@ -57,6 +58,8 @@ import {
   eyebrowClass,
 } from "./athleteUi";
 import { useAthletePortalOptional } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
+import { isHyroxTodayV2EnabledClient } from "@/app/lib/hyrox-team/modules/today/featureFlag";
 
 function HomePriorityTile({
   label,
@@ -126,19 +129,35 @@ export function AthleteHomeDashboard({
 }) {
   const router = useRouter();
   const portal = useAthletePortalOptional();
+  const adminPreview = useAthleteAdminPreview();
   const {
     portalAthlete,
     useMockPreview,
     liveProgrammeLoading,
     programmePublishedLive,
     reloadLiveProgramme,
-  } = portal ?? {
-    portalAthlete: null,
-    useMockPreview: false,
-    liveProgrammeLoading: false,
-    programmePublishedLive: false,
-    reloadLiveProgramme: async () => {},
-  };
+    liveProgramme,
+    todayV2Enabled: todayV2Seed,
+  } = adminPreview
+    ? {
+        portalAthlete: adminPreview.portalAthlete,
+        useMockPreview: false as const,
+        liveProgrammeLoading: false as const,
+        programmePublishedLive: adminPreview.programmePublishedLive,
+        reloadLiveProgramme: async () => {},
+        liveProgramme: adminPreview.liveProgramme,
+        todayV2Enabled: adminPreview.todayV2Enabled,
+      }
+    : portal ?? {
+        portalAthlete: null,
+        useMockPreview: false,
+        liveProgrammeLoading: false,
+        programmePublishedLive: false,
+        reloadLiveProgramme: async () => {},
+        liveProgramme: null,
+        todayV2Enabled: false,
+      };
+  const todayV2 = isHyroxTodayV2EnabledClient(todayV2Seed);
   const { dashboardLive, readOnly: dashboardReadOnly } = useAthleteDashboardLive();
   const isReadOnly = readOnly || dashboardReadOnly;
   const useLive = useLiveProgramme && Boolean(dashboardLive);
@@ -174,8 +193,15 @@ export function AthleteHomeDashboard({
       : useMockData
         ? MOCK_WEEK_RATIONALE
         : EMPTY_WEEK_RATIONALE;
-  const weekSessions =
-    useLive && dashboardLive ? dashboardLive.sortedSessions : useMockData ? MOCK_WEEK_SESSIONS : [];
+  const weekSessions = useMemo(
+    () =>
+      useLive && dashboardLive
+        ? dashboardLive.sortedSessions
+        : useMockData
+          ? MOCK_WEEK_SESSIONS
+          : [],
+    [useLive, dashboardLive, useMockData]
+  );
   const next =
     useLive && dashboardLive
       ? nextSessionDisplayForDashboard(dashboardLive)
@@ -252,6 +278,13 @@ export function AthleteHomeDashboard({
     [weekSessions]
   );
 
+  const openSessionFromToday = useCallback(
+    (session: HyroxSession, opts?: { showLogForm?: boolean }) => {
+      openSession(session.id, session.name, opts);
+    },
+    [openSession]
+  );
+
   const handleSessionUpdated = useCallback(
     async (updated: HyroxSession | null) => {
       if (updated) {
@@ -310,6 +343,23 @@ export function AthleteHomeDashboard({
 
       <div className="grid gap-8 xl:grid-cols-[1fr_280px]">
         <main className="min-w-0 space-y-8">
+          {todayV2 && useLive && dashboardLive ? (
+            <TodayExperience
+              weekSessions={weekSessions}
+              programmeStartDate={
+                liveProgramme?.programmeStartDate ??
+                liveProgramme?.athlete?.programme_start_date ??
+                null
+              }
+              globalWeekNumber={
+                liveProgramme?.liveGlobalWeek ?? dashboardLive.currentWeek
+              }
+              programmeWeeks={liveProgramme?.programmeWeeks}
+              coachFocus={coachFocus}
+              readOnly={isReadOnly}
+              onOpenSession={openSessionFromToday}
+            />
+          ) : (
           <div className={`${athleteCardHighlight} ${athleteCardPadding}`}>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -337,6 +387,7 @@ export function AthleteHomeDashboard({
             </div>
             <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-zinc-400">{next.objective}</p>
           </div>
+          )}
 
           <div className={`${athleteCard} ${athleteCardPadding}`}>
             <p className={eyebrowClass}>{weekRationale.weekRole}</p>
@@ -406,9 +457,9 @@ export function AthleteHomeDashboard({
                 ) : useLive && benchmarkItems.length === 0 ? (
                   <p className="text-sm text-zinc-500">
                     No tests logged yet.{" "}
-                    <a href="/athlete/testing" className="font-semibold text-yellow-400 hover:underline">
+                    <Link href="/athlete/testing" className="font-semibold text-yellow-400 hover:underline">
                       Submit tests
-                    </a>
+                    </Link>
                   </p>
                 ) : (
                   <BenchmarkSnapshotStrip

@@ -1,6 +1,11 @@
 /** Mock data for Hyrox Team athlete dashboard — wire to real APIs later. */
 
 import type { AthleteSessionDetailContent } from "@/app/lib/hyroxAthleteSessionDetail";
+import type {
+  SessionActivityMetrics,
+  SessionActivityType,
+  SessionPlannedTargets,
+} from "@/app/lib/hyrox-team/modules/sessionLogging/types";
 
 export type SessionStatus = "complete" | "upcoming" | "missed" | "modified";
 
@@ -20,6 +25,10 @@ export type HyroxSession = {
   logNotes?: string;
   logModifications?: string;
   logScore?: string;
+  /** Phase 1 activity log (dual-read with legacy fields above). */
+  activityType?: SessionActivityType;
+  plannedTargets?: SessionPlannedTargets | null;
+  activityMetrics?: SessionActivityMetrics | null;
   completedAt?: string | null;
   priority: "Key" | "Supporting" | "Optional";
   intent: string;

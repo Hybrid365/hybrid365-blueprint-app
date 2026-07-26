@@ -428,6 +428,7 @@ export const HYROX_TABLES = {
   programmeWeeks: "hyrox_programme_weeks",
   programmeSessions: "hyrox_programme_sessions",
   checkIns: "hyrox_check_ins",
+  dailyReadiness: "hyrox_daily_readiness",
   blockReviews: "hyrox_block_reviews",
   weeklyCoachReviews: "hyrox_weekly_coach_reviews",
   coachNotes: "hyrox_coach_notes",

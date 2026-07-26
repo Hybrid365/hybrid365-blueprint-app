@@ -1,7 +1,6 @@
 "use client";
 
 import { Play } from "lucide-react";
-import Link from "next/link";
 import { AthletePortalNavLink } from "./AthletePortalNavLink";
 import { MOCK_ATHLETE, MOCK_CHECK_IN, MOCK_NEXT_SESSION } from "@/app/lib/hyroxTeamDashboardMock";
 import { sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
@@ -74,8 +73,13 @@ export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
               <Play className="h-4 w-4" />
               View session
             </BtnPrimary>
-            <BtnSecondary className="w-full" disabled={!nextActionable} onClick={onLogResult}>
-              Log result
+            <BtnSecondary
+              className="w-full"
+              disabled={!nextActionable || Boolean(adminPreview)}
+              onClick={onLogResult}
+              title={adminPreview ? "Read-only preview" : undefined}
+            >
+              {adminPreview ? "Log result (read-only)" : "Log result"}
             </BtnSecondary>
             <AthletePortalNavLink href={ATHLETE_PROGRAMME_HREF} className={`${btnGhostClass} w-full`}>
               Full programme →
@@ -90,25 +94,25 @@ export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
           </div>
           <p className="mt-1 text-xs text-zinc-500">{checkInSub}</p>
           {checkInDue ? (
-            <Link href="/athlete/check-in" className={`${btnPrimaryClass} mt-3 w-full`}>
+            <AthletePortalNavLink href="/athlete/check-in" className={`${btnPrimaryClass} mt-3 w-full`}>
               Complete check-in
-            </Link>
+            </AthletePortalNavLink>
           ) : (
-            <Link href="/athlete/check-in" className={`${btnGhostClass} mt-3 w-full`}>
+            <AthletePortalNavLink href="/athlete/check-in" className={`${btnGhostClass} mt-3 w-full`}>
               View check-in →
-            </Link>
+            </AthletePortalNavLink>
           )}
         </div>
 
         <div className={`${athleteCard} ${athleteCardPadding}`}>
           <p className={`${eyebrowClass} !text-zinc-500`}>Coach focus</p>
           <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-zinc-400">{coachingFocus}</p>
-          <Link
+          <AthletePortalNavLink
             href="/athlete/coach-notes"
             className="mt-3 inline-flex text-xs font-semibold text-yellow-400 hover:text-yellow-300"
           >
             All coach notes →
-          </Link>
+          </AthletePortalNavLink>
         </div>
       </div>
     </aside>

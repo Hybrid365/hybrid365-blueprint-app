@@ -26,6 +26,10 @@ import {
   resolveAuthUserForMiddleware,
 } from "@/app/lib/supabase/resolveAuthUser";
 import { createClient } from "@/app/lib/supabase/server";
+import {
+  getAdminAthletePreviewMutationBlock,
+  getAdminAthletePreviewMutationBlockFromCookies,
+} from "@/app/lib/hyroxAdminAthletePreview";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 export type HyroxMutationActorSource =
@@ -77,7 +81,8 @@ export type HyroxMutationActorResult =
         | "NO_ATHLETE"
         | "NOT_PAID"
         | "TOKEN_INVALID"
-        | "SESSION_NOT_OWNED";
+        | "SESSION_NOT_OWNED"
+        | "PREVIEW_READONLY";
       error: string;
       debug: HyroxMutationActorDebug;
       apiAuthDebug?: ApiRouteAuthDebug;
@@ -191,6 +196,30 @@ export async function resolveHyroxAthleteMutationActor(input: {
 }): Promise<HyroxMutationActorResult> {
   const expectedAthleteId = input.expectedAthleteId?.trim() || null;
   const programmeSessionId = input.programmeSessionId?.trim() || null;
+
+  const previewBlock = input.request
+    ? getAdminAthletePreviewMutationBlock(input.request)
+    : await getAdminAthletePreviewMutationBlockFromCookies();
+  if (previewBlock.blocked) {
+    const debug: HyroxMutationActorDebug = {
+      cookieAuth: "not-attempted",
+      h365AthleteSession: "not-attempted",
+      tokenAuth: "not-attempted",
+      source: "none",
+      authUserId: null,
+      email: null,
+      athleteId: null,
+      expectedAthleteId,
+      accessReason: "admin_athlete_preview",
+      matchSource: null,
+    };
+    return {
+      ok: false,
+      code: "PREVIEW_READONLY",
+      error: previewBlock.reason,
+      debug,
+    };
+  }
 
   const debug: HyroxMutationActorDebug = {
     cookieAuth: "not-attempted",

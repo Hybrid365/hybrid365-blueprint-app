@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { resolveAthletePortalUserForApi } from "@/app/lib/hyroxAthletePortalApiUser";
 import { resolveHyroxPortalAthlete } from "@/app/lib/hyroxAthletePortalResolve";
 import { logHyroxAuthDebug } from "@/app/lib/hyroxAuthDebug";
@@ -9,6 +9,7 @@ import {
   type ApiRouteAuthDebug,
 } from "@/app/lib/supabase/apiRoute";
 import { readAthleteRouteHandlerCookies } from "@/app/lib/supabase/mergedAthleteCookies";
+import { getAdminAthletePreviewMutationBlock } from "@/app/lib/hyroxAdminAthletePreview";
 
 function devFields(extra: Record<string, unknown>): Record<string, unknown> {
   if (process.env.NODE_ENV !== "development") return {};
@@ -61,6 +62,22 @@ export async function requireCurrentHyroxAthleteForApi(
 ) {
   const { supabase, withAuthCookies, authDebug } =
     await createApiRouteSupabase(request);
+
+  const previewBlock = getAdminAthletePreviewMutationBlock(request);
+  if (previewBlock.blocked) {
+    return {
+      error: hyroxAthleteApiJson(
+        withAuthCookies,
+        {
+          success: false,
+          error: previewBlock.reason,
+          code: "PREVIEW_READONLY",
+          source: "api",
+        },
+        403
+      ),
+    };
+  }
 
   const { cookies: mergedCookies } = await readAthleteRouteHandlerCookies(request);
 

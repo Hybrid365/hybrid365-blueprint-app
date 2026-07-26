@@ -42,6 +42,8 @@ import {
   type ProgrammeTimeOfDay,
 } from "@/app/lib/hyroxAthleteProgrammeSort";
 import { parseHyroxAthleteSessionFeedback } from "@/app/lib/hyroxAthleteSessionFeedback";
+import { inferSessionActivityType } from "@/app/lib/hyrox-team/modules/sessionLogging/inferActivityType";
+import { extractPlannedTargets } from "@/app/lib/hyrox-team/modules/sessionLogging/plannedTargets";
 import type { HyroxSession, SessionStatus } from "@/app/lib/hyroxTeamDashboardMock";
 import {
   derivePublishedSessionName,
@@ -581,6 +583,25 @@ export function mapPublishedSessionsToAthleteUi(
       (prescription.coach_note as string) ??
       "";
     const feedback = parseHyroxAthleteSessionFeedback(s.athlete_feedback);
+    const displayName = resolveAthleteSessionDisplayName(s);
+    const plannedTargets =
+      feedback.planned ??
+      extractPlannedTargets({
+        prescription: s.prescription,
+        detail,
+        category: s.category,
+        sessionName: displayName,
+        activityType: feedback.activityType,
+      });
+    const activityType =
+      feedback.activityType ??
+      plannedTargets.activityType ??
+      inferSessionActivityType({
+        category: s.category,
+        sessionName: displayName,
+        prescriptionCategory:
+          typeof prescription.category === "string" ? prescription.category : null,
+      });
 
     return {
       id: s.id,
@@ -598,7 +619,7 @@ export function mapPublishedSessionsToAthleteUi(
             timeOfDay
           )
         : formatProgrammeDayLabel(day, timeOfDay),
-      name: resolveAthleteSessionDisplayName(s),
+      name: displayName,
       type: inferSessionType(s.category, s.session_name),
       focus: (meta.focus as string) ?? s.category,
       duration,
@@ -608,6 +629,9 @@ export function mapPublishedSessionsToAthleteUi(
       logNotes: feedback.notes ?? undefined,
       logModifications: feedback.modifications ?? undefined,
       logScore: feedback.score ?? undefined,
+      activityType,
+      plannedTargets,
+      activityMetrics: feedback.metrics ?? null,
       completedAt: s.completed_at,
       priority: (timeOfDay === "Optional" || s.session_slot === "Optional"
         ? "Optional"

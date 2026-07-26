@@ -1,15 +1,24 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSessionDetail, type SessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
 import type { AthleteSessionMainSetBlock } from "@/app/lib/hyroxAthleteSessionMainSetDisplay";
 import { parseMainSetBlocks } from "@/app/lib/hyroxAthleteSessionMainSetDisplay";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 import {
+  emptyMetricsForActivity,
+  type SessionActivityMetrics,
+  type SessionActivityType,
+  type SessionPlannedTargets,
+} from "@/app/lib/hyrox-team/modules/sessionLogging/types";
+import { inferSessionActivityType } from "@/app/lib/hyrox-team/modules/sessionLogging/inferActivityType";
+import { extractPlannedTargets } from "@/app/lib/hyrox-team/modules/sessionLogging/plannedTargets";
+import {
   useHyroxSessionLog,
   type HyroxSessionLogForm,
 } from "./useHyroxSessionLog";
+import { SessionActivityLogFields } from "./SessionActivityLogFields";
 
 type Props = {
   sessionId: string | null;
@@ -27,13 +36,59 @@ type Props = {
   onSessionUpdated?: (session: HyroxSession | null) => void;
 };
 
-function formFromSession(session: HyroxSession | null | undefined): HyroxSessionLogForm {
+function resolveActivityType(
+  session: HyroxSession | null | undefined,
+  detail: SessionDetail | null
+): SessionActivityType {
+  return (
+    session?.activityType ??
+    session?.plannedTargets?.activityType ??
+    inferSessionActivityType({
+      category: detail?.categoryTag ?? session?.type ?? null,
+      sessionName: session?.name ?? null,
+      sessionTypeLabel: session?.type ?? null,
+    })
+  );
+}
+
+function resolvePlanned(
+  session: HyroxSession | null | undefined,
+  detail: SessionDetail | null,
+  activityType: SessionActivityType
+): SessionPlannedTargets {
+  if (session?.plannedTargets) {
+    return {
+      ...session.plannedTargets,
+      activityType: session.plannedTargets.activityType ?? activityType,
+    };
+  }
+  return extractPlannedTargets({
+    detail: session?.detail ?? null,
+    category: detail?.categoryTag ?? session?.type,
+    sessionName: session?.name,
+    activityType,
+  });
+}
+
+function formFromSession(
+  session: HyroxSession | null | undefined,
+  detail: SessionDetail | null
+): HyroxSessionLogForm {
+  const activityType = resolveActivityType(session, detail);
+  const planned = resolvePlanned(session, detail, activityType);
+  const metrics =
+    (session?.activityMetrics as SessionActivityMetrics | null | undefined) ??
+    emptyMetricsForActivity(activityType);
+
   return {
     completed: session?.status === "complete",
     rpe: session?.loggedRpe ?? "",
     notes: session?.logNotes ?? "",
     modifications: session?.logModifications ?? "",
     score: session?.logScore ?? "",
+    activityType,
+    planned,
+    metrics,
   };
 }
 
@@ -59,7 +114,17 @@ export function SessionDrawer({
     saveSessionLog,
   } = useHyroxSessionLog();
   const [showLogForm, setShowLogForm] = useState(initialShowLogForm);
-  const [form, setForm] = useState<HyroxSessionLogForm>(() => formFromSession(session));
+  const [form, setForm] = useState<HyroxSessionLogForm>(() => formFromSession(session, d));
+  const drawerResetKey = open
+    ? `${sessionId}|${initialShowLogForm}|${session?.completedAt ?? ""}|${session?.loggedRpe ?? ""}|${session?.logNotes ?? ""}|${session?.logScore ?? ""}`
+    : "closed";
+  const [lastDrawerResetKey, setLastDrawerResetKey] = useState(drawerResetKey);
+
+  if (open && drawerResetKey !== lastDrawerResetKey) {
+    setLastDrawerResetKey(drawerResetKey);
+    setForm(formFromSession(session, d));
+    setShowLogForm(initialShowLogForm);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -72,10 +137,8 @@ export function SessionDrawer({
 
   useEffect(() => {
     if (!open) return;
-    setForm(formFromSession(session));
-    setShowLogForm(initialShowLogForm);
     clearMessages();
-  }, [open, sessionId, session, initialShowLogForm, clearMessages]);
+  }, [open, sessionId, clearMessages]);
 
   const canSave =
     useLiveApi &&
@@ -92,11 +155,24 @@ export function SessionDrawer({
   const handleUpdated = useCallback(
     (updated: HyroxSession | null) => {
       if (updated) {
-        setForm(formFromSession(updated));
+        setForm(formFromSession(updated, d));
       }
       onSessionUpdated?.(updated);
     },
-    [onSessionUpdated]
+    [onSessionUpdated, d]
+  );
+
+  const feedbackPayload = useMemo(
+    () => ({
+      rpe: form.rpe || undefined,
+      notes: form.notes || undefined,
+      modifications: form.modifications || undefined,
+      score: form.score || undefined,
+      activityType: form.activityType,
+      planned: form.planned ?? null,
+      metrics: form.metrics ?? null,
+    }),
+    [form]
   );
 
   const handleMarkComplete = useCallback(async () => {
@@ -105,15 +181,10 @@ export function SessionDrawer({
     const updated = await saveSessionLog({
       programmeSessionId: sessionId,
       completed: true,
-      feedback: {
-        rpe: form.rpe || undefined,
-        notes: form.notes || undefined,
-        modifications: form.modifications || undefined,
-        score: form.score || undefined,
-      },
+      feedback: feedbackPayload,
     });
     if (updated) handleUpdated(updated);
-  }, [sessionId, canSave, clearMessages, saveSessionLog, form, handleUpdated]);
+  }, [sessionId, canSave, clearMessages, saveSessionLog, feedbackPayload, handleUpdated]);
 
   const handleSaveLog = useCallback(async () => {
     if (!sessionId || !canSave) return;
@@ -121,15 +192,17 @@ export function SessionDrawer({
     const updated = await saveSessionLog({
       programmeSessionId: sessionId,
       completed: form.completed,
-      feedback: form,
+      feedback: feedbackPayload,
     });
     if (updated) handleUpdated(updated);
-  }, [sessionId, canSave, clearMessages, saveSessionLog, form, handleUpdated]);
+  }, [sessionId, canSave, clearMessages, saveSessionLog, form.completed, feedbackPayload, handleUpdated]);
 
   if (!open || !d) return null;
 
   const recordFields = d.recordFields ?? ["RPE", "Duration", "Notes"];
   const isComplete = session?.status === "complete" || form.completed;
+  const activityType = form.activityType ?? "other";
+  const metrics = form.metrics ?? emptyMetricsForActivity(activityType);
 
   return (
     <>
@@ -259,27 +332,25 @@ export function SessionDrawer({
                 />
                 Mark as completed
               </label>
-              <Field label="RPE (actual)">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="e.g. 7"
-                  disabled={!canSave}
-                  value={form.rpe}
-                  onChange={(e) => setForm((f) => ({ ...f, rpe: e.target.value }))}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Session notes">
-                <textarea
-                  rows={3}
-                  disabled={!canSave}
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className={inputClass}
-                  placeholder="How it felt, pacing, anything your coach should know"
-                />
-              </Field>
+
+              <SessionActivityLogFields
+                activityType={activityType}
+                planned={form.planned ?? null}
+                metrics={metrics}
+                disabled={!canSave}
+                onChange={(nextMetrics) =>
+                  setForm((f) => ({
+                    ...f,
+                    metrics: nextMetrics,
+                    rpe:
+                      activityType === "strength"
+                        ? String((nextMetrics as { sessionRpe?: string }).sessionRpe ?? f.rpe)
+                        : String((nextMetrics as { rpe?: string }).rpe ?? f.rpe),
+                    notes: String((nextMetrics as { notes?: string }).notes ?? f.notes),
+                  }))
+                }
+              />
+
               <Field label="Modifications">
                 <textarea
                   rows={2}
@@ -290,14 +361,14 @@ export function SessionDrawer({
                   placeholder="Scaled, substituted, or cut anything?"
                 />
               </Field>
-              <Field label="Time / score (optional)">
+              <Field label="Time / score summary (optional)">
                 <input
                   type="text"
                   disabled={!canSave}
                   value={form.score}
                   onChange={(e) => setForm((f) => ({ ...f, score: e.target.value }))}
                   className={inputClass}
-                  placeholder="Finish time, splits, load, etc."
+                  placeholder="Quick summary if useful for coach scan"
                 />
               </Field>
             </div>

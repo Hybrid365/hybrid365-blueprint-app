@@ -1,6 +1,8 @@
-import Link from "next/link";
+"use client";
+
 import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { AthletePortalNavLink } from "./AthletePortalNavLink";
 import { athleteCardInteractive, athleteCardPadding } from "./athleteUi";
 
 export function HubLinkCard({
@@ -17,7 +19,7 @@ export function HubLinkCard({
   meta?: string;
 }) {
   return (
-    <Link
+    <AthletePortalNavLink
       href={href}
       className={`group flex min-h-[120px] items-start gap-4 ${athleteCardInteractive} ${athleteCardPadding}`}
     >
@@ -30,6 +32,6 @@ export function HubLinkCard({
         {meta ? <p className="mt-2 text-xs font-medium text-yellow-400/80">{meta}</p> : null}
       </div>
       <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-yellow-400" />
-    </Link>
+    </AthletePortalNavLink>
   );
 }

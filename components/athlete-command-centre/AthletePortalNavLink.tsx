@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { athleteHrefToPreviewSection } from "@/app/lib/hyroxAdminAthletePreviewPaths";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 import { athleteProgrammePrefetchDisabled } from "./athleteNav";
 
 const ATHLETE_PUBLIC_PATHS = [
@@ -29,6 +31,15 @@ export function isAthletePortalFullPageNav(href: string, currentPath: string): b
   return true;
 }
 
+export function mapAthleteHrefForAdminPreview(
+  href: string,
+  previewBasePath: string | null | undefined
+): string {
+  if (!previewBasePath || !href.startsWith("/athlete")) return href;
+  const section = athleteHrefToPreviewSection(href);
+  return section ? `${previewBasePath}/${section}` : previewBasePath;
+}
+
 export function AthletePortalNavLink({
   href,
   className,
@@ -41,11 +52,14 @@ export function AthletePortalNavLink({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const fullPage = isAthletePortalFullPageNav(href, pathname);
+  const adminPreview = useAthleteAdminPreview();
+  const resolvedHref = mapAthleteHrefForAdminPreview(href, adminPreview?.previewBasePath);
+  const fullPage =
+    !adminPreview && isAthletePortalFullPageNav(resolvedHref, pathname);
 
   if (fullPage) {
     return (
-      <a href={href} className={className} onClick={onClick}>
+      <a href={resolvedHref} className={className} onClick={onClick}>
         {children}
       </a>
     );
@@ -53,7 +67,7 @@ export function AthletePortalNavLink({
 
   return (
     <Link
-      href={href}
+      href={resolvedHref}
       prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
       className={className}
       onClick={onClick}

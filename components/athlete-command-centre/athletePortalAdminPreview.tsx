@@ -7,9 +7,12 @@ import type {
   AthleteProgrammeApiState,
   AthleteProgrammeVisibility,
 } from "@/app/lib/hyroxProgrammeServer";
+import type { HyroxDailyReadinessRow } from "@/app/lib/hyrox-team/modules/today/dailyReadinessServer";
 
-type AdminPreviewContextValue = {
+export type AdminAthletePreviewContextValue = {
+  mode: "admin-athlete-preview";
   isAdminPreview: true;
+  readOnly: true;
   portalAthlete: PortalAthleteSummary;
   liveProgramme: AthleteLiveProgrammePayload | null;
   programmePublishedLive: boolean;
@@ -18,23 +21,46 @@ type AdminPreviewContextValue = {
   programmeVisibility: AthleteProgrammeVisibility;
   useMockPreview: false;
   liveProgrammeLoading: false;
+  /** Athlete-specific feature seeds (not force-enabled for admin). */
+  todayV2Enabled: boolean;
+  performanceHubEnabled: boolean;
+  /** IANA timezone for Today/Hub date math — never the admin browser TZ. */
+  athleteTimezone: string;
+  previewBasePath: string;
+  adminReturnHref: string;
+  /** Server-seeded readiness for Today V2 display in preview. */
+  initialReadiness: HyroxDailyReadinessRow | null;
 };
 
-const AdminPreviewContext = createContext<AdminPreviewContextValue | null>(null);
+const AdminPreviewContext = createContext<AdminAthletePreviewContextValue | null>(null);
 
 export function AthletePortalAdminPreviewProvider({
   children,
   portalAthlete,
   programme,
+  todayV2Enabled = false,
+  performanceHubEnabled = false,
+  athleteTimezone = "Europe/London",
+  previewBasePath,
+  adminReturnHref,
+  initialReadiness = null,
 }: {
   children: React.ReactNode;
   portalAthlete: PortalAthleteSummary;
   programme: AthleteLiveProgrammePayload | null;
+  todayV2Enabled?: boolean;
+  performanceHubEnabled?: boolean;
+  athleteTimezone?: string;
+  previewBasePath: string;
+  adminReturnHref: string;
+  initialReadiness?: HyroxDailyReadinessRow | null;
 }) {
-  const value = useMemo((): AdminPreviewContextValue => {
+  const value = useMemo((): AdminAthletePreviewContextValue => {
     const published = Boolean(programme?.published);
     return {
+      mode: "admin-athlete-preview",
       isAdminPreview: true,
+      readOnly: true,
       portalAthlete,
       liveProgramme: programme,
       programmePublishedLive: published,
@@ -43,8 +69,23 @@ export function AthletePortalAdminPreviewProvider({
       programmeVisibility: programme?.visibility ?? "coach_reviewing",
       useMockPreview: false,
       liveProgrammeLoading: false,
+      todayV2Enabled,
+      performanceHubEnabled,
+      athleteTimezone,
+      previewBasePath,
+      adminReturnHref,
+      initialReadiness,
     };
-  }, [portalAthlete, programme]);
+  }, [
+    portalAthlete,
+    programme,
+    todayV2Enabled,
+    performanceHubEnabled,
+    athleteTimezone,
+    previewBasePath,
+    adminReturnHref,
+    initialReadiness,
+  ]);
 
   return <AdminPreviewContext.Provider value={value}>{children}</AdminPreviewContext.Provider>;
 }

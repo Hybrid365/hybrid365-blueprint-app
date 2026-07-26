@@ -12,6 +12,12 @@ import {
 } from "@/app/lib/hyroxAthleteSessionLogServer";
 import { mapPublishedSessionsToAthleteUi } from "@/app/lib/hyroxProgrammeServer";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
+import type {
+  SessionActivityMetrics,
+  SessionActivityType,
+  SessionPlannedTargets,
+} from "@/app/lib/hyrox-team/modules/sessionLogging/types";
+import { SESSION_LOG_SCHEMA_VERSION } from "@/app/lib/hyrox-team/modules/sessionLogging/types";
 
 export type HyroxSessionLogActionBody = {
   programmeSessionId: string;
@@ -21,6 +27,9 @@ export type HyroxSessionLogActionBody = {
   notes?: string | null;
   modifications?: string | null;
   score?: string | null;
+  activityType?: SessionActivityType | null;
+  planned?: SessionPlannedTargets | null;
+  metrics?: SessionActivityMetrics | null;
   /** Portal context athlete id — fallback when strict linked resolve fails but layout rendered. */
   expectedAthleteId?: string | null;
 };
@@ -42,13 +51,20 @@ function feedbackFromBody(
     body.rpe !== undefined ||
     body.notes !== undefined ||
     body.modifications !== undefined ||
-    body.score !== undefined;
+    body.score !== undefined ||
+    body.activityType !== undefined ||
+    body.planned !== undefined ||
+    body.metrics !== undefined;
   if (!hasField) return undefined;
   return {
     rpe: body.rpe != null && body.rpe !== "" ? String(body.rpe) : null,
     notes: body.notes ?? null,
     modifications: body.modifications ?? null,
     score: body.score ?? null,
+    schemaVersion: SESSION_LOG_SCHEMA_VERSION,
+    activityType: body.activityType ?? null,
+    planned: body.planned ?? null,
+    metrics: body.metrics ?? null,
   };
 }
 

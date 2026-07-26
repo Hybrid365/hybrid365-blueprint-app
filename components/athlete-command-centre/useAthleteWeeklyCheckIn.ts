@@ -6,7 +6,7 @@ import type {
   AthleteWeeklyCheckInView,
 } from "@/app/lib/hyroxAthleteCheckInServer";
 import type { CheckInSubmitInput } from "@/app/lib/hyroxAthleteCheckInServer";
-import { useAthletePortal } from "./athletePortalContext";
+import { useAthletePortalOptional } from "./athletePortalContext";
 
 type CheckInApiJson = {
   success?: boolean;
@@ -22,7 +22,9 @@ export function useAthleteWeeklyCheckIn(
     initialSummary?: AthleteCheckInSummary | null;
   }
 ) {
-  const { useMockPreview, serverAuthConfirmed } = useAthletePortal();
+  const portal = useAthletePortalOptional();
+  const useMockPreview = portal?.useMockPreview ?? false;
+  const serverAuthConfirmed = portal?.serverAuthConfirmed ?? false;
   const [checkIn, setCheckIn] = useState<AthleteWeeklyCheckInView | null>(
     options?.initialCheckIn ?? null
   );
