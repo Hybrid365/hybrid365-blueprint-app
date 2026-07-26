@@ -43,7 +43,7 @@ export type DailyReadinessSubmitInput = DailyReadinessInputs & {
 export class HyroxDailyReadinessError extends Error {
   constructor(
     message: string,
-    public readonly code: "VALIDATION" | "FORBIDDEN" | "NOT_FOUND"
+    public readonly code: "VALIDATION" | "FORBIDDEN" | "NOT_FOUND" | "UNAVAILABLE"
   ) {
     super(message);
     this.name = "HyroxDailyReadinessError";
@@ -52,6 +52,23 @@ export class HyroxDailyReadinessError extends Error {
 
 const SELECT =
   "id, athlete_id, local_date, timezone, sleep_quality, energy, motivation, stress, muscle_soreness, feeling_unwell, bodyweight, resting_hr, score, category, explanation, coaching_prompt, inputs_json, coach_note_reviewed_at, submitted_at, created_at, updated_at";
+
+/** PostgREST / schema-cache miss when migration 017 is not applied yet. */
+export function isHyroxDailyReadinessRelationMissing(error: {
+  code?: string | null;
+  message?: string | null;
+} | null | undefined): boolean {
+  if (!error) return false;
+  const code = (error.code ?? "").toUpperCase();
+  const message = (error.message ?? "").toLowerCase();
+  return (
+    code === "PGRST205" ||
+    code === "42P01" ||
+    message.includes("schema cache") ||
+    message.includes("could not find the table") ||
+    (message.includes("relation") && message.includes("does not exist"))
+  );
+}
 
 function resolveTimezone(raw?: string | null): string {
   const tz = raw?.trim();
@@ -95,7 +112,14 @@ export async function fetchDailyReadinessForDate(
     .eq("athlete_id", athleteId)
     .eq("local_date", localDate)
     .maybeSingle();
-  if (error) throw new HyroxDailyReadinessError(error.message, "VALIDATION");
+  if (error) {
+    // Soft-degrade when migration 017 is not yet applied / schema cache stale.
+    // Preview + coach Today snapshot must not 500 the whole page.
+    if (isHyroxDailyReadinessRelationMissing(error)) {
+      return null;
+    }
+    throw new HyroxDailyReadinessError(error.message, "VALIDATION");
+  }
   return (data as HyroxDailyReadinessRow | null) ?? null;
 }
 
@@ -148,7 +172,15 @@ export async function upsertDailyReadiness(
     .select(SELECT)
     .single();
 
-  if (error) throw new HyroxDailyReadinessError(error.message, "VALIDATION");
+  if (error) {
+    if (isHyroxDailyReadinessRelationMissing(error)) {
+      throw new HyroxDailyReadinessError(
+        "Daily readiness is not available yet (migration 017 required).",
+        "UNAVAILABLE"
+      );
+    }
+    throw new HyroxDailyReadinessError(error.message, "VALIDATION");
+  }
   if (!data) throw new HyroxDailyReadinessError("Could not save readiness.", "VALIDATION");
   return data as HyroxDailyReadinessRow;
 }

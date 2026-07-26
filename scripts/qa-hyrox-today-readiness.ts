@@ -11,6 +11,7 @@ import {
 } from "../app/lib/hyrox-team/modules/today/resolveTodaySessions";
 import { buildTodayChecklist } from "../app/lib/hyrox-team/modules/today/checklist";
 import { isHyroxTodayV2Enabled } from "../app/lib/hyrox-team/modules/today/featureFlag";
+import { isHyroxDailyReadinessRelationMissing } from "../app/lib/hyrox-team/modules/today/dailyReadinessServer";
 import type { HyroxSession } from "../app/lib/hyroxTeamDashboardMock";
 import { toYmd, startOfLocalDay } from "../app/lib/hyroxProgrammeDates";
 
@@ -224,6 +225,21 @@ function ok(name: string) {
   if (prevIds === undefined) delete process.env.HYROX_TODAY_V2_ATHLETE_IDS;
   else process.env.HYROX_TODAY_V2_ATHLETE_IDS = prevIds;
   ok("Feature flag allow-list");
+}
+
+{
+  assert(
+    isHyroxDailyReadinessRelationMissing({
+      code: "PGRST205",
+      message: "Could not find the table 'public.hyrox_daily_readiness' in the schema cache",
+    }),
+    "detects schema-cache miss"
+  );
+  assert(
+    !isHyroxDailyReadinessRelationMissing({ code: "42501", message: "permission denied" }),
+    "ignores unrelated errors"
+  );
+  ok("Missing readiness relation detection");
 }
 
 console.log(`\nAll ${passed} Today readiness QA checks passed.`);
