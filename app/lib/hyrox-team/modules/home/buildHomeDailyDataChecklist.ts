@@ -23,9 +23,23 @@ export type HomeDailyDataItem = {
   label: string;
   done: boolean;
   applicable: boolean;
+  /** When false, item may display but does not count toward daily completion. */
+  required: boolean;
   ctaLabel?: string;
   action: HomeDailyDataAction;
 };
+
+export function buildHomePainAlert(params: {
+  readiness: HyroxDailyReadinessRow | null;
+  todaysSessions: HyroxSession[];
+}): boolean {
+  const mainSessions = params.todaysSessions.filter((s) => !isMobilityOrRecoverySession(s));
+  const focusSessions = mainSessions.length ? mainSessions : params.todaysSessions;
+  return (
+    Boolean(params.readiness?.feeling_unwell) ||
+    focusSessions.some((s) => hasPainTightnessFlag(s))
+  );
+}
 
 export function buildHomeDailyDataChecklist(params: {
   todayV2Enabled: boolean;
@@ -57,10 +71,6 @@ export function buildHomeDailyDataChecklist(params: {
       );
     });
 
-  const painReported =
-    Boolean(params.readiness?.feeling_unwell) ||
-    focusSessions.some((s) => hasPainTightnessFlag(s));
-
   const items: HomeDailyDataItem[] = [];
 
   if (params.todayV2Enabled) {
@@ -69,24 +79,27 @@ export function buildHomeDailyDataChecklist(params: {
       label: "Morning readiness submitted",
       done: readinessSubmitted,
       applicable: true,
+      required: true,
       ctaLabel: readinessSubmitted ? undefined : "Complete readiness",
       action: "readiness",
     });
 
     items.push({
       id: "bodyweight",
-      label: "Bodyweight logged",
+      label: "Bodyweight logged (optional)",
       done: params.readiness?.bodyweight != null,
       applicable: readinessSubmitted,
+      required: false,
       ctaLabel: params.readiness?.bodyweight == null ? "Log bodyweight" : undefined,
       action: "readiness",
     });
 
     items.push({
       id: "resting_hr",
-      label: "Resting HR logged",
+      label: "Resting HR logged (optional)",
       done: params.readiness?.resting_hr != null,
       applicable: readinessSubmitted,
+      required: false,
       ctaLabel: params.readiness?.resting_hr == null ? "Log resting HR" : undefined,
       action: "readiness",
     });
@@ -96,6 +109,7 @@ export function buildHomeDailyDataChecklist(params: {
       label: "HRV logged (optional)",
       done: optional.hrv != null,
       applicable: readinessSubmitted,
+      required: false,
       ctaLabel: optional.hrv == null ? "Log HRV" : undefined,
       action: "readiness",
     });
@@ -107,6 +121,7 @@ export function buildHomeDailyDataChecklist(params: {
       label: focusSessions.length > 1 ? "Sessions completed" : "Session completed",
       done: sessionCompleted,
       applicable: true,
+      required: true,
       ctaLabel: sessionCompleted ? undefined : "View session",
       action: "session",
     });
@@ -116,19 +131,11 @@ export function buildHomeDailyDataChecklist(params: {
       label: "Session result logged",
       done: sessionLogged,
       applicable: true,
+      required: true,
       ctaLabel: sessionLogged ? undefined : "Log session",
       action: "session",
     });
   }
-
-  items.push({
-    id: "pain_reported",
-    label: "Illness or pain flagged",
-    done: painReported,
-    applicable: params.todayV2Enabled || focusSessions.length > 0,
-    ctaLabel: painReported ? undefined : "Update readiness",
-    action: "readiness",
-  });
 
   if (params.hasCoachNote) {
     items.push({
@@ -136,6 +143,7 @@ export function buildHomeDailyDataChecklist(params: {
       label: "Coach note reviewed",
       done: params.coachNoteReviewed,
       applicable: true,
+      required: true,
       ctaLabel: params.coachNoteReviewed ? undefined : "Mark reviewed",
       action: "coach_ack",
     });
@@ -147,6 +155,7 @@ export function buildHomeDailyDataChecklist(params: {
       label: "Weekly check-in submitted",
       done: params.checkInComplete,
       applicable: true,
+      required: true,
       ctaLabel: params.checkInComplete ? undefined : "Complete check-in",
       action: "checkin",
     });
@@ -159,7 +168,7 @@ export function homeDailyDataProgress(items: HomeDailyDataItem[]): {
   complete: number;
   total: number;
 } {
-  const applicable = items.filter((i) => i.applicable);
-  const complete = applicable.filter((i) => i.done).length;
-  return { complete, total: applicable.length };
+  const required = items.filter((i) => i.applicable && i.required);
+  const complete = required.filter((i) => i.done).length;
+  return { complete, total: required.length };
 }

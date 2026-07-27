@@ -6,7 +6,11 @@
 import { isHyroxHomeV2Enabled } from "../app/lib/hyrox-team/modules/home/featureFlag";
 import { resolveUpcomingProgrammeSessions } from "../app/lib/hyrox-team/modules/home/resolveUpcomingSessions";
 import { sanitizeCoachInsightForAthlete } from "../app/lib/hyrox-team/modules/home/coachInsightCopy";
-import { buildHomeDailyDataChecklist } from "../app/lib/hyrox-team/modules/home/buildHomeDailyDataChecklist";
+import { buildHomeDailyDataChecklist, homeDailyDataProgress } from "../app/lib/hyrox-team/modules/home/buildHomeDailyDataChecklist";
+import {
+  isPopulatedTargetValue,
+  resolveCompactSessionTargets,
+} from "../app/lib/hyrox-team/modules/home/resolveCompactSessionTargets";
 import { timeAwareGreeting } from "../components/athlete-command-centre/home-v2/greeting";
 import type { HyroxSession } from "../app/lib/hyroxTeamDashboardMock";
 
@@ -106,13 +110,102 @@ function ok(name: string) {
     coachNoteReviewed: false,
     hasCoachNote: false,
     checkInDue: false,
-    checkInComplete: true,
+    checkInComplete: false,
   });
   const readinessItem = items.find((i) => i.id === "morning_readiness");
   assert(readinessItem?.done === true, "readiness submitted counts once");
   const sleepItem = items.find((i) => i.id === "sleep_quality");
   assert(!sleepItem, "no fake per-field sleep item");
+  const painItem = items.find((i) => i.id === "pain_reported");
+  assert(!painItem, "illness/pain not a checklist item");
+  const { complete, total } = homeDailyDataProgress(items);
+  assert(complete === 1 && total === 1, "only required items in completion score");
+  const bw = items.find((i) => i.id === "bodyweight");
+  assert(bw?.required === false, "bodyweight optional");
   ok("Daily data checklist accuracy");
+}
+
+{
+  const items = buildHomeDailyDataChecklist({
+    todayV2Enabled: true,
+    readiness: {
+      submitted_at: "2026-01-01",
+      bodyweight: null,
+      resting_hr: null,
+      feeling_unwell: false,
+    } as never,
+    todaysSessions: [
+      {
+        id: "s1",
+        day: "Mon",
+        dayShort: "Mon",
+        dateLabel: "Mon",
+        name: "Lower strength",
+        type: "Strength",
+        focus: "Strength",
+        duration: "60 min",
+        rpeTarget: "6–7",
+        status: "upcoming",
+        priority: "Key",
+        intent: "Build lower strength",
+        plannedTargets: {
+          targetRPE: "6–7",
+          targetLoad: "Top sets @ RPE 7",
+          activityType: "strength",
+        },
+      },
+    ],
+    coachNoteReviewed: false,
+    hasCoachNote: false,
+    checkInDue: false,
+    checkInComplete: false,
+  });
+  const { total } = homeDailyDataProgress(items);
+  assert(total === 3, "readiness + session complete + session log required");
+  ok("Checklist required-only denominator with session");
+}
+
+{
+  assert(!isPopulatedTargetValue("See session prescription"), "rejects placeholder");
+  const strengthTargets = resolveCompactSessionTargets(
+    {
+      id: "str1",
+      day: "Mon",
+      dayShort: "Mon",
+      dateLabel: "Mon",
+      name: "Lower strength",
+      type: "Strength",
+      focus: "",
+      duration: "60 min",
+      rpeTarget: "6–7",
+      status: "upcoming",
+      priority: "Key",
+      intent: "",
+      plannedTargets: { targetRPE: "6–7", targetLoad: "5×5 @ RPE 7", activityType: "strength" },
+    },
+    {
+      sessionId: "str1",
+      weekLabel: "Mon",
+      categoryTag: "Strength",
+      objective: "Lower strength",
+      durationMin: 60,
+      rpeTarget: "6–7",
+      hrZone: "RPE 4–5 on accessories",
+      targetPaceLoad: "See session prescription",
+      tags: [],
+      warmUp: [],
+      mainSet: [],
+      coolDown: [],
+      coachNote: "",
+      recordFields: [],
+    }
+  );
+  assert(
+    !strengthTargets.some((t) => t.label === "Pace" || t.label === "HR"),
+    "strength skips pace/hr"
+  );
+  assert(strengthTargets.some((t) => t.label === "Target RPE"), "strength shows RPE");
+  ok("Modality-aware compact session targets");
 }
 
 console.log(`\n${passed} Home V2 QA checks passed.`);

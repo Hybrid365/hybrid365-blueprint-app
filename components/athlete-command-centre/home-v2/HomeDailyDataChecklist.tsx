@@ -9,6 +9,7 @@ import { usePrefersReducedMotion } from "./motion";
 
 type Props = {
   items: HomeDailyDataItem[];
+  painAlert?: boolean;
   onReadinessAction?: () => void;
   onSessionAction?: () => void;
   onCoachAck?: () => void;
@@ -18,6 +19,7 @@ type Props = {
 
 export function HomeDailyDataChecklist({
   items,
+  painAlert,
   onReadinessAction,
   onSessionAction,
   onCoachAck,
@@ -54,14 +56,24 @@ export function HomeDailyDataChecklist({
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
                 item.done
                   ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300"
-                  : "border-zinc-700 text-transparent"
+                  : item.required
+                    ? "border-zinc-700 text-transparent"
+                    : "border-zinc-800 text-transparent"
               }`}
               aria-hidden
             >
               <Check className="h-3 w-3" />
             </span>
             <span
-              className={`min-w-0 flex-1 text-xs ${item.done ? "text-zinc-500 line-through" : "text-zinc-200"}`}
+              className={`min-w-0 flex-1 text-xs ${
+                item.done
+                  ? item.required
+                    ? "text-zinc-500 line-through"
+                    : "text-zinc-500"
+                  : item.required
+                    ? "text-zinc-200"
+                    : "text-zinc-400"
+              }`}
             >
               {item.label}
             </span>
@@ -77,6 +89,12 @@ export function HomeDailyDataChecklist({
           </li>
         ))}
       </ul>
+
+      {painAlert ? (
+        <p className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90">
+          Illness or pain flagged — your coach can see this.
+        </p>
+      ) : null}
     </section>
   );
 }

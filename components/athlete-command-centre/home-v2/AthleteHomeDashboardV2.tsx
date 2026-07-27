@@ -14,7 +14,7 @@ import {
 import { sessionDetailFromHyroxSession } from "@/app/lib/hyroxAthleteDashboardLive";
 import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { resolveUpcomingProgrammeSessions } from "@/app/lib/hyrox-team/modules/home/resolveUpcomingSessions";
-import { buildHomeDailyDataChecklist } from "@/app/lib/hyrox-team/modules/home/buildHomeDailyDataChecklist";
+import { buildHomeDailyDataChecklist, buildHomePainAlert } from "@/app/lib/hyrox-team/modules/home/buildHomeDailyDataChecklist";
 import { resolveTodaysSessions } from "@/app/lib/hyrox-team/modules/today/resolveTodaySessions";
 import { localDateYmdInTimeZone } from "@/app/lib/hyrox-team/modules/today/dailyReadinessServer";
 import type { HyroxDailyReadinessRow } from "@/app/lib/hyrox-team/modules/today/dailyReadinessServer";
@@ -277,6 +277,11 @@ export function AthleteHomeDashboardV2({
     [todayV2, readiness, todaysSessions, coachFocus, checkInDue, checkInComplete]
   );
 
+  const painAlert = useMemo(
+    () => buildHomePainAlert({ readiness, todaysSessions }),
+    [readiness, todaysSessions]
+  );
+
   const legacyProgressMetrics = useMemo(() => {
     if (performanceHub) return [];
     return [
@@ -413,6 +418,7 @@ export function AthleteHomeDashboardV2({
         <div className="lg:col-span-5 space-y-4">
           <HomeDailyDataChecklist
             items={dailyDataItems}
+            painAlert={painAlert}
             readOnly={isReadOnly}
             onReadinessAction={() => setReadinessPanelOpen(true)}
             onSessionAction={openPrimarySession}

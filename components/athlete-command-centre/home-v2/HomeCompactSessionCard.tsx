@@ -6,6 +6,7 @@ import {
   sessionCtaLabel,
   type SessionCtaState,
 } from "@/app/lib/hyrox-team/modules/today/resolveTodaySessions";
+import { resolveCompactSessionTargets } from "@/app/lib/hyrox-team/modules/home/resolveCompactSessionTargets";
 import { sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
 import { Play } from "lucide-react";
 
@@ -48,14 +49,7 @@ export function HomeCompactSessionCard({
       ? `${planned.estimatedDurationMinutes} min`
       : populated(session.duration));
 
-  const targets = [
-    { label: "Pace", value: populated(d?.targetPaceLoad) || populated(planned?.targetPace) || populated(planned?.targetSplit) },
-    { label: "HR", value: populated(d?.hrZone) || populated(planned?.targetHR) },
-    { label: "RPE", value: populated(d?.rpeTarget) || populated(planned?.targetRPE) || populated(session.rpeTarget) },
-    { label: "Load", value: populated(planned?.targetLoad) },
-  ]
-    .filter((t) => t.value)
-    .slice(0, 2);
+  const targets = resolveCompactSessionTargets(session, d);
 
   const statusLabel =
     session.status === "complete"
