@@ -3,6 +3,10 @@
  */
 
 import type { WeekdayName } from "@/app/lib/hyroxCoachProgrammeDraft";
+import type {
+  ProgrammingProgressionLevel,
+  ProgrammingSessionStandards,
+} from "@/app/lib/hyrox-team/modules/programmingSystem/types";
 
 export type LibraryCategory =
   | "all"
@@ -11,6 +15,8 @@ export type LibraryCategory =
   | "threshold_runs"
   | "tempo_aerobic"
   | "hyrox_compromised"
+  | "hyrox_volume_builders"
+  | "hybrid_engine"
   | "erg_intervals"
   | "easy_erg"
   | "strength_endurance"
@@ -29,12 +35,19 @@ export type LibraryQuickFilter =
   | "tempo"
   | "strength"
   | "hyrox"
+  | "volume_builders"
+  | "hybrid_engine"
   | "add_ons"
   | "testing"
   | "race_week"
   | "station_overload"
   | "leg_endurance"
-  | "high_fatigue";
+  | "high_fatigue"
+  | "low_fatigue"
+  | "moderate_fatigue"
+  | "level_1"
+  | "level_2"
+  | "advanced_level";
 
 export type CoachSessionSource = "Kieran personal session" | "Hybrid365 library";
 
@@ -137,6 +150,18 @@ export type CoachLibraryEntry = {
   prescription: CoachSessionPrescription;
   progressionOptions?: string[];
   regressionOptions?: string[];
+  /**
+   * Programming System — progression family id (e.g. sled_capacity_builder).
+   * Additive; existing entries may omit until curated.
+   */
+  progressionFamily?: string;
+  progressionLevel?: ProgrammingProgressionLevel;
+  /** Next logical session / level id or description for coaches. */
+  recommendedProgression?: string | null;
+  /** Easier / prior level id or description for coaches. */
+  recommendedRegression?: string | null;
+  /** Full session standards block for Programming System sessions. */
+  programmingStandards?: ProgrammingSessionStandards;
   abbrev: string;
   /** Extended HYROX session metadata for admin display and guardrails. */
   hyroxMetadata?: CoachSessionHyroxMetadata;
@@ -232,6 +257,9 @@ export function categoryToSessionType(
       return "tempo_aerobic_quality";
     case "hyrox_compromised":
       return "compromised_running";
+    case "hyrox_volume_builders":
+      return "strength";
+    case "hybrid_engine":
     case "erg_intervals":
     case "easy_erg":
       return "erg_development";
