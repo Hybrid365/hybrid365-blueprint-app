@@ -9,6 +9,8 @@ import {
 } from "@/app/lib/hyroxCoachSessionLibraryKieran";
 import { HYROX_BATCH_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryHyroxBatch";
 import { HYROX_MINI_COMPROMISED_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryMiniCompromised";
+import { HYROX_VOLUME_BUILDER_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryVolumeBuilders";
+import { HYBRID_ENGINE_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryHybridEngine";
 import type {
   CoachLibraryEntry,
   LibraryCategory,
@@ -51,15 +53,19 @@ export const COACH_SESSION_LIBRARY: CoachLibraryEntry[] = [
   ...KIERAN_COACH_SESSIONS,
   ...HYROX_BATCH_COACH_SESSIONS,
   ...HYROX_MINI_COMPROMISED_COACH_SESSIONS,
+  ...HYROX_VOLUME_BUILDER_COACH_SESSIONS,
+  ...HYBRID_ENGINE_COACH_SESSIONS,
 ];
 
 export const LIBRARY_CATEGORY_LABELS: Record<LibraryCategory, string> = {
   all: "All",
   coach_staples: "Hybrid365 Coach Staples",
-  run_development: "Run Development",
+  run_development: "Running Development",
   threshold_runs: "Threshold Runs",
   tempo_aerobic: "Tempo / Aerobic Quality",
   hyrox_compromised: "Hyrox Compromised",
+  hyrox_volume_builders: "HYROX Volume Builders",
+  hybrid_engine: "Hybrid Engine",
   erg_intervals: "ERG Intervals",
   easy_erg: "Easy Bike / Ski / Row",
   strength_endurance: "Strength Endurance",
@@ -79,12 +85,19 @@ export const LIBRARY_QUICK_FILTER_LABELS: Record<LibraryQuickFilter, string> = {
   tempo: "Tempo",
   strength: "Strength",
   hyrox: "Hyrox",
+  volume_builders: "Volume Builders",
+  hybrid_engine: "Hybrid Engine",
   add_ons: "Add-Ons",
   testing: "Testing",
   race_week: "Race Week",
   station_overload: "Station Overload",
   leg_endurance: "Leg Endurance",
   high_fatigue: "High Fatigue",
+  low_fatigue: "Low Fatigue",
+  moderate_fatigue: "Moderate Fatigue",
+  level_1: "Level 1",
+  level_2: "Level 2",
+  advanced_level: "Advanced Level",
 };
 
 const QUICK_FILTERS: LibraryQuickFilter[] = [
@@ -97,12 +110,19 @@ const QUICK_FILTERS: LibraryQuickFilter[] = [
   "tempo",
   "strength",
   "hyrox",
+  "volume_builders",
+  "hybrid_engine",
+  "low_fatigue",
+  "moderate_fatigue",
+  "high_fatigue",
+  "level_1",
+  "level_2",
+  "advanced_level",
   "add_ons",
   "testing",
   "race_week",
   "station_overload",
   "leg_endurance",
-  "high_fatigue",
 ];
 
 function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter): boolean {
@@ -132,9 +152,22 @@ function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter
     case "hyrox":
       return (
         entry.category === "hyrox_compromised" ||
+        entry.category === "hyrox_volume_builders" ||
         entry.tags.includes("compromised") ||
         entry.tags.includes("hyrox") ||
         Boolean(entry.hyroxMetadata)
+      );
+    case "volume_builders":
+      return (
+        entry.category === "hyrox_volume_builders" ||
+        entry.tags.includes("hyrox_volume_builder")
+      );
+    case "hybrid_engine":
+      return (
+        entry.category === "hybrid_engine" ||
+        entry.tags.includes("hybrid_engine") ||
+        entry.category === "erg_intervals" ||
+        entry.category === "easy_erg"
       );
     case "station_overload":
       return (
@@ -155,7 +188,31 @@ function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter
         entry.tags.includes("high_fatigue_hyrox_key_session") ||
         entry.tags.includes("very_high_stress") ||
         entry.hyroxMetadata?.fatigueCost === "very_high" ||
-        entry.hyroxMetadata?.fatigueCost === "high"
+        entry.hyroxMetadata?.fatigueCost === "high" ||
+        entry.programmingStandards?.estimatedFatigueCost === "high" ||
+        entry.programmingStandards?.estimatedFatigueCost === "very_high"
+      );
+    case "low_fatigue":
+      return (
+        entry.programmingStandards?.estimatedFatigueCost === "low" ||
+        entry.hardEasy === "easy" ||
+        entry.tags.includes("recovery")
+      );
+    case "moderate_fatigue":
+      return (
+        entry.programmingStandards?.estimatedFatigueCost === "moderate" ||
+        entry.sessionStress === "moderate"
+      );
+    case "level_1":
+      return entry.progressionLevel === "level_1";
+    case "level_2":
+      return entry.progressionLevel === "level_2";
+    case "advanced_level":
+      return (
+        entry.progressionLevel === "advanced" ||
+        entry.progressionLevel === "level_3" ||
+        entry.level === "advanced" ||
+        entry.level === "pro"
       );
     case "add_ons":
       return entry.isOptionalAddOn === true;
@@ -238,6 +295,7 @@ export function filterCoachLibrary(
     const q = query.toLowerCase().replace(/_/g, " ");
     list = list.filter((s) => {
       const meta = s.hyroxMetadata;
+      const std = s.programmingStandards;
       const haystack = [
         s.name,
         s.abbrev,
@@ -246,6 +304,15 @@ export function filterCoachLibrary(
         ...s.equipment,
         s.prescription.objective,
         s.prescription.coachNote,
+        s.progressionFamily,
+        s.progressionLevel,
+        std?.purpose,
+        std?.primaryAdaptation,
+        std?.secondaryAdaptation,
+        std?.estimatedFatigueCost,
+        ...(std?.trainingPhase ?? []),
+        ...(std?.suitableAthleteLevel ?? []),
+        ...(std?.equipmentRequired ?? []),
         meta?.primaryCategory,
         meta?.secondaryCategory,
         meta?.sessionType,
