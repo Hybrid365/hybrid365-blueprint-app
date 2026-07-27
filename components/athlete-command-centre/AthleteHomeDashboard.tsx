@@ -60,6 +60,8 @@ import {
 import { useAthletePortalOptional } from "./athletePortalContext";
 import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 import { isHyroxTodayV2EnabledClient } from "@/app/lib/hyrox-team/modules/today/featureFlag";
+import { isHyroxHomeV2EnabledClient } from "@/app/lib/hyrox-team/modules/home/featureFlag";
+import { AthleteHomeDashboardV2 } from "./home-v2/AthleteHomeDashboardV2";
 
 function HomePriorityTile({
   label,
@@ -138,6 +140,7 @@ export function AthleteHomeDashboard({
     reloadLiveProgramme,
     liveProgramme,
     todayV2Enabled: todayV2Seed,
+    homeV2Enabled: homeV2Seed,
   } = adminPreview
     ? {
         portalAthlete: adminPreview.portalAthlete,
@@ -147,6 +150,7 @@ export function AthleteHomeDashboard({
         reloadLiveProgramme: async () => {},
         liveProgramme: adminPreview.liveProgramme,
         todayV2Enabled: adminPreview.todayV2Enabled,
+        homeV2Enabled: adminPreview.homeV2Enabled,
       }
     : portal ?? {
         portalAthlete: null,
@@ -156,7 +160,9 @@ export function AthleteHomeDashboard({
         reloadLiveProgramme: async () => {},
         liveProgramme: null,
         todayV2Enabled: false,
+        homeV2Enabled: false,
       };
+  const homeV2 = isHyroxHomeV2EnabledClient(homeV2Seed);
   const todayV2 = isHyroxTodayV2EnabledClient(todayV2Seed);
   const { dashboardLive, readOnly: dashboardReadOnly } = useAthleteDashboardLive();
   const isReadOnly = readOnly || dashboardReadOnly;
@@ -297,6 +303,10 @@ export function AthleteHomeDashboard({
     },
     [programmePublishedLive, useMockPreview, reloadLiveProgramme, isReadOnly]
   );
+
+  if (homeV2) {
+    return <AthleteHomeDashboardV2 useLiveProgramme={useLiveProgramme} readOnly={readOnly} />;
+  }
 
   return (
     <PageContent width="full" className="!max-w-none">

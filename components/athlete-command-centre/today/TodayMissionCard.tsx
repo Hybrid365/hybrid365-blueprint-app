@@ -50,6 +50,10 @@ type Props = {
   isPrimary: boolean;
   onPrimaryAction: (session: HyroxSession, cta: SessionCtaState) => void;
   disabled?: boolean;
+  /** Override eyebrow label (e.g. "Next key session"). */
+  sectionLabel?: string;
+  /** When "next", future session CTA defaults to View session. */
+  missionVariant?: "today" | "next";
 };
 
 export function TodayMissionCard({
@@ -60,6 +64,8 @@ export function TodayMissionCard({
   isPrimary,
   onPrimaryAction,
   disabled,
+  sectionLabel,
+  missionVariant = "today",
 }: Props) {
   const [expanded, setExpanded] = useState(isPrimary);
   const cta = resolveSessionCtaState(session);
@@ -129,16 +135,14 @@ export function TodayMissionCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          {sessionCount > 1 ? (
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">
-              Session {sessionIndex + 1} of {sessionCount}
-              {session.timeOfDay ? ` · ${session.timeOfDay}` : ""}
-            </p>
-          ) : (
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">
-              Today&apos;s mission
-            </p>
-          )}
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">
+            {sectionLabel ??
+              (sessionCount > 1
+                ? `Session ${sessionIndex + 1} of ${sessionCount}${session.timeOfDay ? ` · ${session.timeOfDay}` : ""}`
+                : missionVariant === "next"
+                  ? "Next key session"
+                  : "Today's mission")}
+          </p>
           <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">{session.name}</h2>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <span className={`rounded-full border px-2.5 py-0.5 text-xs ${sessionTypeStyle(session.type)}`}>
@@ -158,7 +162,9 @@ export function TodayMissionCard({
           {cta === "start" || cta === "continue_logging" || cta === "log_partial" ? (
             <Play className="h-4 w-4" />
           ) : null}
-          {sessionCtaLabel(cta)}
+          {missionVariant === "next" && cta === "start"
+            ? "View session"
+            : sessionCtaLabel(cta)}
         </button>
       </div>
 

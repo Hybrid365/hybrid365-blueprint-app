@@ -9,6 +9,7 @@ import { resolveAthletePortalPageAuth } from "@/app/lib/hyroxAthletePortalSnapsh
 import { createHyroxPortalMutationToken } from "@/app/lib/hyroxPortalMutationToken";
 import { isHyroxTodayV2Enabled } from "@/app/lib/hyrox-team/modules/today/featureFlag";
 import { isHyroxPerformanceHubEnabled } from "@/app/lib/hyrox-team/modules/performanceHub/featureFlag";
+import { isHyroxHomeV2Enabled } from "@/app/lib/hyrox-team/modules/home/featureFlag";
 import { isHyroxProgrammeRoute } from "@/app/lib/supabase/resolveAuthUser";
 import { AthletePaymentPendingNotice } from "@/components/athlete-command-centre/AthletePaymentPendingNotice";
 import { AthleteUnlinkedNotice } from "@/components/athlete-command-centre/AthleteUnlinkedNotice";
@@ -172,6 +173,10 @@ export default async function AthleteLayout({ children }: { children: React.Reac
     id: resolvedAthlete.id,
     email: resolvedAthlete.email ?? user.email ?? null,
   });
+  const homeV2Enabled = isHyroxHomeV2Enabled({
+    id: resolvedAthlete.id,
+    email: resolvedAthlete.email ?? user.email ?? null,
+  });
 
   return (
     <AthletePortalProvider
@@ -187,6 +192,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       routeAuthDebug={routeAuthDebug}
       todayV2Enabled={todayV2Enabled}
       performanceHubEnabled={performanceHubEnabled}
+      homeV2Enabled={homeV2Enabled}
     >
       {children}
     </AthletePortalProvider>

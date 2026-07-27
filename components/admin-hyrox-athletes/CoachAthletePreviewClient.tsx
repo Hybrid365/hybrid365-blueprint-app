@@ -48,6 +48,7 @@ export default function CoachAthletePreviewClient({
   section,
   todayV2Enabled,
   performanceHubEnabled,
+  homeV2Enabled,
   athleteTimezone,
   initialCheckIn = null,
   initialCheckInSummary = null,
@@ -58,6 +59,7 @@ export default function CoachAthletePreviewClient({
   section: PreviewSection;
   todayV2Enabled: boolean;
   performanceHubEnabled: boolean;
+  homeV2Enabled: boolean;
   athleteTimezone: string;
   initialCheckIn?: AthleteWeeklyCheckInView | null;
   initialCheckInSummary?: AthleteCheckInSummary | null;
@@ -172,6 +174,7 @@ export default function CoachAthletePreviewClient({
       programme={programme}
       todayV2Enabled={todayV2Enabled}
       performanceHubEnabled={performanceHubEnabled}
+      homeV2Enabled={homeV2Enabled}
       athleteTimezone={athleteTimezone}
       previewBasePath={basePath}
       adminReturnHref={adminReturnHref}

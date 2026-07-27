@@ -21,6 +21,7 @@ import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import { isHyroxPerformanceHubEnabled } from "@/app/lib/hyrox-team/modules/performanceHub/featureFlag";
 import { isHyroxTodayV2Enabled } from "@/app/lib/hyrox-team/modules/today/featureFlag";
+import { isHyroxHomeV2Enabled } from "@/app/lib/hyrox-team/modules/home/featureFlag";
 import {
   fetchDailyReadinessForDate,
   localDateYmdInTimeZone,
@@ -125,6 +126,7 @@ export default async function HyroxAthletePreviewPage({ params }: PreviewPagePro
       section={section}
       todayV2Enabled={isHyroxTodayV2Enabled(athlete)}
       performanceHubEnabled={isHyroxPerformanceHubEnabled(athlete)}
+      homeV2Enabled={isHyroxHomeV2Enabled(athlete)}
       athleteTimezone={athleteTimezone}
       initialCheckIn={checkIn}
       initialCheckInSummary={checkInSummary}
