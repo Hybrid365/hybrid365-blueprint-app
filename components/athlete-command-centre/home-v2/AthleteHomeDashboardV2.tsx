@@ -14,12 +14,12 @@ import {
 import { sessionDetailFromHyroxSession } from "@/app/lib/hyroxAthleteDashboardLive";
 import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { resolveUpcomingProgrammeSessions } from "@/app/lib/hyrox-team/modules/home/resolveUpcomingSessions";
-import {
-  resolveTodaysSessions,
-} from "@/app/lib/hyrox-team/modules/today/resolveTodaySessions";
+import { buildHomeDailyDataChecklist } from "@/app/lib/hyrox-team/modules/home/buildHomeDailyDataChecklist";
+import { resolveTodaysSessions } from "@/app/lib/hyrox-team/modules/today/resolveTodaySessions";
 import { localDateYmdInTimeZone } from "@/app/lib/hyrox-team/modules/today/dailyReadinessServer";
 import type { HyroxDailyReadinessRow } from "@/app/lib/hyrox-team/modules/today/dailyReadinessServer";
 import {
+  acknowledgeHyroxCoachNoteTodayAction,
   fetchHyroxDailyReadinessAction,
   saveHyroxDailyReadinessAction,
 } from "@/app/lib/hyroxDailyReadinessAction";
@@ -27,15 +27,18 @@ import { isHyroxTodayV2EnabledClient } from "@/app/lib/hyrox-team/modules/today/
 import { isHyroxPerformanceHubEnabledClient } from "@/app/lib/hyrox-team/modules/performanceHub/featureFlag";
 import { PageContent } from "../athleteUi";
 import { SessionDrawer } from "../SessionDrawer";
+import { TodayReadinessCard } from "../today/TodayReadinessCard";
 import { useAthleteDashboardLive } from "../useAthleteDashboardLive";
 import { useAthletePortalOptional } from "../athletePortalContext";
 import { useAthleteAdminPreview } from "../athletePortalAdminPreview";
 import { HomeAthleteHeader } from "./HomeAthleteHeader";
 import { HomeMissionSection } from "./HomeMissionSection";
-import { HomeWeeklyStateRow } from "./HomeWeeklyStateRow";
 import { HomeCoachInsight } from "./HomeCoachInsight";
-import { HomeProgressSnapshot } from "./HomeProgressSnapshot";
 import { HomeUpcomingProgramme } from "./HomeUpcomingProgramme";
+import { HomePerformanceStatus } from "./HomePerformanceStatus";
+import { HomeDailyDataChecklist } from "./HomeDailyDataChecklist";
+import { HomeProgressInsights } from "./HomeProgressInsights";
+import { useHomePerformanceHub } from "./useHomePerformanceHub";
 
 const EMPTY_WEEK_RATIONALE = {
   weekRole: "Training week",
@@ -97,6 +100,8 @@ export function AthleteHomeDashboardV2({
   const showLiveLoading = useLiveProgramme && liveProgrammeLoading && !dashboardLive;
   const useMockData = useMockPreview;
 
+  const { hub, loading: hubLoading, error: hubError } = useHomePerformanceHub(performanceHub);
+
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionTitle, setSessionTitle] = useState<string | undefined>();
   const [drawerSession, setDrawerSession] = useState<HyroxSession | null>(null);
@@ -104,6 +109,8 @@ export function AthleteHomeDashboardV2({
   const [sessionDetailOverride, setSessionDetailOverride] = useState<
     ReturnType<typeof sessionDetailFromHyroxSession> | null
   >(null);
+  const [readinessPanelOpen, setReadinessPanelOpen] = useState(false);
+  const [ackSaving, setAckSaving] = useState(false);
 
   const [readiness, setReadiness] = useState<HyroxDailyReadinessRow | null>(
     adminPreview?.initialReadiness ?? null
@@ -196,19 +203,14 @@ export function AthleteHomeDashboardV2({
     useLive && dashboardLive ? dashboardLive.checkInDue : useMockData && MOCK_CHECK_IN.status === "Due";
   const checkInStatus =
     useLive && dashboardLive ? dashboardLive.checkInStatus : useMockData ? MOCK_CHECK_IN.status : "After Week 1";
-  const checkInSub =
-    useLive && dashboardLive
-      ? dashboardLive.checkInSub
-      : useMockData
-        ? `Due ${MOCK_CHECK_IN.dueLabel}`
-        : "Weekly check-ins unlock after your first training week";
+  const checkInComplete = !checkInDue && !checkInStatus.toLowerCase().includes("needs");
 
   const coachFocus =
     useLive && dashboardLive
       ? dashboardLive.coachingFocus
       : useMockData
         ? MOCK_COACH_NOTES.currentFocus
-        : "Your coach will share focus notes when your programme is live.";
+        : "";
 
   const programmeStartDate =
     liveProgramme?.programmeStartDate ?? liveProgramme?.athlete?.programme_start_date ?? null;
@@ -219,16 +221,21 @@ export function AthleteHomeDashboardV2({
   }));
 
   const todayYmd = localDateYmdInTimeZone(new Date(), timezone);
-  const todaysMissionIds = useMemo(() => {
-    if (!useLive || !programmeStartDate) return new Set<string>();
-    const todays = resolveTodaysSessions({
-      programmeStartDate,
-      globalWeekNumber,
-      sessions: weekSessions,
-      todayYmd,
-    });
-    return new Set(todays.map((s) => s.id));
-  }, [useLive, programmeStartDate, globalWeekNumber, weekSessions, todayYmd]);
+  const todaysSessions = useMemo(
+    () =>
+      resolveTodaysSessions({
+        programmeStartDate: programmeStartDate ?? (useMockData ? "2026-01-06" : null),
+        globalWeekNumber,
+        sessions: weekSessions,
+        todayYmd,
+      }),
+    [programmeStartDate, globalWeekNumber, weekSessions, todayYmd, useMockData]
+  );
+
+  const todaysMissionIds = useMemo(
+    () => new Set(todaysSessions.map((s) => s.id)),
+    [todaysSessions]
+  );
 
   const upcoming = useMemo(() => {
     if (!useLive || !programmeStartDate || !programmeWeeks?.length) {
@@ -255,6 +262,20 @@ export function AthleteHomeDashboardV2({
     useMockData,
     weekSessions,
   ]);
+
+  const dailyDataItems = useMemo(
+    () =>
+      buildHomeDailyDataChecklist({
+        todayV2Enabled: todayV2,
+        readiness,
+        todaysSessions,
+        coachNoteReviewed: Boolean(readiness?.coach_note_reviewed_at),
+        hasCoachNote: Boolean(coachFocus?.trim()),
+        checkInDue,
+        checkInComplete,
+      }),
+    [todayV2, readiness, todaysSessions, coachFocus, checkInDue, checkInComplete]
+  );
 
   const legacyProgressMetrics = useMemo(() => {
     if (performanceHub) return [];
@@ -284,6 +305,14 @@ export function AthleteHomeDashboardV2({
     []
   );
 
+  const openPrimarySession = useCallback(() => {
+    const primary =
+      todaysSessions[0] ??
+      weekSessions.find((s) => s.status !== "complete") ??
+      weekSessions[0];
+    if (primary) openSession(primary);
+  }, [todaysSessions, weekSessions, openSession]);
+
   const handleSessionUpdated = useCallback(
     async (updated: HyroxSession | null) => {
       if (updated) {
@@ -308,6 +337,7 @@ export function AthleteHomeDashboardV2({
         });
         if (res.success && res.readiness) {
           setReadiness(res.readiness);
+          setReadinessPanelOpen(false);
           return true;
         }
         return false;
@@ -318,6 +348,20 @@ export function AthleteHomeDashboardV2({
     [athleteId, isReadOnly]
   );
 
+  const handleAckCoachNote = useCallback(async () => {
+    if (!athleteId || isReadOnly) return;
+    setAckSaving(true);
+    try {
+      const res = await acknowledgeHyroxCoachNoteTodayAction({
+        expectedAthleteId: athleteId,
+        timezone,
+      });
+      if (res.success && res.readiness) setReadiness(res.readiness);
+    } finally {
+      setAckSaving(false);
+    }
+  }, [athleteId, isReadOnly, timezone]);
+
   const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
   const insightText = coachFocus || weekRationale.whyMatters || weekRationale.coachNote;
   const focusTags = weekRationale.prioritise?.length
@@ -325,6 +369,17 @@ export function AthleteHomeDashboardV2({
     : weekRationale.weekRole
       ? [weekRationale.weekRole]
       : [];
+
+  const missionProps = {
+    weekSessions,
+    programmeStartDate: programmeStartDate ?? (useMockData ? "2026-01-06" : null),
+    globalWeekNumber,
+    programmeWeeks,
+    coachFocus,
+    timezone,
+    readOnly: isReadOnly,
+    onOpenSession: openSession,
+  };
 
   return (
     <PageContent width="full" className="!max-w-none space-y-6 sm:space-y-8">
@@ -343,53 +398,67 @@ export function AthleteHomeDashboardV2({
         timezone={timezone}
       />
 
-      {useLive && dashboardLive ? (
-        <HomeMissionSection
-          weekSessions={weekSessions}
-          programmeStartDate={programmeStartDate}
-          globalWeekNumber={globalWeekNumber}
-          programmeWeeks={programmeWeeks}
-          coachFocus={coachFocus}
-          timezone={timezone}
-          readOnly={isReadOnly}
-          onOpenSession={openSession}
+      <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
+        <HomePerformanceStatus
+          readiness={readiness}
+          todayV2Enabled={todayV2}
+          weeklyCompletionPct={stats.weeklyCompletionPct}
+          sessionsCompleted={stats.sessionsCompleted}
+          sessionsPlanned={stats.sessionsPlanned}
+          hub={hub}
+          hubLoading={hubLoading}
+          performanceHubEnabled={performanceHub}
         />
-      ) : useMockData ? (
-        <HomeMissionSection
-          weekSessions={weekSessions}
-          programmeStartDate="2026-01-06"
-          globalWeekNumber={1}
-          coachFocus={coachFocus}
-          readOnly={isReadOnly}
-          onOpenSession={openSession}
-        />
+
+        <div className="lg:col-span-5 space-y-4">
+          <HomeDailyDataChecklist
+            items={dailyDataItems}
+            readOnly={isReadOnly}
+            onReadinessAction={() => setReadinessPanelOpen(true)}
+            onSessionAction={openPrimarySession}
+            onCoachAck={() => void handleAckCoachNote()}
+            acknowledgingCoach={ackSaving}
+          />
+
+          {(useLive && dashboardLive) || useMockData ? (
+            <HomeMissionSection {...missionProps} />
+          ) : null}
+        </div>
+      </div>
+
+      {readinessPanelOpen && todayV2 && !isReadOnly ? (
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/90 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-bold text-white">Morning readiness</p>
+            <button
+              type="button"
+              onClick={() => setReadinessPanelOpen(false)}
+              className="text-xs text-zinc-500 hover:text-zinc-300"
+            >
+              Close
+            </button>
+          </div>
+          <TodayReadinessCard
+            readiness={readiness}
+            saving={readinessSaving}
+            disabled={isReadOnly}
+            onSubmit={handleSubmitReadiness}
+          />
+        </div>
       ) : null}
 
-      <HomeWeeklyStateRow
-        todayV2Enabled={todayV2}
-        readiness={readiness}
-        readinessSaving={readinessSaving}
-        readinessDisabled={isReadOnly}
-        onSubmitReadiness={handleSubmitReadiness}
-        weeklyCompletionPct={stats.weeklyCompletionPct}
-        sessionsCompleted={stats.sessionsCompleted}
-        sessionsPlanned={stats.sessionsPlanned}
-        checkInStatus={checkInStatus}
-        checkInSub={checkInSub}
-        checkInDue={checkInDue}
+      <HomeProgressInsights
+        performanceHubEnabled={performanceHub}
+        hub={hub}
+        hubLoading={hubLoading}
+        hubError={hubError}
+        legacyMetrics={legacyProgressMetrics}
         readOnly={isReadOnly}
       />
 
       <HomeCoachInsight
         insight={insightText}
         focusTags={focusTags}
-        weekRole={weekRationale.weekRole}
-        readOnly={isReadOnly}
-      />
-
-      <HomeProgressSnapshot
-        performanceHubEnabled={performanceHub}
-        legacyMetrics={legacyProgressMetrics}
         readOnly={isReadOnly}
       />
 

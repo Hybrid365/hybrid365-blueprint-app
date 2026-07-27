@@ -5,6 +5,8 @@
 
 import { isHyroxHomeV2Enabled } from "../app/lib/hyrox-team/modules/home/featureFlag";
 import { resolveUpcomingProgrammeSessions } from "../app/lib/hyrox-team/modules/home/resolveUpcomingSessions";
+import { sanitizeCoachInsightForAthlete } from "../app/lib/hyrox-team/modules/home/coachInsightCopy";
+import { buildHomeDailyDataChecklist } from "../app/lib/hyrox-team/modules/home/buildHomeDailyDataChecklist";
 import { timeAwareGreeting } from "../components/athlete-command-centre/home-v2/greeting";
 import type { HyroxSession } from "../app/lib/hyroxTeamDashboardMock";
 
@@ -78,6 +80,39 @@ function ok(name: string) {
   const greet = timeAwareGreeting("Europe/London");
   assert(/Good (morning|afternoon|evening)/.test(greet), `greeting ${greet}`);
   ok("Time-aware greeting");
+}
+
+{
+  const raw =
+    "Generated from Block 1 review → Progress as planned. Completion: 3/5 sessions (60%). This block: Maintain aerobic volume.";
+  const { body, sourceHint } = sanitizeCoachInsightForAthlete(raw);
+  assert(!body.toLowerCase().includes("generated"), "strips generated language");
+  assert(body.includes("Maintain aerobic volume"), "keeps athlete focus");
+  assert(sourceHint?.includes("block review"), "human source hint");
+  ok("Coach insight sanitization");
+}
+
+{
+  const items = buildHomeDailyDataChecklist({
+    todayV2Enabled: true,
+    readiness: {
+      submitted_at: "2026-01-01",
+      bodyweight: null,
+      resting_hr: null,
+      feeling_unwell: false,
+      coach_note_reviewed_at: null,
+    } as never,
+    todaysSessions: [],
+    coachNoteReviewed: false,
+    hasCoachNote: false,
+    checkInDue: false,
+    checkInComplete: true,
+  });
+  const readinessItem = items.find((i) => i.id === "morning_readiness");
+  assert(readinessItem?.done === true, "readiness submitted counts once");
+  const sleepItem = items.find((i) => i.id === "sleep_quality");
+  assert(!sleepItem, "no fake per-field sleep item");
+  ok("Daily data checklist accuracy");
 }
 
 console.log(`\n${passed} Home V2 QA checks passed.`);

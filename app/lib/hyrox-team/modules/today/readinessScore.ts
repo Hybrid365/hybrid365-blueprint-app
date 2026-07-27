@@ -66,6 +66,12 @@ export type DailyReadinessInputs = {
   feelingUnwell?: boolean;
   bodyweight?: number | null;
   restingHr?: number | null;
+  /** Optional — stored in inputs_json; manual entry only. */
+  sleepDurationMinutes?: number | null;
+  /** Optional — stored in inputs_json; manual entry only. */
+  hrv?: number | null;
+  /** Optional — stored in inputs_json. */
+  recoveryNotes?: string | null;
 };
 
 export type ReadinessScoreResult = {

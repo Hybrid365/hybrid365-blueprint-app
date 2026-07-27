@@ -3,14 +3,9 @@
 import { useCallback, useMemo } from "react";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 import { sessionDetailFromHyroxSession } from "@/app/lib/hyroxAthleteDashboardLive";
-import {
-  resolveNextScheduledSession,
-  resolveSessionCtaState,
-  resolveTodaysSessions,
-  type SessionCtaState,
-} from "@/app/lib/hyrox-team/modules/today/resolveTodaySessions";
+import { resolveNextScheduledSession, resolveTodaysSessions, type SessionCtaState } from "@/app/lib/hyrox-team/modules/today/resolveTodaySessions";
 import { localDateYmdInTimeZone } from "@/app/lib/hyrox-team/modules/today/dailyReadinessServer";
-import { TodayMissionCard } from "../today/TodayMissionCard";
+import { HomeCompactSessionCard } from "./HomeCompactSessionCard";
 import { athleteCardHighlight } from "../athleteUi";
 
 type Props = {
@@ -71,29 +66,18 @@ export function HomeMissionSection({
     [onOpenSession]
   );
 
-  const primaryIndex = todays.findIndex((s) => {
-    const state = resolveSessionCtaState(s);
-    return state === "start" || state === "continue_logging" || state === "log_partial";
-  });
-  const activePrimary = primaryIndex >= 0 ? primaryIndex : 0;
-
   if (todays.length > 0) {
     return (
-      <section aria-label="Today's mission" className="space-y-4">
+      <section aria-label="Today's session" className="space-y-2">
         {todays.map((session, i) => (
-          <TodayMissionCard
+          <HomeCompactSessionCard
             key={session.id}
             session={session}
             sessionIndex={i}
             sessionCount={todays.length}
             detail={sessionDetailFromHyroxSession(session)}
-            isPrimary={i === activePrimary}
+            sectionLabel={todays.length > 1 ? "Today's session" : "Today's session"}
             disabled={readOnly}
-            sectionLabel={
-              todays.length > 1
-                ? `Session ${i + 1} of ${todays.length}`
-                : "Today's mission"
-            }
             onPrimaryAction={handlePrimary}
           />
         ))}
@@ -104,15 +88,12 @@ export function HomeMissionSection({
   if (nextSession) {
     return (
       <section aria-label="Next key session">
-        <TodayMissionCard
+        <HomeCompactSessionCard
           session={nextSession}
-          sessionIndex={0}
-          sessionCount={1}
           detail={sessionDetailFromHyroxSession(nextSession)}
-          isPrimary
-          disabled={readOnly}
           sectionLabel="Next key session"
           missionVariant="next"
+          disabled={readOnly}
           onPrimaryAction={handlePrimary}
         />
       </section>
@@ -122,16 +103,16 @@ export function HomeMissionSection({
   return (
     <section
       aria-label="Recovery day"
-      className={`${athleteCardHighlight} p-5 sm:p-6`}
+      className={`${athleteCardHighlight} p-4`}
     >
-      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-yellow-400/90">
         Recovery day
       </p>
-      <h2 className="mt-1 text-2xl font-bold text-white">No session prescribed today</h2>
+      <h2 className="mt-1 text-lg font-bold text-white">No session prescribed today</h2>
       {coachFocus?.trim() ? (
-        <p className="mt-3 text-sm leading-relaxed text-zinc-300">{coachFocus}</p>
+        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">{coachFocus}</p>
       ) : (
-        <p className="mt-3 text-sm text-zinc-400">
+        <p className="mt-2 text-xs text-zinc-500">
           Use today for recovery as your coach has programmed.
         </p>
       )}
