@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import type { DailyReadinessInputs } from "@/app/lib/hyrox-team/modules/today/readinessScore";
 import { computeDailyReadinessScore } from "@/app/lib/hyrox-team/modules/today/readinessScore";
 import type { HyroxDailyReadinessRow } from "@/app/lib/hyrox-team/modules/today/dailyReadinessServer";
+import { readOptionalReadinessFields } from "@/app/lib/hyrox-team/modules/home/optionalReadinessFields";
 import { ReadinessRing } from "./ReadinessRing";
 
 type Props = {
@@ -66,6 +67,7 @@ function ScaleInput({
 
 export function TodayReadinessCard({ readiness, saving, disabled, onSubmit }: Props) {
   const submitted = Boolean(readiness?.submitted_at);
+  const optional = readOptionalReadinessFields(readiness);
   const [openForm, setOpenForm] = useState(!submitted);
   const [form, setForm] = useState({
     sleepQuality: (readiness?.sleep_quality ?? 6) as number | "",
@@ -76,6 +78,9 @@ export function TodayReadinessCard({ readiness, saving, disabled, onSubmit }: Pr
     feelingUnwell: Boolean(readiness?.feeling_unwell),
     bodyweight: readiness?.bodyweight != null ? String(readiness.bodyweight) : "",
     restingHr: readiness?.resting_hr != null ? String(readiness.resting_hr) : "",
+    sleepDuration: optional.sleepDurationMinutes != null ? String(optional.sleepDurationMinutes) : "",
+    hrv: optional.hrv != null ? String(optional.hrv) : "",
+    recoveryNotes: optional.recoveryNotes ?? "",
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -100,6 +105,9 @@ export function TodayReadinessCard({ readiness, saving, disabled, onSubmit }: Pr
       feelingUnwell: form.feelingUnwell,
       bodyweight: form.bodyweight.trim() ? Number(form.bodyweight) : null,
       restingHr: form.restingHr.trim() ? Number(form.restingHr) : null,
+      sleepDurationMinutes: form.sleepDuration.trim() ? Number(form.sleepDuration) : null,
+      hrv: form.hrv.trim() ? Number(form.hrv) : null,
+      recoveryNotes: form.recoveryNotes.trim() || null,
       timezone,
     });
     if (ok) setOpenForm(false);
@@ -198,6 +206,51 @@ export function TodayReadinessCard({ readiness, saving, disabled, onSubmit }: Pr
                 onChange={(e) => setForm((p) => ({ ...p, restingHr: e.target.value }))}
                 className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
                 placeholder="bpm"
+              />
+            </label>
+          </div>
+          <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+              Optional recovery data
+            </p>
+            <p className="mt-1 text-[10px] text-zinc-600">
+              Manual entry only — not synced with wearables.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs font-semibold text-zinc-400">
+                Sleep duration (optional)
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  disabled={saving}
+                  value={form.sleepDuration}
+                  onChange={(e) => setForm((p) => ({ ...p, sleepDuration: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+                  placeholder="minutes"
+                />
+              </label>
+              <label className="block text-xs font-semibold text-zinc-400">
+                HRV (optional)
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  disabled={saving}
+                  value={form.hrv}
+                  onChange={(e) => setForm((p) => ({ ...p, hrv: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+                  placeholder="ms"
+                />
+              </label>
+            </div>
+            <label className="mt-3 block text-xs font-semibold text-zinc-400">
+              Recovery notes (optional)
+              <textarea
+                disabled={saving}
+                value={form.recoveryNotes}
+                onChange={(e) => setForm((p) => ({ ...p, recoveryNotes: e.target.value }))}
+                rows={2}
+                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+                placeholder="Anything your coach should know"
               />
             </label>
           </div>
