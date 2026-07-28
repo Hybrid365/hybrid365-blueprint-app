@@ -9,10 +9,18 @@ function isHybrid75LeaderboardAdminPath(path: string): boolean {
   );
 }
 
+/** BoxCross Ski Challenge admin uses BOXCROSS_ADMIN_SECRET / CHALLENGE_LOG_ADMIN_SECRET. */
+function isBoxCrossSkiAdminPath(path: string): boolean {
+  return (
+    path === "/admin/boxcross-ski-challenge" ||
+    path.startsWith("/admin/boxcross-ski-challenge/")
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  if (isHybrid75LeaderboardAdminPath(path)) {
+  if (isHybrid75LeaderboardAdminPath(path) || isBoxCrossSkiAdminPath(path)) {
     return NextResponse.next();
   }
 

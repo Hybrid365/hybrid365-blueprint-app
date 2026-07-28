@@ -19,6 +19,7 @@
     "qa:hyrox-admin-athlete-preview": "npx --yes tsx scripts/qa-hyrox-admin-athlete-preview.ts",
     "qa:hyrox-home-v2": "npx --yes tsx scripts/qa-hyrox-home-v2.ts",
     "qa:hyrox-programming-system": "npx --yes tsx scripts/qa-hyrox-programming-system.ts",
+    "qa:boxcross-ski-challenge": "npx --yes tsx scripts/qa-boxcross-ski-challenge.ts",
     "export:homepage-phones": "npx --yes tsx scripts/homepage/export-phone-screens.ts"
   },
   "dependencies": {

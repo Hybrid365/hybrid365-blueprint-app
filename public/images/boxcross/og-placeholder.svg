@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="BoxCross 1KM Ski Challenge">
+  <rect width="1200" height="630" fill="#0A0A0A"/>
+  <rect x="0" y="0" width="1200" height="18" fill="#E10600"/>
+  <rect x="0" y="612" width="1200" height="18" fill="#E10600"/>
+  <text x="600" y="240" text-anchor="middle" fill="#FFFFFF" font-family="Arial Black, Helvetica, sans-serif" font-size="72" font-weight="900">BOXCROSS</text>
+  <text x="600" y="330" text-anchor="middle" fill="#E10600" font-family="Arial Black, Helvetica, sans-serif" font-size="56" font-weight="900">1KM SKI CHALLENGE</text>
+  <text x="600" y="410" text-anchor="middle" fill="#CCCCCC" font-family="Arial, Helvetica, sans-serif" font-size="28">LIVE LEADERBOARD · WISBECH</text>
+  <text x="600" y="520" text-anchor="middle" fill="#666666" font-family="Arial, Helvetica, sans-serif" font-size="18">OG IMAGE PLACEHOLDER  replace with official artwork</text>
+</svg>
