@@ -1,7 +1,25 @@
+export const START_INTENT_COPY = {
+  eyebrow: "HYBRID365",
+  headline: "LET'S START WITH YOU.",
+  body: "Tell us where you're at and where you want to go. We'll show you the best way to get there.",
+  assessmentNoteTitle: "This isn't your full athlete assessment.",
+  assessmentNoteBody:
+    "Once you join Hybrid365, we'll complete a detailed athlete assessment and testing week to understand your current performance, establish your individual training targets and personalise your programme.",
+  assessmentNoteClose: "For now, we just need a few details to point you in the right direction.",
+  instagramHint: "So Kieran knows who he's speaking to if he reaches out.",
+  goalPlaceholder: "Sub-70 HYROX, first race, improve running, qualify for Worlds...",
+  firstHyroxLabel: "First HYROX / no PB yet",
+  hasPbLabel: "I have a HYROX PB",
+  pbPlaceholder: "e.g. 1:15",
+  racePlaceholder: "e.g. London, March 2027",
+  cta: "CONTINUE →",
+  submitting: "Continuing…",
+} as const;
+
 export const START_COPY = {
   eyebrow: "HYBRID365 COACHING",
   headline: "HOW FAR DO YOU WANT TO TAKE IT?",
-  body: "Both paths start with you — your performance, your goals and your training. Choose the level of coaching and team support you want around it.",
+  body: "Both paths are personalised. Choose the level of coaching and team support you want around your training.",
   talkPrompt: "Not sure which option fits?",
   talkCta: "Talk to Kieran →",
 } as const;

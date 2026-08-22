@@ -1,12 +1,15 @@
 /**
- * Local validation checks for Talk to Kieran enquiries. No database writes.
+ * Local validation checks for coaching enquiries. No database writes.
  *
  *   npx tsx scripts/test-talk-enquiry.ts
  */
 
 import {
+  COACHING_ENQUIRY_SOURCE,
+  FIRST_HYROX_LEVEL_VALUE,
   isTalkEnquiryHoneypotTriggered,
   normalizeInstagramHandle,
+  resolveCoachingEnquirySource,
   sanitizeAttribution,
   validateTalkEnquiry,
 } from "../app/lib/start/talkEnquiry";
@@ -22,16 +25,16 @@ function assert(name: string, condition: boolean) {
   console.error(`✗ ${name}`);
 }
 
-assert("valid required fields", validateTalkEnquiry({
-  first_name: "Kieran",
-  instagram_handle: "kieranhiggs",
-  main_goal: "Sub-60 HYROX",
-}).ok);
-
-assert("valid with optional fields", validateTalkEnquiry({
+const base = {
   first_name: "Kieran",
   instagram_handle: "@kieranhiggs",
   main_goal: "Sub-60 HYROX",
+};
+
+assert("valid required fields", validateTalkEnquiry(base).ok);
+
+assert("valid with optional fields", validateTalkEnquiry({
+  ...base,
   email: "kieran@example.com",
   hyrox_pb: "59:14",
   next_race: "London, March 2027",
@@ -71,16 +74,12 @@ assert("whitespace-only goal", !validateTalkEnquiry({
 }).ok);
 
 assert("malformed email rejected", !validateTalkEnquiry({
-  first_name: "Kieran",
-  instagram_handle: "@kieran",
-  main_goal: "Goal",
+  ...base,
   email: "not-an-email",
 }).ok);
 
 assert("empty email allowed", validateTalkEnquiry({
-  first_name: "Kieran",
-  instagram_handle: "@kieran",
-  main_goal: "Goal",
+  ...base,
   email: "  ",
 }).ok);
 
@@ -104,6 +103,52 @@ assert("attribution sanitizes known keys", sanitizeAttribution({
 
 assert("honeypot triggered", isTalkEnquiryHoneypotTriggered({ company_website: "https://spam.test" }));
 assert("honeypot empty ok", !isTalkEnquiryHoneypotTriggered({ company_website: "  " }));
+
+const talkDefault = validateTalkEnquiry(base);
+assert(
+  "talk default source is talk_to_kieran",
+  talkDefault.ok && talkDefault.data.source === COACHING_ENQUIRY_SOURCE.talkToKieran
+);
+assert("talk PB remains optional", talkDefault.ok && talkDefault.data.current_hyrox_pb === null);
+
+const startPb = validateTalkEnquiry({ ...base, source: "start_funnel", hyrox_pb: "1:15" });
+assert(
+  "start_funnel source preserved",
+  startPb.ok && startPb.data.source === COACHING_ENQUIRY_SOURCE.startFunnel
+);
+
+assert(
+  "unknown source ignored",
+  resolveCoachingEnquirySource("hyrox_applications") === COACHING_ENQUIRY_SOURCE.talkToKieran
+);
+
+const arbitrary = validateTalkEnquiry({ ...base, source: "hyrox_applications" });
+assert(
+  "arbitrary source not stored",
+  arbitrary.ok && arbitrary.data.source === COACHING_ENQUIRY_SOURCE.talkToKieran
+);
+
+assert(
+  "start_funnel missing HYROX level rejected",
+  !validateTalkEnquiry({ ...base, source: "start_funnel" }).ok
+);
+assert(
+  "start_funnel first HYROX accepted",
+  validateTalkEnquiry({ ...base, source: "start_funnel", hyrox_pb: FIRST_HYROX_LEVEL_VALUE }).ok
+);
+assert(
+  "start_funnel PB accepted",
+  validateTalkEnquiry({ ...base, source: "start_funnel", hyrox_pb: "1:12" }).ok
+);
+assert(
+  "start_funnel empty race allowed",
+  validateTalkEnquiry({
+    ...base,
+    source: "start_funnel",
+    hyrox_pb: FIRST_HYROX_LEVEL_VALUE,
+    next_race: "  ",
+  }).ok
+);
 
 if (failed) {
   console.error(`\n${failed} check(s) failed`);

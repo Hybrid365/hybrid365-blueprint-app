@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/app/lib/supabase/server";
 import {
+  COACHING_ENQUIRY_SOURCE,
   buildCoachingEnquiryInsertRow,
   isTalkEnquiryHoneypotTriggered,
+  resolveCoachingEnquirySource,
   validateTalkEnquiry,
   type TalkEnquiryInput,
 } from "@/app/lib/start/talkEnquiry";
@@ -25,7 +27,12 @@ function silentAccept() {
   return NextResponse.json({ success: true });
 }
 
-/** Public Talk to Kieran enquiry from /start/talk. */
+/**
+ * Public coaching enquiry insert from /start (start_funnel) and /start/talk (talk_to_kieran).
+ * Source is allowlisted server-side — client values outside the allowlist are ignored.
+ * Not idempotent: each successful POST inserts a row. Clients disable submit while in flight.
+ * The same visitor using Talk to Kieran after /start can create a second row; there is no server dedupe.
+ */
 export async function POST(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -46,7 +53,11 @@ export async function POST(request: Request) {
     return silentAccept();
   }
 
-  const validated = validateTalkEnquiry(body);
+  const source = resolveCoachingEnquirySource(body.source);
+  const validated = validateTalkEnquiry(
+    { ...body, source },
+    { requireCurrentHyroxLevel: source === COACHING_ENQUIRY_SOURCE.startFunnel }
+  );
   if (!validated.ok) {
     return badRequest(validated.error);
   }

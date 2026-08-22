@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { StartSelector } from "@/components/start/StartSelector";
+import { StartExperience } from "@/components/start/StartExperience";
 import { StartShell } from "@/components/start/StartShell";
 
 export const metadata: Metadata = {
-  title: "How far do you want to take it?",
+  title: "Let's start with you",
   description:
-    "Choose between Hybrid365 HYROX Track and HYROX Team. Both paths start with you — pick the level of coaching and team support you want around it.",
+    "Tell us where you're at and where you want to go. We'll show you the best Hybrid365 coaching path.",
 };
 
 export default function StartPage() {
   return (
     <StartShell>
-      <StartSelector />
+      <StartExperience />
     </StartShell>
   );
 }

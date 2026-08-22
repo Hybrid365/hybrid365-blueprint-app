@@ -1,3 +1,5 @@
+"use client";
+
 import { TALK_TO_KIERAN_URL } from "@/app/lib/homepage/homepageLinks";
 import {
   START_COPY,
