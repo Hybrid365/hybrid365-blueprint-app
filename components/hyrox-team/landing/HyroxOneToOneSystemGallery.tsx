@@ -1,22 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
-import { COACHING_GALLERY, COACHING_SYSTEM_COPY } from "@/app/lib/homepage/coachingSystem";
-import { getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
-import { HomepagePhoneVisual } from "./HomepagePhoneVisual";
 import {
-  HomepageSection,
-  HomepageEyebrow,
-  HomepageHeading,
-  PrimaryCta,
-  HomepageTextLink,
-  homepageCtaClass,
-} from "./homepageUi";
+  HYROX_ONE_TO_ONE_GALLERY,
+  HYROX_ONE_TO_ONE_SYSTEM,
+} from "@/app/lib/hyrox-team/landing/hyroxOneToOneLanding";
+import { getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
+import { HomepagePhoneVisual } from "@/components/homepage/HomepagePhoneVisual";
+import {
+  HyroxOneToOneEyebrow,
+  HyroxOneToOneHeading,
+  HyroxOneToOneSection,
+} from "./hyroxOneToOneLandingUi";
 
 const PHONE_DISPLAY_WIDTH = 260;
 
-export function HomepageProduct() {
+export function HyroxOneToOneSystemGallery() {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const scrollByDir = useCallback((dir: -1 | 1) => {
@@ -46,15 +45,15 @@ export function HomepageProduct() {
   }, [scrollByDir]);
 
   return (
-    <HomepageSection id="system" variant="default" className="!py-20 sm:!py-24">
+    <HyroxOneToOneSection id="system" variant="dark">
       <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-2xl lg:text-left">
-        <HomepageEyebrow>{COACHING_SYSTEM_COPY.eyebrow}</HomepageEyebrow>
-        <HomepageHeading className="text-[clamp(1.85rem,5.5vw,3rem)]">
-          {COACHING_SYSTEM_COPY.headline[0]}
-          <span className="block text-[#f4d23c]">{COACHING_SYSTEM_COPY.headline[1]}</span>
-        </HomepageHeading>
+        <HyroxOneToOneEyebrow>{HYROX_ONE_TO_ONE_SYSTEM.eyebrow}</HyroxOneToOneEyebrow>
+        <HyroxOneToOneHeading className="text-[clamp(1.85rem,5.5vw,3rem)]">
+          {HYROX_ONE_TO_ONE_SYSTEM.headline[0]}
+          <span className="block text-[#f4d23c]">{HYROX_ONE_TO_ONE_SYSTEM.headline[1]}</span>
+        </HyroxOneToOneHeading>
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/55">
-          {COACHING_SYSTEM_COPY.body}
+          {HYROX_ONE_TO_ONE_SYSTEM.body}
         </p>
       </div>
 
@@ -68,7 +67,7 @@ export function HomepageProduct() {
               type="button"
               onClick={() => scrollByDir(-1)}
               aria-label="Previous screens"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white transition hover:border-white/30 hover:bg-white/[0.08]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white transition hover:border-white/30"
             >
               ←
             </button>
@@ -76,7 +75,7 @@ export function HomepageProduct() {
               type="button"
               onClick={() => scrollByDir(1)}
               aria-label="Next screens"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white transition hover:border-white/30 hover:bg-white/[0.08]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white transition hover:border-white/30"
             >
               →
             </button>
@@ -87,10 +86,10 @@ export function HomepageProduct() {
           ref={scrollerRef}
           tabIndex={0}
           role="region"
-          aria-label="Coaching system screens"
+          aria-label="1-1 coaching system screens"
           className="-mx-4 flex gap-5 overflow-x-auto px-4 pb-4 snap-x snap-mandatory outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-6 lg:mx-0 lg:px-0"
         >
-          {COACHING_GALLERY.map((item, index) => {
+          {HYROX_ONE_TO_ONE_GALLERY.map((item, index) => {
             const screen = getPhoneScreen(item.screenId);
             return (
               <article
@@ -117,19 +116,6 @@ export function HomepageProduct() {
           })}
         </div>
       </div>
-
-      <div className="mt-10 flex flex-col items-center gap-2 lg:items-start">
-        <PrimaryCta
-          href={COACHING_SYSTEM_COPY.ctaHref}
-          size="large"
-          className={homepageCtaClass}
-        >
-          {COACHING_SYSTEM_COPY.ctaLabel}
-        </PrimaryCta>
-        <HomepageTextLink href={FREE_WEEK_HYROX_URL}>
-          Or try a free training week
-        </HomepageTextLink>
-      </div>
-    </HomepageSection>
+    </HyroxOneToOneSection>
   );
 }

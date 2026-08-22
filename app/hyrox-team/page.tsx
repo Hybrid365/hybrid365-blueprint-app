@@ -1,14 +1,18 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
-import { AthletePathwayPhoneStack } from "@/components/hyrox-landing/AthletePathwayPhoneStack"
 import { AthleteScreeningPhoneStack } from "@/components/hyrox-landing/AthleteScreeningPhoneStack"
-import { HyroxTeamHeroTrailer } from "@/components/hyrox-team/HyroxTeamHeroTrailer"
+import { HyroxOneToOneAthletes } from "@/components/hyrox-team/landing/HyroxOneToOneAthletes"
+import { HyroxOneToOneCinematicTraining } from "@/components/hyrox-team/landing/HyroxOneToOneCinematicTraining"
+import { HyroxOneToOneHero } from "@/components/hyrox-team/landing/HyroxOneToOneHero"
+import { HyroxOneToOneLiveCoaching } from "@/components/hyrox-team/landing/HyroxOneToOneLiveCoaching"
+import { HyroxOneToOneProof } from "@/components/hyrox-team/landing/HyroxOneToOneProof"
+import { HyroxOneToOneSystemGallery } from "@/components/hyrox-team/landing/HyroxOneToOneSystemGallery"
 
 export const metadata: Metadata = {
-  title: "Hybrid365 Hyrox Team | Elite Coaching & Athlete Development",
+  title: "Hybrid365 1-1 HYROX Coaching | Apply",
   description:
-    "1-1 Hyrox coaching inside a small performance team. Tested, coached, documented, and built for race day. Only 5-6 athletes selected.",
+    "Individual HYROX coaching built around your race calendar, current performance, training availability and weaknesses. Apply for 1-1 coaching.",
 }
 
 // Helper Components
@@ -81,20 +85,6 @@ function SecondaryButton({
     >
       {children}
     </Link>
-  )
-}
-
-function Pill({ children, yellow = false }: { children: React.ReactNode; yellow?: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center min-h-[34px] px-3 rounded-full text-[13px] font-extrabold ${
-        yellow
-          ? "bg-[#f4d23c] text-[#050505] border-[#f4d23c]"
-          : "bg-white/[0.065] border border-white/[0.12] text-[#e9e9e9]"
-      }`}
-    >
-      {children}
-    </span>
   )
 }
 
@@ -213,130 +203,6 @@ function TimelineStep({
         <p className="m-0 text-[#a9a9a9] leading-[1.4] text-sm">{description}</p>
       </div>
     </div>
-  )
-}
-
-function AthleteCard({
-  name,
-  tag,
-  profile,
-}: {
-  name: string
-  tag: string
-  profile: { label: string; value: string }[]
-}) {
-  return (
-    <div className="relative border border-white/[0.12] rounded-[20px] sm:rounded-[28px] p-5 sm:p-[26px] bg-gradient-to-b from-white/[0.075] to-white/[0.025] overflow-hidden">
-      <div className="absolute right-[-20px] top-8 rotate-90 text-white/[0.05] text-[28px] font-black tracking-[-0.06em] hidden sm:block">
-        ATHLETE PROFILE
-      </div>
-      <div className="flex justify-between gap-4 items-start mb-5 sm:mb-[22px]">
-        <h3 className="m-0 text-[26px] sm:text-[30px] leading-[0.95] tracking-[-0.055em] uppercase">
-          {name}
-        </h3>
-        <span className="bg-[#f4d23c] text-[#050505] py-2 px-2.5 rounded-full text-[11px] font-black uppercase tracking-[0.08em] whitespace-nowrap">
-          {tag}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        {profile.map((item, i) => (
-          <div
-            key={i}
-            className="bg-black/[0.28] border border-white/[0.09] rounded-[14px] sm:rounded-[18px] p-3 sm:p-3.5"
-          >
-            <small className="block text-[#a9a9a9] text-[10px] uppercase font-black tracking-[0.1em] mb-[7px]">
-              {item.label}
-            </small>
-            <strong className="text-white text-sm sm:text-base leading-[1.15]">{item.value}</strong>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// Section Components
-function HeroSection() {
-  return (
-    <Section className="min-h-0 lg:min-h-[720px] grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr] gap-8 lg:gap-[34px] items-center">
-      <div>
-        <Eyebrow>Team 001 / Applications opening soon</Eyebrow>
-        <h1 className="my-6 text-[clamp(48px,8.6vw,108px)] leading-[0.86] tracking-[-0.085em] uppercase font-black">
-          Hybrid365
-          <br />
-          <span className="text-[#f4d23c]">Hyrox Team</span>
-        </h1>
-        <p className="max-w-[680px] text-[#dddddd] text-[clamp(17px,2vw,23px)] leading-[1.42] m-0">
-          1-1 Hyrox coaching inside a small performance team — tested, coached, documented, and
-          built for race day.
-        </p>
-        <div className="mt-[22px] flex flex-wrap gap-[9px]">
-          <Pill yellow>5-6 athletes max</Pill>
-          <Pill>1-1 personalised coaching</Pill>
-          <Pill>Athlete screening</Pill>
-          <Pill>Team training days</Pill>
-          <Pill>Documented journey</Pill>
-        </div>
-        <div className="flex flex-wrap gap-3.5 mt-[30px]">
-          <PrimaryButton href="/hyrox-team/apply" className="w-full sm:w-auto">
-            Apply / Register Interest
-          </PrimaryButton>
-          <SecondaryButton href="#included" className="w-full sm:w-auto">
-            See What&apos;s Included
-          </SecondaryButton>
-        </div>
-      </div>
-      <HyroxTeamHeroTrailer />
-    </Section>
-  )
-}
-
-function NotJustCoachingSection() {
-  const cards = [
-    {
-      num: "01 / Coaching",
-      title: "Individual plan",
-      description:
-        "Training built around your race date, current level, schedule, weaknesses, equipment and performance targets.",
-    },
-    {
-      num: "02 / Standards",
-      title: "Selective team",
-      description:
-        "This is not open to everyone. The right people need to be coachable, consistent and willing to represent Hybrid365 properly.",
-    },
-    {
-      num: "03 / Team",
-      title: "Accountability",
-      description:
-        "Private team environment, shared benchmarks, group energy and semi-regular in-person training sessions.",
-    },
-    {
-      num: "04 / Story",
-      title: "Documented build",
-      description:
-        "Progress, setbacks, PBs, sessions, race prep and race day captured as part of the Hybrid365 brand story.",
-    },
-  ]
-
-  return (
-    <Section clean>
-      <SectionHeader
-        title="Not just"
-        highlight="coaching."
-        description="This is a coached athlete project. Every member gets first-class 1-1 programming, weekly check-ins and individual progression, but the bigger vision is to build a real Hybrid365 team that represents the brand publicly."
-      />
-
-      <div className="mb-8 lg:mb-10">
-        <AthletePathwayPhoneStack />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {cards.map((card, i) => (
-          <Card key={i} num={card.num} title={card.title} description={card.description} />
-        ))}
-      </div>
-    </Section>
   )
 }
 
@@ -526,99 +392,6 @@ function AthleteScreeningSection() {
             <Card key={i} num={track.num} title={track.title} description={track.description} />
           ))}
         </div>
-      </div>
-    </Section>
-  )
-}
-
-function AthleteStorylinesSection() {
-  const athletes = [
-    {
-      name: "Athlete 001",
-      tag: "Example",
-      profile: [
-        { label: "Current", value: "First Hyrox" },
-        { label: "Goal", value: "Finish strong" },
-        { label: "Limiter", value: "Running confidence" },
-        { label: "Focus", value: "Structure + pacing" },
-      ],
-    },
-    {
-      name: "Athlete 002",
-      tag: "Example",
-      profile: [
-        { label: "Current", value: "1:20 Hyrox" },
-        { label: "Goal", value: "Sub-75" },
-        { label: "Limiter", value: "Wall balls + run drop-off" },
-        { label: "Focus", value: "Station endurance" },
-      ],
-    },
-    {
-      name: "Athlete 003",
-      tag: "Example",
-      profile: [
-        { label: "Current", value: "Sub-70 attempt" },
-        { label: "Goal", value: "Compete higher" },
-        { label: "Limiter", value: "Sled + late race" },
-        { label: "Focus", value: "Specific race prep" },
-      ],
-    },
-  ]
-
-  return (
-    <Section>
-      <SectionHeader
-        title="Every athlete gets"
-        highlight="a storyline."
-        description="People will not just follow the team. They will follow the individual journeys inside it — where each athlete starts, what they are chasing, what needs to change and what happens on race day."
-      />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
-        {athletes.map((athlete, i) => (
-          <AthleteCard key={i} name={athlete.name} tag={athlete.tag} profile={athlete.profile} />
-        ))}
-      </div>
-    </Section>
-  )
-}
-
-function BuiltLikeDocumentarySection() {
-  const stages = [
-    {
-      num: "Week 00",
-      title: "Meet the athlete",
-      description: "Who they are, where they are starting from, their current PB and their target.",
-    },
-    {
-      num: "Weeks 01-08",
-      title: "The build",
-      description:
-        "Training clips, check-in insights, team sessions, benchmark tests and coaching adjustments.",
-    },
-    {
-      num: "Race week",
-      title: "The taper",
-      description:
-        "Fuelling, pacing, final prep, nerves, strategy and behind-the-scenes race-week content.",
-    },
-    {
-      num: "Race day",
-      title: "The result",
-      description:
-        "Full race-day content, post-race breakdown and the story of what changed across the build.",
-    },
-  ]
-
-  return (
-    <Section clean>
-      <SectionHeader
-        title="Built like a"
-        highlight="documentary."
-        description="The goal is for people to follow the journey of the team, not just see the end result. Each athlete becomes part of the wider Hybrid365 story."
-      />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {stages.map((stage, i) => (
-          <Card key={i} num={stage.num} title={stage.title} description={stage.description} />
-        ))}
       </div>
     </Section>
   )
@@ -891,20 +664,24 @@ function FinalCtaSection() {
 export default function HyroxTeamPage() {
   return (
     <div className="font-sans bg-[#050505] text-[#f6f6f6] min-h-screen">
-      <main className="max-w-[1220px] mx-auto px-2.5 sm:px-[18px] pb-12 sm:pb-20">
-        <HeroSection />
-        <NotJustCoachingSection />
-        <TeamWillBeSeenSection />
-        <WhatsIncludedSection />
-        <AthleteStandardSection />
-        <AthleteScreeningSection />
-        <AthleteStorylinesSection />
-        <BuiltLikeDocumentarySection />
-        <BuiltFromExperienceSection />
-        <FlowOfJoiningSection />
-        <WhySelectiveSection />
-        <FaqSection />
-        <FinalCtaSection />
+      <main>
+        <HyroxOneToOneHero />
+        <HyroxOneToOneAthletes />
+        <HyroxOneToOneCinematicTraining />
+        <HyroxOneToOneProof />
+        <HyroxOneToOneSystemGallery />
+        <HyroxOneToOneLiveCoaching />
+        <div className="mx-auto max-w-[1220px] px-2.5 pb-12 sm:px-[18px] sm:pb-20">
+          <TeamWillBeSeenSection />
+          <WhatsIncludedSection />
+          <AthleteStandardSection />
+          <AthleteScreeningSection />
+          <BuiltFromExperienceSection />
+          <FlowOfJoiningSection />
+          <WhySelectiveSection />
+          <FaqSection />
+          <FinalCtaSection />
+        </div>
       </main>
     </div>
   )

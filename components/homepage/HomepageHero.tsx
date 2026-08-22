@@ -3,8 +3,7 @@ import {
   BRAND_TAGLINE_LINES,
   HERO_SUPPORTING_COPY,
 } from "@/app/lib/homepage/brandCopy";
-import { HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
-import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
+import { COACHING_START_URL, FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { HomepageCoachingEcosystem } from "./HomepageCoachingEcosystem";
 import {
   HomepageHeading,
@@ -44,10 +43,10 @@ export function HomepageHero() {
 
             <HomepageCtaRow size="large" className="mt-6">
               <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large" className={homepageCtaClass}>
-                Start My Free Training Week
+                Build My Free Week
               </PrimaryCta>
-              <SecondaryCta href={HOMEPAGE_NAV.system} className={homepageCtaClass}>
-                See The System
+              <SecondaryCta href={COACHING_START_URL} className={homepageCtaClass}>
+                I&apos;m Ready to Start
               </SecondaryCta>
             </HomepageCtaRow>
             <p className="mx-auto mt-3 text-[11px] font-medium tracking-wide text-white/40 sm:text-xs lg:mx-0">

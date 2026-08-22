@@ -1,10 +1,15 @@
-import { BRAND_MOTTO, FINAL_CTA_HEADLINE } from "@/app/lib/homepage/brandCopy";
-import { FREE_WEEK_HYROX_URL, SECONDARY_LINKS } from "@/app/lib/homepage/homepageLinks";
+import { BRAND_MOTTO } from "@/app/lib/homepage/brandCopy";
+import {
+  COACHING_START_URL,
+  FREE_WEEK_HYROX_URL,
+  TALK_TO_KIERAN_URL,
+} from "@/app/lib/homepage/homepageLinks";
 import {
   HomepageSection,
   HomepageHeading,
   PrimaryCta,
-  HomepageCtaRow,
+  SecondaryCta,
+  HomepageTextLink,
   homepageCtaClass,
 } from "./homepageUi";
 
@@ -21,32 +26,39 @@ export function HomepageFinalCta() {
       />
       <div className="relative mx-auto max-w-3xl text-center">
         <HomepageHeading as="h2" className="text-[clamp(2rem,7vw,3.75rem)]">
-          {FINAL_CTA_HEADLINE.line1}
-          <span className="block text-[#f4d23c]">{FINAL_CTA_HEADLINE.line2}</span>
+          Ready to
+          <span className="block text-[#f4d23c]">start?</span>
         </HomepageHeading>
-        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/50">
-          Choose your priority. Share your starting point. See how Hybrid365 would structure your
-          week.
+
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center">
+            <PrimaryCta
+              href={FREE_WEEK_HYROX_URL}
+              size="large"
+              className={`${homepageCtaClass} w-full sm:w-full`}
+            >
+              Build My Free Week
+            </PrimaryCta>
+            <p className="mt-3 text-sm leading-relaxed text-white/50">
+              Try Hybrid365 training before committing.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center">
+            <SecondaryCta href={COACHING_START_URL} className={`${homepageCtaClass} w-full sm:w-full min-h-[56px]`}>
+              I&apos;m Ready to Start
+            </SecondaryCta>
+            <p className="mt-3 text-sm leading-relaxed text-white/50">
+              Choose between HYROX Track and 1-1 coaching.
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-8">
+          <HomepageTextLink href={TALK_TO_KIERAN_URL} className="normal-case tracking-[0.04em] text-sm">
+            Not sure? Talk to Kieran →
+          </HomepageTextLink>
         </p>
-        <HomepageCtaRow size="large" className="mt-10 justify-center lg:justify-center">
-          <PrimaryCta
-            href={FREE_WEEK_HYROX_URL}
-            size="large"
-            className={`${homepageCtaClass} max-w-sm sm:max-w-none`}
-          >
-            Start My Free Training Week
-          </PrimaryCta>
-        </HomepageCtaRow>
-        <p className="mt-5">
-          <a
-            href={SECONDARY_LINKS.telegram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-white/40 transition hover:text-white/70"
-          >
-            Already have your training? Join the free Hybrid365 Telegram community →
-          </a>
-        </p>
+
         <p className="mt-10 text-xs font-black uppercase tracking-[0.22em] text-[#f4d23c]">
           {BRAND_MOTTO}
         </p>

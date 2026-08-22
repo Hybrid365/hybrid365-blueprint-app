@@ -1,3 +1,4 @@
+import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import {
   ACCOUNTABILITY_STRIP,
   PERSONALISED_COPY,
@@ -8,6 +9,7 @@ import {
   HomepageEyebrow,
   HomepageHeading,
   PrimaryCta,
+  HomepageTextLink,
   homepageCtaClass,
 } from "./homepageUi";
 
@@ -91,7 +93,7 @@ export function HomepagePersonalisedFromDayOne() {
         <span className="text-[#f4d23c]">{PERSONALISED_COPY.statement[1]}</span>
       </p>
 
-      <div className="mt-8 flex justify-center lg:justify-start">
+      <div className="mt-8 flex flex-col items-center gap-2 lg:items-start">
         <PrimaryCta
           href={PERSONALISED_COPY.ctaHref}
           size="large"
@@ -99,6 +101,9 @@ export function HomepagePersonalisedFromDayOne() {
         >
           {PERSONALISED_COPY.ctaLabel}
         </PrimaryCta>
+        <HomepageTextLink href={FREE_WEEK_HYROX_URL}>
+          Or try a free training week
+        </HomepageTextLink>
       </div>
     </HomepageSection>
   );

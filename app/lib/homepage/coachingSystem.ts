@@ -1,14 +1,14 @@
 /** Coaching system showcase — real UI cutouts, horizontal gallery. */
 
 import type { PhoneScreenId } from "@/app/lib/homepage/phoneScreens";
-import { FREE_WEEK_ROUTES } from "@/app/lib/homepage/freeWeekRoutes";
+import { COACHING_START_URL } from "@/app/lib/homepage/homepageLinks";
 
 export const COACHING_SYSTEM_COPY = {
   eyebrow: "What you actually get",
   headline: ["Not a PDF.", "A complete coaching system."],
   body: "Your programme, sessions, feedback, benchmarks and progress—all in one clear coaching experience.",
-  ctaLabel: "See what my free week looks like",
-  ctaHref: FREE_WEEK_ROUTES.default,
+  ctaLabel: "I'm Ready to Start",
+  ctaHref: COACHING_START_URL,
 } as const;
 
 export type CoachingGalleryItem = {

@@ -3,6 +3,12 @@
 /** Primary funnel CTA — free-week builder (HYROX track + existing challenge mode). */
 export const FREE_WEEK_HYROX_URL = "/free-week?track=hyrox&challenge=hyrox";
 
+/** Warm visitors choose HYROX Track vs 1-1. */
+export const COACHING_START_URL = "/start";
+
+/** Unsure visitors — Talk to Kieran enquiry. */
+export const TALK_TO_KIERAN_URL = "/start/talk";
+
 export const HOMEPAGE_NAV = {
   team: "#team",
   tracks: "#tracks",
