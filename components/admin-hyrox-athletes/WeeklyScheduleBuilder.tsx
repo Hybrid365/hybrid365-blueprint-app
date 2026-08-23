@@ -181,6 +181,11 @@ function SessionCard({
             {b}
           </span>
         ))}
+        {!session.coachLibraryId && !session.sessionId ? (
+          <span className="rounded border border-violet-500/40 bg-violet-400/10 px-1 text-[9px] text-violet-100">
+            Custom
+          </span>
+        ) : null}
       </div>
       <p className="mt-1 text-xs font-bold text-white">{session.title}</p>
       <p className="text-[10px] uppercase text-zinc-600">

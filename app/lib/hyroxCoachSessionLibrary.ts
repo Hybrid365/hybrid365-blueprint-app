@@ -11,6 +11,7 @@ import { HYROX_BATCH_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryHy
 import { HYROX_MINI_COMPROMISED_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryMiniCompromised";
 import { HYROX_VOLUME_BUILDER_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryVolumeBuilders";
 import { HYBRID_ENGINE_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryHybridEngine";
+import { HYROX_SPECIFIC_COACH_SESSIONS } from "@/app/lib/hyroxCoachSessionLibraryHyroxSpecific";
 import type {
   CoachLibraryEntry,
   LibraryCategory,
@@ -55,6 +56,7 @@ export const COACH_SESSION_LIBRARY: CoachLibraryEntry[] = [
   ...HYROX_MINI_COMPROMISED_COACH_SESSIONS,
   ...HYROX_VOLUME_BUILDER_COACH_SESSIONS,
   ...HYBRID_ENGINE_COACH_SESSIONS,
+  ...HYROX_SPECIFIC_COACH_SESSIONS,
 ];
 
 export const LIBRARY_CATEGORY_LABELS: Record<LibraryCategory, string> = {
@@ -98,6 +100,8 @@ export const LIBRARY_QUICK_FILTER_LABELS: Record<LibraryQuickFilter, string> = {
   level_1: "Level 1",
   level_2: "Level 2",
   advanced_level: "Advanced Level",
+  technique: "Technique",
+  race_execution: "Race Execution",
 };
 
 const QUICK_FILTERS: LibraryQuickFilter[] = [
@@ -123,6 +127,8 @@ const QUICK_FILTERS: LibraryQuickFilter[] = [
   "race_week",
   "station_overload",
   "leg_endurance",
+  "technique",
+  "race_execution",
 ];
 
 function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter): boolean {
@@ -220,6 +226,18 @@ function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter
       return entry.category === "testing";
     case "race_week":
       return entry.category === "race_week";
+    case "technique":
+      return (
+        entry.tags.includes("technique") ||
+        entry.tags.includes("efficiency") ||
+        entry.tags.includes("easy-technique")
+      );
+    case "race_execution":
+      return (
+        entry.tags.includes("race-execution") ||
+        entry.tags.includes("race-specific") ||
+        entry.tags.includes("race_execution")
+      );
     default:
       return true;
   }
@@ -269,6 +287,9 @@ export function filterCoachLibrary(
     equipmentAvailable?: Record<string, boolean>;
     /** When set without adminManualSelection, hides sessions unsuitable for athlete context. */
     guardrailContext?: CoachLibraryGuardrailContext;
+    /** Additive browse helper — does not replace existing quick filters. */
+    intensityBand?: string | null;
+    movementFocus?: string | null;
   }
 ): CoachLibraryEntry[] {
   let list =
@@ -328,7 +349,71 @@ export function filterCoachLibrary(
     });
   }
 
+  if (options?.intensityBand) {
+    list = list.filter((s) => matchesIntensityBand(s, options.intensityBand!));
+  }
+
+  if (options?.movementFocus) {
+    list = list.filter((s) => matchesMovementFocus(s, options.movementFocus!));
+  }
+
   return list;
+}
+
+function matchesIntensityBand(entry: CoachLibraryEntry, band: string): boolean {
+  const tags = entry.tags.map((t) => t.toLowerCase());
+  switch (band) {
+    case "easy_technique":
+      return (
+        entry.hardEasy === "easy" ||
+        tags.includes("technique") ||
+        tags.includes("easy-technique") ||
+        tags.includes("efficiency")
+      );
+    case "moderate":
+      return entry.hardEasy === "moderate" || tags.includes("moderate");
+    case "hard":
+      return entry.hardDay || entry.hardEasy === "hard" || tags.includes("hard");
+    case "race_specific":
+      return (
+        tags.includes("race-specific") ||
+        tags.includes("race-execution") ||
+        entry.category === "race_week"
+      );
+    default:
+      return true;
+  }
+}
+
+function matchesMovementFocus(entry: CoachLibraryEntry, focus: string): boolean {
+  const blob = [entry.name, entry.subcategory, ...entry.tags, ...(entry.hyroxMetadata?.stationFocus ?? [])]
+    .join(" ")
+    .toLowerCase()
+    .replace(/_/g, " ");
+  switch (focus) {
+    case "mixed_hyrox":
+      return /mixed|hyrox technique flow|front half|back half|station cluster|engine cluster/.test(blob);
+    case "ski":
+      return /\bski\b/.test(blob);
+    case "sled_push":
+      return /sled push|sled_push/.test(blob);
+    case "sled_pull":
+      return /sled pull|sled_pull/.test(blob);
+    case "bbj":
+      return /bbj|broad jump|burpee broad/.test(blob);
+    case "row":
+      return /\brow\b/.test(blob);
+    case "farmers":
+      return /farmer/.test(blob);
+    case "lunges":
+      return /lunge/.test(blob);
+    case "wall_balls":
+      return /wall ball/.test(blob);
+    case "running":
+      return /\brun\b|running|compromised/.test(blob);
+    default:
+      return true;
+  }
 }
 
 export function getCoachLibraryEntry(id: string): CoachLibraryEntry | undefined {

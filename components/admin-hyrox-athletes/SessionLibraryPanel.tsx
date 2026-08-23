@@ -162,12 +162,16 @@ function ExpandableStandards({ entry }: { entry: CoachLibraryEntry }) {
 export function SessionLibraryPanel({
   addTarget,
   onAdd,
+  onBuildFromScratch,
+  replaceMode = false,
   equipmentAvailable,
   athlete,
   performanceProfile = null,
 }: {
   addTarget: { day: WeekdayName; slot: SandboxTimeOfDay } | null;
   onAdd: (entry: CoachLibraryEntry) => void;
+  onBuildFromScratch?: () => void;
+  replaceMode?: boolean;
   equipmentAvailable?: Record<string, boolean>;
   athlete?: CoachAthlete | null;
   performanceProfile?: HyroxCoachPerformanceProfile | null;
@@ -176,6 +180,8 @@ export function SessionLibraryPanel({
   const [quickFilter, setQuickFilter] = useState<LibraryQuickFilter | null>(null);
   const [equipmentOnly, setEquipmentOnly] = useState(false);
   const [query, setQuery] = useState("");
+  const [intensityBand, setIntensityBand] = useState<string>("all");
+  const [movementFocus, setMovementFocus] = useState<string>("all");
 
   const guardrailContext = useMemo(
     () => (athlete ? guardrailContextFromAthlete(athlete) : undefined),
@@ -188,17 +194,51 @@ export function SessionLibraryPanel({
         quickFilter,
         equipmentAvailable: equipmentOnly ? equipmentAvailable : undefined,
         guardrailContext,
+        intensityBand: intensityBand === "all" ? null : intensityBand,
+        movementFocus: movementFocus === "all" ? null : movementFocus,
       }),
-    [category, query, quickFilter, equipmentOnly, equipmentAvailable, guardrailContext]
+    [
+      category,
+      query,
+      quickFilter,
+      equipmentOnly,
+      equipmentAvailable,
+      guardrailContext,
+      intensityBand,
+      movementFocus,
+    ]
   );
+
+  const canScratch = Boolean(addTarget) || replaceMode;
 
   return (
     <aside className="flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-950/80">
       <div className="border-b border-zinc-800 p-4">
-        <h2 className="text-sm font-bold text-white">Session library</h2>
+        <h2 className="text-sm font-bold text-white">Add session</h2>
         <p className="mt-0.5 text-[11px] text-zinc-500">
-          {addTarget ? `Adding to ${addTarget.day} · ${addTarget.slot}` : "Select day slot, then Add"}
+          {replaceMode
+            ? "Replace with a library session or build from scratch"
+            : addTarget
+              ? `Adding to ${addTarget.day} · ${addTarget.slot}`
+              : "Select day slot, then choose a route"}
         </p>
+        <div className="mt-3 grid grid-cols-1 gap-2">
+          <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">
+              Browse session library
+            </p>
+            <p className="text-[11px] text-zinc-500">Search, filter, then add a snapshot.</p>
+          </div>
+          <button
+            type="button"
+            disabled={!canScratch || !onBuildFromScratch}
+            onClick={() => onBuildFromScratch?.()}
+            className="min-h-12 rounded-xl border border-yellow-500/40 bg-yellow-400/15 px-3 py-2 text-left disabled:opacity-40"
+          >
+            <p className="text-sm font-bold text-yellow-100">+ Build from scratch</p>
+            <p className="text-[11px] text-yellow-100/70">Blank session · compile to athlete prescription</p>
+          </button>
+        </div>
         <input
           type="search"
           placeholder="Search family, limiter, fatigue, phase…"
@@ -206,6 +246,42 @@ export function SessionLibraryPanel({
           onChange={(e) => setQuery(e.target.value)}
           className="mt-3 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white"
         />
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label className="block text-[10px] font-semibold uppercase text-zinc-500">
+            Intensity
+            <select
+              value={intensityBand}
+              onChange={(e) => setIntensityBand(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-2 text-xs text-white"
+            >
+              <option value="all">All intensities</option>
+              <option value="easy_technique">Easy / Technique</option>
+              <option value="moderate">Moderate</option>
+              <option value="hard">Hard</option>
+              <option value="race_specific">Race specific</option>
+            </select>
+          </label>
+          <label className="block text-[10px] font-semibold uppercase text-zinc-500">
+            Movement / focus
+            <select
+              value={movementFocus}
+              onChange={(e) => setMovementFocus(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-2 text-xs text-white"
+            >
+              <option value="all">All movements</option>
+              <option value="mixed_hyrox">Mixed HYROX</option>
+              <option value="ski">Ski</option>
+              <option value="sled_push">Sled Push</option>
+              <option value="sled_pull">Sled Pull</option>
+              <option value="bbj">Burpee Broad Jump</option>
+              <option value="row">Row</option>
+              <option value="farmers">Farmers Carry</option>
+              <option value="lunges">Sandbag Lunges</option>
+              <option value="wall_balls">Wall Balls</option>
+              <option value="running">Running</option>
+            </select>
+          </label>
+        </div>
       </div>
       <div className="flex flex-wrap gap-1 border-b border-zinc-800/60 p-2">
         {COACH_LIBRARY_QUICK_FILTERS.map((f) => (
@@ -319,12 +395,18 @@ export function SessionLibraryPanel({
                 </div>
                 <button
                   type="button"
-                  disabled={!addTarget}
+                  disabled={!addTarget && !replaceMode}
                   onClick={() => onAdd(s)}
-                  title={addTarget ? "Add to schedule" : "Pick a day slot first"}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-yellow-400/20 text-yellow-300 disabled:opacity-30"
+                  title={
+                    addTarget || replaceMode
+                      ? replaceMode
+                        ? "Replace session"
+                        : "Add to schedule"
+                      : "Pick a day slot first"
+                  }
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-yellow-400/20 text-yellow-300 disabled:opacity-30"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" />
                 </button>
               </div>
             </li>
