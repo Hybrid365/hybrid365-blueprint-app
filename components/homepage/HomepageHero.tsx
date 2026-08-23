@@ -1,13 +1,9 @@
+import Image from "next/image";
+import { FOUNDER_TRANSFORM } from "@/app/lib/homepage/peopleWhoRefuseAverage";
+import { LANDING_HERO } from "@/app/lib/homepage/landingStory";
 import {
-  BRAND_MOTTO,
-  BRAND_TAGLINE_LINES,
-  HERO_SUPPORTING_COPY,
-} from "@/app/lib/homepage/brandCopy";
-import { COACHING_START_URL, FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
-import { HomepageCoachingEcosystem } from "./HomepageCoachingEcosystem";
-import {
-  HomepageHeading,
   HomepageEyebrow,
+  HomepageHeading,
   PrimaryCta,
   SecondaryCta,
   HomepageCtaRow,
@@ -17,45 +13,56 @@ import {
 export function HomepageHero() {
   return (
     <section className="relative overflow-hidden bg-[#050505] pt-[60px] sm:pt-[68px]">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(244,210,60,0.08),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.02),transparent_40%)]"
-        aria-hidden
-      />
-
-      <div className="relative mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-6 py-8 sm:gap-8 sm:py-12 lg:grid-cols-[1.22fr_0.78fr] lg:gap-10 lg:py-14">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-8 py-8 sm:py-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12 lg:py-14">
           <div className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
-            <HomepageEyebrow>{BRAND_MOTTO}</HomepageEyebrow>
-
+            <HomepageEyebrow>{LANDING_HERO.brand}</HomepageEyebrow>
             <HomepageHeading
               as="h1"
-              className="text-[clamp(2rem,6.5vw,3.5rem)] leading-[0.86] tracking-[-0.045em]"
+              className="text-[clamp(2.05rem,8vw,3.75rem)] leading-[0.9] tracking-[-0.05em]"
             >
-              <span className="block">{BRAND_TAGLINE_LINES[0]}.</span>
-              <span className="block text-[#f4d23c]">{BRAND_TAGLINE_LINES[1]}.</span>
-              <span className="block">{BRAND_TAGLINE_LINES[2]}.</span>
-              <span className="block text-white/95">{BRAND_TAGLINE_LINES[3]}.</span>
+              {LANDING_HERO.headline}
             </HomepageHeading>
-
-            <p className="mx-auto mt-5 max-w-md text-base font-medium leading-snug text-white/80 sm:text-lg lg:mx-0">
-              {HERO_SUPPORTING_COPY}
+            <p className="mx-auto mt-5 max-w-md text-[15px] font-medium leading-snug text-white/75 sm:text-lg lg:mx-0">
+              {LANDING_HERO.supporting}
+            </p>
+            <p className="mx-auto mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-white/45 sm:text-xs lg:mx-0">
+              {LANDING_HERO.credibility}
             </p>
 
-            <HomepageCtaRow size="large" className="mt-6">
-              <PrimaryCta href={FREE_WEEK_HYROX_URL} size="large" className={homepageCtaClass}>
-                Build My Free Week
+            <HomepageCtaRow size="large" className="mt-7">
+              <PrimaryCta href={LANDING_HERO.primaryHref} size="large" className={homepageCtaClass}>
+                {LANDING_HERO.primaryCta}
               </PrimaryCta>
-              <SecondaryCta href={COACHING_START_URL} className={homepageCtaClass}>
-                I&apos;m Ready to Start
+              <SecondaryCta href={LANDING_HERO.secondaryHref} className={homepageCtaClass}>
+                {LANDING_HERO.secondaryCta}
               </SecondaryCta>
             </HomepageCtaRow>
-            <p className="mx-auto mt-3 text-[11px] font-medium tracking-wide text-white/40 sm:text-xs lg:mx-0">
-              Free · Personalised to your goal · No payment required
-            </p>
+
+            <a
+              href={LANDING_HERO.seeHowItWorksHref}
+              className="mt-5 inline-flex min-h-[44px] items-center justify-center text-[11px] font-bold uppercase tracking-[0.16em] text-white/35 transition hover:text-white/60"
+            >
+              {LANDING_HERO.seeHowItWorks} ↓
+            </a>
           </div>
 
-          <div className="overflow-visible lg:justify-self-end">
-            <HomepageCoachingEcosystem />
+          <div className="lg:justify-self-end">
+            {/* Future founder video drops into this well — same crop, no layout change. */}
+            <div
+              data-hero-media="founder"
+              className="relative mx-auto aspect-[4/5] w-full max-w-[360px] overflow-hidden rounded-[1.75rem] bg-black sm:max-w-[400px] lg:max-w-[440px]"
+            >
+              <Image
+                src={FOUNDER_TRANSFORM.currentPhoto.src}
+                alt={LANDING_HERO.mediaAlt}
+                fill
+                priority
+                className="object-cover object-top"
+                sizes="(max-width: 1024px) 90vw, 440px"
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+            </div>
           </div>
         </div>
       </div>

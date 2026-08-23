@@ -13,7 +13,7 @@ export function HomepageFaq() {
   const [openId, setOpenId] = useState<string | null>(FAQ_ITEMS[0]?.id ?? null);
 
   return (
-    <HomepageSection id="faq" variant="default">
+    <HomepageSection id="faq" variant="default" className="border-b-0 !py-12 sm:!py-16">
       <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-2xl lg:text-left">
         <HomepageEyebrow>{FAQ_COPY.eyebrow}</HomepageEyebrow>
         <HomepageHeading className="text-[clamp(1.85rem,5.5vw,3rem)]">

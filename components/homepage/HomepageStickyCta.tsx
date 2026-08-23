@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
+import { COACHING_START_URL } from "@/app/lib/homepage/homepageLinks";
 import { PrimaryCta } from "./homepageUi";
 
 export function HomepageStickyCta() {
@@ -23,8 +23,8 @@ export function HomepageStickyCta() {
       role="region"
       aria-label="Quick action"
     >
-      <PrimaryCta href={FREE_WEEK_HYROX_URL} className="w-full min-h-[48px]">
-        Build My Free Week
+      <PrimaryCta href={COACHING_START_URL} className="w-full min-h-[48px]">
+        I&apos;m Ready to Start
       </PrimaryCta>
     </div>
   );
