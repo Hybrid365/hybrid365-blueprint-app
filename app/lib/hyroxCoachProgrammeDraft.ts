@@ -20,7 +20,13 @@ import {
   guardrailContextFromAthlete,
   volumeMetaFromEntry,
   type CoachLibraryEntry,
+  type LibraryCategory,
 } from "@/app/lib/hyroxCoachSessionLibrary";
+import {
+  compileCustomPartsToMainSet,
+  sanitiseInstructionLines,
+  type CoachCustomSessionPart,
+} from "@/app/lib/hyroxCoachCustomSession";
 import type { CoachSessionVolumeMeta } from "@/app/lib/hyroxCoachSessionLibraryTypes";
 import { classifyAthlete } from "@/src/lib/hyrox/athleteClassification";
 import { HYROX_SESSION_LIBRARY, getHyroxSession } from "@/src/lib/hyrox/sessionLibrary";
@@ -118,6 +124,11 @@ export type CoachSessionEditConfig = {
   warmUpLines?: string[];
   mainSetLines?: string[];
   coolDownLines?: string[];
+  /**
+   * Optional structured parts from Build from scratch.
+   * Additive — old drafts omit this. Athlete rendering uses compiled mainSetLines.
+   */
+  customParts?: CoachCustomSessionPart[];
 };
 
 export type PerformanceTestSessionMetadata = {
@@ -247,6 +258,126 @@ let draftIdCounter = 0;
 function nextDraftId(): string {
   draftIdCounter += 1;
   return `draft-${Date.now()}-${draftIdCounter}`;
+}
+
+export type BlankCoachDraftInput = {
+  timeOfDay: SandboxTimeOfDay;
+  libraryCategory: LibraryCategory;
+  sessionName: string;
+  objective: string;
+  duration: string;
+  rpeTarget: string;
+  hrZone?: string;
+  coachNote?: string;
+  warmUpLines: string[];
+  coolDownLines: string[];
+  customParts: CoachCustomSessionPart[];
+  targetPaceLoad?: string;
+};
+
+/** Blank custom session — snapshot in the draft. No library id required. */
+export function createBlankCoachDraftSession(input: BlankCoachDraftInput): CoachDraftSession {
+  const sessionName = input.sessionName.trim() || "Custom session";
+  const objective = input.objective.trim() || sessionName;
+  const rpeTarget = input.rpeTarget.trim() || "RPE 6–7";
+  const warmUpLines = sanitiseInstructionLines(input.warmUpLines);
+  const coolDownLines = sanitiseInstructionLines(input.coolDownLines);
+  const mainSetLines = compileCustomPartsToMainSet(input.customParts);
+  const duration = input.duration.trim() || "45 min";
+  const hrZone = input.hrZone?.trim() || "";
+  const coachNote = input.coachNote?.trim() || "";
+  const sessionType = categoryToSessionType(input.libraryCategory);
+
+  const badges: SandboxSessionBlock["badges"] = [
+    ...(input.timeOfDay === "AM"
+      ? (["AM"] as const)
+      : input.timeOfDay === "PM"
+        ? (["PM"] as const)
+        : input.timeOfDay === "Optional"
+          ? (["Optional Add-On"] as const)
+          : (["Main"] as const)),
+  ];
+
+  const durationMinutes = parseInt(duration.replace(/\D/g, ""), 10) || 45;
+
+  const prescription: ResolvedSessionPrescription = {
+    sessionLibraryId: "coach_custom_scratch",
+    name: sessionName,
+    category: input.libraryCategory,
+    subcategory: "custom_scratch",
+    objective,
+    warmup: warmUpLines,
+    mainSet: mainSetLines.length ? mainSetLines : ["See coach notes"],
+    cooldown: coolDownLines,
+    keySetSummary: mainSetLines[0] ?? sessionName,
+    targetPace: input.targetPaceLoad?.trim() || null,
+    targetSplit: null,
+    targetLoad: input.targetPaceLoad?.trim() || null,
+    targetHRRange: hrZone || null,
+    fallbackHRGuide: hrZone || null,
+    rpeTarget,
+    duration,
+    hardDay: false,
+    whatToRecord: ["Session RPE", "Duration", "Key notes"],
+    coachNote,
+    safetyNote: "",
+    progressionNote: "",
+    filmPrompt: null,
+    equipmentRequired: [],
+    progressionLabel: "",
+    variantSummary: "custom",
+  };
+
+  return {
+    draftId: nextDraftId(),
+    timeOfDay: input.timeOfDay,
+    badges,
+    title: sessionName,
+    sessionType,
+    duration,
+    intensity: rpeTarget,
+    rpeHr: hrZone ? `${rpeTarget} · ${hrZone}` : rpeTarget,
+    isKeySession: false,
+    isOptional: input.timeOfDay === "Optional",
+    rationale: objective,
+    sessionId: null,
+    coachLibraryId: undefined,
+    prescription,
+    sessionDetail: null,
+    thresholdMinutes: 0,
+    volumeMeta: {
+      durationMinutes,
+      thresholdMinutes: 0,
+      qualityRunMinutes: 0,
+      runDistanceKm: 0,
+      ergMinutes: 0,
+      bikeMinutes: 0,
+      strengthMinutes: 0,
+      stationVolume: 0,
+      hardDay: false,
+      impactType: "mixed",
+      muscularStress: "low",
+      stationStress: "none",
+      isOptionalAddOn: input.timeOfDay === "Optional",
+    },
+    emom: null,
+    coachNote,
+    editConfig: {
+      kind: "generic",
+      sessionName,
+      objective,
+      rpeTarget,
+      hrGuide: hrZone || undefined,
+      hrZone: hrZone || undefined,
+      coachNote,
+      warmUpLines,
+      mainSetLines,
+      coolDownLines,
+      customParts: input.customParts,
+      targetPaceLoad: input.targetPaceLoad?.trim() || undefined,
+      whatToRecord: ["Session RPE", "Duration", "Key notes"],
+    },
+  };
 }
 
 const LIMITER_MAP: Record<string, ProgrammeSandboxInputs["mainLimiter"]> = {
@@ -384,6 +515,7 @@ export function defaultEditConfig(session: CoachDraftSession): CoachSessionEditC
     targetSplitWatts: p?.targetSplit ?? undefined,
     restRecovery: undefined,
     coachPacingNote: undefined,
+    customParts: session.editConfig?.customParts,
   };
 
   if (kind === "threshold_run") {
@@ -551,6 +683,10 @@ function volumeMetaFromEdit(
 export function deriveMainSetLinesFromEditConfig(c: CoachSessionEditConfig): string[] {
   if (c.mainSetLines?.length) {
     return c.mainSetLines.filter((l) => l.trim().length > 0);
+  }
+  if (c.customParts?.length) {
+    const compiled = compileCustomPartsToMainSet(c.customParts);
+    if (compiled.length) return compiled;
   }
   const structured = mainSetStructureLinesFromConfig(c);
   if (structured.length) return structured;

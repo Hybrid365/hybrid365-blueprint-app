@@ -11,6 +11,7 @@ import {
   computeWeeklySummary,
   duplicateAsOptional,
   sessionFromLibrary,
+  createBlankCoachDraftSession,
   validateCoachDraft,
   type CoachDraftSession,
   type CoachDraftWeek,
@@ -22,6 +23,10 @@ import type { SandboxTimeOfDay } from "@/app/lib/hyroxProgrammeSandbox";
 import { ProgrammeValidationPanel } from "@/components/admin-hyrox-athletes/ProgrammeValidationPanel";
 import { SessionEditDrawer } from "@/components/admin-hyrox-athletes/SessionEditDrawer";
 import { SessionLibraryPanel } from "@/components/admin-hyrox-athletes/SessionLibraryPanel";
+import {
+  ScratchSessionBuilder,
+  type ScratchSessionSavePayload,
+} from "@/components/admin-hyrox-athletes/ScratchSessionBuilder";
 import { WeeklyScheduleBuilder } from "@/components/admin-hyrox-athletes/WeeklyScheduleBuilder";
 import { WeeklySummaryPanel } from "@/components/admin-hyrox-athletes/WeeklySummaryPanel";
 import { AthleteWeekPreviewModal } from "@/components/admin-hyrox-athletes/AthleteWeekPreviewModal";
@@ -161,6 +166,7 @@ export function ProgrammeBuilder({
     dayIndex: number;
     sessionIndex: number;
   } | null>(null);
+  const [scratchOpen, setScratchOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [rationaleAutoFilled, setRationaleAutoFilled] = useState(false);
   const rationaleTouched = useRef(false);
@@ -252,6 +258,44 @@ export function ProgrammeBuilder({
       `Replaced with ${entry.name}`
     );
     setReplaceTarget(null);
+  };
+
+  const handleScratchSave = (payload: ScratchSessionSavePayload) => {
+    const slot = replaceTarget
+      ? draft.days[replaceTarget.dayIndex]?.sessions[replaceTarget.sessionIndex]?.timeOfDay ?? "Main"
+      : addTarget?.slot ?? "Main";
+    const session = createBlankCoachDraftSession({
+      timeOfDay: slot,
+      libraryCategory: payload.libraryCategory,
+      sessionName: payload.sessionName,
+      objective: payload.objective,
+      duration: payload.duration,
+      rpeTarget: payload.rpeTarget,
+      hrZone: payload.hrZone,
+      coachNote: payload.coachNote,
+      warmUpLines: payload.warmUpLines,
+      coolDownLines: payload.coolDownLines,
+      customParts: payload.customParts,
+    });
+    if (replaceTarget) {
+      mutateDaySessions(
+        replaceTarget.dayIndex,
+        (sessions) =>
+          sessions.map((s, i) => (i === replaceTarget.sessionIndex ? session : s)),
+        `Replaced with ${session.title}`
+      );
+      setReplaceTarget(null);
+    } else {
+      if (!addTarget) return;
+      const dayIndex = draft.days.findIndex((d) => d.day === addTarget.day);
+      if (dayIndex < 0) return;
+      mutateDaySessions(
+        dayIndex,
+        (s) => [...s, session],
+        `Added ${session.title} to ${addTarget.day} ${addTarget.slot}`
+      );
+    }
+    setScratchOpen(false);
   };
 
   const editSession = editTarget
@@ -499,6 +543,8 @@ export function ProgrammeBuilder({
         <SessionLibraryPanel
           addTarget={replaceTarget ? null : addTarget}
           onAdd={replaceTarget ? handleLibraryAddForReplace : handleAdd}
+          onBuildFromScratch={() => setScratchOpen(true)}
+          replaceMode={Boolean(replaceTarget)}
           equipmentAvailable={athlete.programmeInputs.equipment}
           athlete={athlete}
         />
@@ -666,9 +712,22 @@ export function ProgrammeBuilder({
         onClose={() => setPreviewOpen(false)}
       />
 
+      <ScratchSessionBuilder
+        open={scratchOpen}
+        slotLabel={
+          replaceTarget
+            ? `Replacing ${draft.days[replaceTarget.dayIndex]?.sessions[replaceTarget.sessionIndex]?.title ?? "session"}`
+            : addTarget
+              ? `${addTarget.day} · ${addTarget.slot}`
+              : "Select a day slot first"
+        }
+        onClose={() => setScratchOpen(false)}
+        onSave={handleScratchSave}
+      />
+
       {replaceTarget ? (
         <p className="text-center text-xs text-sky-300">
-          Replace mode — pick a session from the library (left panel).
+          Replace mode — pick a library session or build from scratch.
           <button
             type="button"
             className="ml-2 underline"

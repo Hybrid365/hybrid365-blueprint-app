@@ -47,7 +47,9 @@ export type LibraryQuickFilter =
   | "moderate_fatigue"
   | "level_1"
   | "level_2"
-  | "advanced_level";
+  | "advanced_level"
+  | "technique"
+  | "race_execution";
 
 export type CoachSessionSource = "Kieran personal session" | "Hybrid365 library";
 
