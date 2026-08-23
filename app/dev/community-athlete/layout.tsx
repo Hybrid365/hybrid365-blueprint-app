@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isCommunityAthleteUxLabEnabled } from "@/app/lib/dev/communityAthleteUxLabAccess";
+import { CommunityAthleteLabAccessProvider } from "@/components/dev/community-athlete-lab/CommunityAthleteLabAccessContext";
 import { CommunityAthleteLabBanner } from "@/components/dev/community-athlete-lab/CommunityAthleteLabBanner";
 import { CommunityAthleteLabShell } from "@/components/dev/community-athlete-lab/CommunityAthleteLabShell";
 
@@ -16,9 +17,11 @@ export default function CommunityAthleteLabLayout({ children }: { children: Reac
   }
 
   return (
-    <CommunityAthleteLabShell>
-      <CommunityAthleteLabBanner />
-      {children}
-    </CommunityAthleteLabShell>
+    <CommunityAthleteLabAccessProvider value="">
+      <CommunityAthleteLabShell>
+        <CommunityAthleteLabBanner />
+        {children}
+      </CommunityAthleteLabShell>
+    </CommunityAthleteLabAccessProvider>
   );
 }
