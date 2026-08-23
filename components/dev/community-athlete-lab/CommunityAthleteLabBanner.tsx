@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { COMMUNITY_ATHLETE_LAB_NAV } from "@/app/lib/dev/community-athlete-lab/labNav";
+import { CommunityAthleteLabPreviewLink } from "./CommunityAthleteLabPreviewLink";
 
 export function CommunityAthleteLabBanner() {
   return (
@@ -13,13 +13,13 @@ export function CommunityAthleteLabBanner() {
       </p>
       <p className="mt-2 hidden flex-wrap gap-2 sm:flex">
         {COMMUNITY_ATHLETE_LAB_NAV.map((item) => (
-          <Link
+          <CommunityAthleteLabPreviewLink
             key={item.href}
             href={item.href}
             className="rounded-full border border-zinc-800 px-2.5 py-1 text-[11px] text-zinc-400 hover:border-amber-500/40 hover:text-amber-200"
           >
             {item.label}
-          </Link>
+          </CommunityAthleteLabPreviewLink>
         ))}
       </p>
     </div>

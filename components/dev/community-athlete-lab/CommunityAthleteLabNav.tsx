@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Suspense } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ClipboardList,
   Home,
@@ -15,6 +15,8 @@ import {
   COMMUNITY_ATHLETE_LAB_NAV,
   communityAthleteLabNavIsActive,
 } from "@/app/lib/dev/community-athlete-lab/labNav";
+import { resolveLabPathname } from "@/app/lib/dev/community-athlete-lab/previewEntry";
+import { CommunityAthleteLabPreviewLink } from "./CommunityAthleteLabPreviewLink";
 
 const icons = {
   Dashboard: Home,
@@ -26,8 +28,19 @@ const icons = {
 } as const;
 
 export function CommunityAthleteLabNav() {
-  const pathname = usePathname();
+  return (
+    <Suspense fallback={<CommunityAthleteLabNavInner pathname="/dev/community-athlete" />}>
+      <CommunityAthleteLabNavClient />
+    </Suspense>
+  );
+}
 
+function CommunityAthleteLabNavClient() {
+  const pathname = resolveLabPathname(usePathname(), useSearchParams().get("uxlab"));
+  return <CommunityAthleteLabNavInner pathname={pathname} />;
+}
+
+function CommunityAthleteLabNavInner({ pathname }: { pathname: string }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-sm md:relative md:h-screen md:w-20 md:border-r md:border-t-0">
       <div className="flex flex-col md:h-full md:justify-start md:gap-1 md:py-6">
@@ -66,7 +79,7 @@ function LabNavLink({
   const Icon = icons[item.label];
   const active = communityAthleteLabNavIsActive(pathname, item.href);
   return (
-    <Link
+    <CommunityAthleteLabPreviewLink
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -80,6 +93,6 @@ function LabNavLink({
       <span className="max-w-full truncate text-[9px] font-medium leading-tight md:text-[10px]">
         {item.label}
       </span>
-    </Link>
+    </CommunityAthleteLabPreviewLink>
   );
 }
