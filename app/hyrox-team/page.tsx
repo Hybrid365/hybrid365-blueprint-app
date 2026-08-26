@@ -5,11 +5,10 @@ import { HyroxOneToOneHero } from "@/components/hyrox-team/landing/HyroxOneToOne
 import { HyroxOneToOneLiveCoaching } from "@/components/hyrox-team/landing/HyroxOneToOneLiveCoaching"
 import { HyroxOneToOneProof } from "@/components/hyrox-team/landing/HyroxOneToOneProof"
 import { HyroxOneToOneSystemGallery } from "@/components/hyrox-team/landing/HyroxOneToOneSystemGallery"
-import { HyroxTeamAthleteResults } from "@/components/hyrox-team/landing/HyroxTeamAthleteResults"
-import { HyroxTeamBeyondProgramming } from "@/components/hyrox-team/landing/HyroxTeamBeyondProgramming"
 import { HyroxTeamFinalCta } from "@/components/hyrox-team/landing/HyroxTeamFinalCta"
 import { HyroxTeamHeader } from "@/components/hyrox-team/landing/HyroxTeamHeader"
-import { HyroxTeamPillars } from "@/components/hyrox-team/landing/HyroxTeamPillars"
+import { HyroxTeamInclusions } from "@/components/hyrox-team/landing/HyroxTeamInclusions"
+import { HyroxTeamJourney } from "@/components/hyrox-team/landing/HyroxTeamJourney"
 import { HyroxTeamWhoFor } from "@/components/hyrox-team/landing/HyroxTeamWhoFor"
 
 export const metadata: Metadata = {
@@ -27,13 +26,12 @@ export default function HyroxTeamPage() {
       <main>
         <HyroxOneToOneHero />
         <HyroxOneToOneAthletes />
-        <HyroxTeamPillars />
         <HyroxOneToOneSystemGallery />
+        <HyroxTeamInclusions />
+        <HyroxTeamJourney />
         <HyroxOneToOneProof />
-        <HyroxTeamAthleteResults />
         <HyroxOneToOneCinematicTraining />
         <HyroxOneToOneLiveCoaching />
-        <HyroxTeamBeyondProgramming />
         <HyroxTeamWhoFor />
         <HyroxTeamFinalCta />
       </main>

@@ -7,7 +7,7 @@ import {
 
 export function HyroxTeamWhoFor() {
   return (
-    <HyroxOneToOneSection id="who" variant="default" className="border-b-0 !py-12 sm:!py-16">
+    <HyroxOneToOneSection id="who" variant="dark" className="border-b-0 !py-12 sm:!py-16">
       <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:text-left">
         <HyroxOneToOneEyebrow>{HYROX_ONE_TO_ONE_WHO.eyebrow}</HyroxOneToOneEyebrow>
         <HyroxOneToOneHeading className="text-[clamp(1.7rem,5.8vw,2.85rem)]">

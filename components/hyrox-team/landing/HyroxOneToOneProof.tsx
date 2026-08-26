@@ -7,6 +7,27 @@ import {
   HyroxOneToOneSection,
 } from "./hyroxOneToOneLandingUi";
 
+const FOUNDER_PROOF_PHOTOS = [
+  {
+    src: FOUNDER_TRANSFORM.startPhoto.src,
+    alt: FOUNDER_TRANSFORM.startPhoto.alt,
+    label: HYROX_ONE_TO_ONE_PROOF.from,
+    imageClassName: "object-cover object-top grayscale",
+  },
+  {
+    src: FOUNDER_TRANSFORM.currentPhoto.src,
+    alt: FOUNDER_TRANSFORM.currentPhoto.alt,
+    label: "Development",
+    imageClassName: "object-cover object-top",
+  },
+  {
+    src: HYROX_ONE_TO_ONE_PROOF.imageSrc,
+    alt: HYROX_ONE_TO_ONE_PROOF.imageAlt,
+    label: HYROX_ONE_TO_ONE_PROOF.to,
+    imageClassName: "object-cover object-top",
+  },
+] as const;
+
 export function HyroxOneToOneProof() {
   return (
     <HyroxOneToOneSection id="sub-60" variant="default" className="border-b-0 !py-12 sm:!py-16">
@@ -30,25 +51,21 @@ export function HyroxOneToOneProof() {
         5K {HYROX_ONE_TO_ONE_PROOF.fiveK}
       </p>
 
-      <div className="mt-8 grid grid-cols-2 overflow-hidden rounded-[1.5rem]">
-        <div className="relative aspect-[3/4]">
-          <Image
-            src={FOUNDER_TRANSFORM.startPhoto.src}
-            alt={FOUNDER_TRANSFORM.startPhoto.alt}
-            fill
-            className="object-cover object-top grayscale"
-            sizes="(max-width: 1024px) 50vw, 400px"
-          />
-        </div>
-        <div className="relative aspect-[3/4]">
-          <Image
-            src={FOUNDER_TRANSFORM.currentPhoto.src}
-            alt={FOUNDER_TRANSFORM.currentPhoto.alt}
-            fill
-            className="object-cover object-top"
-            sizes="(max-width: 1024px) 50vw, 400px"
-          />
-        </div>
+      <div className="mt-8 grid grid-cols-3 gap-1 overflow-hidden rounded-[1.15rem] sm:gap-1.5 sm:rounded-[1.5rem]">
+        {FOUNDER_PROOF_PHOTOS.map((photo) => (
+          <figure key={photo.src} className="relative aspect-[3/4] bg-[#111]">
+            <Image
+              src={photo.src}
+              alt={photo.alt}
+              fill
+              className={photo.imageClassName}
+              sizes="(max-width: 1024px) 33vw, 360px"
+            />
+            <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-1.5 pb-2 pt-8 text-center text-[9px] font-bold uppercase tracking-[0.12em] text-white/85 sm:px-2 sm:text-[11px]">
+              {photo.label}
+            </figcaption>
+          </figure>
+        ))}
       </div>
 
       <div className="mx-auto mt-8 max-w-2xl space-y-3 text-center text-sm leading-relaxed text-white/55 lg:mx-0 lg:text-left">

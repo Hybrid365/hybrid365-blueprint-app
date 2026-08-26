@@ -144,11 +144,75 @@ export const HYROX_ONE_TO_ONE_PILLARS = {
   ],
 } as const;
 
+export const HYROX_ONE_TO_ONE_INCLUSIONS = {
+  eyebrow: "THE HYROX TEAM",
+  headline: ["EVERYTHING YOU NEED", "TO PERFORM."],
+  items: [
+    "Individual HYROX programme",
+    "Full athlete assessment",
+    "Performance testing week",
+    "Individual run pace targets",
+    "Individual bike / SkiErg / RowErg targets",
+    "Individual strength prescription",
+    "Weekly programme adjustments",
+    "Direct access to coach",
+    "Weekly check-ins",
+    "Performance tracking",
+    "Nutrition support",
+    "In-person team training",
+    "HYROX technique coaching",
+    "Race strategy & preparation",
+  ],
+} as const;
+
+export const HYROX_ONE_TO_ONE_JOURNEY = {
+  eyebrow: "YOUR HYBRID365 JOURNEY",
+  headline: ["FROM ASSESSMENT", "TO RACE DAY."],
+  steps: [
+    {
+      id: "assess",
+      number: "01",
+      title: "ASSESS",
+      body: "Full athlete assessment and testing week establish current ability across running, ergs, strength and HYROX-specific performance.",
+    },
+    {
+      id: "build",
+      number: "02",
+      title: "BUILD",
+      body: "Training is built around testing data, weaknesses, availability, race calendar and individual goals.",
+    },
+    {
+      id: "coach",
+      number: "03",
+      title: "COACH & ADAPT",
+      body: "Training is completed, feedback is reviewed and the programme is adjusted week-to-week as the athlete progresses.",
+    },
+    {
+      id: "team",
+      number: "04",
+      title: "TRAIN WITH THE TEAM",
+      body: "Team training and technique sessions develop execution, movement efficiency and HYROX-specific skills.",
+    },
+    {
+      id: "blocks",
+      number: "05",
+      title: "BUILD THROUGH BLOCKS",
+      body: "Progress through structured training blocks towards the target race, becoming increasingly race-specific as competition approaches.",
+    },
+    {
+      id: "race",
+      number: "06",
+      title: "RACE",
+      body: "Arrive with clear pacing, station and execution targets. Race performance then informs the next training phase.",
+    },
+  ],
+} as const;
+
 export const HYROX_ONE_TO_ONE_PROOF = {
   eyebrow: "THE SYSTEM BEHIND SUB-60",
   headline: "1:08:37 → 59:14",
   imageSrc: "/images/hyrox-team/Hyrox-Result.jpg",
-  imageAlt: "HYROX race finish — Hybrid365 founder progression",
+  imageAlt: "Kieran Higgs celebrating 59:14 HYROX finish",
   from: "1:08:37",
   to: "59:14",
   fiveK: "16:00",
