@@ -59,8 +59,8 @@ export const START_TEAM_OPTION = {
     "Race strategy and preparation",
     "Full HYROX Team environment",
   ],
-  cta: "APPLY TO JOIN THE HYROX TEAM",
-  href: "/hyrox-team/apply",
+  cta: "EXPLORE HYROX TEAM",
+  href: "/hyrox-team",
 } as const;
 
 export const TALK_COPY = {

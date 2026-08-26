@@ -23,7 +23,9 @@ import { readUxLabFromRequest } from "@/app/lib/dev/community-athlete-lab/previe
 export const dynamic = "force-dynamic";
 
 const HOMEPAGE_METADATA: Metadata = {
-  title: "Hybrid365 — Become a Better Hybrid Athlete",
+  title: {
+    absolute: "Hybrid365 | Build Elite Hybrid Performance",
+  },
   description:
     "Personalised HYROX training built around your ability, goals and performance data. Real coaching, a real athlete platform, and a clear way to start.",
 };

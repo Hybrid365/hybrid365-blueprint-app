@@ -14,9 +14,9 @@ import type { PhoneScreenId } from "@/app/lib/homepage/phoneScreens";
 
 export const LANDING_HERO = {
   brand: "Hybrid365",
-  headline: "Become a better hybrid athlete.",
+  headline: "Build elite hybrid performance.",
   supporting:
-    "Personalised HYROX training built around your ability, goals and performance data.",
+    "High-performance HYROX coaching built around your ability, your goals and your potential.",
   credibility: "59:14 HYROX Pro · 16:00 5K · Coach & Athlete",
   primaryCta: "I'm Ready to Start",
   primaryHref: COACHING_START_URL,
@@ -215,8 +215,8 @@ export const LANDING_COACHING_LEVELS = {
         "Nutrition support and race strategy",
         "Full team environment",
       ],
-      cta: "Apply to join the HYROX Team",
-      href: SECONDARY_LINKS.hyroxTeamApply,
+      cta: "Explore HYROX Team",
+      href: SECONDARY_LINKS.hyroxTeam,
     },
   ],
 } as const;
