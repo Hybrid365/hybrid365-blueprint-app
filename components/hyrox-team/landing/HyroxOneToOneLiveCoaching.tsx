@@ -15,7 +15,7 @@ export function HyroxOneToOneLiveCoaching() {
   const { ref, inView } = useHyroxOneToOneInView("480px");
 
   return (
-    <HyroxOneToOneSection id="live-coaching" variant="default">
+    <HyroxOneToOneSection id="live-coaching" variant="default" className="border-b-0 !py-12 sm:!py-16">
       <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
         <div>
           <HyroxOneToOneEyebrow>{HYROX_ONE_TO_ONE_LIVE_COACHING.eyebrow}</HyroxOneToOneEyebrow>
@@ -44,7 +44,7 @@ export function HyroxOneToOneLiveCoaching() {
         </div>
 
         <div ref={ref} className="flex justify-center lg:justify-end">
-          <div className="h-[min(70vh,640px)] w-[min(100%,calc(min(70vh,640px)*9/16))] overflow-hidden rounded-2xl border border-white/10 bg-black lg:h-[min(78vh,720px)] lg:w-[min(100%,calc(min(78vh,720px)*9/16))]">
+          <div className="h-[min(72vh,680px)] w-[min(100%,calc(min(72vh,680px)*9/16))] overflow-hidden rounded-[1.5rem] bg-black lg:h-[min(80vh,760px)] lg:w-[min(100%,calc(min(80vh,760px)*9/16))]">
             {inView ? (
               <video
                 className="h-full w-full bg-black object-contain"
@@ -58,10 +58,7 @@ export function HyroxOneToOneLiveCoaching() {
                 aria-label={HYROX_ONE_TO_ONE_VIDEOS.liveCoaching.label}
               />
             ) : (
-              <div
-                className="flex h-full w-full items-end bg-[#0a0a0a] p-5"
-                aria-hidden
-              >
+              <div className="flex h-full w-full items-end bg-[#0a0a0a] p-5" aria-hidden>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/35">
                   Live coaching
                 </p>

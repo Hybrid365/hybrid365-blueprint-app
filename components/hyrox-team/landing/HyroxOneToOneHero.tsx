@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {
   HYROX_ONE_TO_ONE_APPLY_HREF,
   HYROX_ONE_TO_ONE_HERO,
@@ -14,70 +13,55 @@ import {
 
 export function HyroxOneToOneHero() {
   return (
-    <section className="relative overflow-hidden bg-[#050505]">
-      <div className="absolute inset-0">
-        <Image
-          src="/images/hyrox-team/Hyrox-Result.jpg"
-          alt=""
-          fill
-          className="object-cover object-center opacity-25"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/94 to-[#050505]/75" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505]/45" />
-      </div>
-
-      <div className="relative mx-auto max-w-[1200px] px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-          <div>
+    <section className="relative overflow-hidden bg-[#050505] pt-[60px] sm:pt-[68px]">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-8 py-8 sm:py-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:py-14">
+          <div className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
             <HyroxOneToOneEyebrow>{HYROX_ONE_TO_ONE_HERO.eyebrow}</HyroxOneToOneEyebrow>
             <HyroxOneToOneHeading
               as="h1"
-              className="text-[clamp(2rem,6.2vw,3.65rem)] leading-[0.88]"
+              className="text-[clamp(2.05rem,8vw,3.65rem)] leading-[0.9] tracking-[-0.05em]"
             >
               {HYROX_ONE_TO_ONE_HERO.headline[0]}
               <span className="block">{HYROX_ONE_TO_ONE_HERO.headline[1]}</span>
               <span className="block text-[#f4d23c]">{HYROX_ONE_TO_ONE_HERO.headline[2]}</span>
             </HyroxOneToOneHeading>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
+            <p className="mx-auto mt-5 max-w-md text-[15px] font-medium leading-snug text-white/75 sm:text-lg lg:mx-0">
               {HYROX_ONE_TO_ONE_HERO.body}
             </p>
+            <p className="mx-auto mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-white/45 sm:text-xs lg:mx-0">
+              {HYROX_ONE_TO_ONE_HERO.credibility}
+            </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <HyroxOneToOneApplyCta href={HYROX_ONE_TO_ONE_APPLY_HREF} size="large">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start">
+              <HyroxOneToOneApplyCta
+                href={HYROX_ONE_TO_ONE_APPLY_HREF}
+                size="large"
+                className="w-full sm:w-auto"
+              >
                 {HYROX_ONE_TO_ONE_HERO.primaryCta}
               </HyroxOneToOneApplyCta>
-              <HyroxOneToOneSecondaryCta href={HYROX_ONE_TO_ONE_NAV.included}>
-                {HYROX_ONE_TO_ONE_HERO.secondaryCta}
+              <HyroxOneToOneSecondaryCta
+                href={HYROX_ONE_TO_ONE_NAV.athletes}
+                className="w-full sm:w-auto"
+              >
+                {HYROX_ONE_TO_ONE_HERO.secondaryCta} ↓
               </HyroxOneToOneSecondaryCta>
             </div>
           </div>
 
-          <div>
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#f4d23c]">
+          <div className="lg:justify-self-end">
+            <p className="mb-3 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-[#f4d23c] lg:text-left">
               {HYROX_ONE_TO_ONE_HERO.videoLabel}
             </p>
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
+            <div className="overflow-hidden rounded-[1.5rem] bg-black">
               <YouTubeEmbed
                 videoId={HYROX_TEAM_TRAILER_VIDEO_ID}
-                title="Hybrid365 1-1 HYROX coaching"
+                title="Hybrid365 HYROX Team coaching"
               />
             </div>
           </div>
         </div>
-
-        <dl className="mt-10 grid grid-cols-1 gap-3 border-t border-white/[0.08] pt-8 sm:grid-cols-3 sm:gap-6">
-          {HYROX_ONE_TO_ONE_HERO.proof.map((item) => (
-            <div key={item.label} className="sm:pr-4">
-              <dt className="text-lg font-black uppercase tracking-tight text-white sm:text-xl">
-                {item.value}
-              </dt>
-              <dd className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/45">
-                {item.label}
-              </dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </section>
   );
