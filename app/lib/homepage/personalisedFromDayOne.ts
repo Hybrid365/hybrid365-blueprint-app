@@ -1,14 +1,14 @@
 /** Personalised From Day One — compact Screen → Build → Track → Adapt. */
 
-import { FREE_WEEK_ROUTES } from "@/app/lib/homepage/freeWeekRoutes";
+import { COACHING_START_URL } from "@/app/lib/homepage/homepageLinks";
 
 export const PERSONALISED_COPY = {
   eyebrow: "Personalised from day one",
   headline: ["Data in.", "Better decisions out."],
   body: "We understand where you are now before deciding what comes next.",
   statement: ["Coached individually.", "Held to a team standard."],
-  ctaLabel: "Start my athlete screening",
-  ctaHref: FREE_WEEK_ROUTES.default,
+  ctaLabel: "I'm Ready to Start",
+  ctaHref: COACHING_START_URL,
 } as const;
 
 export type PersonalisedStage = {

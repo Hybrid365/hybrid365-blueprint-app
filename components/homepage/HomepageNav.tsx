@@ -3,16 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import {
-  FREE_WEEK_HYROX_URL,
-  HOMEPAGE_NAV,
-} from "@/app/lib/homepage/homepageLinks";
+import { COACHING_START_URL, HOMEPAGE_NAV } from "@/app/lib/homepage/homepageLinks";
 import { PrimaryCta } from "./homepageUi";
+import { AttributedLink } from "@/components/start/AttributedLink";
 
 const NAV_LINKS = [
-  { href: HOMEPAGE_NAV.team, label: "Athletes" },
-  { href: HOMEPAGE_NAV.tracks, label: "Tracks" },
+  { href: HOMEPAGE_NAV.athletes, label: "Athletes" },
   { href: HOMEPAGE_NAV.system, label: "System" },
+  { href: HOMEPAGE_NAV.product, label: "Platform" },
+  { href: HOMEPAGE_NAV.coaching, label: "Coaching" },
   { href: HOMEPAGE_NAV.faq, label: "FAQ" },
 ] as const;
 
@@ -55,30 +54,40 @@ export function HomepageNav() {
           Hybrid<span className="text-[#f4d23c]">365</span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Main">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-xs font-bold uppercase tracking-[0.14em] text-white/70 transition hover:text-white"
-            >
-              {link.label}
-            </a>
-          ))}
+        <nav className="hidden items-center gap-5 lg:gap-8 md:flex" aria-label="Main">
+          {NAV_LINKS.map((link) =>
+            link.href.startsWith("/") ? (
+              <AttributedLink
+                key={link.href}
+                href={link.href}
+                className="text-xs font-bold uppercase tracking-[0.14em] text-white/70 transition hover:text-white"
+              >
+                {link.label}
+              </AttributedLink>
+            ) : (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-xs font-bold uppercase tracking-[0.14em] text-white/70 transition hover:text-white"
+              >
+                {link.label}
+              </a>
+            )
+          )}
           <Link
             href={HOMEPAGE_NAV.login}
             className="text-xs font-bold uppercase tracking-[0.14em] text-white/50 transition hover:text-white/80"
           >
             Login
           </Link>
-          <PrimaryCta href={FREE_WEEK_HYROX_URL} className="min-h-[40px] px-5 text-xs">
-            Start Free Week
+          <PrimaryCta href={COACHING_START_URL} className="min-h-[40px] px-5 text-xs">
+            Start
           </PrimaryCta>
         </nav>
 
         <div className="flex items-center gap-2 md:hidden">
-          <PrimaryCta href={FREE_WEEK_HYROX_URL} className="min-h-[36px] px-4 text-[10px]">
-            Free Week
+          <PrimaryCta href={COACHING_START_URL} className="min-h-[36px] px-4 text-[10px]">
+            Start
           </PrimaryCta>
           <button
             type="button"

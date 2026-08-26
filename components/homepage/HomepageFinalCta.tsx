@@ -1,9 +1,11 @@
-import { BRAND_MOTTO, FINAL_CTA_HEADLINE } from "@/app/lib/homepage/brandCopy";
-import { FREE_WEEK_HYROX_URL, SECONDARY_LINKS } from "@/app/lib/homepage/homepageLinks";
+import { BRAND_MOTTO } from "@/app/lib/homepage/brandCopy";
+import { LANDING_FINAL } from "@/app/lib/homepage/landingStory";
 import {
   HomepageSection,
   HomepageHeading,
   PrimaryCta,
+  SecondaryCta,
+  HomepageTextLink,
   HomepageCtaRow,
   homepageCtaClass,
 } from "./homepageUi";
@@ -12,41 +14,29 @@ export function HomepageFinalCta() {
   return (
     <HomepageSection
       id="start"
-      className="relative overflow-hidden border-b-0 pb-28 md:pb-24"
+      className="relative overflow-hidden border-b-0 !py-16 pb-28 sm:!py-20 md:pb-24"
       variant="dark"
     >
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(244,210,60,0.08),transparent_65%)]"
-        aria-hidden
-      />
       <div className="relative mx-auto max-w-3xl text-center">
-        <HomepageHeading as="h2" className="text-[clamp(2rem,7vw,3.75rem)]">
-          {FINAL_CTA_HEADLINE.line1}
-          <span className="block text-[#f4d23c]">{FINAL_CTA_HEADLINE.line2}</span>
+        <HomepageHeading as="h2" className="text-[clamp(2rem,7vw,3.5rem)]">
+          {LANDING_FINAL.headline}
         </HomepageHeading>
-        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/50">
-          Choose your priority. Share your starting point. See how Hybrid365 would structure your
-          week.
-        </p>
-        <HomepageCtaRow size="large" className="mt-10 justify-center lg:justify-center">
-          <PrimaryCta
-            href={FREE_WEEK_HYROX_URL}
-            size="large"
-            className={`${homepageCtaClass} max-w-sm sm:max-w-none`}
-          >
-            Start My Free Training Week
+
+        <HomepageCtaRow size="large" className="mt-10 sm:justify-center lg:justify-center">
+          <PrimaryCta href={LANDING_FINAL.primaryHref} size="large" className={homepageCtaClass}>
+            {LANDING_FINAL.primaryCta}
           </PrimaryCta>
+          <SecondaryCta href={LANDING_FINAL.secondaryHref} className={homepageCtaClass}>
+            {LANDING_FINAL.secondaryCta}
+          </SecondaryCta>
         </HomepageCtaRow>
-        <p className="mt-5">
-          <a
-            href={SECONDARY_LINKS.telegram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-white/40 transition hover:text-white/70"
-          >
-            Already have your training? Join the free Hybrid365 Telegram community →
-          </a>
+
+        <p className="mt-6">
+          <HomepageTextLink href={LANDING_FINAL.talkHref} className="normal-case tracking-[0.04em] text-sm">
+            {LANDING_FINAL.talkLabel}
+          </HomepageTextLink>
         </p>
+
         <p className="mt-10 text-xs font-black uppercase tracking-[0.22em] text-[#f4d23c]">
           {BRAND_MOTTO}
         </p>

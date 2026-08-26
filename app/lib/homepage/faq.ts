@@ -26,9 +26,9 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     id: "which-track",
-    question: "Which coaching track is right for me?",
+    question: "What’s the difference between HYROX Track and HYROX Team?",
     answer:
-      "Choose the outcome you care about most. If you’re unsure, complete the assessment and we’ll recommend the best starting point.",
+      "Both are personalised. Track is the training system, dashboard and community with more independent execution. Team adds closer coach involvement, team sessions and the full environment. If you’re unsure, start the assessment or talk to Kieran.",
   },
   {
     id: "days",

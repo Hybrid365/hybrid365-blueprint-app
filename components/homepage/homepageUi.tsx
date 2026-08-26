@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { AttributedLink } from "@/components/start/AttributedLink";
 
 export function HomepageSection({
   children,
@@ -74,7 +74,7 @@ export function PrimaryCta({
   size?: "default" | "large";
 }) {
   return (
-    <Link
+    <AttributedLink
       href={href}
       className={cn(
         "inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#f4d23c] px-6 text-center text-sm font-black uppercase tracking-wide text-[#050505] transition hover:bg-[#e8c935] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4d23c]",
@@ -83,7 +83,7 @@ export function PrimaryCta({
       )}
     >
       {children}
-    </Link>
+    </AttributedLink>
   );
 }
 
@@ -97,7 +97,7 @@ export function SecondaryCta({
   className?: string;
 }) {
   return (
-    <a
+    <AttributedLink
       href={href}
       className={cn(
         "inline-flex min-h-[48px] items-center justify-center rounded-full border border-white/20 bg-white/[0.04] px-6 text-sm font-bold uppercase tracking-wide text-white transition hover:border-white/35 hover:bg-white/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40",
@@ -105,7 +105,29 @@ export function SecondaryCta({
       )}
     >
       {children}
-    </a>
+    </AttributedLink>
+  );
+}
+
+export function HomepageTextLink({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <AttributedLink
+      href={href}
+      className={cn(
+        "inline-flex min-h-[44px] items-center justify-center text-center text-xs font-bold uppercase tracking-[0.12em] text-white/45 transition hover:text-white/75",
+        className
+      )}
+    >
+      {children}
+    </AttributedLink>
   );
 }
 

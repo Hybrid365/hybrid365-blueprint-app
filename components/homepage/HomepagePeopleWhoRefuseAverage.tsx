@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { COACHING_START_URL, FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import {
   ATHLETE_PROFILES,
   FOUNDER_TRANSFORM,
@@ -10,6 +11,9 @@ import {
   HomepageSection,
   HomepageEyebrow,
   HomepageHeading,
+  PrimaryCta,
+  HomepageTextLink,
+  homepageCtaClass,
 } from "./homepageUi";
 
 function FounderTransformCard() {
@@ -144,6 +148,15 @@ export function HomepagePeopleWhoRefuseAverage() {
         {ATHLETE_PROFILES.map((athlete) => (
           <AthleteMiniCard key={athlete.id} athlete={athlete} />
         ))}
+      </div>
+
+      <div className="mt-10 flex flex-col items-center gap-2 lg:items-start">
+        <PrimaryCta href={COACHING_START_URL} size="large" className={homepageCtaClass}>
+          I&apos;m Ready to Start
+        </PrimaryCta>
+        <HomepageTextLink href={FREE_WEEK_HYROX_URL}>
+          Or try a free training week
+        </HomepageTextLink>
       </div>
     </HomepageSection>
   );

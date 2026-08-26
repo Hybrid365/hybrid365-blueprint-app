@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { FREE_WEEK_HYROX_URL } from "@/app/lib/homepage/homepageLinks";
 import { COACHING_GALLERY, COACHING_SYSTEM_COPY } from "@/app/lib/homepage/coachingSystem";
 import { getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
 import { HomepagePhoneVisual } from "./HomepagePhoneVisual";
@@ -9,6 +10,7 @@ import {
   HomepageEyebrow,
   HomepageHeading,
   PrimaryCta,
+  HomepageTextLink,
   homepageCtaClass,
 } from "./homepageUi";
 
@@ -116,7 +118,7 @@ export function HomepageProduct() {
         </div>
       </div>
 
-      <div className="mt-10 flex justify-center lg:justify-start">
+      <div className="mt-10 flex flex-col items-center gap-2 lg:items-start">
         <PrimaryCta
           href={COACHING_SYSTEM_COPY.ctaHref}
           size="large"
@@ -124,6 +126,9 @@ export function HomepageProduct() {
         >
           {COACHING_SYSTEM_COPY.ctaLabel}
         </PrimaryCta>
+        <HomepageTextLink href={FREE_WEEK_HYROX_URL}>
+          Or try a free training week
+        </HomepageTextLink>
       </div>
     </HomepageSection>
   );
