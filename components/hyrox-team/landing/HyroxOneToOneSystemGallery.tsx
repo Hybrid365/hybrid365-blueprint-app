@@ -1,120 +1,176 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   HYROX_ONE_TO_ONE_GALLERY,
   HYROX_ONE_TO_ONE_SYSTEM,
+  type HyroxOneToOneGalleryItem,
 } from "@/app/lib/hyrox-team/landing/hyroxOneToOneLanding";
 import { getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
 import { HomepagePhoneVisual } from "@/components/homepage/HomepagePhoneVisual";
+import { cn } from "@/lib/utils";
 import {
   HyroxOneToOneEyebrow,
   HyroxOneToOneHeading,
   HyroxOneToOneSection,
 } from "./hyroxOneToOneLandingUi";
 
-const PHONE_DISPLAY_WIDTH = 260;
+function PlatformSlide({
+  slide,
+  priority,
+}: {
+  slide: HyroxOneToOneGalleryItem;
+  priority?: boolean;
+}) {
+  const screen = getPhoneScreen(slide.screenId);
+
+  return (
+    <article className="grid items-center gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#f4d23c]">
+          {slide.eyebrow}
+        </p>
+        <h3 className="mt-2 text-[clamp(1.65rem,5vw,2.5rem)] font-black uppercase leading-[0.92] tracking-tight text-white">
+          {slide.title}
+        </h3>
+        <p className="mt-3 max-w-md text-sm leading-relaxed text-white/55">{slide.caption}</p>
+        <ul className="mt-4 space-y-1.5 text-sm text-white/50">
+          {slide.points.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="flex justify-center px-6 py-3 lg:justify-end lg:px-0 lg:py-0">
+        <div className="w-[min(74vw,280px)] lg:w-[340px]">
+          <HomepagePhoneVisual
+            screen={screen}
+            displayWidth={340}
+            fillContainer
+            priority={priority}
+          />
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export function HyroxOneToOneSystemGallery() {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(0);
+  const slides = HYROX_ONE_TO_ONE_GALLERY;
 
-  const scrollByDir = useCallback((dir: -1 | 1) => {
+  const syncIndex = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const card = el.querySelector<HTMLElement>("[data-gallery-card]");
-    const delta = card ? card.offsetWidth + 24 : 280;
-    el.scrollBy({ left: dir * delta, behavior: "smooth" });
+    const cards = [...el.querySelectorAll<HTMLElement>("[data-platform-slide]")];
+    const mid = el.scrollLeft + el.clientWidth / 2;
+    let closest = 0;
+    let best = Number.POSITIVE_INFINITY;
+    cards.forEach((card, i) => {
+      const center = card.offsetLeft + card.offsetWidth / 2;
+      const dist = Math.abs(center - mid);
+      if (dist < best) {
+        best = dist;
+        closest = i;
+      }
+    });
+    setIndex(closest);
   }, []);
 
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (!el.contains(document.activeElement) && document.activeElement !== el) return;
-      if (e.key === "ArrowRight") {
-        e.preventDefault();
-        scrollByDir(1);
-      }
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        scrollByDir(-1);
-      }
-    };
-    el.addEventListener("keydown", onKey);
-    return () => el.removeEventListener("keydown", onKey);
-  }, [scrollByDir]);
+    el.addEventListener("scroll", syncIndex, { passive: true });
+    return () => el.removeEventListener("scroll", syncIndex);
+  }, [syncIndex]);
+
+  const goTo = (next: number) => {
+    const el = scrollerRef.current;
+    const card = el?.querySelectorAll<HTMLElement>("[data-platform-slide]")[next];
+    card?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
 
   return (
-    <HyroxOneToOneSection id="system" variant="dark">
-      <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-2xl lg:text-left">
+    <HyroxOneToOneSection id="platform" variant="dark" className="border-b-0 !py-12 sm:!py-16">
+      <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:text-left">
         <HyroxOneToOneEyebrow>{HYROX_ONE_TO_ONE_SYSTEM.eyebrow}</HyroxOneToOneEyebrow>
-        <HyroxOneToOneHeading className="text-[clamp(1.85rem,5.5vw,3rem)]">
-          {HYROX_ONE_TO_ONE_SYSTEM.headline[0]}
-          <span className="block text-[#f4d23c]">{HYROX_ONE_TO_ONE_SYSTEM.headline[1]}</span>
+        <HyroxOneToOneHeading className="text-[clamp(1.7rem,5.5vw,2.75rem)]">
+          {HYROX_ONE_TO_ONE_SYSTEM.headline}
+          <span className="block text-[#f4d23c]">{HYROX_ONE_TO_ONE_SYSTEM.highlight}</span>
         </HyroxOneToOneHeading>
-        <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/55">
+        <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/55 sm:text-base">
           {HYROX_ONE_TO_ONE_SYSTEM.body}
         </p>
       </div>
 
-      <div className="relative mt-10 sm:mt-12">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35 lg:hidden">
-            Swipe screens →
-          </p>
-          <div className="ml-auto hidden items-center gap-2 sm:flex">
-            <button
-              type="button"
-              onClick={() => scrollByDir(-1)}
-              aria-label="Previous screens"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white transition hover:border-white/30"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollByDir(1)}
-              aria-label="Next screens"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white transition hover:border-white/30"
-            >
-              →
-            </button>
+      <div
+        ref={scrollerRef}
+        tabIndex={0}
+        role="region"
+        aria-label="HYROX Team coaching platform"
+        className="-mx-4 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] outline-none [&::-webkit-scrollbar]:hidden lg:mx-0 lg:mt-12 lg:px-0"
+      >
+        {slides.map((slide, i) => (
+          <div
+            key={slide.id}
+            data-platform-slide
+            className="w-[min(92vw,720px)] shrink-0 snap-center lg:w-full lg:min-w-full"
+          >
+            <PlatformSlide slide={slide} priority={i === 0} />
           </div>
-        </div>
+        ))}
+      </div>
 
-        <div
-          ref={scrollerRef}
-          tabIndex={0}
-          role="region"
-          aria-label="1-1 coaching system screens"
-          className="-mx-4 flex gap-5 overflow-x-auto px-4 pb-4 snap-x snap-mandatory outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-6 lg:mx-0 lg:px-0"
+      <div className="mt-6 hidden items-center justify-center gap-3 sm:flex">
+        <button
+          type="button"
+          aria-label="Previous platform slide"
+          onClick={() => goTo(Math.max(0, index - 1))}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-white"
         >
-          {HYROX_ONE_TO_ONE_GALLERY.map((item, index) => {
-            const screen = getPhoneScreen(item.screenId);
-            return (
-              <article
-                key={item.id}
-                data-gallery-card
-                className="w-[min(78vw,280px)] shrink-0 snap-center sm:w-[min(42vw,280px)] lg:w-[min(30vw,280px)]"
-              >
-                <HomepagePhoneVisual
-                  screen={screen}
-                  displayWidth={PHONE_DISPLAY_WIDTH}
-                  priority={index < 2}
-                  className="mx-auto"
-                />
-                <div className="mt-5 text-center sm:text-left">
-                  <h3 className="text-sm font-black uppercase tracking-wide text-white">
-                    {item.title}
-                  </h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-white/50 sm:text-[13px]">
-                    {item.caption}
-                  </p>
-                </div>
-              </article>
-            );
-          })}
+          ←
+        </button>
+        <div className="flex items-center gap-2" role="tablist" aria-label="Platform slides">
+          {slides.map((slide, i) => (
+            <button
+              key={slide.id}
+              type="button"
+              role="tab"
+              aria-selected={index === i}
+              aria-label={slide.title}
+              onClick={() => goTo(i)}
+              className={cn(
+                "h-2 rounded-full transition",
+                index === i ? "w-7 bg-[#f4d23c]" : "w-2 bg-white/25"
+              )}
+            />
+          ))}
         </div>
+        <button
+          type="button"
+          aria-label="Next platform slide"
+          onClick={() => goTo(Math.min(slides.length - 1, index + 1))}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-white"
+        >
+          →
+        </button>
+      </div>
+      <div className="mt-6 flex items-center justify-center gap-2 sm:hidden" role="tablist" aria-label="Platform slides">
+        {slides.map((slide, i) => (
+          <button
+            key={slide.id}
+            type="button"
+            role="tab"
+            aria-selected={index === i}
+            aria-label={slide.title}
+            onClick={() => goTo(i)}
+            className={cn(
+              "h-2 rounded-full transition",
+              index === i ? "w-7 bg-[#f4d23c]" : "w-2 bg-white/25"
+            )}
+          />
+        ))}
       </div>
     </HyroxOneToOneSection>
   );
