@@ -26,11 +26,11 @@ export default function HyroxTeamPage() {
       <main>
         <HyroxOneToOneHero />
         <HyroxOneToOneAthletes />
-        <HyroxOneToOneSystemGallery />
-        <HyroxTeamInclusions />
-        <HyroxTeamJourney />
         <HyroxOneToOneProof />
         <HyroxOneToOneCinematicTraining />
+        <HyroxOneToOneSystemGallery />
+        <HyroxTeamJourney />
+        <HyroxTeamInclusions />
         <HyroxOneToOneLiveCoaching />
         <HyroxTeamWhoFor />
         <HyroxTeamFinalCta />

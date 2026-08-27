@@ -41,13 +41,15 @@ function PlatformSlide({
         </ul>
       </div>
 
-      <div className="flex justify-center lg:justify-end">
-        <HomepagePhoneVisual
-          screen={screen}
-          displayWidth={340}
-          priority={priority}
-          className="w-[min(78vw,340px)] max-w-[340px]"
-        />
+      <div className="flex justify-center px-6 py-3 lg:justify-end lg:px-0 lg:py-0">
+        <div className="w-[min(74vw,280px)] lg:w-[340px]">
+          <HomepagePhoneVisual
+            screen={screen}
+            displayWidth={340}
+            fillContainer
+            priority={priority}
+          />
+        </div>
       </div>
     </article>
   );
