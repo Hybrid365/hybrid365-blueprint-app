@@ -86,43 +86,28 @@ export function resolveNextBlockGenerationPlan(params: {
   reviewedBlockNumber: number;
   programmeLengthWeeks: ProgrammeLengthWeeks;
   recommendation?: HyroxBlockReviewNextRecommendation | null;
+  forceRetestWeek?: boolean;
 }): BlockReviewGenerationPlan {
   const { reviewedBlockNumber, programmeLengthWeeks } = params;
-  const maxBlocks = programmeLengthWeeks === 16 ? 4 : 3;
 
-  if (reviewedBlockNumber < 1 || reviewedBlockNumber > maxBlocks) {
+  if (reviewedBlockNumber < 1) {
     return {
       kind: "unavailable",
-      message: `Block ${reviewedBlockNumber} is outside this athlete's ${programmeLengthWeeks}-week programme.`,
+      message: `Block ${reviewedBlockNumber} is not a valid programme block.`,
     };
   }
 
-  if (reviewedBlockNumber >= maxBlocks) {
+  if (params.forceRetestWeek && reviewedBlockNumber === 3) {
     return {
-      kind: "unavailable",
+      kind: "retest_week",
+      reviewedBlockNumber: 3,
+      globalWeekNumber: 12,
       message:
-        "This is the final programme block. Use retest / recalibrate and athlete testing — no further block to generate.",
+        "Generates a retest-focused draft for Week 12 only (published weeks are skipped).",
     };
   }
 
   const nextBlockNumber = reviewedBlockNumber + 1;
-
-  if (reviewedBlockNumber === 3 && programmeLengthWeeks === 12) {
-    if (params.recommendation === "retest_recalibrate") {
-      return {
-        kind: "retest_week",
-        reviewedBlockNumber: 3,
-        globalWeekNumber: 12,
-        message:
-          "12-week programme complete after Block 3. Generates a retest-focused draft for Week 12 only (published weeks are skipped).",
-      };
-    }
-    return {
-      kind: "unavailable",
-      message:
-        "After Block 3 on a 12-week plan, choose recommendation “Retest / recalibrate” to generate a Week 12 retest draft, or continue coaching without auto-generation.",
-    };
-  }
 
   const { weeksStart, weeksEnd } = blockWeekRange(nextBlockNumber);
   const { blockTitle } = blockMetaForReview(nextBlockNumber, programmeLengthWeeks);
@@ -146,7 +131,7 @@ function completionRate(summary: BlockReviewCompletionSummary): number {
 export function applyBlockReviewToCoachAthlete(
   athlete: CoachAthlete,
   ctx: BlockReviewGenerationContext,
-  targetBlock: 1 | 2 | 3
+  targetBlock: number
 ): CoachAthlete {
   const { completionSummary: s, recommendation, coachNotes, effectiveProfile } = ctx;
   const rate = completionRate(s);
@@ -314,7 +299,7 @@ export function generateBlockDraftWeeksFromReview(
   const adjustedBase = applyBlockReviewToCoachAthlete(
     athlete,
     ctx,
-    plan.nextBlockNumber as 1 | 2 | 3
+    plan.nextBlockNumber
   );
   const cycles: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
   return cycles.map((cycle) => {
@@ -330,7 +315,7 @@ export function generateBlockDraftWeeksFromReview(
     return {
       ...draft,
       block: plan.nextBlockNumber,
-      week: globalWeekForBlock(plan.nextBlockNumber as 1 | 2 | 3, cycle),
+      week: globalWeekForBlock(plan.nextBlockNumber, cycle),
     };
   });
 }

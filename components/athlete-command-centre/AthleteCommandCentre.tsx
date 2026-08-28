@@ -5,7 +5,7 @@ import { BookOpen, ChevronRight, Lock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   DASHBOARD_SECTIONS,
-  HYROX_BLOCKS,
+  resolveHyroxBlockMeta,
   MOCK_ATHLETE,
   MOCK_CHECK_IN,
   MOCK_COACH_NOTES,
@@ -67,7 +67,7 @@ export function AthleteCommandCentre() {
 
   const a = MOCK_ATHLETE;
   const next = MOCK_NEXT_SESSION;
-  const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
+  const block = resolveHyroxBlockMeta(a.blockId);
   const completedCount = MOCK_WEEK_SESSIONS.filter((s) => s.status === "complete").length;
 
   return (

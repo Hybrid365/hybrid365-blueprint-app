@@ -5,10 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BLOCK_WEEK_FOCUS_LABELS } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { sessionDetailFromHyroxSession } from "@/app/lib/hyroxAthleteDashboardLive";
 import {
-  HYROX_BLOCKS,
   MOCK_ATHLETE,
   MOCK_WEEK_RATIONALE,
   MOCK_WEEK_SESSIONS,
+  resolveHyroxBlockMeta,
   type HyroxSession,
 } from "@/app/lib/hyroxTeamDashboardMock";
 import {
@@ -134,7 +134,7 @@ export function ProgrammePageView({
       : "none";
 
   const blockId = useLive && dashboardLive ? dashboardLive.blockId : MOCK_ATHLETE.blockId;
-  const block = HYROX_BLOCKS.find((b) => b.id === blockId)!;
+  const block = resolveHyroxBlockMeta(blockId);
   const programmeStartDate = useLive
     ? resolveEffectiveProgrammeStartYmd(
         effectiveProgramme?.programmeStartDate,

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
-  HYROX_BLOCKS,
+  resolveHyroxBlockMeta,
   MOCK_ATHLETE,
   MOCK_CHECK_IN,
   MOCK_COACH_NOTES,
@@ -367,7 +367,7 @@ export function AthleteHomeDashboardV2({
     }
   }, [athleteId, isReadOnly, timezone]);
 
-  const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
+  const block = resolveHyroxBlockMeta(a.blockId);
   const insightText = coachFocus || weekRationale.whyMatters || weekRationale.coachNote;
   const focusTags = weekRationale.prioritise?.length
     ? weekRationale.prioritise

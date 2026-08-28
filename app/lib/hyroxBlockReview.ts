@@ -1,6 +1,6 @@
 /** Hyrox 4-week block review — coach admin only. */
 
-import { getProgrammeRoadmap, type ProgrammeLengthWeeks } from "@/app/lib/hyroxProgrammeDates";
+import { getBlockPhase, type ProgrammeLengthWeeks } from "@/app/lib/hyroxProgrammeDates";
 
 export type HyroxBlockReviewNextRecommendation =
   | "progress_as_planned"
@@ -132,7 +132,9 @@ export function blockWeekRange(blockNumber: number): { weeksStart: number; weeks
 }
 
 export function maxReviewBlocks(programmeLengthWeeks: ProgrammeLengthWeeks = 12): number {
-  return programmeLengthWeeks === 16 ? 4 : 3;
+  void programmeLengthWeeks;
+  // hyrox_block_reviews CHECK (block_number >= 1 AND block_number <= 4)
+  return 4;
 }
 
 export function blockMetaForReview(
@@ -140,11 +142,9 @@ export function blockMetaForReview(
   programmeLengthWeeks: ProgrammeLengthWeeks = 12
 ): { weeksStart: number; weeksEnd: number; blockTitle: string; weekLabels: string[] } {
   const { weeksStart, weeksEnd } = blockWeekRange(blockNumber);
-  const phase = getProgrammeRoadmap(programmeLengthWeeks).find((p) => p.blockNumber === blockNumber);
-  const blockTitle = phase?.name ?? `Block ${blockNumber}`;
-  const weekLabels =
-    phase?.weekRoles.map((role, i) => `W${weeksStart + i} · ${role}`) ??
-    Array.from({ length: 4 }, (_, i) => `W${weeksStart + i}`);
+  const phase = getBlockPhase(blockNumber, programmeLengthWeeks);
+  const blockTitle = phase.name;
+  const weekLabels = phase.weekRoles.map((role, i) => `W${weeksStart + i} · ${role}`);
   return { weeksStart, weeksEnd, blockTitle, weekLabels };
 }
 

@@ -206,7 +206,7 @@ async function w1ToW4CountForCurrentBlock(
 ): Promise<number> {
   const blockNumber = athlete.current_block ?? 1;
   const blockWeekNumbers = [1, 2, 3, 4].map((cycle) =>
-    globalWeekForBlock(blockNumber as 1 | 2 | 3, cycle as 1 | 2 | 3 | 4)
+    globalWeekForBlock(blockNumber, cycle as 1 | 2 | 3 | 4)
   );
   const { count } = await supabase
     .from("hyrox_programme_weeks")

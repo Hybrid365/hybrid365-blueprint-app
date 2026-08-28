@@ -2,12 +2,12 @@
 
 import { Calendar, ClipboardCheck, Target, Timer, TrendingUp } from "lucide-react";
 import {
-  HYROX_BLOCKS,
   MOCK_ATHLETE,
   MOCK_CHECK_IN,
   MOCK_NEXT_SESSION,
   MOCK_PERFORMANCE_METRICS,
   MOCK_PROGRESS_STATS,
+  resolveHyroxBlockMeta,
 } from "@/app/lib/hyroxTeamDashboardMock";
 import { athleteCard, athleteCardPadding, eyebrowClass, ProgressBar } from "./athleteUi";
 import { nextSessionDisplayForDashboard } from "@/app/lib/hyroxAthleteDashboardLive";
@@ -69,7 +69,7 @@ export function CommandCentreHeader() {
         ? MOCK_PROGRESS_STATS
         : { weeklyCompletionPct: 0, sessionsCompleted: 0, sessionsPlanned: 0 };
 
-  const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
+  const block = resolveHyroxBlockMeta(a.blockId);
   const checkInDue = useLive && dashboardLive ? dashboardLive.checkInDue : useMockData && MOCK_CHECK_IN.status === "Due";
   const checkInStatus =
     useLive && dashboardLive ? dashboardLive.checkInStatus : useMockData ? MOCK_CHECK_IN.status : "After Week 1";

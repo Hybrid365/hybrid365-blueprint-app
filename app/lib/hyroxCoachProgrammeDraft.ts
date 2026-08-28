@@ -390,6 +390,14 @@ const LIMITER_MAP: Record<string, ProgrammeSandboxInputs["mainLimiter"]> = {
   wall_balls: "wall_balls",
 };
 
+function sandboxBlockFromProgrammeBlock(
+  block: number
+): ProgrammeSandboxInputs["programmeBlock"] {
+  if (block <= 1) return 1;
+  if (block === 2) return 2;
+  return 3;
+}
+
 export function athleteInputsToSandbox(
   inputs: CoachAthleteProgrammeInputs
 ): ProgrammeSandboxInputs {
@@ -420,7 +428,7 @@ export function athleteInputsToSandbox(
     doubleSessionReadiness: inputs.doubleSessionReadiness,
     recoveryStatus: inputs.recoveryStatus,
     sleepQuality: inputs.sleepQuality,
-    programmeBlock: inputs.programmeBlock,
+    programmeBlock: sandboxBlockFromProgrammeBlock(inputs.programmeBlock),
     blockWeek: inputs.blockWeek,
     saturdayAvailable: inputs.saturdayAvailable,
     preferredLongAerobicDay: inputs.preferredLongAerobicDay,
@@ -792,10 +800,10 @@ function blockToCoachDraftSession(block: SandboxSessionBlock): CoachDraftSession
 }
 
 export function globalWeekForBlock(
-  programmeBlock: 1 | 2 | 3,
+  programmeBlock: number,
   blockWeekInCycle: 1 | 2 | 3 | 4
 ): number {
-  return (programmeBlock - 1) * 4 + blockWeekInCycle;
+  return (Math.max(1, Math.floor(programmeBlock)) - 1) * 4 + blockWeekInCycle;
 }
 
 export const BLOCK_WEEK_FOCUS_LABELS: Record<1 | 2 | 3 | 4, string> = {

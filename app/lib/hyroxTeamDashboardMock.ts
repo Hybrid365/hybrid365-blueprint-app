@@ -44,6 +44,23 @@ export const HYROX_BLOCKS = [
   { id: 3, name: "Race Performance", weeks: [9, 10, 11, 12] as const, dot: "bg-orange-500" },
 ] as const;
 
+export function resolveHyroxBlockMeta(blockId: number): {
+  id: number;
+  name: string;
+  weeks: readonly number[];
+  dot: string;
+} {
+  const known = HYROX_BLOCKS.find((b) => b.id === blockId);
+  if (known) return known;
+  const start = (Math.max(1, Math.floor(blockId)) - 1) * 4 + 1;
+  return {
+    id: blockId,
+    name: blockId === 4 ? "Race Specificity" : `Block ${blockId}`,
+    weeks: [start, start + 1, start + 2, start + 3],
+    dot: blockId >= 4 ? "bg-red-500" : "bg-orange-500",
+  };
+}
+
 export const MOCK_ATHLETE = {
   name: "Alex Morgan",
   status: "Active Athlete" as const,

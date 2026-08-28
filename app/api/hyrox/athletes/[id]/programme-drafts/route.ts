@@ -7,7 +7,13 @@ import { draftDbToCoachStatus } from "@/app/lib/hyroxCoachProgrammeStatusMap";
 import { deriveBlockSelectorStatus } from "@/app/lib/hyroxBlockProgrammeStatus";
 import { blockWeekRange } from "@/app/lib/hyroxBlockReview";
 import {
+  parseCoachBlockNumber,
+  visibleCoachBlockCount,
+  type ProgrammeLengthWeeks,
+} from "@/app/lib/hyroxProgrammeDates";
+import {
   fetchBlockProgrammeDrafts,
+  fetchHighestProgrammeBlockNumber,
   fetchPublishedWeekCountForBlock,
   parseCoachDraftWeek,
 } from "@/app/lib/hyroxProgrammeServer";
@@ -19,7 +25,7 @@ function buildWeeksMeta(blockNumber: number, rows: HyroxProgrammeDraftRow[]) {
   const byWeek = new Map(rows.map((r) => [r.week_number, r]));
 
   return ([1, 2, 3, 4] as const).map((cycle) => {
-    const globalWeek = globalWeekForBlock(blockNumber as 1 | 2 | 3, cycle);
+    const globalWeek = globalWeekForBlock(blockNumber, cycle);
     const row = byWeek.get(globalWeek) ?? null;
     const draftData = row ? parseCoachDraftWeek(row.draft_data) : null;
     const sessionCount = draftData?.days.reduce((n, d) => n + d.sessions.length, 0) ?? 0;
@@ -58,12 +64,22 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ success: false, error: "Athlete not found." }, { status: 404 });
   }
 
-  const maxBlocks = athlete.programme_length_weeks === 16 ? 4 : 3;
+  const lengthWeeks = (athlete.programme_length_weeks === 16 ? 16 : 12) as ProgrammeLengthWeeks;
   const defaultBlock = athlete.current_block ?? 1;
-  const requestedBlock = blockParam ? Number(blockParam) : defaultBlock;
-  const blockNumber = Number.isFinite(requestedBlock)
-    ? Math.min(maxBlocks, Math.max(1, requestedBlock))
-    : defaultBlock;
+  const requestedBlock = parseCoachBlockNumber(blockParam) ?? defaultBlock;
+  let highestExisting = 0;
+  try {
+    highestExisting = await fetchHighestProgrammeBlockNumber(supabase, athleteId);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not load programme blocks.";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+  const maxBlocks = visibleCoachBlockCount({
+    programmeLengthWeeks: lengthWeeks,
+    highestExistingBlock: highestExisting,
+    requestedBlock,
+  });
+  const blockNumber = requestedBlock;
 
   try {
     if (summaryAll) {

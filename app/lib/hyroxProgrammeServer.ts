@@ -65,6 +65,7 @@ import {
   deriveWeekCalendarStatusForAthleteWeek,
   getBlockWeekRole,
   resolveAthleteWeekDateRange,
+  resolvePublishBlockNumber,
   weekDateRangeFromProgrammeStart,
   type ProgrammeLengthWeeks,
   type ProgrammeWeekCalendarStatus,
@@ -262,7 +263,7 @@ export async function fetchBlockProgrammeDrafts(
   blockNumber: number
 ): Promise<HyroxProgrammeDraftRow[]> {
   const weekNumbers = [1, 2, 3, 4].map((cycle) =>
-    globalWeekForBlock(blockNumber as 1 | 2 | 3, cycle as 1 | 2 | 3 | 4)
+    globalWeekForBlock(blockNumber, cycle as 1 | 2 | 3 | 4)
   );
   const { data, error } = await supabase
     .from("hyrox_programme_drafts")
@@ -285,6 +286,33 @@ export async function fetchBlockProgrammeDrafts(
   return weekNumbers
     .map((w) => latestByWeek.get(w))
     .filter((r): r is HyroxProgrammeDraftRow => Boolean(r));
+}
+
+/** Highest block that already has drafts or published weeks. Additive — never renumbers. */
+export async function fetchHighestProgrammeBlockNumber(
+  supabase: SupabaseClient,
+  athleteId: string
+): Promise<number> {
+  const [{ data: drafts, error: draftError }, { data: weeks, error: weekError }] = await Promise.all([
+    supabase
+      .from("hyrox_programme_drafts")
+      .select("block_number")
+      .eq("athlete_id", athleteId)
+      .neq("status", "archived"),
+    supabase
+      .from("hyrox_programme_weeks")
+      .select("block_number")
+      .eq("athlete_id", athleteId),
+  ]);
+  if (draftError) throw new Error(draftError.message);
+  if (weekError) throw new Error(weekError.message);
+  const nums = [
+    ...((drafts ?? []) as { block_number: number }[]),
+    ...((weeks ?? []) as { block_number: number }[]),
+  ]
+    .map((row) => row.block_number)
+    .filter((n) => Number.isFinite(n) && n >= 1);
+  return nums.length ? Math.max(...nums) : 0;
 }
 
 export async function approveProgrammeBlockDrafts(
@@ -669,7 +697,7 @@ export async function fetchPublishedWeekCountForBlock(
   blockNumber: number
 ): Promise<number> {
   const weekNumbers = [1, 2, 3, 4].map((cycle) =>
-    globalWeekForBlock(blockNumber as 1 | 2 | 3, cycle as 1 | 2 | 3 | 4)
+    globalWeekForBlock(blockNumber, cycle as 1 | 2 | 3 | 4)
   );
   const { count, error } = await supabase
     .from("hyrox_programme_weeks")
@@ -1309,7 +1337,7 @@ export async function publishProgrammeBlock(
   syncedWeekNumbers: number[];
   weekResults: PublishWeekSyncAudit[];
 }> {
-  const blockNumber = Math.min(3, Math.max(1, params.blockNumber)) as 1 | 2 | 3;
+  const blockNumber = resolvePublishBlockNumber(params.blockNumber);
   const publishedWeeks: HyroxProgrammeWeekRow[] = [];
   let sessionCount = 0;
   const generatedWeekNumbers: number[] = [];

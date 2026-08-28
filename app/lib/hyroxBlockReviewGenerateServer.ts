@@ -209,6 +209,7 @@ export async function generateNextBlockFromSavedReview(
     reviewedBlockNumber: params.reviewedBlockNumber,
     programmeLengthWeeks,
     recommendation: params.forceRetestWeek ? "retest_recalibrate" : recommendation,
+    forceRetestWeek: params.forceRetestWeek === true,
   });
 
   if (plan.kind === "unavailable") {

@@ -10,7 +10,7 @@ import {
   type ProgrammeNextSessionState,
 } from "@/app/lib/hyroxAthleteProgrammeCalendar";
 import { formatProgrammeDayLabel, sortProgrammeSessions, type ResolvedNextSession } from "@/app/lib/hyroxAthleteProgrammeSort";
-import { HYROX_BLOCKS } from "@/app/lib/hyroxTeamDashboardMock";
+import { resolveHyroxBlockMeta } from "@/app/lib/hyroxTeamDashboardMock";
 import type { BenchmarkSnapshotItem } from "@/app/lib/dashboardWeekTracking";
 import type { AthleteCheckInSummary } from "@/app/lib/hyroxAthleteCheckInServer";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
@@ -45,7 +45,7 @@ export type AthleteDashboardLiveView = {
   statusLabel: string;
   raceLabel: string;
   targetTime: string;
-  blockId: 1 | 2 | 3;
+  blockId: number;
   blockName: string;
   currentWeek: number;
   totalWeeks: number;
@@ -271,11 +271,8 @@ export function buildAthleteDashboardLiveView(params: {
     3
   );
 
-  const blockId = Math.min(
-    calendar.blockNumber,
-    3
-  ) as 1 | 2 | 3;
-  const block = HYROX_BLOCKS.find((b) => b.id === blockId) ?? HYROX_BLOCKS[0];
+  const blockId = Math.max(1, calendar.blockNumber || 1);
+  const block = resolveHyroxBlockMeta(blockId);
 
   const bundleRationale = activeBundle?.week
     ? {
@@ -320,7 +317,7 @@ export function buildAthleteDashboardLiveView(params: {
     blockId,
     blockName: block.name,
     currentWeek: calendar.blockWeekInCycle,
-    totalWeeks: calendar.programmeLengthWeeks,
+    totalWeeks: Math.max(calendar.programmeLengthWeeks, blockId * 4),
     weeklyCompletionPct,
     sessionsCompleted: completed,
     sessionsPlanned: planned,
