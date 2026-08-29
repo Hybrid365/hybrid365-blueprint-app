@@ -1,67 +1,157 @@
-export const START_INTENT_COPY = {
+/**
+ * /start coaching pathway selector — copy and destination mapping only.
+ * Lead insert still goes through POST /api/start/talk → coaching_enquiries.
+ */
+
+export const START_LOGIN_HREF = "/login";
+
+export const START_GOAL_COPY = {
   eyebrow: "HYBRID365",
-  headline: "LET'S START WITH YOU.",
-  body: "Tell us where you're at and where you want to go. We'll show you the best way to get there.",
-  assessmentNoteTitle: "This isn't your full athlete assessment.",
-  assessmentNoteBody:
-    "Once you join Hybrid365, we'll complete a detailed athlete assessment and testing week to understand your current performance, establish your individual training targets and personalise your programme.",
-  assessmentNoteClose: "For now, we just need a few details to point you in the right direction.",
-  instagramHint: "So Kieran knows who he's speaking to if he reaches out.",
-  goalPlaceholder: "Sub-70 HYROX, first race, improve running, qualify for Worlds...",
-  firstHyroxLabel: "First HYROX / no PB yet",
-  hasPbLabel: "I have a HYROX PB",
-  pbPlaceholder: "e.g. 1:15",
-  racePlaceholder: "e.g. London, March 2027",
-  cta: "CONTINUE →",
-  submitting: "Continuing…",
+  headline: "What are you training for?",
+  supporting: "Choose your primary goal and we'll show you the best Hybrid365 pathway.",
+  proofLabel: "Trusted by athletes. Proven in performance.",
+  loginPrompt: "Already a member?",
+  loginCta: "Log in",
 } as const;
 
-export const START_COPY = {
-  eyebrow: "HYBRID365 COACHING",
-  headline: "HOW FAR DO YOU WANT TO TAKE IT?",
-  body: "Both paths are personalised. Choose the level of coaching and team support you want around your training.",
-  talkPrompt: "Not sure which option fits?",
-  talkCta: "Talk to Kieran →",
+export type StartGoalId = "hybrid" | "hyrox";
+export type StartFunnelStep = 1 | 2 | 3;
+
+export const START_GOALS = {
+  hybrid: {
+    id: "hybrid" as const,
+    title: "Hybrid Performance",
+    positioning: "Run faster. Lift stronger. Perform everywhere.",
+    supporting: "Build strength, muscle, speed and complete fitness.",
+    enquiryGoal: "Hybrid Performance",
+    imageSrc: "/images/community/running.jpg",
+    imageAlt: "Kieran Higgs running",
+    imageClassName:
+      "object-cover object-[78%_12%] sm:object-[76%_16%] lg:object-[68%_26%]",
+  },
+  hyrox: {
+    id: "hyrox" as const,
+    title: "HYROX Performance",
+    positioning: "Train specifically for HYROX. Race with confidence.",
+    supporting: "Race-specific running, stations and confidence under fatigue.",
+    enquiryGoal: "HYROX Performance",
+    imageSrc: "/images/homepage/team/bobby-harrison-farmers-carry.png",
+    imageAlt: "Bobby Harrison — Hybrid365 athlete, HYROX farmers carry",
+    imageClassName:
+      "object-cover object-[center_30%] sm:object-[center_26%] lg:object-[center_22%]",
+  },
 } as const;
 
-export const START_TRACK_OPTION = {
-  label: "HYROX TRACK",
-  headline: "PERSONALISED TRAINING",
-  body: "For athletes who want a personalised HYROX training system built around their performance, with the structure, progression and tools to execute their training independently.",
-  points: [
-    "Detailed athlete assessment",
-    "Individual testing / benchmark week",
-    "Training targets based on your numbers",
-    "Personalised HYROX programming",
-    "Hybrid365 athlete dashboard",
-    "Progress and benchmark tracking",
-    "Weekly check-ins",
-    "Community / team environment",
-    "Training education and resources",
+export const START_LEAD_COPY = {
+  kicker: "Great choice.",
+  headline: "Where should we send your recommendation?",
+  supporting: "Enter your details and we'll show you the best way to achieve your goal.",
+  cta: "Show me my options →",
+  submitting: "Showing options…",
+  privacy: "We respect your privacy. No spam.",
+  back: "← Change goal",
+} as const;
+
+export const START_SUPPORT_COPY = {
+  goalLabel: "Your goal",
+  headline: "How do you want to be coached?",
+  supporting: "Choose the support level that suits you best.",
+  back: "← Change goal",
+} as const;
+
+export const START_SUPPORT_OPTIONS = {
+  hybrid: [
+    {
+      id: "hybrid-track",
+      icon: "system" as const,
+      eyebrow: "Follow the system",
+      title: "Track",
+      positioning: "Structured programme, platform and accountability.",
+      price: "£39.99/month",
+      href: "/hybrid-performance/track",
+    },
+    {
+      id: "hybrid-1-1",
+      icon: "coach" as const,
+      eyebrow: "Work directly with a coach",
+      title: "1-1 Coaching",
+      positioning: "Individual programming, direct coaching and ongoing adaptation.",
+      price: null,
+      href: "/hybrid-performance",
+    },
   ],
-  cta: "EXPLORE HYROX TRACK",
-  href: "/hyrox-community",
+  hyrox: [
+    {
+      id: "hyrox-track",
+      icon: "system" as const,
+      eyebrow: "Follow the system",
+      title: "HYROX Track",
+      positioning: "Structured HYROX programming, testing and progression.",
+      price: null,
+      href: "/hyrox-community",
+    },
+    {
+      id: "hyrox-team",
+      icon: "coach" as const,
+      eyebrow: "Work directly with a coach",
+      title: "HYROX Team",
+      positioning: "Personalised programming, direct coaching and team support.",
+      price: null,
+      href: "/hyrox-team",
+    },
+  ],
 } as const;
 
-export const START_TEAM_OPTION = {
-  label: "HYROX TEAM",
-  headline: "FULL COACHING EXPERIENCE",
-  body: "For athletes who want to become part of the full Hybrid365 HYROX Team, with greater direct coaching, team training, technique development and individual support.",
-  points: [
-    "Everything within the personalised training system",
-    "Direct 1-1 coach oversight",
-    "Greater individual programme adaptation",
-    "Weekly individual coaching / feedback",
-    "Team training sessions",
-    "In-person technique coaching",
-    "Testing and benchmark sessions",
-    "Nutrition support",
-    "Race strategy and preparation",
-    "Full HYROX Team environment",
-  ],
-  cta: "EXPLORE HYROX TEAM",
-  href: "/hyrox-team",
-} as const;
+export const START_PLATFORM_PREVIEWS = [
+  {
+    id: "programme" as const,
+    label: "Your programme",
+  },
+  {
+    id: "threshold-run" as const,
+    label: "Your sessions",
+  },
+  {
+    id: "progress-overview" as const,
+    label: "Your progress",
+  },
+] as const;
+
+/** Compact first-viewport proof. Faces and metrics from verified Hybrid365 records. */
+export const START_PROOF_STRIP = [
+  {
+    id: "rae",
+    name: "Rae",
+    metric: "5K 23:02",
+    photoSrc: "/images/homepage/team/rae-wall-training.png",
+    photoAlt: "Rae Wall — Hybrid365 athlete",
+    photoClassName: "object-cover object-[center_18%]",
+  },
+  {
+    id: "ricci",
+    name: "Ricci",
+    metric: "Hybrid Test 45:13.9",
+    photoSrc: "/images/homepage/team/ricci-lee-jarvis-training.png",
+    photoAlt: "Ricci-Lee Jarvis — Hybrid365 athlete",
+    photoClassName: "object-cover object-center",
+  },
+  {
+    id: "bobby",
+    name: "Bobby",
+    metric: "5K 18:42",
+    photoSrc: "/images/homepage/team/bobby-harrison-announcement.png",
+    photoAlt: "Bobby Harrison — Hybrid365 athlete",
+    photoClassName: "object-cover object-[center_12%]",
+  },
+  {
+    id: "founder",
+    name: "Kieran",
+    metric: "HYROX Pro 59:14",
+    photoSrc: "/images/community/Main Hero photo of me.jpg",
+    photoAlt: "Kieran Higgs — Hybrid365 founder",
+    photoClassName: "object-cover object-[center_12%]",
+  },
+] as const;
 
 export const TALK_COPY = {
   eyebrow: "TALK TO KIERAN",

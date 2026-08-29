@@ -129,8 +129,8 @@ assert(
 );
 
 assert(
-  "start_funnel missing HYROX level rejected",
-  !validateTalkEnquiry({ ...base, source: "start_funnel" }).ok
+  "start_funnel missing HYROX level accepted",
+  validateTalkEnquiry({ ...base, source: "start_funnel" }).ok
 );
 assert(
   "start_funnel first HYROX accepted",

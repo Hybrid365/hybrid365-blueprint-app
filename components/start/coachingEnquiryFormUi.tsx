@@ -7,6 +7,9 @@ import { ATTRIBUTION_QUERY_KEYS } from "@/app/lib/start/attribution";
 export const enquiryInputClasses =
   "w-full min-h-[48px] rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-base text-white placeholder:text-white/40 focus:border-[#F4D23C]/50 focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/50 sm:text-sm";
 
+export const enquiryInputClassesLight =
+  "w-full min-h-[46px] rounded-lg border border-black/15 bg-white px-4 py-3 text-base text-[#111] placeholder:text-black/32 focus:border-[#F4D23C] focus:outline-none focus:ring-1 focus:ring-[#F4D23C]/70 sm:text-sm";
+
 export function collectEnquiryAttribution() {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
@@ -75,6 +78,7 @@ export function EnquiryField({
   autoCorrect,
   spellCheck,
   inputMode,
+  variant = "dark",
 }: {
   label: string;
   name: string;
@@ -88,10 +92,17 @@ export function EnquiryField({
   autoCorrect?: string;
   spellCheck?: boolean;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+  variant?: "dark" | "light";
 }) {
+  const light = variant === "light";
   return (
-    <div className="space-y-2">
-      <label htmlFor={name} className="block text-xs font-medium uppercase tracking-wider text-white/60">
+    <div className="space-y-1.5">
+      <label
+        htmlFor={name}
+        className={`block text-[10px] font-bold uppercase tracking-[0.14em] ${
+          light ? "text-black/40" : "text-white/60"
+        }`}
+      >
         {label}
         {required ? <span className="ml-1 text-[#F4D23C]">*</span> : null}
       </label>
@@ -102,7 +113,7 @@ export function EnquiryField({
           required={required}
           placeholder={placeholder}
           rows={4}
-          className={`${enquiryInputClasses} min-h-[120px] resize-none`}
+          className={`${light ? enquiryInputClassesLight : enquiryInputClasses} min-h-[120px] resize-none`}
         />
       ) : (
         <input
@@ -111,7 +122,7 @@ export function EnquiryField({
           type={type}
           required={required}
           placeholder={placeholder}
-          className={enquiryInputClasses}
+          className={light ? enquiryInputClassesLight : enquiryInputClasses}
           autoComplete={autoComplete ?? (name === "email" ? "email" : name === "first_name" ? "given-name" : "off")}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
@@ -119,7 +130,9 @@ export function EnquiryField({
           inputMode={inputMode}
         />
       )}
-      {hint ? <p className="text-xs leading-relaxed text-white/45">{hint}</p> : null}
+      {hint ? (
+        <p className={`text-xs leading-relaxed ${light ? "text-black/40" : "text-white/45"}`}>{hint}</p>
+      ) : null}
     </div>
   );
 }

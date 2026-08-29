@@ -25,7 +25,17 @@ const PERFORMANCE_GOALS = [
   { value: "all_round_hybrid", label: "All-round hybrid" },
 ];
 
-export default function OneToOneApplyFormSection() {
+type OneToOneApplyFormSectionProps = {
+  overviewHref?: string;
+  overviewLabel?: string;
+  productName?: string;
+};
+
+export default function OneToOneApplyFormSection({
+  overviewHref = "/one-to-one-coaching",
+  overviewLabel = "Back to 1-1 coaching",
+  productName = "Hybrid365 1-1 Coaching",
+}: OneToOneApplyFormSectionProps) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +94,7 @@ export default function OneToOneApplyFormSection() {
             Application submitted.
           </h2>
           <p className="m-0 mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/75">
-            You&apos;ve applied for Hybrid365 1-1 Coaching. I&apos;ll review your answers and come
+            You&apos;ve applied for {productName}. I&apos;ll review your answers and come
             back to you if it looks like the right fit.
           </p>
           <p className="m-0 mt-4 text-sm leading-relaxed text-white/60">
@@ -92,10 +102,10 @@ export default function OneToOneApplyFormSection() {
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <Link
-              href="/one-to-one-coaching"
+              href={overviewHref}
               className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#F4D23C] px-6 text-sm font-black text-black transition hover:opacity-90"
             >
-              Back to 1-1 coaching
+              {overviewLabel}
             </Link>
             <Link
               href="/"

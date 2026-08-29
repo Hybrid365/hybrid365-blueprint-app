@@ -3,14 +3,14 @@ import { StartExperience } from "@/components/start/StartExperience";
 import { StartShell } from "@/components/start/StartShell";
 
 export const metadata: Metadata = {
-  title: "Let's start with you",
+  title: "What are you training for?",
   description:
-    "Tell us where you're at and where you want to go. We'll show you the best Hybrid365 coaching path.",
+    "Choose your Hybrid365 coaching pathway. Hybrid Performance or HYROX — then pick Track or 1-1 support.",
 };
 
 export default function StartPage() {
   return (
-    <StartShell>
+    <StartShell showLogin>
       <StartExperience />
     </StartShell>
   );

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/app/lib/supabase/server";
 import {
-  COACHING_ENQUIRY_SOURCE,
   buildCoachingEnquiryInsertRow,
   isTalkEnquiryHoneypotTriggered,
   resolveCoachingEnquirySource,
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
   const source = resolveCoachingEnquirySource(body.source);
   const validated = validateTalkEnquiry(
     { ...body, source },
-    { requireCurrentHyroxLevel: source === COACHING_ENQUIRY_SOURCE.startFunnel }
+    { requireCurrentHyroxLevel: false }
   );
   if (!validated.ok) {
     return badRequest(validated.error);

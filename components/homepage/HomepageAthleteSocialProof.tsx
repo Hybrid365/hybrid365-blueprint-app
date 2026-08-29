@@ -15,7 +15,7 @@ function AthleteProofCard({
           src={athlete.photoSrc}
           alt={athlete.photoAlt}
           fill
-          className="object-cover object-top"
+          className={athlete.imageClassName ?? "object-cover object-top"}
           sizes="(max-width: 1024px) 86vw, 280px"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
@@ -50,12 +50,16 @@ export function HomepageAthleteSocialProof() {
         <HomepageEyebrow>{LANDING_SOCIAL_PROOF.eyebrow}</HomepageEyebrow>
         <HomepageHeading className="text-[clamp(1.85rem,6vw,3rem)]">
           {LANDING_SOCIAL_PROOF.headline[0]}
-          <span className="block text-[#f4d23c]">{LANDING_SOCIAL_PROOF.headline[1]}</span>
+          <span className="block">{LANDING_SOCIAL_PROOF.headline[1]}</span>
+          <span className="block text-[#f4d23c]">{LANDING_SOCIAL_PROOF.headline[2]}</span>
         </HomepageHeading>
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/55 lg:mx-0">
+          {LANDING_SOCIAL_PROOF.body}
+        </p>
       </div>
 
       <div className="mt-8 lg:mt-10">
-        <HomepageSnapCarousel ariaLabel="Current Hybrid365 athletes">
+        <HomepageSnapCarousel ariaLabel="Hybrid365 athletes">
           {LANDING_ATHLETE_CARDS.map((athlete) => (
             <AthleteProofCard key={athlete.id} athlete={athlete} />
           ))}

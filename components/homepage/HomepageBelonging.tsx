@@ -32,7 +32,7 @@ export function HomepageBelonging() {
               src={photo.src}
               alt={photo.alt}
               fill
-              className="object-cover object-top"
+              className={photo.imageClassName}
               sizes="(max-width: 640px) 45vw, 220px"
             />
           </div>
