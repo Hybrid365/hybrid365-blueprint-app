@@ -2,6 +2,11 @@
 
 export type ProgrammeLengthWeeks = 12 | 16;
 
+/** Safety cap only — not a product limit. Drafts/weeks have no 1–3 DB constraint. */
+export const PROGRAMME_BLOCK_HARD_CAP = 24;
+
+export const WEEKS_PER_BLOCK = 4;
+
 /** Shown in admin when start date is not a Monday. */
 export const PROGRAMME_START_MUST_BE_MONDAY =
   "Programme start date must be a Monday so session days align correctly.";
@@ -74,13 +79,84 @@ export function getProgrammeRoadmap(length: ProgrammeLengthWeeks = 12): BlockRoa
   return length === 16 ? ROADMAP_16 : ROADMAP_12;
 }
 
+export function plannedProgrammeBlocks(length: ProgrammeLengthWeeks = 12): number {
+  return length === 16 ? 4 : 3;
+}
+
+export function clampProgrammeBlock(blockNumber: number): number {
+  if (!Number.isFinite(blockNumber)) return 1;
+  return Math.min(PROGRAMME_BLOCK_HARD_CAP, Math.max(1, Math.floor(blockNumber)));
+}
+
+export function parseCoachBlockNumber(raw: unknown): number | null {
+  const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+  if (!Number.isFinite(n) || n < 1) return null;
+  return clampProgrammeBlock(n);
+}
+
+/**
+ * Block number used when publishing a programme block.
+ * Lower-bounds at 1 only — never clamps Block 4 down to Block 3.
+ */
+export function resolvePublishBlockNumber(blockNumber: number): number {
+  if (!Number.isFinite(blockNumber)) return 1;
+  return Math.max(1, Math.floor(blockNumber));
+}
+
+export function globalWeeksForBlock(blockNumber: number): [number, number, number, number] {
+  const start = (clampProgrammeBlock(blockNumber) - 1) * WEEKS_PER_BLOCK + 1;
+  return [start, start + 1, start + 2, start + 3];
+}
+
+const CONTINUATION_ROLES: [string, string, string, string] = [
+  "Build",
+  "Progression",
+  "Peak",
+  "Deload / Review",
+];
+
+export function getBlockPhase(
+  blockNumber: number,
+  length: ProgrammeLengthWeeks = 12
+): BlockRoadmapPhase {
+  const block = clampProgrammeBlock(blockNumber);
+  const named = getProgrammeRoadmap(length).find((p) => p.blockNumber === block);
+  if (named) return named;
+  const from16 = ROADMAP_16.find((p) => p.blockNumber === block);
+  if (from16) return from16;
+  return {
+    blockNumber: block,
+    name: `Block ${block}`,
+    globalWeeks: globalWeeksForBlock(block),
+    weekRoles: CONTINUATION_ROLES,
+  };
+}
+
+/**
+ * How many block tabs the coach builder should show.
+ * Always includes the original plan length, any existing blocks, the requested
+ * block, and one next empty block once the athlete is at/past plan length.
+ */
+export function visibleCoachBlockCount(params: {
+  programmeLengthWeeks: ProgrammeLengthWeeks;
+  highestExistingBlock: number;
+  requestedBlock?: number;
+}): number {
+  const planned = plannedProgrammeBlocks(params.programmeLengthWeeks);
+  const existing = Math.max(0, Math.floor(params.highestExistingBlock || 0));
+  const requested =
+    params.requestedBlock != null ? clampProgrammeBlock(params.requestedBlock) : 1;
+  const withNext = existing >= planned ? existing + 1 : planned;
+  return clampProgrammeBlock(Math.max(planned, existing, withNext, requested));
+}
+
 export function getBlockWeekRole(
   blockNumber: number,
   cycle: 1 | 2 | 3 | 4,
   length: ProgrammeLengthWeeks = 12
 ): string {
-  const phase = getProgrammeRoadmap(length).find((p) => p.blockNumber === blockNumber);
-  return phase?.weekRoles[cycle - 1] ?? BLOCK_1_ROLES[cycle - 1]!;
+  const phase = getBlockPhase(blockNumber, length);
+  return phase.weekRoles[cycle - 1] ?? CONTINUATION_ROLES[cycle - 1]!;
 }
 
 export function parseYmd(ymd: string): Date {
@@ -325,14 +401,17 @@ export function shouldShowNextBlockPrompt(params: {
   blockPublished: boolean;
 }): boolean {
   if (!params.blockPublished || !params.programmeStartYmd) return false;
-  const maxBlock = params.programmeLengthWeeks === 16 ? 4 : 3;
-  if (params.currentBlock >= maxBlock) return false;
+  if (params.currentBlock < 1) return false;
   const liveWeek = deriveLiveGlobalWeek(params.programmeStartYmd);
   const cycleInBlock = ((liveWeek - 1) % 4) + 1;
   return cycleInBlock >= 3;
 }
 
-export function nextBlockNumber(currentBlock: number, length: ProgrammeLengthWeeks): number | null {
-  const max = length === 16 ? 4 : 3;
-  return currentBlock < max ? currentBlock + 1 : null;
+/** Next 4-week block after `currentBlock`. No plan-length cap — Block 4+ is additive. */
+export function nextBlockNumber(
+  currentBlock: number,
+  length?: ProgrammeLengthWeeks
+): number {
+  void length;
+  return clampProgrammeBlock(Math.max(1, currentBlock) + 1);
 }

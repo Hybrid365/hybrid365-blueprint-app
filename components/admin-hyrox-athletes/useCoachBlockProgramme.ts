@@ -690,7 +690,7 @@ export function useCoachBlockProgramme(params: {
 
   const blockWeekDateRanges = useMemo(() => {
     return ([1, 2, 3, 4] as const).map((cycle) => {
-      const globalWeek = globalWeekForBlock(selectedBlock as 1 | 2 | 3, cycle);
+      const globalWeek = globalWeekForBlock(selectedBlock, cycle);
       const { startYmd, endYmd } = weekDateRangeFromProgrammeStart(
         programmeStartDate,
         globalWeek
@@ -832,10 +832,16 @@ export function useCoachBlockProgramme(params: {
   ]);
 
   const showNextBlockPrompt = useMemo(() => {
-    const block1 = blockSummaries.find((b) => b.blockNumber === 1);
-    const block2 = blockSummaries.find((b) => b.blockNumber === 2);
-    if (block1?.status === "published" && block2?.status === "needs_generation") {
-      return true;
+    const highestPublished = Math.max(
+      0,
+      ...blockSummaries.filter((b) => b.status === "published").map((b) => b.blockNumber)
+    );
+    if (highestPublished >= 1) {
+      const next = highestPublished + 1;
+      const nextSummary = blockSummaries.find((b) => b.blockNumber === next);
+      if (!nextSummary || nextSummary.status === "needs_generation") {
+        return true;
+      }
     }
     return shouldShowNextBlockPrompt({
       currentBlock: athlete.programmeBlock,

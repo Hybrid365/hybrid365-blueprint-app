@@ -51,9 +51,7 @@ export function blockSelectorStatusMessage(
     case "draft_available":
       return `Block ${blockNumber} draft generated. Review and edit before approving.`;
     case "needs_generation":
-      return blockNumber === 2
-        ? "Block 1 complete. Review athlete response, then generate Block 2."
-        : `Generate Block ${blockNumber} when the previous block is complete.`;
+        return `Generate Block ${blockNumber} when the previous block is complete.`;
     case "needs_approval":
       return `Block ${blockNumber} needs coach approval before publishing.`;
     case "ready_to_publish":

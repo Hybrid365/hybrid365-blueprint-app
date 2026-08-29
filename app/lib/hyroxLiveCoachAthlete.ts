@@ -22,7 +22,7 @@ export function buildCoachAthleteStubFromLiveRow(
     raceDate: row.race_date ?? "TBC",
     raceCategory: row.race_category ?? "Open",
     weeksToRace: 12,
-    programmeBlock: (row.current_block as 1 | 2 | 3) ?? 1,
+    programmeBlock: Number.isFinite(row.current_block) && row.current_block >= 1 ? row.current_block : 1,
     blockWeek: (Math.min(4, Math.max(1, row.current_week)) as 1 | 2 | 3 | 4) ?? 1,
     classification: "Live athlete · Supabase",
     raceGoal: row.target_time ?? "—",

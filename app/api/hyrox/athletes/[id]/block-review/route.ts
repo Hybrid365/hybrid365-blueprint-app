@@ -49,7 +49,7 @@ export async function GET(request: Request, context: RouteContext) {
   const maxBlocks = maxReviewBlocks(row.programme_length_weeks === 16 ? 16 : 12);
   if (blockNumber > maxBlocks) {
     return NextResponse.json(
-      { success: false, error: `Block ${blockNumber} is outside this athlete's programme length.` },
+      { success: false, error: `Block reviews currently support blocks 1–${maxBlocks}.` },
       { status: 400 }
     );
   }
@@ -114,7 +114,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const maxBlocks = maxReviewBlocks(row.programme_length_weeks === 16 ? 16 : 12);
   if (blockNumber > maxBlocks) {
     return NextResponse.json(
-      { success: false, error: `Block ${blockNumber} is outside this athlete's programme length.` },
+      { success: false, error: `Block reviews currently support blocks 1–${maxBlocks}.` },
       { status: 400 }
     );
   }

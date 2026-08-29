@@ -1,7 +1,7 @@
 "use client";
 
 import { Calendar, Target, Timer } from "lucide-react";
-import { HYROX_BLOCKS } from "@/app/lib/hyroxTeamDashboardMock";
+import { resolveHyroxBlockMeta } from "@/app/lib/hyroxTeamDashboardMock";
 import { getHyroxRaceCountdown } from "@/app/lib/communityHyroxDashboard";
 import { eyebrowClass } from "../athleteUi";
 import { timeAwareGreeting } from "./greeting";
@@ -9,7 +9,7 @@ import { timeAwareGreeting } from "./greeting";
 type Props = {
   athleteName: string;
   statusLabel: string;
-  blockId: 1 | 2 | 3;
+  blockId: number;
   blockName: string;
   currentWeek: number;
   totalWeeks: number;
@@ -34,7 +34,7 @@ export function HomeAthleteHeader({
   raceDate,
   timezone,
 }: Props) {
-  const block = HYROX_BLOCKS.find((b) => b.id === blockId) ?? HYROX_BLOCKS[0];
+  const block = resolveHyroxBlockMeta(blockId);
   const firstName = athleteName.split(/\s+/)[0]?.toUpperCase() ?? athleteName.toUpperCase();
   const raceWeeks = weeksToRaceLabel(raceDate);
 

@@ -25,7 +25,7 @@ export function CoachProgrammeStartDateControl({
   savedStartDate?: string | null;
 }) {
   const preview = ([1, 2, 3, 4] as const).map((cycle) => {
-    const globalWeek = globalWeekForBlock(blockNumber as 1 | 2 | 3, cycle);
+    const globalWeek = globalWeekForBlock(blockNumber, cycle);
     const { startYmd, endYmd } = weekDateRangeFromProgrammeStart(value, globalWeek);
     return { cycle, range: formatWeekDateRangeFromYmd(startYmd, endYmd) };
   });

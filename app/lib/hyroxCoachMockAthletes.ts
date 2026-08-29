@@ -40,7 +40,7 @@ export type CoachAthleteProgrammeInputs = {
   thresholdHeartRate: number | null;
   mainLimiter: string;
   stationWeaknesses: string[];
-  programmeBlock: 1 | 2 | 3;
+  programmeBlock: number;
   blockWeek: BlockWeekInCycle;
   doubleSessionReadiness:
     | "not_ready"
@@ -77,7 +77,7 @@ export type CoachAthlete = {
   raceDate: string;
   raceCategory: string;
   weeksToRace: number;
-  programmeBlock: 1 | 2 | 3;
+  programmeBlock: number;
   blockWeek: BlockWeekInCycle;
   classification: string;
   raceGoal: string;

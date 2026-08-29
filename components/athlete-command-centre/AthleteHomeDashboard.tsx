@@ -15,7 +15,7 @@ import {
   Play,
 } from "lucide-react";
 import {
-  HYROX_BLOCKS,
+  resolveHyroxBlockMeta,
   MOCK_ATHLETE,
   MOCK_BENCHMARK_SNAPSHOT,
   MOCK_CHECK_IN,
@@ -244,7 +244,7 @@ export function AthleteHomeDashboard({
           raceReadiness: { value: 0, delta: "Awaiting data" },
           consistency: { value: 0, delta: "" },
         };
-  const block = HYROX_BLOCKS.find((b) => b.id === a.blockId)!;
+  const block = resolveHyroxBlockMeta(a.blockId);
   const upcoming =
     useLive && dashboardLive
       ? dashboardLive.upcomingThisWeek

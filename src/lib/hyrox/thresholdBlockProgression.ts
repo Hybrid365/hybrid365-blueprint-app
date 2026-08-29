@@ -3,7 +3,7 @@ import type { BlockWeekInCycle } from "./types";
 export const THRESHOLD_HR_RPE_NOTE =
   "Pace is a target. HR/RPE controls the session. If HR drifts above threshold, slow slightly and keep the stimulus correct. Increase pace only when HR/RPE efficiency improves at the current pace — not every block by default.";
 
-export type ProgrammeBlockNumber = 1 | 2 | 3;
+export type ProgrammeBlockNumber = number;
 
 type ThresholdWeekSpec = {
   reps: number;

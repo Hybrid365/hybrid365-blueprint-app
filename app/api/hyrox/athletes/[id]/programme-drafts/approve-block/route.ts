@@ -3,6 +3,7 @@ import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import { fetchHyroxAthleteById } from "@/app/lib/hyroxAthleteCoachDb";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
+import { parseCoachBlockNumber } from "@/app/lib/hyroxProgrammeDates";
 import { approveProgrammeBlockDrafts } from "@/app/lib/hyroxProgrammeServer";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -23,10 +24,8 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ success: false, error: "Athlete not found." }, { status: 404 });
   }
 
-  const maxBlocks = athlete.programme_length_weeks === 16 ? 4 : 3;
-  const blockNumber = body.block_number
-    ? Math.min(maxBlocks, Math.max(1, Number(body.block_number)))
-    : (athlete.current_block ?? 1);
+  const blockNumber =
+    parseCoachBlockNumber(body.block_number) ?? (athlete.current_block ?? 1);
 
   try {
     const result = await approveProgrammeBlockDrafts(supabase, {

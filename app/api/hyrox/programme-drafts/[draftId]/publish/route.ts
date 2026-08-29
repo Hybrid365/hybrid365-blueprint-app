@@ -3,7 +3,7 @@ import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import { fetchHyroxAthleteById } from "@/app/lib/hyroxAthleteCoachDb";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
-import { validateProgrammeStartDateYmd } from "@/app/lib/hyroxProgrammeDates";
+import { parseCoachBlockNumber, validateProgrammeStartDateYmd } from "@/app/lib/hyroxProgrammeDates";
 import {
   fetchProgrammeDraftById,
   logCoachDraftRoute,
@@ -137,10 +137,9 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     if (publishBlock) {
       const athleteRow = athlete as HyroxAthleteRow;
-      const maxBlocks = athleteRow.programme_length_weeks === 16 ? 4 : 3;
-      const blockNumber = body.block_number
-        ? Math.min(maxBlocks, Math.max(1, Number(body.block_number)))
-        : (draft.block_number ?? athleteRow.current_block ?? 1);
+      const blockNumber =
+        parseCoachBlockNumber(body.block_number) ??
+        (draft.block_number ?? athleteRow.current_block ?? 1);
 
       const blockResult = await publishProgrammeBlock(supabase, {
         athleteRow,

@@ -445,7 +445,7 @@ export function ProgrammeBuilder({
           currentBlock={athlete.programmeBlock}
           programmeLengthWeeks={programmeLengthWeeks}
           generating={saving}
-          onGenerateNextBlock={() => void generateNextBlock(1)}
+          onGenerateNextBlock={() => void generateNextBlock(athlete.programmeBlock)}
         />
       ) : null}
 
