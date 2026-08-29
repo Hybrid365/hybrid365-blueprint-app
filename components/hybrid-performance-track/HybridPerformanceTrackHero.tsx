@@ -14,7 +14,7 @@ export function HybridPerformanceTrackHero() {
 
   return (
     <section className="relative overflow-hidden bg-[#050505] pt-[56px] sm:pt-[64px]">
-      <div className="mx-auto grid max-w-[1200px] items-center gap-8 px-4 py-8 sm:px-6 sm:py-10 md:grid-cols-[1.05fr_0.95fr] md:gap-10 lg:px-8 lg:py-12">
+      <div className="mx-auto grid max-w-[1200px] items-center gap-8 px-4 pt-8 pb-3 sm:px-6 sm:pt-10 sm:pb-4 md:grid-cols-[1.05fr_0.95fr] md:gap-10 lg:px-8 lg:pt-12 lg:pb-5">
         <div className="relative z-10 max-w-xl lg:max-w-none">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4d23c] sm:text-[11px]">
             {h.eyebrow}

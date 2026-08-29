@@ -10,6 +10,7 @@ import { HybridPerformanceTrackPlatform } from "@/components/hybrid-performance-
 import { HybridPerformanceTrackResults } from "@/components/hybrid-performance-track/HybridPerformanceTrackResults";
 import { HybridPerformanceTrackStickyCta } from "@/components/hybrid-performance-track/HybridPerformanceTrackStickyCta";
 import { HybridPerformanceTrackTrain } from "@/components/hybrid-performance-track/HybridPerformanceTrackTrain";
+import { HybridPerformanceTrackVsl } from "@/components/hybrid-performance-track/HybridPerformanceTrackVsl";
 import { HomepageMotionStyles } from "@/components/homepage/HomepageMotion";
 import { HomepageSmoothScroll } from "@/components/homepage/HomepageSmoothScroll";
 
@@ -29,6 +30,7 @@ export default function HybridPerformanceTrackPage() {
       <HybridPerformanceTrackHeader />
       <main className="pb-20 lg:pb-24">
         <HybridPerformanceTrackHero />
+        <HybridPerformanceTrackVsl />
         <HybridPerformanceTrackResults />
         <HybridPerformanceTrackHow />
         <HybridPerformanceTrackTrain />
