@@ -19,7 +19,8 @@ export function HomepageFinalCta() {
     >
       <div className="relative mx-auto max-w-3xl text-center">
         <HomepageHeading as="h2" className="text-[clamp(2rem,7vw,3.5rem)]">
-          {LANDING_FINAL.headline}
+          {LANDING_FINAL.headline[0]}
+          <span className="block text-[#f4d23c]">{LANDING_FINAL.headline[1]}</span>
         </HomepageHeading>
 
         <HomepageCtaRow size="large" className="mt-10 sm:justify-center lg:justify-center">

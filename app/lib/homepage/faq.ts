@@ -40,7 +40,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "only-hyrox",
     question: "Is Hybrid365 only for HYROX athletes?",
     answer:
-      "No. HYROX is one track. Run Performance and Strong. Fit. Fast. sit under the same coaching system.",
+      "No. Hybrid365 is for people who want to become complete hybrid athletes — stronger, leaner, fitter and faster. HYROX is one of the ways that shows up, not the whole brand.",
   },
   {
     id: "checkins",
