@@ -145,8 +145,8 @@ export function validateTalkEnquiry(
   const next_race = trim(input.next_race);
   const source = resolveCoachingEnquirySource(input.source);
   const attribution = sanitizeAttribution(input.attribution);
-  const requireCurrentHyroxLevel =
-    options.requireCurrentHyroxLevel ?? source === COACHING_ENQUIRY_SOURCE.startFunnel;
+  /** HYROX PB is optional on the pathway selector; Talk to Kieran also keeps it optional. */
+  const requireCurrentHyroxLevel = options.requireCurrentHyroxLevel ?? false;
 
   if (!first_name) return { ok: false, error: "Please add your first name." };
   if (tooLong(first_name, MAX.first_name)) return { ok: false, error: "Please use a shorter first name." };
