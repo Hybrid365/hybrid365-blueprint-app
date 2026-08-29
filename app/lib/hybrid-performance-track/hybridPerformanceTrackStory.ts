@@ -15,6 +15,7 @@ export function getHybridPerformanceTrackJoinUrl() {
 
 export const HYBRID_PERFORMANCE_TRACK_NAV = {
   results: "#results",
+  vsl: "#vsl",
   how: "#how-it-works",
   train: "#train",
   platform: "#platform",
@@ -39,6 +40,14 @@ export const HYBRID_PERFORMANCE_TRACK_RESULTS = {
   headline: "Built from the same performance principles.",
   supporting:
     "Verified Hybrid365 results. These athletes were coached 1-1. The Track uses the same training principles — assessment, structured programming, testing and progression — delivered through the platform.",
+} as const;
+
+export const HYBRID_PERFORMANCE_TRACK_VSL = {
+  id: "vsl",
+  eyebrow: "The Hybrid365 approach",
+  headline: ["Build strength.", "Run fast.", "Perform."],
+  supporting:
+    "Watch how we approach building complete hybrid performance — and why your training needs structure, progression and purpose.",
 } as const;
 
 export const HYBRID_PERFORMANCE_TRACK_HOW = {
