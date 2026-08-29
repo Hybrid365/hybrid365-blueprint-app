@@ -32,7 +32,7 @@ export const HYBRID_PERFORMANCE_VSL = {
   id: "vsl",
   label: "Watch the full story",
   /** Swap in a YouTube ID, Vimeo ID or direct src when the VSL is ready. */
-  youtubeId: null as string | null,
+  youtubeId: "LHe592B0I6U" as string | null,
   vimeoId: null as string | null,
   src: null as string | null,
 } as const;
