@@ -36,6 +36,7 @@ export type AthleteProfile = {
   name: string;
   photoSrc: string;
   photoAlt: string;
+  imageClassName?: string;
   metric: { label: string; value: string };
   secondaryMetric?: { label: string; value: string };
   focus: string;
@@ -55,8 +56,9 @@ export const ATHLETE_PROFILES: AthleteProfile[] = [
   {
     id: "ricci-lee-jarvis",
     name: "Ricci-Lee Jarvis",
-    photoSrc: "/images/homepage/team/ricci-lee-jarvis-training.png",
+    photoSrc: "/images/homepage/team/ben-kelly-training.png",
     photoAlt: "Ricci-Lee Jarvis — Hybrid365 athlete",
+    imageClassName: "object-cover object-[42%_12%]",
     metric: { label: "5K", value: "18:45" },
     focus: "Strength + Load Tolerance",
   },

@@ -16,7 +16,7 @@ export const LANDING_HERO = {
   brand: "Hybrid365",
   headline: "Build elite hybrid performance.",
   supporting:
-    "High-performance HYROX coaching built around your ability, your goals and your potential.",
+    "Run faster. Build strength. Get leaner. Develop the fitness and mindset to perform at your highest level.",
   credibility: "59:14 HYROX Pro · 16:00 5K · Coach & Athlete",
   primaryCta: "I'm Ready to Start",
   primaryHref: COACHING_START_URL,
@@ -28,8 +28,9 @@ export const LANDING_HERO = {
 } as const;
 
 export const LANDING_SOCIAL_PROOF = {
-  eyebrow: "Current Hybrid365 athletes",
-  headline: ["Real athletes.", "Real progress."],
+  eyebrow: "Built for more",
+  headline: ["Look strong.", "Run fast.", "Perform."],
+  body: "More muscle. Less body fat. Faster running. Greater strength. A body built to perform.",
 } as const;
 
 export type LandingAthleteCard = {
@@ -37,6 +38,7 @@ export type LandingAthleteCard = {
   name: string;
   photoSrc: string;
   photoAlt: string;
+  imageClassName?: string;
   primary: { label: string; value: string };
   secondary?: { label: string; value: string };
   focus: string;
@@ -49,6 +51,7 @@ export const LANDING_ATHLETE_CARDS: LandingAthleteCard[] = ATHLETE_PROFILES.map(
     name: athlete.name,
     photoSrc: athlete.photoSrc,
     photoAlt: athlete.photoAlt,
+    imageClassName: athlete.imageClassName,
     primary: athlete.metric,
     secondary: athlete.secondaryMetric,
     focus: athlete.focus,
@@ -64,21 +67,21 @@ export const LANDING_SYSTEM = {
       title: "Test",
       line: "Understand where you are.",
       detail:
-        "Assessment and performance testing set current ability and individual training targets.",
+        "Running, fitness, strength and performance testing set current ability and individual training targets.",
     },
     {
       number: "02",
       title: "Train",
-      line: "Train to your numbers.",
+      line: "Train with purpose.",
       detail:
-        "Running paces, bike watts, erg targets, strength prescriptions and progression — built for you.",
+        "Pace, watts, load and intensity — individual targets, not a generic plan.",
     },
     {
       number: "03",
       title: "Progress",
-      line: "See yourself improve.",
+      line: "Raise the standard.",
       detail:
-        "Training, consistency, benchmarks and performance tracked in the athlete platform.",
+        "Measure improvement, review the work and keep moving the target as you get better.",
     },
   ],
 } as const;
@@ -112,7 +115,7 @@ export const LANDING_PRODUCT_SHOWCASE = {
       id: "train",
       eyebrow: "Train",
       headline: "Train to your numbers.",
-      points: ["Session purpose", "Individual targets", "Clear intensity"],
+      points: ["Session purpose", "Pace / watts / load", "Clear intensity"],
       screenId: "threshold-run" as const,
       overlay: {
         kicker: "Product preview",
@@ -132,15 +135,46 @@ export const LANDING_PRODUCT_SHOWCASE = {
 } as const;
 
 export const LANDING_FOUNDER = {
-  eyebrow: "Founder proof",
-  headline: "From 1:08 to sub-60.",
-  subhead: "The system I built for myself.",
+  eyebrow: "More than a physical transformation",
+  headline: ["100KG → 86KG.", "But the biggest change wasn't the weight."],
+  fromWeight: "~100KG",
+  toWeight: "86KG",
   from: "1:08:37",
   to: "59:14",
   event: "Pro Solo HYROX",
   fiveK: "16:00",
   fiveKLabel: "5K",
-  body: "Structured running, threshold work, aerobic progression, strength, strength endurance, HYROX specificity — and better training decisions.",
+  intro: "I wanted more than to look better. I wanted to become someone capable of more.",
+  body: [
+    "Overweight, unhappy with how I looked and lacking direction — then lean muscle, a 16:00 5K and 59:14 Pro Solo HYROX.",
+    "The work built a different body. It also built a different standard: more disciplined, more capable, harder to break.",
+  ],
+  photos: [
+    {
+      src: "/images/homepage/founder/kieran-starting-point.png",
+      alt: "Kieran Higgs — starting point around 100kg",
+      label: "~100KG",
+      imageClassName: "object-cover object-top grayscale",
+    },
+    {
+      src: "/images/community/lean muscle phisique photo.jpg",
+      alt: "Kieran Higgs — current lean physique",
+      label: "86KG",
+      imageClassName: "object-cover object-top",
+    },
+    {
+      src: "/images/community/running.jpg",
+      alt: "Kieran Higgs — running performance",
+      label: "16:00 5K",
+      imageClassName: "object-cover object-center",
+    },
+    {
+      src: "/images/hyrox-team/Hyrox-Result.jpg",
+      alt: "Kieran Higgs — 59:14 Pro Solo HYROX",
+      label: "59:14",
+      imageClassName: "object-cover object-top",
+    },
+  ],
 } as const;
 
 export const LANDING_CLIENT_RESULTS = {
@@ -156,34 +190,38 @@ export const LANDING_HUMAN_COACHING = {
 } as const;
 
 export const LANDING_BELONGING = {
-  eyebrow: "Team environment",
-  headline: ["Coached individually.", "Held by the team."],
-  body: "Team sessions, shared standards and people who actually show up. Not a feed of workouts.",
+  eyebrow: "The Hybrid365 standard",
+  headline: ["Surround yourself with people", "who refuse average."],
+  body: "A community of hard-working people chasing more from themselves — stronger bodies, faster times, bigger goals and higher standards.",
   telegramLabel: "Free community on Telegram",
   telegramHref: SECONDARY_LINKS.telegram,
   photos: [
     {
       src: "/images/homepage/team/ben-kelly-ski-erg.png",
       alt: "Hybrid365 athlete on the ski erg",
+      imageClassName: "object-cover object-top",
     },
     {
       src: "/images/homepage/team/bobby-harrison-farmers-carry.png",
       alt: "Hybrid365 athlete during a farmer carry",
+      imageClassName: "object-cover object-top",
     },
     {
       src: "/images/homepage/team/rae-wall-training.png",
       alt: "Hybrid365 athlete in training",
+      imageClassName: "object-cover object-top",
     },
     {
-      src: "/images/homepage/team/ricci-lee-jarvis-training.png",
-      alt: "Hybrid365 athlete in a strength session",
+      src: "/images/homepage/team/ben-kelly-training.png",
+      alt: "Ricci-Lee Jarvis — Hybrid365 athlete",
+      imageClassName: "object-cover object-[42%_12%]",
     },
   ],
 } as const;
 
 export const LANDING_COACHING_LEVELS = {
-  eyebrow: "Coaching",
-  headline: "How far do you want to take it?",
+  eyebrow: "Current coaching pathways",
+  headline: "Choose how you want to train.",
   reassurance: "Both pathways are personalised. The difference is how close the coaching sits to you.",
   tracks: [
     {
@@ -222,7 +260,7 @@ export const LANDING_COACHING_LEVELS = {
 } as const;
 
 export const LANDING_FINAL = {
-  headline: "Your next PB starts with better training.",
+  headline: ["Build an unbreakable body.", "Develop an unbreakable mindset."],
   primaryCta: "I'm Ready to Start",
   primaryHref: COACHING_START_URL,
   secondaryCta: "Build My Free Week",

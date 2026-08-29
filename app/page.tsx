@@ -8,7 +8,6 @@ import { HomepageAthleteSocialProof } from "@/components/homepage/HomepageAthlet
 import { HomepageHybridSystem } from "@/components/homepage/HomepageHybridSystem";
 import { HomepageProductShowcase } from "@/components/homepage/HomepageProductShowcase";
 import { HomepageFounderProof } from "@/components/homepage/HomepageFounderProof";
-import { HomepageClientResults } from "@/components/homepage/HomepageClientResults";
 import { HomepageHumanCoaching } from "@/components/homepage/HomepageHumanCoaching";
 import { HomepageBelonging } from "@/components/homepage/HomepageBelonging";
 import { HomepageCoachingLevels } from "@/components/homepage/HomepageCoachingLevels";
@@ -27,7 +26,7 @@ const HOMEPAGE_METADATA: Metadata = {
     absolute: "Hybrid365 | Build Elite Hybrid Performance",
   },
   description:
-    "Personalised HYROX training built around your ability, goals and performance data. Real coaching, a real athlete platform, and a clear way to start.",
+    "Coaching for people who want to run faster, build strength, get leaner and perform. Real coaching, a real athlete platform, and a clear way to start.",
 };
 
 type HomeSearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -75,10 +74,9 @@ export default async function HomePage({
       <main>
         <HomepageHero />
         <HomepageAthleteSocialProof />
+        <HomepageFounderProof />
         <HomepageHybridSystem />
         <HomepageProductShowcase />
-        <HomepageFounderProof />
-        <HomepageClientResults />
         <HomepageHumanCoaching />
         <HomepageBelonging />
         <HomepageCoachingLevels />
