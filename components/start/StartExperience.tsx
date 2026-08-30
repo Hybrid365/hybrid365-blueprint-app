@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import type { StartGoalId } from "@/app/lib/start/startCopy";
 import { StartGoalStep } from "./StartGoalStep";
+import { StartHybridSupportStep } from "./StartHybridSupportStep";
 import { StartLeadCapture } from "./StartLeadCapture";
 import { StartSupportStep } from "./StartSupportStep";
 
@@ -82,6 +83,9 @@ export function StartExperience() {
   const leadComplete = leadJustCompleted || readLeadComplete();
 
   if (!showGoal && resolvedGoal && leadComplete) {
+    if (resolvedGoal === "hybrid") {
+      return <StartHybridSupportStep onBack={handleChangeGoal} />;
+    }
     return <StartSupportStep goalId={resolvedGoal} onBack={handleChangeGoal} />;
   }
 
