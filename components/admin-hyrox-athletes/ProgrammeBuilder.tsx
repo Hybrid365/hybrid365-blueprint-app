@@ -39,6 +39,7 @@ import { CoachBlockWeekTabs } from "@/components/admin-hyrox-athletes/CoachBlock
 import { CoachGenerationScopeControl } from "@/components/admin-hyrox-athletes/CoachGenerationScopeControl";
 import { CoachNextBlockPrompt } from "@/components/admin-hyrox-athletes/CoachNextBlockPrompt";
 import { CoachProgrammeStartDateControl } from "@/components/admin-hyrox-athletes/CoachProgrammeStartDateControl";
+import { CopyWeekToModal } from "@/components/admin-hyrox-athletes/CopyWeekToModal";
 import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBlockReviewPanel";
 import { CoachPublishPanel } from "@/components/admin-hyrox-athletes/CoachPublishPanel";
 import { CoachWeekSessionPreviewList } from "@/components/admin-hyrox-athletes/CoachWeekSessionPreviewList";
@@ -147,6 +148,7 @@ export function ProgrammeBuilder({
     showToast,
     showNextBlockPrompt,
     generateNextBlock,
+    copyWeekTo,
     selectedBlock,
     selectBlock,
     blockSummaries,
@@ -172,6 +174,7 @@ export function ProgrammeBuilder({
   const rationaleTouched = useRef(false);
   const [perfWeekConfirmOpen, setPerfWeekConfirmOpen] = useState(false);
   const [hydrateDetailsConfirmOpen, setHydrateDetailsConfirmOpen] = useState(false);
+  const [copyWeekOpen, setCopyWeekOpen] = useState(false);
   const weekIsPublished = Boolean(
     selectedBlockSummary?.status === "published" ||
       effectiveBlockWeeks.find((w) => w.cycle === selectedCycle)?.published
@@ -510,6 +513,16 @@ export function ProgrammeBuilder({
                 ? "Generate 4-week block"
                 : "Generate selected week"}
           </button>
+          {isLive ? (
+            <button
+              type="button"
+              disabled={saving || !draft.days.some((d) => d.sessions.length > 0)}
+              onClick={() => setCopyWeekOpen(true)}
+              className="rounded-full border border-zinc-500 bg-zinc-900 px-3 py-1.5 text-xs font-bold text-zinc-100 disabled:opacity-50"
+            >
+              Copy week to…
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -808,6 +821,22 @@ export function ProgrammeBuilder({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {isLive && livePersistence?.athleteId ? (
+        <CopyWeekToModal
+          open={copyWeekOpen}
+          sourceWeek={draft.week}
+          sourceSessionCount={draft.days.reduce((n, d) => n + d.sessions.length, 0)}
+          athleteId={livePersistence.athleteId}
+          saving={saving}
+          onClose={() => setCopyWeekOpen(false)}
+          onCopy={async (targetWeek, replace) => {
+            const result = await copyWeekTo(draft.week, targetWeek, replace);
+            if (result.ok) setCopyWeekOpen(false);
+            return result;
+          }}
+        />
       ) : null}
     </div>
   );

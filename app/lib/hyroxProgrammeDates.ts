@@ -108,6 +108,27 @@ export function globalWeeksForBlock(blockNumber: number): [number, number, numbe
   return [start, start + 1, start + 2, start + 3];
 }
 
+/** Inverse of `globalWeekForBlock` — Week 17 → Block 5. Not capped at Block 4. */
+export function blockNumberForGlobalWeek(weekNumber: number): number {
+  if (!Number.isFinite(weekNumber) || weekNumber < 1) return 1;
+  return clampProgrammeBlock(Math.floor((weekNumber - 1) / WEEKS_PER_BLOCK) + 1);
+}
+
+/** 1–4 cycle index inside the block. Week 17 → 1, Week 16 → 4. */
+export function cycleInBlockForGlobalWeek(weekNumber: number): 1 | 2 | 3 | 4 {
+  if (!Number.isFinite(weekNumber) || weekNumber < 1) return 1;
+  return ((((Math.floor(weekNumber) - 1) % WEEKS_PER_BLOCK) + 1) as 1 | 2 | 3 | 4);
+}
+
+export function parseCoachGlobalWeek(raw: unknown): number | null {
+  const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+  if (!Number.isFinite(n) || n < 1) return null;
+  const week = Math.floor(n);
+  const maxWeek = PROGRAMME_BLOCK_HARD_CAP * WEEKS_PER_BLOCK;
+  if (week > maxWeek) return null;
+  return week;
+}
+
 const CONTINUATION_ROLES: [string, string, string, string] = [
   "Build",
   "Progression",
