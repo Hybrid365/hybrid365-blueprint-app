@@ -15,6 +15,8 @@ import type { CoachPublishResultState } from "@/components/admin-hyrox-athletes/
 import type { CoachDraftDebugState } from "@/components/admin-hyrox-athletes/CoachProgrammeDraftDebugPanel";
 import { draftDbToCoachStatus } from "@/app/lib/hyroxCoachProgrammeStatusMap";
 import {
+  blockNumberForGlobalWeek,
+  cycleInBlockForGlobalWeek,
   defaultProgrammeStartYmd,
   formatWeekDateRangeFromYmd,
   isMondayYmd,
@@ -108,6 +110,7 @@ export function useCoachBlockProgramme(params: {
   const isDraftDirtyRef = useRef(false);
   const activeDraftIdRef = useRef<string | null>(null);
   const userPickedBlockRef = useRef(false);
+  const pendingCycleAfterBlockRef = useRef<1 | 2 | 3 | 4 | null>(null);
   const [saveDebugTimestamps, setSaveDebugTimestamps] = useState({
     saveButtonClickedAt: null as string | null,
     saveRequestStartedAt: null as string | null,
@@ -273,11 +276,13 @@ export function useCoachBlockProgramme(params: {
   useEffect(() => {
     if (!isLive) return;
     isDraftDirtyRef.current = false;
-    setSelectedCycle(1);
+    const cycle = pendingCycleAfterBlockRef.current ?? 1;
+    pendingCycleAfterBlockRef.current = null;
+    setSelectedCycle(cycle);
     void loadBlockMeta().then((weeks) => {
-      if (weeks?.length) applyWeekFromMeta(weeks, 1, { force: true });
+      if (weeks?.length) applyWeekFromMeta(weeks, cycle, { force: true });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload week 1 when block changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload selected cycle when block changes
   }, [selectedBlock]);
 
   const persistDraft = useCallback(
@@ -592,10 +597,85 @@ export function useCoachBlockProgramme(params: {
         }
       }
       userPickedBlockRef.current = true;
+      const nextCycle = pendingCycleAfterBlockRef.current ?? 1;
+      setSelectedCycle(nextCycle);
       setSelectedBlock(block);
-      setSelectedCycle(1);
     },
     [ensureDraftSaved, isLive, selectedBlock, showToast, unsavedChanges]
+  );
+
+  const copyWeekTo = useCallback(
+    async (
+      sourceWeek: number,
+      targetWeek: number,
+      replace: boolean
+    ): Promise<{ ok: boolean; error?: string; code?: string }> => {
+      if (!isLive || !livePersistence?.athleteId) {
+        return { ok: false, error: "Copy week is only available for live athlete programmes." };
+      }
+      setSaving(true);
+      try {
+        const res = await fetch(
+          `/api/hyrox/athletes/${livePersistence.athleteId}/programme-drafts/copy-week`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source_week: sourceWeek,
+              target_week: targetWeek,
+              replace,
+              effective_profile: livePersistence.effectiveProfile ?? undefined,
+            }),
+          }
+        );
+        const data = (await res.json()) as {
+          success?: boolean;
+          error?: string;
+          code?: string;
+          targetBlock?: number;
+          targetCycle?: 1 | 2 | 3 | 4;
+          targetWeek?: number;
+          sourceWeek?: number;
+          message?: string;
+          detail?: string;
+          draftId?: string;
+        };
+        if (!res.ok || !data.success) {
+          return { ok: false, error: data.error ?? "Copy failed.", code: data.code };
+        }
+
+        const targetBlock = data.targetBlock ?? blockNumberForGlobalWeek(targetWeek);
+        const targetCycle = data.targetCycle ?? cycleInBlockForGlobalWeek(targetWeek);
+        showToast(
+          `${data.message ?? `WEEK ${sourceWeek} COPIED TO WEEK ${targetWeek}`}. ${data.detail ?? "Review the sessions before publishing."}`
+        );
+
+        if (targetBlock === selectedBlock) {
+          const weeks = await loadBlockMeta();
+          setSelectedCycle(targetCycle);
+          if (weeks?.length) applyWeekFromMeta(weeks, targetCycle, { force: true });
+        } else {
+          pendingCycleAfterBlockRef.current = targetCycle;
+          userPickedBlockRef.current = true;
+          setSelectedCycle(targetCycle);
+          setSelectedBlock(targetBlock);
+        }
+        if (data.draftId) livePersistence.onDraftIdChange(data.draftId);
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Network error copying week." };
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      applyWeekFromMeta,
+      isLive,
+      livePersistence,
+      loadBlockMeta,
+      selectedBlock,
+      showToast,
+    ]
   );
 
   const selectCycle = useCallback(
@@ -1414,5 +1494,6 @@ export function useCoachBlockProgramme(params: {
     showNextBlockPrompt,
     prepareNextBlock,
     generateNextBlock,
+    copyWeekTo,
   };
 }

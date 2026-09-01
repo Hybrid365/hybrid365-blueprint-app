@@ -4,7 +4,9 @@
  */
 
 import {
+  blockNumberForGlobalWeek,
   clampProgrammeBlock,
+  cycleInBlockForGlobalWeek,
   globalWeeksForBlock,
   nextBlockNumber,
   parseCoachBlockNumber,
@@ -110,6 +112,13 @@ assert(JSON.stringify(globalWeeksForBlock(3)) === JSON.stringify([9, 10, 11, 12]
 assert(JSON.stringify(globalWeeksForBlock(4)) === JSON.stringify([13, 14, 15, 16]), "Block 4 weeks 13–16");
 assert(JSON.stringify(globalWeeksForBlock(5)) === JSON.stringify([17, 18, 19, 20]), "Block 5 weeks 17–20");
 ok("block numbering: 1=1–4, 2=5–8, 3=9–12, 4=13–16, 5=17–20");
+
+assert(blockNumberForGlobalWeek(13) === 4 && cycleInBlockForGlobalWeek(13) === 1, "W13 is Block 4 cycle 1");
+assert(blockNumberForGlobalWeek(14) === 4 && cycleInBlockForGlobalWeek(14) === 2, "W14 is Block 4 cycle 2");
+assert(blockNumberForGlobalWeek(16) === 4 && cycleInBlockForGlobalWeek(16) === 4, "W16 is Block 4 cycle 4");
+assert(blockNumberForGlobalWeek(17) === 5 && cycleInBlockForGlobalWeek(17) === 1, "W17 is Block 5 cycle 1");
+assert(globalWeekForBlock(5, 1) === 17, "Block 5 W1 is global week 17");
+ok("Week 16 → 17 resolves to Block 5 without hard-coding Block 4");
 
 const b4Weeks = new Set(globalWeeksForBlock(4));
 const b5Weeks = new Set(globalWeeksForBlock(5));
