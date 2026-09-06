@@ -153,6 +153,9 @@ export function ProgrammeBuilder({
     selectBlock,
     blockSummaries,
     selectedBlockSummary,
+    carryForwardEnabled,
+    setCarryForwardEnabled,
+    carryForwardNotice,
   } = block;
 
   const [addTarget, setAddTarget] = useState<{ day: WeekdayName; slot: SandboxTimeOfDay } | null>({
@@ -525,6 +528,41 @@ export function ProgrammeBuilder({
           ) : null}
         </div>
       </div>
+
+      {isLive ? (
+        <label className="flex items-start gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2.5 text-xs text-zinc-300">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={carryForwardEnabled}
+            onChange={(e) => setCarryForwardEnabled(e.target.checked)}
+          />
+          <span>
+            <span className="font-semibold text-zinc-100">Start next week from previous programming</span>
+            <span className="mt-0.5 block text-[11px] text-zinc-500">
+              When you open the next consecutive week and it is empty, copy this week&apos;s sessions
+              as an unpublished draft. Jumps and existing weeks are left untouched.
+            </span>
+          </span>
+        </label>
+      ) : null}
+
+      {carryForwardNotice ? (
+        <div
+          className={`rounded-xl border px-3 py-2.5 text-sm ${
+            carryForwardNotice.tone === "copied"
+              ? "border-yellow-400/40 bg-yellow-400/10 text-yellow-100"
+              : carryForwardNotice.tone === "preserved"
+                ? "border-sky-500/40 bg-sky-950/30 text-sky-100"
+                : "border-zinc-700 bg-zinc-950/80 text-zinc-200"
+          }`}
+        >
+          <p className="font-bold tracking-wide">{carryForwardNotice.title}</p>
+          {carryForwardNotice.detail ? (
+            <p className="mt-1 text-xs opacity-90">{carryForwardNotice.detail}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <CoachBlockWeekTabs
         weeks={effectiveBlockWeeks}

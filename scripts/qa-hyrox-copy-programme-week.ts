@@ -6,7 +6,9 @@
 import {
   cloneCoachDraftWeekForTarget,
   countDraftProgrammingSessions,
+  resolveAutoCarryForward,
   resolveCopyWeekDecision,
+  shouldAutoCarryProgrammeWeek,
 } from "../app/lib/hyroxCopyProgrammeWeek";
 import type { CoachDraftSession, CoachDraftWeek } from "../app/lib/hyroxCoachProgrammeDraft";
 import {
@@ -212,5 +214,18 @@ ok("date shifting preserves weekday into the target week");
 assert(countDraftProgrammingSessions(source) === 6, "source session count helper");
 assert(countDraftProgrammingSessions(cloned) === 6, "cloned session count helper");
 ok("session counts");
+
+assert(shouldAutoCarryProgrammeWeek(14, 15), "manual copy helpers still allow consecutive detection");
+assert(!shouldAutoCarryProgrammeWeek(14, 16), "manual copy remains the path for jumps");
+assert(
+  resolveAutoCarryForward({
+    fromWeek: 14,
+    toWeek: 15,
+    target: { hasProgramming: true, published: false, athleteHistory: false },
+    sourceHasProgramming: true,
+  }).action === "preserve",
+  "auto-carry never replaces a populated target"
+);
+ok("auto-carry helpers do not change manual copy-week replace rules");
 
 console.log(`\n${passed} copy-week checks passed.`);

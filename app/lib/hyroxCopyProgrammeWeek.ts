@@ -121,6 +121,56 @@ export type CopyWeekDestination = {
   replaceAllowed: boolean;
 };
 
+export const AUTO_CARRY_COPY = {
+  copiedTitle: (fromWeek: number, toWeek: number) =>
+    `WEEK ${toWeek} STARTED FROM WEEK ${fromWeek}`,
+  copiedDetail:
+    "Previous programming has been copied forward. Review and progress the sessions before publishing.",
+  preservedTitle: (toWeek: number) => `WEEK ${toWeek} ALREADY CONTAINS PROGRAMMING`,
+  preservedDetail: "Existing programming has been preserved.",
+  sourceUnavailable: "No previous programme was available to copy.",
+} as const;
+
+/** Consecutive +1 week only. Jumps and backwards changes never auto-copy. */
+export function shouldAutoCarryProgrammeWeek(fromWeek: number, toWeek: number): boolean {
+  if (!Number.isInteger(fromWeek) || !Number.isInteger(toWeek)) return false;
+  if (fromWeek < 1 || toWeek < 1) return false;
+  return toWeek === fromWeek + 1;
+}
+
+export type AutoCarryForwardDecision =
+  | { action: "copy" }
+  | { action: "preserve"; reason: "has_programming" | "published" | "athlete_activity" }
+  | { action: "skip"; reason: "not_consecutive" | "source_unavailable" };
+
+/**
+ * Decide whether consecutive week navigation may seed an empty target from the previous week.
+ * Never overwrites; never fails the week change.
+ */
+export function resolveAutoCarryForward(params: {
+  fromWeek: number;
+  toWeek: number;
+  target: CopyWeekTargetState;
+  sourceHasProgramming: boolean;
+}): AutoCarryForwardDecision {
+  if (!shouldAutoCarryProgrammeWeek(params.fromWeek, params.toWeek)) {
+    return { action: "skip", reason: "not_consecutive" };
+  }
+  if (params.target.athleteHistory) {
+    return { action: "preserve", reason: "athlete_activity" };
+  }
+  if (params.target.published) {
+    return { action: "preserve", reason: "published" };
+  }
+  if (params.target.hasProgramming) {
+    return { action: "preserve", reason: "has_programming" };
+  }
+  if (!params.sourceHasProgramming) {
+    return { action: "skip", reason: "source_unavailable" };
+  }
+  return { action: "copy" };
+}
+
 export function destinationMetaForWeek(params: {
   week: number;
   programmeStartYmd: string | null;

@@ -26,6 +26,7 @@ import {
   weekDateRangeFromProgrammeStart,
   type ProgrammeLengthWeeks,
 } from "@/app/lib/hyroxProgrammeDates";
+import { shouldAutoCarryProgrammeWeek } from "@/app/lib/hyroxCopyProgrammeWeek";
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import type { HyroxAthleteProfile } from "@/app/lib/hyroxAthleteProfileTypes";
 import type { LiveProgrammePersistenceProps } from "./CoachAthleteDashboard";
@@ -126,6 +127,12 @@ export function useCoachBlockProgramme(params: {
   const programmeLengthWeeks = (livePersistence?.programmeLengthWeeks === 16
     ? 16
     : 12) as ProgrammeLengthWeeks;
+  const [carryForwardEnabled, setCarryForwardEnabled] = useState(true);
+  const [carryForwardNotice, setCarryForwardNotice] = useState<{
+    tone: "copied" | "preserved" | "skipped";
+    title: string;
+    detail: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (livePersistence?.programmeStartDate) {
@@ -586,6 +593,96 @@ export function useCoachBlockProgramme(params: {
     [persistDraft, unsavedChanges]
   );
 
+  const openWeekAfterCarry = useCallback(
+    async (toWeek: number, draftId?: string | null) => {
+      const targetBlock = blockNumberForGlobalWeek(toWeek);
+      const targetCycle = cycleInBlockForGlobalWeek(toWeek);
+      if (targetBlock === selectedBlock) {
+        const weeks = await loadBlockMeta();
+        setSelectedCycle(targetCycle);
+        const week = weeks?.find((w) => w.cycle === targetCycle);
+        if (week?.draftData) {
+          applyWeekFromMeta(weeks, targetCycle, { force: true });
+        } else {
+          const generated = generateCoachDraftWeekForBlockCycle(athlete, targetCycle);
+          setDraft(generated);
+          markDraftSaved(generated);
+        }
+      } else {
+        pendingCycleAfterBlockRef.current = targetCycle;
+        userPickedBlockRef.current = true;
+        setSelectedCycle(targetCycle);
+        setSelectedBlock(targetBlock);
+      }
+      if (draftId) livePersistence?.onDraftIdChange(draftId);
+    },
+    [applyWeekFromMeta, athlete, livePersistence, loadBlockMeta, markDraftSaved, selectedBlock]
+  );
+
+  const autoCarryIfNeeded = useCallback(
+    async (fromWeek: number, toWeek: number): Promise<boolean> => {
+      if (!isLive || !livePersistence?.athleteId) return false;
+      if (!carryForwardEnabled) return false;
+      if (!shouldAutoCarryProgrammeWeek(fromWeek, toWeek)) return false;
+
+      setSaving(true);
+      try {
+        const res = await fetch(
+          `/api/hyrox/athletes/${livePersistence.athleteId}/programme-drafts/auto-carry-week`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from_week: fromWeek,
+              to_week: toWeek,
+              effective_profile: livePersistence.effectiveProfile ?? undefined,
+            }),
+          }
+        );
+        const data = (await res.json()) as {
+          success?: boolean;
+          error?: string;
+          status?: "copied" | "preserved" | "skipped";
+          message?: string;
+          detail?: string | null;
+          draftId?: string | null;
+        };
+        if (!res.ok || !data.success) {
+          showToast(data.error ?? "Could not start the next week from previous programming.");
+          return false;
+        }
+
+        const title = data.message?.trim() ?? "";
+        const detail = data.detail?.trim() || null;
+        if (data.status === "copied" || data.status === "preserved" || title) {
+          setCarryForwardNotice({
+            tone: data.status === "copied" ? "copied" : data.status === "preserved" ? "preserved" : "skipped",
+            title: title || "Week updated",
+            detail,
+          });
+          showToast(detail ? `${title}. ${detail}` : title);
+        } else {
+          setCarryForwardNotice(null);
+        }
+
+        await openWeekAfterCarry(toWeek, data.draftId);
+        return true;
+      } catch {
+        showToast("Could not start the next week from previous programming.");
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      carryForwardEnabled,
+      isLive,
+      livePersistence,
+      openWeekAfterCarry,
+      showToast,
+    ]
+  );
+
   const selectBlock = useCallback(
     async (block: number) => {
       if (block === selectedBlock) return;
@@ -596,12 +693,25 @@ export function useCoachBlockProgramme(params: {
           return;
         }
       }
-      userPickedBlockRef.current = true;
       const nextCycle = pendingCycleAfterBlockRef.current ?? 1;
+      const fromWeek = globalWeekForBlock(selectedBlock, selectedCycle);
+      const toWeek = globalWeekForBlock(block, nextCycle);
+      const carried = await autoCarryIfNeeded(fromWeek, toWeek);
+      if (carried) return;
+      setCarryForwardNotice(null);
+      userPickedBlockRef.current = true;
       setSelectedCycle(nextCycle);
       setSelectedBlock(block);
     },
-    [ensureDraftSaved, isLive, selectedBlock, showToast, unsavedChanges]
+    [
+      autoCarryIfNeeded,
+      ensureDraftSaved,
+      isLive,
+      selectedBlock,
+      selectedCycle,
+      showToast,
+      unsavedChanges,
+    ]
   );
 
   const copyWeekTo = useCallback(
@@ -680,6 +790,7 @@ export function useCoachBlockProgramme(params: {
 
   const selectCycle = useCallback(
     async (cycle: 1 | 2 | 3 | 4) => {
+      if (cycle === selectedCycle) return;
       if (isLive && unsavedChanges) {
         const ok = await ensureDraftSaved({ silent: true });
         if (!ok) {
@@ -687,6 +798,11 @@ export function useCoachBlockProgramme(params: {
           return;
         }
       }
+      const fromWeek = globalWeekForBlock(selectedBlock, selectedCycle);
+      const toWeek = globalWeekForBlock(selectedBlock, cycle);
+      const carried = await autoCarryIfNeeded(fromWeek, toWeek);
+      if (carried) return;
+      setCarryForwardNotice(null);
       setSelectedCycle(cycle);
       const week = blockWeeks.find((w) => w.cycle === cycle);
       if (week?.draftData) {
@@ -703,11 +819,14 @@ export function useCoachBlockProgramme(params: {
     },
     [
       athlete,
+      autoCarryIfNeeded,
       blockWeeks,
       ensureDraftSaved,
       isLive,
       livePersistence,
       markDraftSaved,
+      selectedBlock,
+      selectedCycle,
       showToast,
       syncStatusFromWeek,
       unsavedChanges,
@@ -1495,5 +1614,8 @@ export function useCoachBlockProgramme(params: {
     prepareNextBlock,
     generateNextBlock,
     copyWeekTo,
+    carryForwardEnabled,
+    setCarryForwardEnabled,
+    carryForwardNotice,
   };
 }
