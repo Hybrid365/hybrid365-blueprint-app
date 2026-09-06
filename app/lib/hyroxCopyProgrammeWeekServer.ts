@@ -16,7 +16,9 @@ import {
   cloneCoachDraftWeekForTarget,
   countDraftProgrammingSessions,
   destinationMetaForWeek,
+  resolveAutoCarryForward,
   resolveCopyWeekDecision,
+  AUTO_CARRY_COPY,
   COPY_WEEK_ERROR,
   type CopyWeekDestination,
   type CopyWeekTargetState,
@@ -245,4 +247,174 @@ export async function copyProgrammeWeekDraft(
     sessionCount: sourceCount,
     replaced: decision.action === "replace",
   };
+}
+
+async function inspectTargetWeekForAutoCarry(
+  supabase: SupabaseClient,
+  athleteId: string,
+  weekNumber: number
+): Promise<CopyWeekTargetState> {
+  const state = await inspectTargetWeekState(supabase, athleteId, weekNumber);
+  const { data: weekRows, error: weekError } = await supabase
+    .from("hyrox_programme_weeks")
+    .select("id, status")
+    .eq("athlete_id", athleteId)
+    .eq("week_number", weekNumber);
+  if (weekError) throw new Error(weekError.message);
+  const weeks = (weekRows as Array<{ id: string; status: string }> | null) ?? [];
+  if (weeks.length === 0) return state;
+
+  const { data: sessionRows, error: sessionError } = await supabase
+    .from("hyrox_programme_sessions")
+    .select("status, completed_at, athlete_feedback")
+    .in(
+      "programme_week_id",
+      weeks.map((row) => row.id)
+    );
+  if (sessionError) throw new Error(sessionError.message);
+  const sessions = (sessionRows as Pick<
+    HyroxProgrammeSessionRow,
+    "status" | "completed_at" | "athlete_feedback"
+  >[]) ?? [];
+
+  return {
+    hasProgramming: state.hasProgramming || sessions.length > 0,
+    published: state.published || weeks.some((row) => row.status === "published"),
+    athleteHistory:
+      state.athleteHistory || sessions.some((row) => publishedSessionHasAthleteLogs(row)),
+  };
+}
+
+export type AutoCarryForwardResult = {
+  status: "copied" | "preserved" | "skipped";
+  fromWeek: number;
+  toWeek: number;
+  targetBlock: number;
+  targetCycle: 1 | 2 | 3 | 4;
+  sessionCount: number | null;
+  draftId: string | null;
+  message: string;
+  detail: string | null;
+  reason:
+    | "copied"
+    | "has_programming"
+    | "published"
+    | "athlete_activity"
+    | "not_consecutive"
+    | "source_unavailable";
+};
+
+/**
+ * Consecutive week convenience: seed an empty target from the previous week's coach draft.
+ * Never overwrites. Never fails the week change. Reuses copyProgrammeWeekDraft.
+ */
+export async function autoCarryForwardProgrammeWeek(
+  supabase: SupabaseClient,
+  params: {
+    athleteId: string;
+    athlete: CoachAthlete;
+    fromWeek: number;
+    toWeek: number;
+  }
+): Promise<AutoCarryForwardResult> {
+  const fromWeek = parseCoachGlobalWeek(params.fromWeek);
+  const toWeek = parseCoachGlobalWeek(params.toWeek);
+  if (!fromWeek || !toWeek) {
+    throw new CopyProgrammeWeekError("INVALID_WEEK", "Invalid source or target week.", 400);
+  }
+
+  const targetBlock = blockNumberForGlobalWeek(toWeek);
+  const targetCycle = cycleInBlockForGlobalWeek(toWeek);
+  const base = {
+    fromWeek,
+    toWeek,
+    targetBlock,
+    targetCycle,
+    sessionCount: null as number | null,
+    draftId: null as string | null,
+  };
+
+  const sourceRow = await fetchLatestDraftForGlobalWeek(supabase, params.athleteId, fromWeek);
+  const sourceDraft = sourceRow ? parseCoachDraftWeekJson(sourceRow.draft_data) : null;
+  const sourceHasProgramming = countDraftProgrammingSessions(sourceDraft) > 0;
+  const target = await inspectTargetWeekForAutoCarry(supabase, params.athleteId, toWeek);
+  const decision = resolveAutoCarryForward({
+    fromWeek,
+    toWeek,
+    target,
+    sourceHasProgramming,
+  });
+
+  if (decision.action === "skip") {
+    return {
+      ...base,
+      status: "skipped",
+      reason: decision.reason,
+      message:
+        decision.reason === "source_unavailable" ? AUTO_CARRY_COPY.sourceUnavailable : "",
+      detail: null,
+    };
+  }
+
+  if (decision.action === "preserve") {
+    return {
+      ...base,
+      status: "preserved",
+      reason: decision.reason,
+      message: AUTO_CARRY_COPY.preservedTitle(toWeek),
+      detail: AUTO_CARRY_COPY.preservedDetail,
+    };
+  }
+
+  try {
+    const copied = await copyProgrammeWeekDraft(supabase, {
+      athleteId: params.athleteId,
+      athlete: params.athlete,
+      sourceWeek: fromWeek,
+      targetWeek: toWeek,
+      replace: false,
+    });
+    return {
+      ...base,
+      status: "copied",
+      reason: "copied",
+      sessionCount: copied.sessionCount,
+      draftId: copied.draft.id,
+      targetBlock: copied.targetBlock,
+      targetCycle: copied.targetCycle,
+      message: AUTO_CARRY_COPY.copiedTitle(fromWeek, toWeek),
+      detail: AUTO_CARRY_COPY.copiedDetail,
+    };
+  } catch (e) {
+    if (e instanceof CopyProgrammeWeekError) {
+      if (
+        e.code === "TARGET_HAS_PROGRAMMING" ||
+        e.code === "TARGET_PUBLISHED" ||
+        e.code === "TARGET_ATHLETE_ACTIVITY"
+      ) {
+        return {
+          ...base,
+          status: "preserved",
+          reason:
+            e.code === "TARGET_PUBLISHED"
+              ? "published"
+              : e.code === "TARGET_ATHLETE_ACTIVITY"
+                ? "athlete_activity"
+                : "has_programming",
+          message: AUTO_CARRY_COPY.preservedTitle(toWeek),
+          detail: AUTO_CARRY_COPY.preservedDetail,
+        };
+      }
+      if (e.code === "SOURCE_MISSING" || e.code === "SOURCE_EMPTY") {
+        return {
+          ...base,
+          status: "skipped",
+          reason: "source_unavailable",
+          message: AUTO_CARRY_COPY.sourceUnavailable,
+          detail: null,
+        };
+      }
+    }
+    throw e;
+  }
 }
