@@ -21,6 +21,7 @@
     "qa:hyrox-programme-blocks": "npx --yes tsx scripts/qa-hyrox-programme-blocks.ts",
     "qa:hyrox-copy-programme-week": "npx --yes tsx scripts/qa-hyrox-copy-programme-week.ts",
     "qa:hyrox-auto-carry-week": "npx --yes tsx scripts/qa-hyrox-auto-carry-week.ts",
+    "qa:hyrox-middleware-admin-timeout": "npx --yes tsx scripts/qa-hyrox-middleware-admin-timeout.ts",
     "export:homepage-phones": "npx --yes tsx scripts/homepage/export-phone-screens.ts"
   },
   "dependencies": {

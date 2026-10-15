@@ -17,6 +17,12 @@ import {
   isAthletePublicPath,
   isProtectedAthletePortalPath,
 } from "@/app/lib/supabase/athleteAuthGate";
+import { hasValidSupabaseSessionCookies } from "@/app/lib/supabase/apiRoute";
+import {
+  MIDDLEWARE_AUTH_CALL_TIMEOUT_MS,
+  isHyroxAdminProtectedPath,
+  withAuthCallTimeout,
+} from "@/app/lib/supabase/hyroxMiddlewareAuth";
 import {
   isHyroxProgrammeRoute,
   isNextRouterPrefetch,
@@ -250,6 +256,37 @@ export async function updateSession(request: NextRequest) {
   });
 }
 
+/**
+ * Admin coach gate only — no athlete table, RPC, or evaluateAthleteEmailAccess.
+ * Those extra awaits (including createCoachServerClient → next/headers cookies())
+ * can hang Edge middleware past Vercel's invocation limit.
+ */
+async function fetchHyroxCoachAccessForMiddleware(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  email: string | null | undefined
+): Promise<{ isCoach: boolean; profileRole: ProfileRole | null }> {
+  if (resolveHyroxCoachAccess(null, email)) {
+    return { isCoach: true, profileRole: null };
+  }
+
+  const timed = await withAuthCallTimeout(
+    supabase.from("profiles").select("role").eq("id", userId).maybeSingle() as Promise<{
+      data: { role: string | null } | null;
+    }>,
+    MIDDLEWARE_AUTH_CALL_TIMEOUT_MS,
+    "admin-profile"
+  );
+  const profileRole = timed.ok
+    ? ((timed.value.data?.role as ProfileRole | undefined) ?? null)
+    : null;
+
+  return {
+    isCoach: resolveHyroxCoachAccess(profileRole, email),
+    profileRole,
+  };
+}
+
 async function fetchHyroxAccessForMiddleware(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
@@ -312,6 +349,11 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const { supabase, getPendingCookies } = createMiddlewareClient(request);
   const hasAuthCookie = authCookiesPresentOnRequest(request);
+  const { cookies: mergedRequestCookies } = mergeAthleteRequestCookies({
+    requestCookies: request.cookies.getAll(),
+    rawCookieHeader: request.headers.get("cookie") ?? "",
+  });
+  const validSessionCookie = hasValidSupabaseSessionCookies(mergedRequestCookies);
   const hasH365AthleteSession = h365AthleteSessionPresentOnRequest(request);
   const isPrefetch = isNextRouterPrefetch(request);
   const internalNav =
@@ -319,7 +361,11 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
 
   const { user, error: userError, retriedWithSession } = await resolveAuthUserForMiddleware(
     supabase,
-    hasAuthCookie
+    hasAuthCookie,
+    {
+      timeoutMs: MIDDLEWARE_AUTH_CALL_TIMEOUT_MS,
+      refreshSession: validSessionCookie,
+    }
   );
 
   const pendingCookies = getPendingCookies();
@@ -460,9 +506,8 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
     );
   }
 
-  const access = await fetchHyroxAccessForMiddleware(supabase, user.id, user.email);
-
-  if (path.startsWith("/admin")) {
+  if (isHyroxAdminProtectedPath(path)) {
+    const access = await fetchHyroxCoachAccessForMiddleware(supabase, user.id, user.email);
     if (!access.isCoach) {
       const denied = request.nextUrl.clone();
       denied.pathname = "/admin/no-access";
@@ -480,6 +525,8 @@ export async function updateHyroxProtectedSession(request: NextRequest) {
       metaWithAuthUser({ ...baseMeta, stage: "admin-ok" }, user)
     );
   }
+
+  const access = await fetchHyroxAccessForMiddleware(supabase, user.id, user.email);
 
   if (path.startsWith("/athlete")) {
     if (!access.isAthlete) {
