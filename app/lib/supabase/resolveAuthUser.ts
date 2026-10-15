@@ -1,5 +1,12 @@
 import type { AuthError, SupabaseClient, User } from "@supabase/supabase-js";
 import { hasSupabaseAuthCookieNames } from "@/app/lib/supabase/apiRoute";
+import { withAuthCallTimeout } from "@/app/lib/supabase/hyroxMiddlewareAuth";
+
+export {
+  MIDDLEWARE_AUTH_CALL_TIMEOUT_MS,
+  isHyroxAdminProtectedPath,
+  withAuthCallTimeout,
+} from "@/app/lib/supabase/hyroxMiddlewareAuth";
 
 export type AuthUserResolution = {
   user: User | null;
@@ -58,25 +65,53 @@ export function authCookiesPresent(cookies: { name: string }[]): boolean {
   return hasSupabaseAuthCookieNames(cookies);
 }
 
+export type MiddlewareAuthResolveOptions = {
+  /** Cap each Auth API call so Edge middleware cannot hit Vercel's invocation timeout. */
+  timeoutMs?: number;
+  /** When false, skip getSession refresh (short/junk cookies). Defaults to hasAuthCookie. */
+  refreshSession?: boolean;
+};
+
 /**
  * Middleware-optimised auth: refresh session first, then resolve user.
  * Avoids redirecting on expired access tokens when a refresh token is still valid.
+ * Optional timeoutMs prevents a hung refresh from becoming MIDDLEWARE_INVOCATION_TIMEOUT.
  */
 export async function resolveAuthUserForMiddleware(
   supabase: SupabaseClient,
-  hasAuthCookie: boolean
+  hasAuthCookie: boolean,
+  options?: MiddlewareAuthResolveOptions
 ): Promise<AuthUserResolution> {
+  const timeoutMs = options?.timeoutMs;
+  const refreshSession = options?.refreshSession ?? hasAuthCookie;
+
+  const getSessionSafe = async () => {
+    const pending = supabase.auth.getSession();
+    if (timeoutMs == null) return pending;
+    const timed = await withAuthCallTimeout(pending, timeoutMs, "getSession");
+    if (!timed.ok) return { data: { session: null }, error: null };
+    return timed.value;
+  };
+
+  const getUserSafe = async (): Promise<{ user: User | null; error: AuthError | null }> => {
+    const pending = supabase.auth.getUser();
+    if (timeoutMs == null) {
+      const { data, error } = await pending;
+      return { user: data.user ?? null, error };
+    }
+    const timed = await withAuthCallTimeout(pending, timeoutMs, "getUser");
+    if (!timed.ok) return { user: null, error: null };
+    return { user: timed.value.data.user ?? null, error: timed.value.error };
+  };
+
   let retriedWithSession = false;
 
-  if (hasAuthCookie) {
-    await supabase.auth.getSession();
+  if (refreshSession) {
+    await getSessionSafe();
     retriedWithSession = true;
   }
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { user, error } = await getUserSafe();
 
   if (user) {
     return { user, error, retriedWithSession };
@@ -87,20 +122,18 @@ export async function resolveAuthUserForMiddleware(
   }
 
   if (!retriedWithSession) {
-    await supabase.auth.getSession();
+    await getSessionSafe();
     retriedWithSession = true;
-    const retry = await supabase.auth.getUser();
-    if (retry.data.user) {
-      return { user: retry.data.user, error: retry.error, retriedWithSession: true };
+    const retry = await getUserSafe();
+    if (retry.user) {
+      return { user: retry.user, error: retry.error, retriedWithSession: true };
     }
   }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const sessionResult = await getSessionSafe();
 
   return {
-    user: session?.user ?? null,
+    user: sessionResult.data.session?.user ?? null,
     error,
     retriedWithSession: true,
   };
