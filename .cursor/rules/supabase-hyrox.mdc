@@ -1,0 +1,21 @@
+---
+description: Supabase migrations and RLS for HYROX data
+globs: supabase/**/*.sql
+alwaysApply: false
+---
+
+# Supabase
+
+Add a new migration file. Do not edit an already shipped migration to change production quietly.
+
+HYROX athlete tables use `hyrox_athletes` and `is_hyrox_coach()`. Athletes may read and insert their own rows. They do not approve, activate, or read another athlete. Coaches get full access. Service role bypasses RLS, so the API must check the coach or athlete first.
+
+Prefer append-only history plus a partial unique index for "one active row" over `upsert` that replaces the latest row.
+
+Do not apply SQL to production from this change. Say how to roll it back (`drop table` or the reverse statements). `017_hyrox_daily_readiness.sql` stays unapplied until a readiness task says otherwise.
+
+```sql
+-- active programming row: only one, and only if approved
+create unique index ... (athlete_id, benchmark_type)
+  where active_for_programming = true;
+```

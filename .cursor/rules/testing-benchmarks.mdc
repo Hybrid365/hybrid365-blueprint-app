@@ -1,0 +1,15 @@
+---
+description: Testing and benchmark history rules
+globs: app/athlete/testing/**/*.{ts,tsx},app/athlete/performance-testing/**/*.{ts,tsx},app/athlete/benchmarks/**/*.{ts,tsx},app/lib/hyroxAthleteTestingDb.ts,app/lib/hyroxPerformanceTestingServer.ts,app/lib/hyroxBenchmark*.ts,app/lib/hyroxAthleteBenchmarkServer.ts
+alwaysApply: false
+---
+
+# Testing and benchmarks
+
+Onboarding tests (`hyrox_testing_results`) and performance tests (`hyrox_performance_test_results`) are different flows. Onboarding ski is 1K. Performance-test ski is 2K. Do not store one as the other.
+
+Those tables currently overwrite the latest row. New benchmark history must append. See `docs/contracts/performance-profile.md`.
+
+Athlete submissions stay pending until a coach approves them. Approval does not have to make the row active. Only one active anchor per type.
+
+Do not derive threshold or HYROX pace from a 5K in this layer.

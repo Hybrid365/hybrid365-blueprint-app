@@ -1,0 +1,17 @@
+---
+description: Auth, coach access, and athlete isolation
+globs: app/lib/hyroxAccess.ts,app/lib/hyroxApiAuth.ts,app/lib/hyroxAthleteApiAuth.ts,app/lib/supabase/**/*.ts,middleware.ts
+alwaysApply: false
+---
+
+# Auth
+
+Athlete APIs use `requireCurrentHyroxAthleteForApi`. That helper already rejects a signed admin-preview cookie. Do not add a second preview bypass.
+
+Coach APIs use `requireHyroxCoachApi` before the service-role client. Service role skips RLS, so a missing check exposes every athlete.
+
+`INTERNAL_ADMIN_EMAILS` empty must not mean "everyone is a coach" in new code. Follow the existing fail-open only where it already exists. Do not widen it.
+
+An athlete query is scoped by that athlete id. Never accept an id from the client without checking it matches the signed-in athlete, except coach routes that have already passed the coach check.
+
+Run `npm run qa:hyrox-auth` after changing this area.

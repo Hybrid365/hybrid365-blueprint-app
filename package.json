@@ -22,6 +22,12 @@
     "qa:hyrox-copy-programme-week": "npx --yes tsx scripts/qa-hyrox-copy-programme-week.ts",
     "qa:hyrox-auto-carry-week": "npx --yes tsx scripts/qa-hyrox-auto-carry-week.ts",
     "qa:hyrox-middleware-admin-timeout": "npx --yes tsx scripts/qa-hyrox-middleware-admin-timeout.ts",
+    "qa:hyrox-core": "node scripts/qa-hyrox-suite.mjs core",
+    "qa:hyrox-programme": "node scripts/qa-hyrox-suite.mjs programme",
+    "qa:hyrox-athlete": "node scripts/qa-hyrox-suite.mjs athlete",
+    "qa:hyrox-auth": "node scripts/qa-hyrox-suite.mjs auth",
+    "qa:hyrox-data": "node scripts/qa-hyrox-suite.mjs data",
+    "qa:hyrox-all": "node scripts/qa-hyrox-suite.mjs all",
     "export:homepage-phones": "npx --yes tsx scripts/homepage/export-phone-screens.ts"
   },
   "dependencies": {

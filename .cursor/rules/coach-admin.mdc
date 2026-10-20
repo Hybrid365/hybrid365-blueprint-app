@@ -1,0 +1,15 @@
+---
+description: Coach admin stays dense and authoritative
+globs: app/admin/hyrox-athletes/**/*.{ts,tsx},components/admin-hyrox-athletes/**/*.{ts,tsx},components/admin/hyrox-athletes/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Coach admin
+
+Optimise for scanning and actions, not marketing cards. A coach should see the current anchor, what is pending, and the next programme action without opening a modal first.
+
+View-as-Athlete stays read-only. Preview routes live under `/admin/hyrox-athletes/{id}/preview`.
+
+Copy Week, Auto-Carry, and Block 4+ behaviour stay intact. Do not clamp block numbers back to 4.
+
+The coach decides the active benchmark and the published target. Athlete submissions wait for approval. Internal notes stay on coach surfaces.
