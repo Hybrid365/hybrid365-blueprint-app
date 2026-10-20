@@ -228,20 +228,21 @@ export function ProgrammePageView({
       : [];
 
   const rationale =
-    useLive && selectedBundle?.weekRole
+    useLive && selectedBundle
       ? {
-          weekRole: selectedBundle.weekRole,
-          whyMatters:
-            selectedBundle.week?.athlete_facing_note ??
-            effectiveProgramme?.weekRationale?.whyMatters ??
-            "",
-          prioritise: effectiveProgramme?.weekRationale?.prioritise ?? [],
-          coachNote:
-            selectedBundle.week?.coach_note ?? effectiveProgramme?.weekRationale?.coachNote ?? "",
+          weekRole: selectedBundle.weekRole ?? "",
+          whyMatters: selectedBundle.week?.athlete_facing_note?.trim() ?? "",
+          prioritise: [] as string[],
+          coachNote: "",
         }
-      : useLive && effectiveProgramme?.weekRationale
-        ? effectiveProgramme.weekRationale
-        : MOCK_WEEK_RATIONALE;
+      : useMock
+        ? MOCK_WEEK_RATIONALE
+        : {
+            weekRole: "",
+            whyMatters: "",
+            prioritise: [] as string[],
+            coachNote: "",
+          };
 
   const completed = sessions.filter((s) => s.status === "complete").length;
   const meta = ATHLETE_PAGE_META.programme;
@@ -391,7 +392,9 @@ export function ProgrammePageView({
           Block {blockId} · {block.name}
           {selectedTab ? ` · ${selectedTab.subtitle}` : ""}
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-300">{rationale.whyMatters}</p>
+        {rationale.whyMatters ? (
+          <p className="mt-3 text-sm leading-relaxed text-zinc-300">{rationale.whyMatters}</p>
+        ) : null}
         {showWeekSessions ? (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <span className="text-sm text-zinc-400">
@@ -413,9 +416,6 @@ export function ProgrammePageView({
             ))}
           </ul>
         ) : null}
-        <p className="mt-4 border-t border-zinc-800 pt-4 text-xs italic text-zinc-500">
-          Coach: {rationale.coachNote}
-        </p>
       </div>
 
       {programmeVisible ? (

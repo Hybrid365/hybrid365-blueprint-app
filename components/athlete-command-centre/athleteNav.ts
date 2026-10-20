@@ -1,13 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
-  BookOpen,
   CalendarDays,
   ClipboardCheck,
-  Flag,
   FlaskConical,
   Home,
-  MessageSquare,
   Target,
 } from "lucide-react";
 
@@ -51,10 +48,12 @@ export const ATHLETE_NAV_ITEMS: AthleteNavItem[] = [
   },
   { id: "benchmarks", label: "Benchmarks", href: "/athlete/benchmarks", icon: Target, mobileMore: true },
   { id: "checkin", label: "Check-In", href: "/athlete/check-in", icon: ClipboardCheck, mobilePrimary: true },
-  { id: "coach-notes", label: "Coach Notes", href: "/athlete/coach-notes", icon: MessageSquare, mobileMore: true },
-  { id: "race-prep", label: "Race Prep", href: "/athlete/race-prep", icon: Flag, mobileMore: true },
-  { id: "resources", label: "Resources", href: "/athlete/resources", icon: BookOpen, mobileMore: true },
 ];
+
+/**
+ * Routes kept for direct links and View-as-Athlete, but hidden until they show live data.
+ * coach-notes, race-prep, and resources are placeholder pages.
+ */
 
 export const ATHLETE_DESKTOP_NAV = ATHLETE_NAV_ITEMS;
 export const ATHLETE_MOBILE_PRIMARY = ATHLETE_NAV_ITEMS.filter((i) => i.mobilePrimary);

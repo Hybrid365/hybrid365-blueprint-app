@@ -2,7 +2,6 @@
 
 import { CheckCircle2, Clock, Heart } from "lucide-react";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
-import { getSessionDetail } from "@/app/lib/hyroxTeamDashboardMock";
 import { SessionStatusBadge, sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
 import { btnPrimaryClass, btnSecondaryClass } from "./athleteUi";
 
@@ -30,11 +29,11 @@ type Props = {
 
 export function WeekSessionCard({ session, onView, onLog }: Props) {
   const done = session.status === "complete";
-  const mockDetail = getSessionDetail(session.id);
   const tags = sessionTags(session);
-  const coachNote = session.coachNote?.trim() || mockDetail.coachNote;
+  const coachNote = session.coachNote?.trim() ?? "";
   const coachPreview = coachNote.slice(0, 120) + (coachNote.length > 120 ? "…" : "");
-  const hrZone = mockDetail.hrZone !== "—" ? mockDetail.hrZone : null;
+  const hrRaw = session.detail?.hrZone?.trim() ?? "";
+  const hrZone = hrRaw && hrRaw !== "—" && hrRaw !== "Per programme prescription" ? hrRaw : null;
 
   return (
     <article
@@ -95,10 +94,12 @@ export function WeekSessionCard({ session, onView, onLog }: Props) {
               ) : null}
             </div>
             <p className="mt-2 line-clamp-2 text-xs text-zinc-500">{session.intent}</p>
-            <p className="mt-2 rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-2.5 py-2 text-xs text-zinc-400">
-              <span className="font-semibold text-yellow-400/80">Coach: </span>
-              {coachPreview}
-            </p>
+            {coachNote ? (
+              <p className="mt-2 rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-2.5 py-2 text-xs text-zinc-400">
+                <span className="font-semibold text-yellow-400/80">Coach: </span>
+                {coachPreview}
+              </p>
+            ) : null}
           </div>
         </div>
       </button>

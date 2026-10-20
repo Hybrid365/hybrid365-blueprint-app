@@ -54,7 +54,7 @@ export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
       ? dashboardLive.coachingFocus
       : useMockData
         ? MOCK_ATHLETE.coachingFocus
-        : "Your coach will share focus notes when your programme is live.";
+        : "";
 
   return (
     <aside className="hidden lg:block">
@@ -104,16 +104,12 @@ export function HomeStickyActions({ onViewSession, onLogResult }: Props) {
           )}
         </div>
 
-        <div className={`${athleteCard} ${athleteCardPadding}`}>
-          <p className={`${eyebrowClass} !text-zinc-500`}>Coach focus</p>
-          <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-zinc-400">{coachingFocus}</p>
-          <AthletePortalNavLink
-            href="/athlete/coach-notes"
-            className="mt-3 inline-flex text-xs font-semibold text-yellow-400 hover:text-yellow-300"
-          >
-            All coach notes →
-          </AthletePortalNavLink>
-        </div>
+        {coachingFocus.trim() ? (
+          <div className={`${athleteCard} ${athleteCardPadding}`}>
+            <p className={`${eyebrowClass} !text-zinc-500`}>Coach focus</p>
+            <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-zinc-400">{coachingFocus}</p>
+          </div>
+        ) : null}
       </div>
     </aside>
   );

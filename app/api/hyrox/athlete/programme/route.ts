@@ -2,6 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+import {
+  athleteFacingWeeklyNote,
+  withoutInternalWeekCoachNote,
+} from "@/app/lib/hyroxAthleteFacingCopy";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
 import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
@@ -88,7 +92,7 @@ export async function GET(request: NextRequest) {
               week_start_date: bundle.week.week_start_date,
               week_end_date: bundle.week.week_end_date,
               weekly_focus: bundle.week.weekly_focus,
-              coach_note: bundle.week.coach_note,
+              coach_note: null,
               athlete_facing_note: bundle.week.athlete_facing_note,
             }
           : null,
@@ -132,8 +136,8 @@ export async function GET(request: NextRequest) {
         ...programme.athlete,
         name: displayName,
       },
-      programmeWeek: programme.week,
-      week: programme.week,
+      programmeWeek: withoutInternalWeekCoachNote(programme.week) ?? null,
+      week: withoutInternalWeekCoachNote(programme.week) ?? null,
       sessions,
       sessionCount: sessions.length,
       programmeWeeks,
@@ -142,9 +146,9 @@ export async function GET(request: NextRequest) {
             weekRole:
               programme.week.weekly_focus ??
               `Block ${programme.week.block_number} · Week ${programme.week.week_number}`,
-            whyMatters: programme.week.athlete_facing_note ?? programme.week.coach_note ?? "",
+            whyMatters: athleteFacingWeeklyNote(programme.week.athlete_facing_note),
             prioritise: [] as string[],
-            coachNote: programme.week.coach_note ?? "",
+            coachNote: "",
           }
         : null,
       weeklyCheckIn: weeklyCheckInSummary,

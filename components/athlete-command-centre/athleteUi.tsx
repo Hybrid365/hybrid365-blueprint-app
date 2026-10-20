@@ -356,7 +356,7 @@ export const ATHLETE_PAGE_META = {
   progress: {
     eyebrow: "Progress",
     title: "Training load & performance",
-    subtitle: "Volume, benchmarks and coach interpretation for your Hyrox build.",
+    subtitle: "Logged sessions and benchmarks. Trends appear as more data is recorded.",
   },
   benchmarks: {
     eyebrow: "Benchmarks",

@@ -1,3 +1,4 @@
+import { athleteFacingWeeklyNote } from "@/app/lib/hyroxAthleteFacingCopy";
 import type { AthleteLiveProgrammePayload } from "@/components/athlete-command-centre/useAthleteLiveProgramme";
 import type { PortalAthleteSummary } from "@/components/athlete-command-centre/athletePortalContext";
 import {
@@ -274,22 +275,13 @@ export function buildAthleteDashboardLiveView(params: {
   const blockId = Math.max(1, calendar.blockNumber || 1);
   const block = resolveHyroxBlockMeta(blockId);
 
-  const bundleRationale = activeBundle?.week
-    ? {
-        weekRole: activeBundle.weekRole,
-        whyMatters:
-          activeBundle.week.athlete_facing_note ??
-          lp.weekRationale?.whyMatters ??
-          "",
-        prioritise: lp.weekRationale?.prioritise ?? [],
-        coachNote: activeBundle.week.coach_note ?? lp.weekRationale?.coachNote ?? "",
-      }
-    : (lp.weekRationale ?? {
-        weekRole: resolveProgrammeWeeklyFocusLabel(calendar),
-        whyMatters: "",
-        prioritise: [] as string[],
-        coachNote: "",
-      });
+  const facingNote = athleteFacingWeeklyNote(activeBundle?.week?.athlete_facing_note);
+  const bundleRationale = {
+    weekRole: activeBundle?.weekRole || resolveProgrammeWeeklyFocusLabel(calendar),
+    whyMatters: facingNote,
+    prioritise: [] as string[],
+    coachNote: "",
+  };
 
   const checkIn = resolveProgrammeCheckInSummary(calendar, params.weeklyCheckIn ?? null);
   const raceReadiness = resolveProgrammeRaceReadiness(calendar);
@@ -334,10 +326,7 @@ export function buildAthleteDashboardLiveView(params: {
       prioritise: bundleRationale.prioritise ?? [],
       coachNote: bundleRationale.coachNote,
     },
-    coachingFocus:
-      bundleRationale.coachNote ||
-      bundleRationale.whyMatters ||
-      "Follow this week's sessions — log RPE honestly for your coach.",
+    coachingFocus: facingNote,
     checkInStatus: checkIn.status,
     checkInSub: checkIn.sub,
     checkInDue: checkIn.due,

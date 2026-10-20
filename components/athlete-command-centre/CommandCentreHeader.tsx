@@ -55,7 +55,7 @@ export function CommandCentreHeader() {
             totalWeeks: 12,
             raceCountdownWeeks: 0,
             blockPhase: "Hyrox Team",
-            coachingFocus: "Your coach will share focus notes when your programme is live.",
+            coachingFocus: "",
           };
 
   const stats =
@@ -142,11 +142,13 @@ export function CommandCentreHeader() {
         />
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        <div className="rounded-xl border border-yellow-500/20 bg-yellow-400/5 px-4 py-3">
-          <p className="text-[10px] font-bold uppercase text-yellow-400/80">Coaching focus</p>
-          <p className="mt-1 text-sm leading-relaxed text-zinc-300">{a.coachingFocus}</p>
-        </div>
+      <div className={`mt-4 grid gap-3 ${a.coachingFocus.trim() ? "lg:grid-cols-2" : ""}`}>
+        {a.coachingFocus.trim() ? (
+          <div className="rounded-xl border border-yellow-500/20 bg-yellow-400/5 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase text-yellow-400/80">Coaching focus</p>
+            <p className="mt-1 text-sm leading-relaxed text-zinc-300">{a.coachingFocus}</p>
+          </div>
+        ) : null}
         <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
           <p className="text-[10px] font-bold uppercase text-zinc-500">Next key session</p>
           <p className="mt-1 font-semibold text-white">{next.name}</p>
