@@ -1,0 +1,17 @@
+---
+description: Athlete portal UI must show real data only
+globs: app/athlete/**/*.{ts,tsx},components/athlete-command-centre/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Athlete UI
+
+Mobile first: 375, 390, 430. Then tablet and desktop.
+
+Use the existing athlete shell, cards, and type scale in `components/athlete-command-centre/athleteUi.tsx`. Visual direction is `docs/HYBRID365_VISUAL_SYSTEM.md`.
+
+Empty, loading, and error states say what is true. Do not render mock charts, fake coach notes, or sample race splits. If a flag is off, keep the current screen.
+
+Coach preview passes `readOnly`. Hide submit and log actions. Do not call a mutation endpoint from preview.
+
+Athlete-facing weekly copy is `athlete_facing_note` only. If it is empty, hide the section.

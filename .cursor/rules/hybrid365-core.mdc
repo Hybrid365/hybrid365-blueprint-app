@@ -1,0 +1,14 @@
+---
+description: Hybrid365 invariants for every task
+alwaysApply: true
+---
+
+# Hybrid365
+
+1-1 coaching assists the coach. Future Track may automate decisions, but it must use the same performance and prescription engine. Community and Hybrid75 stay separate from `/athlete`.
+
+Do not show mock data as a real athlete result. Do not invent a missing pace, FTP, or score. Internal coach notes never fall back into athlete copy. Preview is read-only. Published targets are snapshots. Athlete history is not overwritten to store a newer result.
+
+Work in a fresh worktree from `origin/main`. Do not merge, deploy, or apply production SQL unless the task explicitly says so. Migrations are files until a human approves applying them. Flags `HYROX_HOME_V2_*`, `HYROX_TODAY_V2_*`, and `HYROX_PERFORMANCE_HUB_*` stay off unless the task is that rollout.
+
+Read `docs/HYBRID365_AGENT_GUIDE.md` before a multi-step feature. Contracts live in `docs/contracts/`.

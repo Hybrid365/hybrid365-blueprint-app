@@ -1,0 +1,13 @@
+---
+description: Session library stays editable by coaches
+globs: app/lib/hyroxCoachSessionLibrary*.ts,app/lib/sessionLibrary.ts,src/lib/hyrox/sessionLibrary.ts,components/**/SessionLibraryPanel.tsx
+alwaysApply: false
+---
+
+# Session library
+
+Library entries are reusable intent templates. Coaches can still edit, duplicate, and write a custom session. A dynamic target, when it exists, is an expression plus a snapshot. It does not remove the manual target field.
+
+Do not collapse categories or rename ids that published programmes already store. Search and filters must keep finding the current volume-builder and hybrid-engine sessions.
+
+Formula fields wait on `docs/contracts/prescription-engine.md`.

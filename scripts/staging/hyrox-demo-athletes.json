@@ -1,0 +1,165 @@
+{
+  "athletes": [
+    {
+      "id": "demo-developing",
+      "name": "Demo Developing",
+      "email": "demo-developing@staging.hybrid365.local",
+      "level": "developing",
+      "benchmarks": [
+        {
+          "type": "run_5k",
+          "display": "22:05",
+          "normalizedSeconds": 1325,
+          "date": "2026-09-01",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "ski_2k",
+          "display": "8:40",
+          "normalizedSeconds": 520,
+          "date": "2026-09-02",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "row_2k",
+          "display": "8:05",
+          "normalizedSeconds": 485,
+          "date": "2026-09-02",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        }
+      ],
+      "race": null,
+      "includes": ["assessment", "testing_week", "one_published_week", "two_logged_sessions", "one_check_in"]
+    },
+    {
+      "id": "demo-competitive",
+      "name": "Demo Competitive",
+      "email": "demo-competitive@staging.hybrid365.local",
+      "level": "competitive",
+      "benchmarks": [
+        {
+          "type": "run_5k",
+          "display": "18:02",
+          "normalizedSeconds": 1082,
+          "date": "2026-09-10",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "run_5k",
+          "display": "17:40",
+          "normalizedSeconds": 1060,
+          "date": "2025-11-02",
+          "source": "imported",
+          "status": "historical",
+          "active": false
+        },
+        {
+          "type": "ski_2k",
+          "display": "7:25",
+          "normalizedSeconds": 445,
+          "date": "2026-09-11",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "row_2k",
+          "display": "7:05",
+          "normalizedSeconds": 425,
+          "date": "2026-09-11",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "ftp",
+          "display": "280 W",
+          "normalizedWatts": 280,
+          "date": "2026-08-20",
+          "source": "coach_entered",
+          "status": "approved",
+          "active": true
+        }
+      ],
+      "race": {
+        "display": "1:03:40",
+        "normalizedSeconds": 3820,
+        "division": "Open",
+        "date": "2026-06-14",
+        "status": "historical",
+        "active": false
+      },
+      "includes": ["assessment", "benchmark_history", "published_block", "logged_sessions_with_rpe", "check_ins"]
+    },
+    {
+      "id": "demo-high-performance",
+      "name": "Demo High Performance",
+      "email": "demo-high-performance@staging.hybrid365.local",
+      "level": "high_performance",
+      "benchmarks": [
+        {
+          "type": "run_5k",
+          "display": "16:32",
+          "normalizedSeconds": 992,
+          "date": "2026-09-20",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "threshold_pace",
+          "display": "3:25/km",
+          "normalizedSecondsPerKm": 205,
+          "date": "2026-09-18",
+          "source": "lab_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "ski_2k",
+          "display": "6:55",
+          "normalizedSeconds": 415,
+          "date": "2026-09-21",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "row_2k",
+          "display": "6:35",
+          "normalizedSeconds": 395,
+          "date": "2026-09-21",
+          "source": "performance_test",
+          "status": "approved",
+          "active": true
+        },
+        {
+          "type": "ftp",
+          "display": "340 W",
+          "normalizedWatts": 340,
+          "date": "2026-09-01",
+          "source": "lab_test",
+          "status": "approved",
+          "active": true
+        }
+      ],
+      "race": {
+        "display": "58:40",
+        "normalizedSeconds": 3520,
+        "division": "Pro",
+        "date": "2026-05-02",
+        "status": "historical",
+        "active": false
+      },
+      "includes": ["assessment", "benchmark_history", "threshold", "published_block", "logged_sessions_with_hr", "check_ins", "race_result"]
+    }
+  ]
+}

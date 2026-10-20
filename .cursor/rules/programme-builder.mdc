@@ -1,0 +1,17 @@
+---
+description: Programme draft, publish, Copy Week, and blocks
+globs: app/lib/hyroxProgramme*.ts,app/lib/hyroxCopyProgrammeWeek*.ts,app/lib/hyroxCoachProgrammeDraft.ts,components/admin-hyrox-athletes/ProgrammeBuilder.tsx,components/admin-hyrox-athletes/useCoachBlockProgramme.ts
+alwaysApply: false
+---
+
+# Programme builder
+
+Drafts are editable. Published sessions are what the athlete logged against. Do not rewrite published targets when a benchmark or formula input changes.
+
+Copy Week copies prescription into an empty week and strips athlete feedback. It must not replace a published week or a week that already has athlete history unless the existing explicit replace rules say so.
+
+Auto-Carry only moves forward one week into an empty, unpublished target. It does not jump ahead or move backward.
+
+Blocks continue past 4. Week 16 to 17 is Block 5. Do not hard-code a maximum of 4.
+
+Run `npm run qa:hyrox-programme` after a change in this area.
