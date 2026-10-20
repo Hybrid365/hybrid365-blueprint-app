@@ -134,9 +134,7 @@ export function resolveAthleteSessionDetailFromPublishedRow(
     stationFocus,
     fullPrescription,
     coolDown: overrideCoolDown.length ? overrideCoolDown : ["Easy flush 5–10 min"],
-    coachNote:
-      coachNote ||
-      "Complete at prescribed RPE. Log honestly so your coach can adjust the week.",
+    coachNote,
     coachPacingNote,
     whatToRecord: whatToRecord.length ? whatToRecord : ["Session RPE", "Duration", "Notes"],
     duration,
@@ -195,7 +193,7 @@ export function resolveAthleteSessionDetailContent(
     warmUp: ["Prepare as prescribed"],
     mainSet: [session.intent || session.name],
     coolDown: ["Easy flush 5–10 min"],
-    coachNote: session.coachNote || "Complete at prescribed RPE.",
+    coachNote: session.coachNote?.trim() || "",
     recordFields: ["Session RPE", "Duration", "Notes"],
   };
 }

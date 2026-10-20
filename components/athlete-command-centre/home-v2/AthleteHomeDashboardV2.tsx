@@ -368,7 +368,7 @@ export function AthleteHomeDashboardV2({
   }, [athleteId, isReadOnly, timezone]);
 
   const block = resolveHyroxBlockMeta(a.blockId);
-  const insightText = coachFocus || weekRationale.whyMatters || weekRationale.coachNote;
+  const insightText = (coachFocus || weekRationale.whyMatters || "").trim();
   const focusTags = weekRationale.prioritise?.length
     ? weekRationale.prioritise
     : weekRationale.weekRole
@@ -462,11 +462,13 @@ export function AthleteHomeDashboardV2({
         readOnly={isReadOnly}
       />
 
-      <HomeCoachInsight
-        insight={insightText}
-        focusTags={focusTags}
-        readOnly={isReadOnly}
-      />
+      {insightText ? (
+        <HomeCoachInsight
+          insight={insightText}
+          focusTags={focusTags}
+          readOnly={isReadOnly}
+        />
+      ) : null}
 
       <HomeUpcomingProgramme
         sessions={upcoming}

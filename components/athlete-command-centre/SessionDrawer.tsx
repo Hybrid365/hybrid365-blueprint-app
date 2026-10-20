@@ -105,7 +105,12 @@ export function SessionDrawer({
   onSessionUpdated,
 }: Props) {
   const open = Boolean(sessionId);
-  const d = sessionDetail ?? (sessionId ? getSessionDetail(sessionId) : null);
+  const realCoachNote = (sessionDetail ? sessionDetail.coachNote : session?.coachNote)?.trim() || "";
+  const d = useMemo(() => {
+    const resolvedDetail = sessionDetail ?? (sessionId ? getSessionDetail(sessionId) : null);
+    if (!resolvedDetail) return null;
+    return { ...resolvedDetail, coachNote: realCoachNote };
+  }, [sessionDetail, sessionId, realCoachNote]);
   const {
     saving,
     error,
@@ -286,9 +291,11 @@ export function SessionDrawer({
             </ul>
           </Block>
 
-          <Block title="Coach note">
-            <p className="text-sm leading-relaxed text-zinc-300">{d.coachNote}</p>
-          </Block>
+          {d.coachNote ? (
+            <Block title="Coach note">
+              <p className="text-sm leading-relaxed text-zinc-300">{d.coachNote}</p>
+            </Block>
+          ) : null}
 
           {d.coachPacingNote ? (
             <Block title="Coach pacing note">

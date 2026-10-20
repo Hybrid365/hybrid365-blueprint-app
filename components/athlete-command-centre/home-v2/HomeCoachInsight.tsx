@@ -1,7 +1,6 @@
 "use client";
 
 import { sanitizeCoachInsightForAthlete } from "@/app/lib/hyrox-team/modules/home/coachInsightCopy";
-import { AthletePortalNavLink } from "../AthletePortalNavLink";
 import { athleteCardHighlight, eyebrowClass } from "../athleteUi";
 
 type Props = {
@@ -15,7 +14,6 @@ export function HomeCoachInsight({
   insight,
   focusTags = [],
   sourceHint,
-  readOnly,
 }: Props) {
   const { body, sourceHint: autoHint } = sanitizeCoachInsightForAthlete(insight);
   const hint = sourceHint ?? autoHint;
@@ -58,14 +56,6 @@ export function HomeCoachInsight({
                 </span>
               ))}
             </div>
-          ) : null}
-          {!readOnly ? (
-            <AthletePortalNavLink
-              href="/athlete/coach-notes"
-              className="mt-4 inline-block text-xs font-semibold text-yellow-400 hover:text-yellow-300"
-            >
-              View coach notes →
-            </AthletePortalNavLink>
           ) : null}
         </div>
       </div>

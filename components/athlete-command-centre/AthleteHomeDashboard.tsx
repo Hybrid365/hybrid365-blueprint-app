@@ -7,11 +7,8 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Activity,
   BarChart3,
-  BookOpen,
   CalendarDays,
   ClipboardCheck,
-  Flag,
-  MessageSquare,
   Play,
 } from "lucide-react";
 import {
@@ -35,7 +32,6 @@ import {
   sessionDetailFromHyroxSession,
 } from "@/app/lib/hyroxAthleteDashboardLive";
 import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
-import { ChartDataPlaceholder } from "./ChartDataPlaceholder";
 import { ThresholdProgressionChart } from "./DashboardCharts";
 import { CommandCentreHeader } from "./CommandCentreHeader";
 import { HomeStickyActions } from "./HomeStickyActions";
@@ -46,7 +42,6 @@ import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import {
   BtnPrimary,
   BtnLinkSecondary,
-  LinkCta,
   PageContent,
   SectionTitle,
   SnapshotPanel,
@@ -335,7 +330,7 @@ export function AthleteHomeDashboard({
           label="Weekly focus"
           value={weekRationale.weekRole}
           sub={`Block ${a.blockId} · Week ${a.currentWeek}`}
-          href="/athlete/coach-notes"
+          href="/athlete/programme"
           readOnly={isReadOnly}
         />
         <HomePriorityTile
@@ -401,7 +396,9 @@ export function AthleteHomeDashboard({
 
           <div className={`${athleteCard} ${athleteCardPadding}`}>
             <p className={eyebrowClass}>{weekRationale.weekRole}</p>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-300">{weekRationale.whyMatters}</p>
+            {weekRationale.whyMatters ? (
+              <p className="mt-3 text-sm leading-relaxed text-zinc-300">{weekRationale.whyMatters}</p>
+            ) : null}
             <p className="mt-3 text-xs text-zinc-500">
               Block {a.blockId} · {block.name} · Week {a.currentWeek}/{a.totalWeeks}
             </p>
@@ -449,13 +446,11 @@ export function AthleteHomeDashboard({
                   <p className="text-2xl font-bold text-white">{m.consistency.value}%</p>
                 </div>
               </div>
-              <div className="mt-4 h-36">
-                {useLive && dashboardLive && !dashboardLive.chartsAvailable ? (
-                  <ChartDataPlaceholder className="h-full" />
-                ) : (
+              {useMockData ? (
+                <div className="mt-4 h-36">
                   <ThresholdProgressionChart />
-                )}
-              </div>
+                </div>
+              ) : null}
             </SnapshotPanel>
 
             <div className="space-y-4">
@@ -500,13 +495,12 @@ export function AthleteHomeDashboard({
                 ) : null}
               </SnapshotPanel>
 
-              <div className={`${athleteCardHighlight} ${athleteCardPadding}`}>
-                <p className={eyebrowClass}>Coach note</p>
-                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-300">{coachFocus}</p>
-                <LinkCta href="/athlete/coach-notes" className="mt-3 text-xs">
-                  Read more →
-                </LinkCta>
-              </div>
+              {coachFocus.trim() ? (
+                <div className={`${athleteCardHighlight} ${athleteCardPadding}`}>
+                  <p className={eyebrowClass}>Coach note</p>
+                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-300">{coachFocus}</p>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -524,7 +518,7 @@ export function AthleteHomeDashboard({
               <HubLinkCard
                 href="/athlete/progress"
                 title="Progress"
-                description="Training load, charts and coach interpretation"
+                description="Logged sessions and benchmarks"
                 icon={Activity}
                 meta={`${stats.weeklyCompletionPct}% weekly completion`}
               />
@@ -533,7 +527,7 @@ export function AthleteHomeDashboard({
                 title="Benchmarks"
                 description="Hyrox tests, targets and improvement trends"
                 icon={BarChart3}
-                meta="8 tests tracked"
+                meta="Logged tests"
               />
               <HubLinkCard
                 href="/athlete/check-in"
@@ -541,25 +535,6 @@ export function AthleteHomeDashboard({
                 description="Recovery, load and availability for your coach"
                 icon={ClipboardCheck}
                 meta={checkInStatus}
-              />
-              <HubLinkCard
-                href="/athlete/coach-notes"
-                title="Coach Notes"
-                description="Focus, adjustments and block rationale"
-                icon={MessageSquare}
-              />
-              <HubLinkCard
-                href="/athlete/race-prep"
-                title="Race Prep"
-                description="Pacing, fuelling, taper and race-day checklist"
-                icon={Flag}
-                meta="Unlocks Week 8"
-              />
-              <HubLinkCard
-                href="/athlete/resources"
-                title="Resources"
-                description="Technique guides and race-week protocols"
-                icon={BookOpen}
               />
             </div>
           </section>

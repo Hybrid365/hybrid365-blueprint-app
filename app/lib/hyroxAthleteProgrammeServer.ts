@@ -1,3 +1,7 @@
+import {
+  athleteFacingWeeklyNote,
+  withoutInternalWeekCoachNote,
+} from "@/app/lib/hyroxAthleteFacingCopy";
 import type { AthleteLiveProgrammePayload } from "@/components/athlete-command-centre/useAthleteLiveProgramme";
 import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
@@ -74,7 +78,7 @@ export async function fetchAthleteLiveProgrammeForServer(
             week_start_date: bundle.week.week_start_date,
             week_end_date: bundle.week.week_end_date,
             weekly_focus: bundle.week.weekly_focus,
-            coach_note: bundle.week.coach_note,
+            coach_note: null,
             athlete_facing_note: bundle.week.athlete_facing_note,
           }
         : null,
@@ -104,7 +108,7 @@ export async function fetchAthleteLiveProgrammeForServer(
       ...programme.athlete,
       name: displayName,
     },
-    week: programme.week,
+    week: withoutInternalWeekCoachNote(programme.week) ?? null,
     sessions,
     programmeWeeks,
     weekRationale: programme.week
@@ -112,9 +116,9 @@ export async function fetchAthleteLiveProgrammeForServer(
           weekRole:
             programme.week.weekly_focus ??
             `Block ${programme.week.block_number} · Week ${programme.week.week_number}`,
-          whyMatters: programme.week.athlete_facing_note ?? programme.week.coach_note ?? "",
+          whyMatters: athleteFacingWeeklyNote(programme.week.athlete_facing_note),
           prioritise: [] as string[],
-          coachNote: programme.week.coach_note ?? "",
+          coachNote: "",
         }
       : null,
   };
