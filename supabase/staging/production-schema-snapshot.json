@@ -1,0 +1,4439 @@
+{
+  "tables": {
+    "athlete_assessments": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_instance_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "goal_focus": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "event_type": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "event_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "target_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "training_days_per_week": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weekly_hours_band": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "preferred_training_days": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "double_session_days": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "current_running_volume_km": {
+          "type": "numeric(5,1)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "longest_recent_run_km": {
+          "type": "numeric(5,1)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "recent_5k_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "recent_10k_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "hyrox_pb": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "bodyweight_kg": {
+          "type": "numeric(5,2)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "target_bodyweight_kg": {
+          "type": "numeric(5,2)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "strength_experience": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "hyrox_experience": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "equipment": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "injury_flags": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "movements_to_avoid": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "biggest_limiter": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "completed_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "first_name": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "age": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "height_cm": {
+          "type": "numeric(5,2)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "current_run_volume_band": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "max_heart_rate": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "training_track": {
+          "type": "text",
+          "notNull": true,
+          "default": "'hybrid_performance'::text",
+          "identity": null,
+          "generated": null
+        },
+        "hyrox_details": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "athlete_assessments_age_check": "CHECK (age >= 13 AND age <= 100)",
+        "athlete_assessments_training_days_per_week_check": "CHECK (training_days_per_week >= 2 AND training_days_per_week <= 7)",
+        "athlete_assessments_programme_instance_id_fkey": "FOREIGN KEY (programme_instance_id) REFERENCES programme_instances(id) ON DELETE SET NULL",
+        "athlete_assessments_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "athlete_assessments_pkey": "PRIMARY KEY (id)",
+        "athlete_assessments_user_id_key": "UNIQUE (user_id)"
+      },
+      "indexes": [],
+      "policies": [
+        "athlete_assessments_insert_own",
+        "athlete_assessments_select_own",
+        "athlete_assessments_update_own"
+      ],
+      "triggers": [
+        "athlete_assessments_updated"
+      ]
+    },
+    "benchmark_tests": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_instance_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_type": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_label": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_value": {
+          "type": "numeric(8,2)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_unit": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "bodyweight_kg": {
+          "type": "numeric(5,2)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_number": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_phase": {
+          "type": "text",
+          "notNull": false,
+          "default": "'baseline'::text",
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "tested_at": {
+          "type": "date",
+          "notNull": true,
+          "default": "CURRENT_DATE",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "benchmark_tests_week_number_check": "CHECK (week_number >= 0 AND week_number <= 12)",
+        "benchmark_tests_programme_instance_id_fkey": "FOREIGN KEY (programme_instance_id) REFERENCES programme_instances(id) ON DELETE CASCADE",
+        "benchmark_tests_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "benchmark_tests_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "benchmark_tests_programme_week_idx",
+        "benchmark_tests_user_type_idx"
+      ],
+      "policies": [
+        "benchmark_tests_insert_own",
+        "benchmark_tests_select_own",
+        "benchmark_tests_update_own"
+      ],
+      "triggers": [
+        "benchmark_tests_updated"
+      ]
+    },
+    "challenge_point_adjustments": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "plan_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "name": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "points": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "reason": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_by": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "challenge_point_adjustments_points_check": "CHECK (points >= '-500'::integer AND points <= 500 AND points <> 0)",
+        "challenge_point_adjustments_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "challenge_point_adjustments_email_idx",
+        "challenge_point_adjustments_plan_id_idx"
+      ],
+      "policies": [],
+      "triggers": []
+    },
+    "challenge_session_logs": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "plan_id": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "name": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_id": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_title": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_type": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "completed": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "rpe": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "proof_type": {
+          "type": "text",
+          "notNull": true,
+          "default": "'not_yet'::text",
+          "identity": null,
+          "generated": null
+        },
+        "proof_note": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "points_claimed": {
+          "type": "integer",
+          "notNull": true,
+          "default": "0",
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'pending'::text",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "challenge_session_logs_points_claimed_check": "CHECK (points_claimed >= 0)",
+        "challenge_session_logs_proof_type_check": "CHECK (proof_type = ANY (ARRAY['telegram'::text, 'instagram'::text, 'both'::text, 'not_yet'::text]))",
+        "challenge_session_logs_rpe_check": "CHECK (rpe >= 1 AND rpe <= 10)",
+        "challenge_session_logs_session_type_check": "CHECK (session_type = ANY (ARRAY['run'::text, 'lift'::text, 'mobility'::text, 'challenge'::text]))",
+        "challenge_session_logs_status_check": "CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]))",
+        "challenge_session_logs_pkey": "PRIMARY KEY (id)",
+        "challenge_session_logs_plan_id_session_id_key": "UNIQUE (plan_id, session_id)"
+      },
+      "indexes": [
+        "challenge_session_logs_plan_id_idx",
+        "challenge_session_logs_status_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "challenge_session_logs_updated"
+      ]
+    },
+    "challenge_submissions": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_instance_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "challenge_key": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "challenge_week": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "challenge_title": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "score_value": {
+          "type": "numeric(10,2)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "score_unit": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "score_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "proof_url": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "proof_note": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'pending'::text",
+          "identity": null,
+          "generated": null
+        },
+        "points_awarded": {
+          "type": "integer",
+          "notNull": true,
+          "default": "0",
+          "identity": null,
+          "generated": null
+        },
+        "admin_notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "submitted_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "reviewed_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "challenge_submissions_challenge_week_check": "CHECK (challenge_week >= 1 AND challenge_week <= 6)",
+        "challenge_submissions_status_check": "CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]))",
+        "challenge_submissions_programme_instance_id_fkey": "FOREIGN KEY (programme_instance_id) REFERENCES programme_instances(id) ON DELETE SET NULL",
+        "challenge_submissions_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "challenge_submissions_pkey": "PRIMARY KEY (id)",
+        "challenge_submissions_user_id_challenge_week_challenge_key_key": "UNIQUE (user_id, challenge_week, challenge_key)"
+      },
+      "indexes": [
+        "challenge_submissions_key_status_idx",
+        "challenge_submissions_status_idx",
+        "challenge_submissions_user_week_idx"
+      ],
+      "policies": [
+        "challenge_submissions_insert_own",
+        "challenge_submissions_select_approved_public",
+        "challenge_submissions_select_own",
+        "challenge_submissions_update_own"
+      ],
+      "triggers": [
+        "challenge_submissions_updated"
+      ]
+    },
+    "coaching_enquiries": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "first_name": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "instagram_handle": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "goal": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "current_hyrox_pb": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "next_race": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "source": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "attribution": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'new'::text",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "coaching_enquiries_status_check": "CHECK (status = ANY (ARRAY['new'::text, 'contacted'::text, 'qualified'::text, 'converted'::text, 'closed'::text]))",
+        "coaching_enquiries_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "coaching_enquiries_created_at_idx",
+        "coaching_enquiries_email_idx",
+        "coaching_enquiries_instagram_idx",
+        "coaching_enquiries_status_idx"
+      ],
+      "policies": [
+        "coaching_enquiries_coach_all",
+        "coaching_enquiries_insert_public"
+      ],
+      "triggers": []
+    },
+    "daily_habit_logs": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_instance_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "log_date": {
+          "type": "date",
+          "notNull": true,
+          "default": "CURRENT_DATE",
+          "identity": null,
+          "generated": null
+        },
+        "water_hit": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "protein_hit": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "steps_hit": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "sleep_hit": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "mobility_hit": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "proof_posted": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "daily_habit_logs_programme_instance_id_fkey": "FOREIGN KEY (programme_instance_id) REFERENCES programme_instances(id) ON DELETE SET NULL",
+        "daily_habit_logs_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "daily_habit_logs_pkey": "PRIMARY KEY (id)",
+        "daily_habit_logs_user_id_log_date_key": "UNIQUE (user_id, log_date)"
+      },
+      "indexes": [],
+      "policies": [
+        "daily_habit_logs_insert_own",
+        "daily_habit_logs_select_own",
+        "daily_habit_logs_update_own"
+      ],
+      "triggers": [
+        "daily_habit_logs_updated"
+      ]
+    },
+    "hybrid75_habit_logs": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "plan_id": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "name": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "habit_key": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "habit_label": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "log_date": {
+          "type": "date",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "completed": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hybrid75_habit_logs_pkey": "PRIMARY KEY (id)",
+        "hybrid75_habit_logs_plan_id_habit_key_log_date_key": "UNIQUE (plan_id, habit_key, log_date)"
+      },
+      "indexes": [
+        "hybrid75_habit_logs_plan_date_idx",
+        "hybrid75_habit_logs_plan_id_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hybrid75_habit_logs_updated"
+      ]
+    },
+    "hybrid75_weekly_checkins": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "plan_id": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "name": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_start": {
+          "type": "date",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "sessions_completed": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "proof_posts": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "energy_score": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "recovery_score": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "soreness_score": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "biggest_win": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "biggest_struggle": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "support_needed": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "interested_full_programme": {
+          "type": "boolean",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hybrid75_weekly_checkins_energy_score_check": "CHECK (energy_score >= 1 AND energy_score <= 10)",
+        "hybrid75_weekly_checkins_recovery_score_check": "CHECK (recovery_score >= 1 AND recovery_score <= 10)",
+        "hybrid75_weekly_checkins_soreness_score_check": "CHECK (soreness_score >= 1 AND soreness_score <= 10)",
+        "hybrid75_weekly_checkins_pkey": "PRIMARY KEY (id)",
+        "hybrid75_weekly_checkins_plan_id_week_start_key": "UNIQUE (plan_id, week_start)"
+      },
+      "indexes": [
+        "hybrid75_weekly_checkins_plan_id_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hybrid75_weekly_checkins_updated"
+      ]
+    },
+    "hybrid_1_1_applications": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "full_name": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "phone": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "instagram": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "age": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "location": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "occupation": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "application_type": {
+          "type": "text",
+          "notNull": true,
+          "default": "'hybrid_1_1'::text",
+          "identity": null,
+          "generated": null
+        },
+        "track": {
+          "type": "text",
+          "notNull": true,
+          "default": "'hybrid_performance'::text",
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'new'::text",
+          "identity": null,
+          "generated": null
+        },
+        "main_goal": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "body_composition_goal": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "performance_goal": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "target_outcome": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "reason_for_applying": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "training_background": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "benchmarks": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "availability": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "nutrition_lifestyle": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "injuries_limitations": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "coaching_fit": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "consent": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "raw_payload": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "coach_notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hybrid_1_1_applications_application_type_check": "CHECK (application_type = 'hybrid_1_1'::text)",
+        "hybrid_1_1_applications_status_check": "CHECK (status = ANY (ARRAY['new'::text, 'reviewing'::text, 'accepted'::text, 'rejected'::text, 'converted'::text]))",
+        "hybrid_1_1_applications_track_check": "CHECK (track = 'hybrid_performance'::text)",
+        "hybrid_1_1_applications_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hybrid_1_1_applications_created_at_idx",
+        "hybrid_1_1_applications_email_idx",
+        "hybrid_1_1_applications_status_idx"
+      ],
+      "policies": [
+        "hybrid_1_1_applications_coach_all",
+        "hybrid_1_1_applications_insert_public"
+      ],
+      "triggers": [
+        "hybrid_1_1_applications_set_updated_at"
+      ]
+    },
+    "hyrox_applications": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "name": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "instagram_handle": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "phone": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "hyrox_experience": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "current_level": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "target_event": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "target_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "goal": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "reason_for_applying": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "documentation_interest": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'submitted'::text",
+          "identity": null,
+          "generated": null
+        },
+        "coach_notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "raw_payload": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_applications_status_check": "CHECK (status = ANY (ARRAY['submitted'::text, 'under_review'::text, 'accepted'::text, 'rejected'::text]))",
+        "hyrox_applications_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_applications_created_at_idx",
+        "hyrox_applications_email_idx",
+        "hyrox_applications_status_idx"
+      ],
+      "policies": [
+        "hyrox_applications_insert_public"
+      ],
+      "triggers": [
+        "hyrox_applications_set_updated_at"
+      ]
+    },
+    "hyrox_assessments": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "submitted_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "raw_answers": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "training_days": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weekly_training_hours": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "current_weekly_run_volume_km": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "five_k_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "ten_k_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "max_heart_rate": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "threshold_heart_rate": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "station_weaknesses": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "equipment_access": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "injury_flags": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "sleep_quality": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "stress_level": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "bodyweight": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "body_composition_goal": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "documentation_consent": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'submitted'::text",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_assessments_status_check": "CHECK (status = ANY (ARRAY['draft'::text, 'submitted'::text]))",
+        "hyrox_assessments_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_assessments_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_assessments_athlete_id_idx",
+        "hyrox_assessments_athlete_submitted_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_assessments_set_updated_at"
+      ]
+    },
+    "hyrox_athlete_recovery_baselines": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_week_id": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "resting_hr_baseline": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "baseline_days": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "average_hrv": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "average_sleep_minutes": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "average_daily_steps": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "average_training_hours": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "device_source": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_athlete_recovery_baselines_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_athlete_recovery_baselines_pkey": "PRIMARY KEY (id)",
+        "hyrox_athlete_recovery_baselines_athlete_week_key": "UNIQUE (athlete_id, test_week_id)"
+      },
+      "indexes": [
+        "hyrox_athlete_recovery_baselines_athlete_id_idx",
+        "hyrox_athlete_recovery_baselines_test_week_id_idx"
+      ],
+      "policies": [
+        "hyrox_athlete_recovery_baselines_athlete_insert",
+        "hyrox_athlete_recovery_baselines_athlete_select",
+        "hyrox_athlete_recovery_baselines_athlete_update",
+        "hyrox_athlete_recovery_baselines_coach_all"
+      ],
+      "triggers": []
+    },
+    "hyrox_athletes": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "application_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "name": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'accepted'::text",
+          "identity": null,
+          "generated": null
+        },
+        "race_name": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "race_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "race_category": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "target_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "current_block": {
+          "type": "integer",
+          "notNull": true,
+          "default": "1",
+          "identity": null,
+          "generated": null
+        },
+        "current_week": {
+          "type": "integer",
+          "notNull": true,
+          "default": "1",
+          "identity": null,
+          "generated": null
+        },
+        "programme_status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'not_started'::text",
+          "identity": null,
+          "generated": null
+        },
+        "payment_status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'pending'::text",
+          "identity": null,
+          "generated": null
+        },
+        "stripe_customer_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "stripe_subscription_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "coach_notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_start_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_length_weeks": {
+          "type": "integer",
+          "notNull": true,
+          "default": "12",
+          "identity": null,
+          "generated": null
+        },
+        "current_programme_block": {
+          "type": "integer",
+          "notNull": true,
+          "default": "1",
+          "identity": null,
+          "generated": null
+        },
+        "programme_started_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_athletes_payment_status_check": "CHECK (payment_status = ANY (ARRAY['pending'::text, 'paid'::text, 'failed'::text, 'cancelled'::text, 'refunded'::text]))",
+        "hyrox_athletes_programme_length_weeks_check": "CHECK (programme_length_weeks = ANY (ARRAY[12, 16]))",
+        "hyrox_athletes_status_check": "CHECK (status = ANY (ARRAY['accepted'::text, 'payment_confirmed'::text, 'assessment_required'::text, 'assessment_submitted'::text, 'testing_required'::text, 'testing_submitted'::text, 'coach_reviewing'::text, 'draft_generated'::text, 'programme_published'::text]))",
+        "hyrox_athletes_application_id_fkey": "FOREIGN KEY (application_id) REFERENCES hyrox_applications(id) ON DELETE SET NULL",
+        "hyrox_athletes_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "hyrox_athletes_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_athletes_application_id_idx",
+        "hyrox_athletes_email_idx",
+        "hyrox_athletes_payment_status_idx",
+        "hyrox_athletes_status_idx",
+        "hyrox_athletes_user_id_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_athletes_set_updated_at"
+      ]
+    },
+    "hyrox_block_reviews": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "block_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weeks_start": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weeks_end": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "completion_summary": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "coach_notes": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "next_block_recommendation": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "next_block_focus": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_block_reviews_block_number_check": "CHECK (block_number >= 1 AND block_number <= 4)",
+        "hyrox_block_reviews_weeks_check": "CHECK (weeks_end >= weeks_start AND weeks_start >= 1)",
+        "hyrox_block_reviews_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_block_reviews_pkey": "PRIMARY KEY (id)",
+        "hyrox_block_reviews_athlete_block_unique": "UNIQUE (athlete_id, block_number)"
+      },
+      "indexes": [
+        "hyrox_block_reviews_athlete_block_idx",
+        "hyrox_block_reviews_athlete_id_idx"
+      ],
+      "policies": [
+        "hyrox_block_reviews_coach_all"
+      ],
+      "triggers": []
+    },
+    "hyrox_check_ins": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_week_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "submitted_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_number": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "sleep": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "energy": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "stress": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "soreness": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "motivation": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "bodyweight": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "sessions_completed": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "biggest_win": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "biggest_struggle": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "pain_niggles": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "next_week_availability": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "raw_answers": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "coach_response": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'submitted'::text",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_check_ins_energy_check": "CHECK (energy IS NULL OR energy >= 1 AND energy <= 10)",
+        "hyrox_check_ins_motivation_check": "CHECK (motivation IS NULL OR motivation >= 1 AND motivation <= 10)",
+        "hyrox_check_ins_sleep_check": "CHECK (sleep IS NULL OR sleep >= 1 AND sleep <= 10)",
+        "hyrox_check_ins_soreness_check": "CHECK (soreness IS NULL OR soreness >= 1 AND soreness <= 10)",
+        "hyrox_check_ins_status_check": "CHECK (status = ANY (ARRAY['due'::text, 'submitted'::text, 'reviewed'::text]))",
+        "hyrox_check_ins_stress_check": "CHECK (stress IS NULL OR stress >= 1 AND stress <= 10)",
+        "hyrox_check_ins_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_check_ins_programme_week_id_fkey": "FOREIGN KEY (programme_week_id) REFERENCES hyrox_programme_weeks(id) ON DELETE SET NULL",
+        "hyrox_check_ins_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_check_ins_athlete_id_idx",
+        "hyrox_check_ins_status_idx",
+        "hyrox_check_ins_week_id_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_check_ins_set_updated_at"
+      ]
+    },
+    "hyrox_coach_notes": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "note_type": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "title": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "body": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "visible_to_athlete": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "related_programme_week_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_coach_notes_note_type_check": "CHECK (note_type = ANY (ARRAY['profile_review'::text, 'programme_note'::text, 'check_in_response'::text, 'video_feedback'::text, 'race_prep'::text, 'general'::text]))",
+        "hyrox_coach_notes_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_coach_notes_related_programme_week_id_fkey": "FOREIGN KEY (related_programme_week_id) REFERENCES hyrox_programme_weeks(id) ON DELETE SET NULL",
+        "hyrox_coach_notes_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_coach_notes_athlete_id_idx",
+        "hyrox_coach_notes_created_at_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_coach_notes_set_updated_at"
+      ]
+    },
+    "hyrox_mapped_profiles": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "mapped_profile": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "coach_overrides": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "effective_profile": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_level": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "main_limiter": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "secondary_limiter": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "recovery_risk": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "double_session_readiness": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "first_block_focus": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "coach_review_flags": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'mapped'::text",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_mapped_profiles_status_check": "CHECK (status = ANY (ARRAY['mapped'::text, 'coach_reviewed'::text, 'superseded'::text]))",
+        "hyrox_mapped_profiles_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_mapped_profiles_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_mapped_profiles_athlete_created_idx",
+        "hyrox_mapped_profiles_athlete_id_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_mapped_profiles_set_updated_at"
+      ]
+    },
+    "hyrox_payments": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "application_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "stripe_customer_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "stripe_subscription_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "stripe_checkout_session_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "payment_link_type": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "amount": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "currency": {
+          "type": "text",
+          "notNull": true,
+          "default": "'gbp'::text",
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'pending'::text",
+          "identity": null,
+          "generated": null
+        },
+        "raw_event": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_payments_payment_link_type_check": "CHECK (payment_link_type IS NULL OR (payment_link_type = ANY (ARRAY['monthly'::text, 'twelve_week'::text, 'sixteen_week'::text])))",
+        "hyrox_payments_status_check": "CHECK (status = ANY (ARRAY['pending'::text, 'paid'::text, 'failed'::text, 'cancelled'::text, 'refunded'::text]))",
+        "hyrox_payments_application_id_fkey": "FOREIGN KEY (application_id) REFERENCES hyrox_applications(id) ON DELETE SET NULL",
+        "hyrox_payments_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE SET NULL",
+        "hyrox_payments_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_payments_application_id_idx",
+        "hyrox_payments_athlete_id_idx",
+        "hyrox_payments_status_idx",
+        "hyrox_payments_stripe_checkout_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_payments_set_updated_at"
+      ]
+    },
+    "hyrox_performance_test_results": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_week_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_week_id": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_type": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'not_started'::text",
+          "identity": null,
+          "generated": null
+        },
+        "result_json": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "video_url": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "proof_url": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "coach_reviewed": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "coach_notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_performance_test_results_status_check": "CHECK (status = ANY (ARRAY['not_started'::text, 'draft'::text, 'submitted'::text, 'reviewed'::text]))",
+        "hyrox_performance_test_results_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_performance_test_results_programme_week_id_fkey": "FOREIGN KEY (programme_week_id) REFERENCES hyrox_programme_weeks(id) ON DELETE SET NULL",
+        "hyrox_performance_test_results_pkey": "PRIMARY KEY (id)",
+        "hyrox_performance_test_results_athlete_week_type_key": "UNIQUE (athlete_id, test_week_id, test_type)"
+      },
+      "indexes": [
+        "hyrox_performance_test_results_athlete_id_idx",
+        "hyrox_performance_test_results_programme_week_id_idx",
+        "hyrox_performance_test_results_status_idx",
+        "hyrox_performance_test_results_test_week_id_idx"
+      ],
+      "policies": [
+        "hyrox_performance_test_results_athlete_insert",
+        "hyrox_performance_test_results_athlete_select",
+        "hyrox_performance_test_results_athlete_update",
+        "hyrox_performance_test_results_coach_all"
+      ],
+      "triggers": []
+    },
+    "hyrox_programme_drafts": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "mapped_profile_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "block_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": "1",
+          "identity": null,
+          "generated": null
+        },
+        "week_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": "1",
+          "identity": null,
+          "generated": null
+        },
+        "draft_data": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "weekly_summary": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "validation_warnings": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "coach_note": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "athlete_facing_note": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'draft_generated'::text",
+          "identity": null,
+          "generated": null
+        },
+        "published_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_programme_drafts_status_check": "CHECK (status = ANY (ARRAY['draft_generated'::text, 'coach_reviewing'::text, 'edited'::text, 'approved'::text, 'published'::text, 'archived'::text]))",
+        "hyrox_programme_drafts_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_programme_drafts_mapped_profile_id_fkey": "FOREIGN KEY (mapped_profile_id) REFERENCES hyrox_mapped_profiles(id) ON DELETE SET NULL",
+        "hyrox_programme_drafts_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_programme_drafts_athlete_block_week_idx",
+        "hyrox_programme_drafts_athlete_id_idx",
+        "hyrox_programme_drafts_status_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_programme_drafts_set_updated_at"
+      ]
+    },
+    "hyrox_programme_sessions": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "programme_week_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "day_of_week": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_slot": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_name": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "category": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "prescription": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "metadata": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'scheduled'::text",
+          "identity": null,
+          "generated": null
+        },
+        "completed_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "athlete_feedback": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_programme_sessions_session_slot_check": "CHECK (session_slot = ANY (ARRAY['AM'::text, 'PM'::text, 'Optional'::text, 'Main'::text]))",
+        "hyrox_programme_sessions_status_check": "CHECK (status = ANY (ARRAY['scheduled'::text, 'completed'::text, 'missed'::text, 'modified'::text]))",
+        "hyrox_programme_sessions_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_programme_sessions_programme_week_id_fkey": "FOREIGN KEY (programme_week_id) REFERENCES hyrox_programme_weeks(id) ON DELETE CASCADE",
+        "hyrox_programme_sessions_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_programme_sessions_athlete_id_idx",
+        "hyrox_programme_sessions_status_idx",
+        "hyrox_programme_sessions_week_id_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_programme_sessions_set_updated_at"
+      ]
+    },
+    "hyrox_programme_status_history": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "status_from": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status_to": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "changed_by": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "reason": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "metadata": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_programme_status_history_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_programme_status_history_changed_by_fkey": "FOREIGN KEY (changed_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "hyrox_programme_status_history_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_programme_status_history_athlete_id_idx",
+        "hyrox_programme_status_history_created_at_idx"
+      ],
+      "policies": [],
+      "triggers": []
+    },
+    "hyrox_programme_weeks": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "source_draft_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "block_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": "1",
+          "identity": null,
+          "generated": null
+        },
+        "week_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_start_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_end_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weekly_focus": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "coach_note": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "athlete_facing_note": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weekly_summary": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'published'::text",
+          "identity": null,
+          "generated": null
+        },
+        "published_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_programme_weeks_status_check": "CHECK (status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text]))",
+        "hyrox_programme_weeks_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_programme_weeks_source_draft_id_fkey": "FOREIGN KEY (source_draft_id) REFERENCES hyrox_programme_drafts(id) ON DELETE SET NULL",
+        "hyrox_programme_weeks_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_programme_weeks_athlete_block_week_idx",
+        "hyrox_programme_weeks_athlete_id_idx",
+        "hyrox_programme_weeks_status_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_programme_weeks_set_updated_at"
+      ]
+    },
+    "hyrox_race_results": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "race_event": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "race_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "category": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "total_time": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "bodyweight": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "run_splits": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "station_splits": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weakest_station": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weakest_run": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "biggest_limiter": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "roxfit_screenshot_url": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_race_results_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_race_results_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_race_results_athlete_created_idx",
+        "hyrox_race_results_athlete_id_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_race_results_set_updated_at"
+      ]
+    },
+    "hyrox_session_library": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "name": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "category": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "subcategory": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "level": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "prescription": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "metadata": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "tags": {
+          "type": "text[]",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "is_staple": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "is_active": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "true",
+          "identity": null,
+          "generated": null
+        },
+        "source": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_session_library_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_session_library_active_idx",
+        "hyrox_session_library_category_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_session_library_set_updated_at"
+      ]
+    },
+    "hyrox_testing_results": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "test_type": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "test_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "result": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "rpe": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": "'submitted'::text",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_testing_results_rpe_check": "CHECK (rpe IS NULL OR rpe >= 1 AND rpe <= 10)",
+        "hyrox_testing_results_status_check": "CHECK (status = ANY (ARRAY['draft'::text, 'submitted'::text]))",
+        "hyrox_testing_results_test_type_check": "CHECK (test_type = ANY (ARRAY['five_k_run'::text, 'one_k_ski'::text, 'two_k_row'::text, 'mini_compromised'::text, 'farmer_hold'::text, 'sandbag_lunge_capacity'::text, 'wall_ball_capacity'::text, 'sled_exposure'::text]))",
+        "hyrox_testing_results_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_testing_results_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [
+        "hyrox_testing_results_athlete_id_idx",
+        "hyrox_testing_results_athlete_test_type_idx",
+        "hyrox_testing_results_created_at_idx"
+      ],
+      "policies": [],
+      "triggers": [
+        "hyrox_testing_results_set_updated_at"
+      ]
+    },
+    "hyrox_weekly_coach_reviews": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "athlete_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_week_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "coach_notes": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "hyrox_weekly_coach_reviews_week_check": "CHECK (week_number >= 1)",
+        "hyrox_weekly_coach_reviews_athlete_id_fkey": "FOREIGN KEY (athlete_id) REFERENCES hyrox_athletes(id) ON DELETE CASCADE",
+        "hyrox_weekly_coach_reviews_programme_week_id_fkey": "FOREIGN KEY (programme_week_id) REFERENCES hyrox_programme_weeks(id) ON DELETE SET NULL",
+        "hyrox_weekly_coach_reviews_pkey": "PRIMARY KEY (id)",
+        "hyrox_weekly_coach_reviews_athlete_week_unique": "UNIQUE (athlete_id, week_number)"
+      },
+      "indexes": [
+        "hyrox_weekly_coach_reviews_athlete_id_idx",
+        "hyrox_weekly_coach_reviews_athlete_week_idx"
+      ],
+      "policies": [
+        "hyrox_weekly_coach_reviews_coach_all"
+      ],
+      "triggers": []
+    },
+    "memberships": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "membership_status",
+          "notNull": true,
+          "default": "'inactive'::membership_status",
+          "identity": null,
+          "generated": null
+        },
+        "source": {
+          "type": "text",
+          "notNull": true,
+          "default": "'manual'::text",
+          "identity": null,
+          "generated": null
+        },
+        "expires_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "whop_membership_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "whop_user_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "whop_email": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "whop_plan_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "whop_product_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "last_whop_event_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "last_whop_event_type": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "last_whop_event_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "access_started_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "memberships_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "memberships_pkey": "PRIMARY KEY (id)",
+        "memberships_user_id_key": "UNIQUE (user_id)"
+      },
+      "indexes": [],
+      "policies": [
+        "memberships_select_own"
+      ],
+      "triggers": [
+        "memberships_updated"
+      ]
+    },
+    "pending_whop_memberships": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "email": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "expires_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "whop_membership_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "whop_user_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "whop_plan_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "whop_product_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "last_whop_event_id": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "last_whop_event_type": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "last_whop_event_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "claimed_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "claimed_user_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "source": {
+          "type": "text",
+          "notNull": false,
+          "default": "'whop'::text",
+          "identity": null,
+          "generated": null
+        },
+        "whop_email": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "pending_whop_memberships_status_check": "CHECK (status = ANY (ARRAY['active'::text, 'inactive'::text]))",
+        "pending_whop_memberships_claimed_user_id_fkey": "FOREIGN KEY (claimed_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "pending_whop_memberships_pkey": "PRIMARY KEY (id)",
+        "pending_whop_memberships_email_unique": "UNIQUE (email)"
+      },
+      "indexes": [
+        "pending_whop_memberships_last_whop_event_id_key",
+        "pending_whop_memberships_unclaimed_email_idx"
+      ],
+      "policies": [],
+      "triggers": []
+    },
+    "profiles": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "full_name": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "role": {
+          "type": "text",
+          "notNull": false,
+          "default": "'member'::text",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "profiles_role_check": "CHECK (role = ANY (ARRAY['member'::text, 'athlete'::text, 'coach'::text, 'admin'::text]))",
+        "profiles_id_fkey": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "profiles_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": [],
+      "policies": [
+        "profiles_select_own",
+        "profiles_update_own"
+      ],
+      "triggers": [
+        "profiles_updated"
+      ]
+    },
+    "programme_instances": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "title": {
+          "type": "text",
+          "notNull": true,
+          "default": "'Hybrid365 Programme'::text",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "onboarding_inputs": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "goal_focus": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "ability_level": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "weekly_hours_band": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "start_date": {
+          "type": "date",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "current_week": {
+          "type": "integer",
+          "notNull": true,
+          "default": "1",
+          "identity": null,
+          "generated": null
+        },
+        "status": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "unlock_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_generated_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "programme_instances_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "programme_instances_pkey": "PRIMARY KEY (id)",
+        "programme_instances_user_id_key": "UNIQUE (user_id)"
+      },
+      "indexes": [
+        "programme_instances_unlock_at_idx"
+      ],
+      "policies": [
+        "programme_instances_insert_own",
+        "programme_instances_select_own",
+        "programme_instances_update_own"
+      ],
+      "triggers": []
+    },
+    "programme_weeks": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "programme_instance_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "title": {
+          "type": "text",
+          "notNull": true,
+          "default": "'Week'::text",
+          "identity": null,
+          "generated": null
+        },
+        "is_unlocked": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "plan_json": {
+          "type": "jsonb",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "programme_weeks_week_number_check": "CHECK (week_number >= 1 AND week_number <= 12)",
+        "programme_weeks_programme_instance_id_fkey": "FOREIGN KEY (programme_instance_id) REFERENCES programme_instances(id) ON DELETE CASCADE",
+        "programme_weeks_pkey": "PRIMARY KEY (id)",
+        "programme_weeks_programme_instance_id_week_number_key": "UNIQUE (programme_instance_id, week_number)"
+      },
+      "indexes": [],
+      "policies": [
+        "programme_weeks_insert_own",
+        "programme_weeks_select_own",
+        "programme_weeks_update_own"
+      ],
+      "triggers": []
+    },
+    "session_logs": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_instance_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_key": {
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_title": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_day": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "completed": {
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": null
+        },
+        "completed_at": {
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "rpe": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "programme_week_id": {
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_type": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "session_status": {
+          "type": "text",
+          "notNull": false,
+          "default": "'completed'::text",
+          "identity": null,
+          "generated": null
+        },
+        "duration_minutes": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "distance_km": {
+          "type": "numeric",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "average_pace": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "average_hr": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "load_notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "station_notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "proof_url": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "pain_or_tightness": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "raw_log": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "session_logs_average_hr_check": "CHECK (average_hr IS NULL OR average_hr >= 40 AND average_hr <= 230)",
+        "session_logs_duration_minutes_check": "CHECK (duration_minutes IS NULL OR duration_minutes >= 0)",
+        "session_logs_rpe_check": "CHECK (rpe >= 1 AND rpe <= 10)",
+        "session_logs_session_status_check": "CHECK (session_status = ANY (ARRAY['completed'::text, 'partial'::text, 'skipped'::text, 'moved'::text]))",
+        "session_logs_week_number_check": "CHECK (week_number >= 1 AND week_number <= 12)",
+        "session_logs_programme_instance_id_fkey": "FOREIGN KEY (programme_instance_id) REFERENCES programme_instances(id) ON DELETE CASCADE",
+        "session_logs_programme_week_id_fkey": "FOREIGN KEY (programme_week_id) REFERENCES programme_weeks(id) ON DELETE SET NULL",
+        "session_logs_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "session_logs_pkey": "PRIMARY KEY (id)",
+        "session_logs_user_id_programme_instance_id_week_number_sess_key": "UNIQUE (user_id, programme_instance_id, week_number, session_key)"
+      },
+      "indexes": [
+        "session_logs_user_instance_idx",
+        "session_logs_week_idx"
+      ],
+      "policies": [
+        "session_logs_delete_own",
+        "session_logs_insert_own",
+        "session_logs_select_own",
+        "session_logs_update_own"
+      ],
+      "triggers": [
+        "session_logs_updated"
+      ]
+    },
+    "weekly_check_ins": {
+      "rls": true,
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        "user_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "programme_instance_id": {
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "week_number": {
+          "type": "integer",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "bodyweight_kg": {
+          "type": "numeric(5,2)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "sleep_hours": {
+          "type": "numeric(3,1)",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "energy_score": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "recovery_score": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "stress_score": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "motivation_score": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "adherence_score": {
+          "type": "integer",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "biggest_win": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "biggest_struggle": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "pain_or_injury": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "notes": {
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        "submitted_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "created_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "updated_at": {
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        "hyrox_checkin_details": {
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'{}'::jsonb",
+          "identity": null,
+          "generated": null
+        }
+      },
+      "constraints": {
+        "weekly_check_ins_adherence_score_check": "CHECK (adherence_score >= 0 AND adherence_score <= 100)",
+        "weekly_check_ins_energy_score_check": "CHECK (energy_score >= 1 AND energy_score <= 10)",
+        "weekly_check_ins_motivation_score_check": "CHECK (motivation_score >= 1 AND motivation_score <= 10)",
+        "weekly_check_ins_recovery_score_check": "CHECK (recovery_score >= 1 AND recovery_score <= 10)",
+        "weekly_check_ins_stress_score_check": "CHECK (stress_score >= 1 AND stress_score <= 10)",
+        "weekly_check_ins_week_number_check": "CHECK (week_number >= 1 AND week_number <= 12)",
+        "weekly_check_ins_programme_instance_id_fkey": "FOREIGN KEY (programme_instance_id) REFERENCES programme_instances(id) ON DELETE CASCADE",
+        "weekly_check_ins_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "weekly_check_ins_pkey": "PRIMARY KEY (id)",
+        "weekly_check_ins_user_id_programme_instance_id_week_number_key": "UNIQUE (user_id, programme_instance_id, week_number)"
+      },
+      "indexes": [],
+      "policies": [
+        "weekly_check_ins_insert_own",
+        "weekly_check_ins_select_own",
+        "weekly_check_ins_update_own"
+      ],
+      "triggers": [
+        "weekly_check_ins_updated"
+      ]
+    }
+  },
+  "functions": [
+    "handle_new_user()",
+    "is_hyrox_coach()",
+    "set_updated_at()"
+  ],
+  "enums": {
+    "membership_status": [
+      "active",
+      "inactive",
+      "trialing"
+    ]
+  },
+  "authUserTriggers": [
+    "on_auth_user_created"
+  ],
+  "extensions": [
+    "pg_stat_statements",
+    "pgcrypto",
+    "plpgsql",
+    "supabase_vault",
+    "uuid-ossp"
+  ],
+  "views": []
+}

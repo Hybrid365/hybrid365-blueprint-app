@@ -28,6 +28,11 @@
     "qa:hyrox-auth": "node scripts/qa-hyrox-suite.mjs auth",
     "qa:hyrox-data": "node scripts/qa-hyrox-suite.mjs data",
     "qa:hyrox-all": "node scripts/qa-hyrox-suite.mjs all",
+    "qa:hybrid365-staging": "node scripts/qa-hyrox-suite.mjs staging",
+    "staging:schema:read-production": "node scripts/staging/dump-production-schema.mjs",
+    "staging:schema:apply": "node scripts/staging/apply-staging-schema.mjs",
+    "staging:schema:compare": "node scripts/staging/compare-staging-schema.mjs",
+    "staging:seed": "node scripts/staging/seed-hyrox-demo-athletes.mjs",
     "export:homepage-phones": "npx --yes tsx scripts/homepage/export-phone-screens.ts"
   },
   "dependencies": {
@@ -51,6 +56,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "pg": "^8.23.1",
     "playwright": "^1.61.1",
     "tailwindcss": "^4",
     "typescript": "^5"
