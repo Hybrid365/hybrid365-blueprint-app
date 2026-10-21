@@ -3,6 +3,7 @@
  *
  * npm run qa:hyrox-all
  * npm run qa:hyrox-core | programme | athlete | auth | data
+ * npm run qa:hybrid365-staging
  */
 
 import { spawnSync } from "node:child_process";
@@ -23,10 +24,11 @@ const groups = {
     "scripts/qa-hyrox-admin-athlete-preview.ts",
   ],
   data: ["scripts/qa-hyrox-today-readiness.ts", "scripts/qa-hyrox-performance-hub.ts"],
+  staging: ["scripts/qa-hybrid365-staging-guards.ts"],
 };
 
 const requested = process.argv[2] ?? "all";
-const order = ["core", "programme", "athlete", "auth", "data"];
+const order = ["core", "programme", "athlete", "auth", "data", "staging"];
 
 function scriptsFor(name) {
   if (name === "all") {

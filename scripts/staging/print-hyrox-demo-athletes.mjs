@@ -1,6 +1,6 @@
 /**
  * Prints deterministic staging fixtures. Does not write to Supabase.
- * A future seed must refuse unless HYROX_ENV=staging and the URL is not production.
+ * Writes live in seed-hyrox-demo-athletes.mjs, which refuses unless the target is proven to be staging.
  *
  * Run: node scripts/staging/print-hyrox-demo-athletes.mjs
  */
@@ -24,7 +24,7 @@ if (askedToSeed) {
     console.error("Refusing to seed. Set HYROX_ENV=staging and a non-production NEXT_PUBLIC_SUPABASE_URL.");
     process.exit(1);
   }
-  console.error("Seed writes are not implemented. Apply this only after staging exists and the fixture review is approved.");
+  console.error("This script only prints. Seed with: node scripts/staging/seed-hyrox-demo-athletes.mjs --apply");
   process.exit(1);
 }
 
