@@ -1,8 +1,8 @@
 /**
  * Applies the staging schema to hybrid365-staging ONLY:
- *   supabase/staging/baseline-pre.sql -> supabase/migrations 001..020 -> supabase/staging/baseline-post.sql
+ *   supabase/staging/baseline-pre.sql -> supabase/migrations 001..021 -> supabase/staging/baseline-post.sql
  *   -> supabase/staging/api-role-grants.sql
- * Migrations numbered above 020 (for example 021) are refused.
+ * Migrations numbered above 021 (for example 022) are refused.
  *
  * Dry run (default): node scripts/staging/apply-staging-schema.mjs
  * Apply:             node scripts/staging/apply-staging-schema.mjs --apply

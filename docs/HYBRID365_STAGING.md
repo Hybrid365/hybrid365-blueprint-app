@@ -25,7 +25,7 @@ The migration chain does not create the base tables it depends on (`profiles`, `
 1. Put the production pooler URL in `.env.production-schema-read` as `HYROX_PRODUCTION_SCHEMA_READ_URL=...`. That file is untracked and is the only place the script reads it from.
 2. `npm run staging:schema:read-production`. Reads `pg_catalog` in a `READ ONLY` transaction. No rows. Writes `supabase/staging/baseline-pre.sql`, `baseline-post.sql`, `production-schema-snapshot.json`.
 3. Delete `.env.production-schema-read`. Review the baseline files.
-4. `npm run staging:schema:apply` (dry run), then `npm run staging:schema:apply -- --apply`. Order: `baseline-pre.sql`, migrations `001`..`020`, `baseline-post.sql`, `api-role-grants.sql`. The last file restores the classic Supabase grants to `anon`, `authenticated` and `service_role`; the staging project hides new tables from those roles by default, production does not. Anything above `020` (for example `021`) is refused. Each file runs in its own transaction and is recorded with its sha256 in `hybrid365_staging.applied_files`; a changed file is refused rather than re-run.
+4. `npm run staging:schema:apply` (dry run), then `npm run staging:schema:apply -- --apply`. Order: `baseline-pre.sql`, migrations `001`..`021`, `baseline-post.sql`, `api-role-grants.sql`. The last file restores the classic Supabase grants to `anon`, `authenticated` and `service_role`; the staging project hides new tables from those roles by default, production does not. Anything above `021` (for example `022`) is refused. `021` (Performance Profile benchmarks) is allowed on staging only; it is not applied to production. Each file runs in its own transaction and is recorded with its sha256 in `hybrid365_staging.applied_files`; a changed file is refused rather than re-run.
 5. `npm run staging:schema:compare`. Read-only drift report against the production snapshot. `hyrox_daily_readiness` (017) is expected as staging-only until production applies it.
 
 The two `002_*` files share a version number. Supabase CLI history would reject that, so staging uses its own history table instead of `supabase db push`.
@@ -128,7 +128,7 @@ Recommended local habit:
 ## Cutover
 
 1. Create the empty staging project in the Supabase dashboard.
-2. Apply the schema with the runbook above. `017` is allowed on staging; `021` is not.
+2. Apply the schema with the runbook above. `017` and `021` are allowed on staging; `022` is not.
 3. Copy `.env.example` to `.env.local` and fill staging values.
 4. Remove the production service role from the shared local env file.
 5. Set Vercel Preview to the staging project. Leave Vercel Production unchanged.

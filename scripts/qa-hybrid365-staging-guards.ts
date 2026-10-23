@@ -54,17 +54,18 @@ check("production schema read only accepts the production project", () => {
   assert.throws(() => assertProductionSchemaRead(""), GuardError);
 });
 
-check("migration plan allows 001..020 and refuses 021", () => {
+check("migration plan allows 001..021 and refuses 022", () => {
   const dir = mkdtempSync(join(tmpdir(), "h365-mig-"));
-  for (const name of ["001_a.sql", "002_b.sql", "002_c.sql", "020_d.sql", "021_hyrox_benchmarks.sql", "notes.sql"]) writeFileSync(join(dir, name), "");
+  for (const name of ["001_a.sql", "002_b.sql", "002_c.sql", "020_d.sql", "021_hyrox_benchmarks.sql", "022_next.sql", "notes.sql"]) writeFileSync(join(dir, name), "");
   const plan = stagingMigrationPlan(dir);
-  assert.deepEqual(plan.allowed, ["001_a.sql", "002_b.sql", "002_c.sql", "020_d.sql"]);
-  assert.deepEqual(plan.refused.map((r: { name: string }) => r.name).sort(), ["021_hyrox_benchmarks.sql", "notes.sql"]);
+  assert.deepEqual(plan.allowed, ["001_a.sql", "002_b.sql", "002_c.sql", "020_d.sql", "021_hyrox_benchmarks.sql"]);
+  assert.deepEqual(plan.refused.map((r: { name: string }) => r.name).sort(), ["022_next.sql", "notes.sql"]);
 });
-check("repo migration plan contains no 021", () => {
+check("repo migration plan ends at 021", () => {
   const plan = stagingMigrationPlan(join(process.cwd(), "supabase", "migrations"));
-  assert.ok(plan.allowed.length >= 19);
-  assert.ok(plan.allowed.every((name: string) => Number.parseInt(name, 10) <= 20));
+  assert.ok(plan.allowed.length >= 20);
+  assert.ok(plan.allowed.every((name: string) => Number.parseInt(name, 10) <= 21));
+  assert.ok(plan.allowed.includes("021_hyrox_athlete_benchmarks.sql"));
 });
 
 check("baseline skips migration-owned tables and keeps base tables", () => {

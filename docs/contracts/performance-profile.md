@@ -22,6 +22,7 @@ One row is one result. Required facts:
 - `activeForProgramming`
 - notes, context (HR, environment, division, reps)
 - submitted by, approved by, approved at
+- optional `idempotencyKey` (one originating submission; retries reuse the row)
 
 Sources: `athlete_submitted`, `coach_entered`, `onboarding_test`, `performance_test`, `race_result`, `lab_test`, `imported`.
 
@@ -36,8 +37,10 @@ Types for Phase 1: `run_5k`, `run_10k`, `run_30min`, `threshold_pace`, `hyrox_ru
 - Coach approval does not have to activate.
 - Activating a row clears the previous active row of that type.
 - Fastest lifetime result is not selected automatically.
-- A repeated save of the same linked test value does not append a duplicate.
+- A repeated save of the same linked source record, type, value and date does not append a duplicate.
+- The same value on another date, or from another source record, is a new row.
 - A changed value appends. It does not overwrite the older benchmark row.
+- Coaches cannot delete history through RLS. Rejected or historical status is used instead. Service role may delete for staging resets.
 - Race results enter as history, not as an active pace.
 
 ## Resolver output
@@ -75,4 +78,10 @@ No threshold estimate. No HYROX pace estimate. No FTP inferred from a 20-minute 
 
 Athlete UI: `HYROX_PERFORMANCE_PROFILE_ENABLED`, id list, email list, and development `HYROX_PERFORMANCE_PROFILE_DEV_ALL`. Default off.
 
-Coach Performance Profile can ship without the athlete flag.
+Coach Performance Profile can ship without the athlete flag. If migration 021 is not applied, GET returns `unavailable` and the coach panel is read-only.
+
+## Known follow-up (not a Phase 1 merge blocker)
+
+A coach-authenticated session with UPDATE permission can technically set `active_for_programming` directly. Product code uses the service-role activation RPC; the unique one-active index still prevents two simultaneous actives; athletes cannot update; the coach UI does not use a direct activation update.
+
+Future hardening: restrict coach UPDATE semantics, or move sensitive state transitions fully behind privileged RPCs. Do not rewrite migration 021 after it is applied on staging; use a later migration if this is tightened.

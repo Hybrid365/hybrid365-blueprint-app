@@ -8,6 +8,11 @@ import type {
   HyroxTestingResultRow,
   HyroxTestingResultType,
 } from "@/app/lib/hyroxDatabaseTypes";
+import {
+  draftFromOnboardingSubmission,
+  draftFromRace,
+  recordLinkedBenchmarkSafely,
+} from "@/app/lib/hyroxBenchmarkIngest";
 import { buildRaceResultRow, buildTestingResultRow } from "@/app/lib/hyroxTestingPayload";
 
 export const HYROX_TESTING_SELECT =
@@ -118,7 +123,21 @@ export async function upsertHyroxTestingResult(
     return { result: null, error: fetchError.message, code: fetchError.code ?? undefined };
   }
 
-  return { result: (data as HyroxTestingResultRow | null) ?? null, error: null };
+  const saved = (data as HyroxTestingResultRow | null) ?? null;
+  if (saved) {
+    await recordLinkedBenchmarkSafely(
+      client,
+      athleteId,
+      draftFromOnboardingSubmission(testType, submission, saved.test_date),
+      {
+        source: "onboarding_test",
+        sourceTable: "hyrox_testing_results",
+        sourceId: saved.id,
+      }
+    );
+  }
+
+  return { result: saved, error: null };
 }
 
 export async function upsertHyroxRaceResult(
@@ -170,5 +189,14 @@ export async function upsertHyroxRaceResult(
     return { race: null, error: fetchError.message, code: fetchError.code ?? undefined };
   }
 
-  return { race: (data as HyroxRaceResultRow | null) ?? null, error: null };
+  const saved = (data as HyroxRaceResultRow | null) ?? null;
+  if (saved) {
+    await recordLinkedBenchmarkSafely(client, athleteId, draftFromRace(saved), {
+      source: "race_result",
+      sourceTable: "hyrox_race_results",
+      sourceId: saved.id,
+    });
+  }
+
+  return { race: saved, error: null };
 }

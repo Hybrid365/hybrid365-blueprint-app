@@ -1,3 +1,4 @@
+import { draftFromPerformanceTest, recordLinkedBenchmarkSafely } from "@/app/lib/hyroxBenchmarkIngest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildHyroxPerformanceProfile } from "@/app/lib/hyroxPerformanceProfile";
 import {
@@ -246,25 +247,34 @@ export async function upsertPerformanceTestResult(
     updated_at: new Date().toISOString(),
   };
 
-  if (row?.id) {
-    const { data, error } = await supabase
-      .from("hyrox_performance_test_results")
-      .update(payload)
-      .eq("id", row.id)
-      .select(PERFORMANCE_TEST_RESULT_SELECT)
-      .single();
-    if (error) throw new Error(error.message);
-    return data as PerformanceTestResultRow;
+  const saved = row?.id
+    ? await supabase
+        .from("hyrox_performance_test_results")
+        .update(payload)
+        .eq("id", row.id)
+        .select(PERFORMANCE_TEST_RESULT_SELECT)
+        .single()
+    : await supabase
+        .from("hyrox_performance_test_results")
+        .insert({ ...payload, status: input.status === "not_started" ? "draft" : input.status })
+        .select(PERFORMANCE_TEST_RESULT_SELECT)
+        .single();
+
+  if (saved.error || !saved.data) throw new Error(saved.error?.message ?? "Could not save performance test.");
+  const result = saved.data as PerformanceTestResultRow;
+  if (result.status === "submitted" || result.status === "reviewed") {
+    await recordLinkedBenchmarkSafely(
+      supabase,
+      athleteId,
+      draftFromPerformanceTest(result.test_type, result.result_json ?? {}, result.test_date),
+      {
+        source: "performance_test",
+        sourceTable: "hyrox_performance_test_results",
+        sourceId: result.id,
+      }
+    );
   }
-
-  const { data, error } = await supabase
-    .from("hyrox_performance_test_results")
-    .insert({ ...payload, status: input.status === "not_started" ? "draft" : input.status })
-    .select(PERFORMANCE_TEST_RESULT_SELECT)
-    .single();
-
-  if (error) throw new Error(error.message);
-  return data as PerformanceTestResultRow;
+  return result;
 }
 
 export type UpsertRecoveryBaselineInput = {

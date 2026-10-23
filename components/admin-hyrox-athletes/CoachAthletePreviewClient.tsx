@@ -9,7 +9,7 @@ import { PerformanceTestingPageView } from "@/components/athlete-command-centre/
 import { CoachNotesPageView } from "@/components/athlete-command-centre/CoachNotesPageView";
 import { ResourcesPageView } from "@/components/athlete-command-centre/ResourcesPageView";
 import { RacePrepPageView } from "@/components/athlete-command-centre/RacePrepPageView";
-import { BenchmarksDashboardSection } from "@/components/athlete-command-centre/BenchmarksDashboardSection";
+import { AthleteBenchmarksBody } from "@/components/athlete-command-centre/AthleteBenchmarksBody";
 import {
   ATHLETE_PAGE_META,
   PageContent,
@@ -49,6 +49,7 @@ export default function CoachAthletePreviewClient({
   todayV2Enabled,
   performanceHubEnabled,
   homeV2Enabled,
+  performanceProfileEnabled,
   athleteTimezone,
   initialCheckIn = null,
   initialCheckInSummary = null,
@@ -60,6 +61,7 @@ export default function CoachAthletePreviewClient({
   todayV2Enabled: boolean;
   performanceHubEnabled: boolean;
   homeV2Enabled: boolean;
+  performanceProfileEnabled: boolean;
   athleteTimezone: string;
   initialCheckIn?: AthleteWeeklyCheckInView | null;
   initialCheckInSummary?: AthleteCheckInSummary | null;
@@ -147,11 +149,15 @@ export default function CoachAthletePreviewClient({
       body = (
         <PageContent>
           <PageHeader
-            eyebrow={ATHLETE_PAGE_META.benchmarks.eyebrow}
+            eyebrow={performanceProfileEnabled ? "Performance" : ATHLETE_PAGE_META.benchmarks.eyebrow}
             title={ATHLETE_PAGE_META.benchmarks.title}
-            subtitle={ATHLETE_PAGE_META.benchmarks.subtitle}
+            subtitle={
+              performanceProfileEnabled
+                ? "Current benchmarks, history, and results waiting for coach review."
+                : ATHLETE_PAGE_META.benchmarks.subtitle
+            }
           />
-          <BenchmarksDashboardSection />
+          <AthleteBenchmarksBody />
         </PageContent>
       );
       break;
@@ -175,6 +181,7 @@ export default function CoachAthletePreviewClient({
       todayV2Enabled={todayV2Enabled}
       performanceHubEnabled={performanceHubEnabled}
       homeV2Enabled={homeV2Enabled}
+      performanceProfileEnabled={performanceProfileEnabled}
       athleteTimezone={athleteTimezone}
       previewBasePath={basePath}
       adminReturnHref={adminReturnHref}

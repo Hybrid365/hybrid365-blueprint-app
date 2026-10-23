@@ -24,7 +24,7 @@ if (askedToSeed) {
     console.error("Refusing to seed. Set HYROX_ENV=staging and a non-production NEXT_PUBLIC_SUPABASE_URL.");
     process.exit(1);
   }
-  console.error("This script only prints. Seed with: node scripts/staging/seed-hyrox-demo-athletes.mjs --apply");
+  console.error("This script only prints. Seed with: npm run staging:seed -- --apply");
   process.exit(1);
 }
 

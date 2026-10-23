@@ -35,7 +35,13 @@
         }
       ],
       "race": null,
-      "includes": ["assessment", "testing_week", "one_published_week", "two_logged_sessions", "one_check_in"]
+      "includes": [
+        "assessment",
+        "testing_week",
+        "one_published_week",
+        "two_logged_sessions",
+        "one_check_in"
+      ]
     },
     {
       "id": "demo-competitive",
@@ -80,6 +86,15 @@
           "active": true
         },
         {
+          "type": "threshold_pace",
+          "display": "3:50/km",
+          "normalizedSecondsPerKm": 230,
+          "date": "2026-09-12",
+          "source": "coach_entered",
+          "status": "approved",
+          "active": true
+        },
+        {
           "type": "ftp",
           "display": "280 W",
           "normalizedWatts": 280,
@@ -97,7 +112,14 @@
         "status": "historical",
         "active": false
       },
-      "includes": ["assessment", "benchmark_history", "published_block", "logged_sessions_with_rpe", "check_ins"]
+      "includes": [
+        "assessment",
+        "benchmark_history",
+        "published_block",
+        "logged_sessions_with_rpe",
+        "check_ins",
+        "coach_threshold"
+      ]
     },
     {
       "id": "demo-high-performance",
@@ -113,6 +135,15 @@
           "source": "performance_test",
           "status": "approved",
           "active": true
+        },
+        {
+          "type": "run_5k",
+          "display": "16:50",
+          "normalizedSeconds": 1010,
+          "date": "2025-10-05",
+          "source": "imported",
+          "status": "historical",
+          "active": false
         },
         {
           "type": "threshold_pace",
@@ -149,6 +180,15 @@
           "source": "lab_test",
           "status": "approved",
           "active": true
+        },
+        {
+          "type": "hyrox_run_pace",
+          "display": "4:05/km",
+          "normalizedSecondsPerKm": 245,
+          "date": "2026-09-25",
+          "source": "coach_entered",
+          "status": "approved",
+          "active": true
         }
       ],
       "race": {
@@ -159,7 +199,16 @@
         "status": "historical",
         "active": false
       },
-      "includes": ["assessment", "benchmark_history", "threshold", "published_block", "logged_sessions_with_hr", "check_ins", "race_result"]
+      "includes": [
+        "assessment",
+        "benchmark_history",
+        "threshold",
+        "published_block",
+        "logged_sessions_with_hr",
+        "check_ins",
+        "race_result",
+        "hyrox_run_pace"
+      ]
     }
   ]
 }

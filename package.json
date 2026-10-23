@@ -26,13 +26,15 @@
     "qa:hyrox-programme": "node scripts/qa-hyrox-suite.mjs programme",
     "qa:hyrox-athlete": "node scripts/qa-hyrox-suite.mjs athlete",
     "qa:hyrox-auth": "node scripts/qa-hyrox-suite.mjs auth",
+    "qa:hyrox-benchmarks": "npx --yes tsx scripts/qa-hyrox-benchmarks.ts",
     "qa:hyrox-data": "node scripts/qa-hyrox-suite.mjs data",
     "qa:hyrox-all": "node scripts/qa-hyrox-suite.mjs all",
     "qa:hybrid365-staging": "node scripts/qa-hyrox-suite.mjs staging",
     "staging:schema:read-production": "node scripts/staging/dump-production-schema.mjs",
     "staging:schema:apply": "node scripts/staging/apply-staging-schema.mjs",
     "staging:schema:compare": "node scripts/staging/compare-staging-schema.mjs",
-    "staging:seed": "node scripts/staging/seed-hyrox-demo-athletes.mjs",
+    "staging:seed": "npx --yes tsx scripts/staging/seed-hyrox-demo-athletes.mjs",
+    "staging:qa:benchmarks": "node scripts/staging/qa-staging-benchmark-permissions.mjs",
     "export:homepage-phones": "npx --yes tsx scripts/homepage/export-phone-screens.ts"
   },
   "dependencies": {
