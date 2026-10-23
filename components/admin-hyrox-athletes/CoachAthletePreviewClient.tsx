@@ -165,7 +165,7 @@ export default function CoachAthletePreviewClient({
       body = <CoachNotesPageView />;
       break;
     case "race-prep":
-      body = <RacePrepPageView />;
+      body = <RacePrepPageView readOnly />;
       break;
     case "resources":
       body = <ResourcesPageView />;

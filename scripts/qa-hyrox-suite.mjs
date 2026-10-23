@@ -12,14 +12,17 @@ const groups = {
   core: [
     "scripts/qa-hyrox-middleware-admin-timeout.ts",
     "scripts/qa-hyrox-admin-athlete-preview.ts",
-    "scripts/qa-hyrox-coach-command-centre.ts",
   ],
   programme: [
     "scripts/qa-hyrox-programme-blocks.ts",
     "scripts/qa-hyrox-copy-programme-week.ts",
     "scripts/qa-hyrox-auto-carry-week.ts",
   ],
-  athlete: ["scripts/qa-hyrox-home-v2.ts", "scripts/qa-hyrox-performance-hub.ts"],
+  athlete: [
+    "scripts/qa-hyrox-home-v2.ts",
+    "scripts/qa-hyrox-performance-hub.ts",
+    "scripts/qa-hyrox-visual-system.ts",
+  ],
   auth: [
     "scripts/qa-hyrox-middleware-admin-timeout.ts",
     "scripts/qa-hyrox-admin-athlete-preview.ts",
@@ -31,6 +34,7 @@ const groups = {
     "scripts/qa-hyrox-benchmarks.ts",
     "scripts/qa-hyrox-prescription-engine.ts",
     "scripts/qa-hyrox-athlete-analytics.ts",
+    "scripts/qa-hyrox-race-intelligence.ts",
   ],
   staging: ["scripts/qa-hybrid365-staging-guards.ts"],
 };
