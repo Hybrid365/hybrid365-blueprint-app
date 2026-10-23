@@ -10,7 +10,9 @@ Hybrid365 is a hybrid-performance coaching platform. The app already delivers pr
 
 The coaching loop is:
 
-**Athlete profile → Prescription → Performance → Feedback → Adaptation → Progress**
+**Athlete profile → Prescription → Training → Execution → Feedback → Interpretation → Adaptation → Progress**
+
+Product constitution (Home, session, adaptation, Track vs 1-1): `docs/HYBRID365_COACHING_PLATFORM.md`.
 
 Two products share one engine:
 
