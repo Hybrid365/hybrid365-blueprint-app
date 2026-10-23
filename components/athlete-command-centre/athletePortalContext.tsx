@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 import {
   clearHyroxMockPreviewStorage,
   isHyroxAthleteMockPreviewAllowed,
@@ -81,6 +81,25 @@ type AthletePortalContextValue = {
 
 const AthletePortalContext = createContext<AthletePortalContextValue | null>(null);
 
+const mockPreviewListeners = new Set<() => void>();
+function subscribeMockPreview(onStoreChange: () => void) {
+  mockPreviewListeners.add(onStoreChange);
+  return () => {
+    mockPreviewListeners.delete(onStoreChange);
+  };
+}
+function notifyMockPreview() {
+  mockPreviewListeners.forEach((listener) => listener());
+}
+function writeMockPreview(enabled: boolean) {
+  writeHyroxMockPreviewEnabled(enabled);
+  notifyMockPreview();
+}
+function clearMockPreview() {
+  clearHyroxMockPreviewStorage();
+  notifyMockPreview();
+}
+
 const EMPTY_LAYOUT_AUTH: PortalLayoutAuth = {
   hasSession: false,
   email: null,
@@ -125,35 +144,26 @@ export function AthletePortalProvider({
   raceIntelligenceEnabled?: boolean;
 }) {
   const allowMockPreview = isHyroxAthleteMockPreviewAllowed();
-  const [programmePublishedMock, setProgrammePublishedMockState] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const storedMockPreview = useSyncExternalStore(
+    subscribeMockPreview,
+    readHyroxMockPreviewEnabled,
+    () => false
+  );
 
   const {
     data: liveProgramme,
     loading: liveProgrammeLoading,
     error: liveProgrammeApiError,
     reload: reloadLiveProgramme,
-  } = useAthleteLiveProgramme(hasLinkedAthlete && hydrated, {
+  } = useAthleteLiveProgramme(hasLinkedAthlete, {
     preserveDataOnAuthFailure: serverAuthConfirmed,
     initialData: initialLiveProgramme,
   });
 
-  useEffect(() => {
-    if (!allowMockPreview) {
-      clearHyroxMockPreviewStorage();
-      setProgrammePublishedMockState(false);
-      setHydrated(true);
-      return;
-    }
-    setProgrammePublishedMockState(readHyroxMockPreviewEnabled());
-    setHydrated(true);
-  }, [allowMockPreview]);
-
   const setProgrammePublishedMock = useCallback(
     (value: boolean) => {
       if (!allowMockPreview) return;
-      setProgrammePublishedMockState(value);
-      writeHyroxMockPreviewEnabled(value);
+      writeMockPreview(value);
     },
     [allowMockPreview]
   );
@@ -168,22 +178,27 @@ export function AthletePortalProvider({
 
   /** Clear dev mock when a real programme is published so athletes never stay on Alex Morgan data. */
   useEffect(() => {
-    if (!hydrated || !programmePublishedLive) return;
-    setProgrammePublishedMockState(false);
-    clearHyroxMockPreviewStorage();
-  }, [hydrated, programmePublishedLive]);
+    if (!allowMockPreview) {
+      clearMockPreview();
+      return;
+    }
+    if (!programmePublishedLive) return;
+    clearMockPreview();
+  }, [allowMockPreview, programmePublishedLive]);
+
+  const programmePublishedMock = allowMockPreview && storedMockPreview && !programmePublishedLive;
 
   /** Dev-only: mock preview when no live published programme. Never in production. */
-  const useMockPreview =
-    allowMockPreview && hydrated && programmePublishedMock && !programmePublishedLive;
+  const useMockPreview = programmePublishedMock;
 
   /** Hub live from server seed immediately; client API must not downgrade when auth is confirmed. */
   const programmeHubLive =
     (serverAuthConfirmed && serverProgrammePublishedSeed) ||
-    (hydrated && (programmePublishedLive || useMockPreview));
+    programmePublishedLive ||
+    useMockPreview;
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "development" || !hydrated) return;
+    if (process.env.NODE_ENV !== "development") return;
     console.log("[athlete-portal]", {
       portalAthleteId: portalAthlete?.id ?? null,
       portalAthleteName: portalAthlete?.name ?? null,
@@ -201,7 +216,6 @@ export function AthletePortalProvider({
           : "waiting",
     });
   }, [
-    hydrated,
     portalAthlete,
     programmeState,
     hasPublishedProgramme,
@@ -214,7 +228,7 @@ export function AthletePortalProvider({
 
   const value = useMemo(
     () => ({
-      programmePublishedMock: hydrated && allowMockPreview ? programmePublishedMock : false,
+      programmePublishedMock,
       setProgrammePublishedMock,
       allowMockPreview,
       hasLinkedAthlete,
@@ -243,7 +257,6 @@ export function AthletePortalProvider({
       raceIntelligenceEnabled,
     }),
     [
-      hydrated,
       allowMockPreview,
       programmePublishedMock,
       setProgrammePublishedMock,

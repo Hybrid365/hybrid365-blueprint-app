@@ -9,7 +9,7 @@ import {
   MOCK_PROGRESS_STATS,
   resolveHyroxBlockMeta,
 } from "@/app/lib/hyroxTeamDashboardMock";
-import { athleteCard, athleteCardPadding, eyebrowClass, ProgressBar } from "./athleteUi";
+import { athleteCard, athleteCardPadding, eyebrowClass, formatRpeLabel, ProgressBar } from "./athleteUi";
 import { nextSessionDisplayForDashboard } from "@/app/lib/hyroxAthleteDashboardLive";
 import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
@@ -160,7 +160,9 @@ export function CommandCentreHeader() {
           <p className="text-[10px] font-bold uppercase text-zinc-500">Next key session</p>
           <p className="mt-1 font-semibold text-white">{next.name}</p>
           <p className="text-xs text-zinc-500">
-            {next.dateLabel ?? next.day} · {next.duration} · RPE {next.rpeTarget}
+            {[next.dateLabel ?? next.day, next.duration, formatRpeLabel(next.rpeTarget)]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
       </div>

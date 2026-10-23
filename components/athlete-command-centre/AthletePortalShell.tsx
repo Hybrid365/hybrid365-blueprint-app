@@ -6,6 +6,7 @@ import { AthleteAppNav } from "./AthleteAppNav";
 import { AthletePortalGate } from "./AthletePortalGate";
 import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 import { useAthletePortalOptional } from "./athletePortalContext";
+import { athleteMobileNavClearanceClass } from "./visual/tokens";
 
 export { AthletePortalGate } from "./AthletePortalGate";
 
@@ -88,7 +89,7 @@ export function AthletePortalShell({
         </div>
       ) : null}
 
-      <div className={`min-w-0 overflow-x-hidden px-4 sm:px-6 ${navVisible ? "pb-24 pt-6 lg:pb-10" : isAdminPreview ? "py-6" : "py-6"}`}>
+      <div className={`min-w-0 overflow-x-hidden px-4 sm:px-6 ${navVisible ? `pt-6 ${athleteMobileNavClearanceClass}` : isAdminPreview ? "py-6" : "py-6"}`}>
         {children}
       </div>
 

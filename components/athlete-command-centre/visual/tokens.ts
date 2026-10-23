@@ -62,3 +62,6 @@ export const visualHairline = "border-zinc-800";
 export const visualTouch = "min-h-11 min-w-11";
 export const ENV_BADGE_HEIGHT_PX = 24;
 export const envBadgeOffsetClass = "top-[var(--hybrid365-env-badge-height,0px)]";
+/** Clears the fixed athlete mobile nav + home-indicator so last cards stay readable. */
+export const athleteMobileNavClearanceClass =
+  "pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] lg:pb-10";

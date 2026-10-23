@@ -21,6 +21,7 @@ export {
   ATHLETE_STATUS_WORDS,
   athleteBenchmarkStatus,
   ENV_BADGE_HEIGHT_PX,
+  athleteMobileNavClearanceClass,
   envBadgeOffsetClass,
   MOTION_EASE,
   type AthleteStatusKey,

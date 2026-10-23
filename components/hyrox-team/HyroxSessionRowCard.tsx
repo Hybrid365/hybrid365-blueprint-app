@@ -4,6 +4,12 @@ import { CheckCircle2, ChevronRight, Clock } from "lucide-react";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 import { SessionStatusBadge, sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
 
+function rpeLabel(rpe: string | null | undefined): string | null {
+  const value = rpe?.trim();
+  if (!value || value === "—") return null;
+  return /^rpe\b/i.test(value) ? value : `RPE ${value}`;
+}
+
 function priorityStyle(p: HyroxSession["priority"]) {
   if (p === "Key") return "bg-yellow-400/25 text-yellow-300 border-yellow-400/40";
   if (p === "Supporting") return "bg-zinc-600/40 text-zinc-300 border-zinc-700/50";
@@ -18,6 +24,7 @@ type Props = {
 export function HyroxSessionRowCard({ session, onView }: Props) {
   const completed = session.status === "complete";
   const modified = session.status === "modified";
+  const rpe = rpeLabel(session.rpeTarget);
   const missed = session.status === "missed";
 
   return (
@@ -63,7 +70,7 @@ export function HyroxSessionRowCard({ session, onView }: Props) {
             <Clock className="h-4 w-4 shrink-0 text-yellow-400/80" />
             {session.duration}
           </span>
-          <span>RPE {session.rpeTarget}</span>
+          {rpe ? <span>{rpe}</span> : null}
           {session.loggedRpe ? (
             <span className="text-emerald-400/90">Logged {session.loggedRpe}</span>
           ) : null}

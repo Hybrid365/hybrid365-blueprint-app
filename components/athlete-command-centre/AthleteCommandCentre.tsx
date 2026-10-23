@@ -29,6 +29,7 @@ import { SessionDrawer } from "./SessionDrawer";
 import { StickyActionPanel } from "./StickyActionPanel";
 import { WeekSessionCard } from "./WeekSessionCard";
 import { scrollToSection } from "./nav";
+import { formatRpeLabel } from "./athleteUi";
 
 export function AthleteCommandCentre() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -140,7 +141,7 @@ export function AthleteCommandCentre() {
               </div>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400">{next.objective}</p>
               <p className="mt-3 text-sm text-zinc-500">
-                {next.duration} · RPE {next.rpeTarget}
+                {[next.duration, formatRpeLabel(next.rpeTarget)].filter(Boolean).join(" · ")}
               </p>
               <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
                 <p className="text-[10px] font-bold uppercase text-zinc-500">Coach note</p>

@@ -3,7 +3,7 @@
 import { CheckCircle2 } from "lucide-react";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 import { SessionStatusBadge, sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
-import { btnPrimaryClass, btnSecondaryClass } from "./athleteUi";
+import { btnPrimaryClass, btnSecondaryClass, formatRpeLabel } from "./athleteUi";
 import { SessionTarget } from "./visual/SessionTarget";
 import { visualTouch } from "./visual/tokens";
 
@@ -92,7 +92,7 @@ export function WeekSessionCard({ session, onView, onLog }: Props) {
             ) : null}
             <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
               <SessionTarget label="Duration" value={session.duration} />
-              <SessionTarget label="RPE" value={session.rpeTarget ? `RPE ${session.rpeTarget}` : null} />
+              <SessionTarget label="RPE" value={formatRpeLabel(session.rpeTarget)} />
               {pace ? <SessionTarget label="Pace / split" value={pace} /> : null}
               {hrZone ? <SessionTarget label="HR" value={hrZone} /> : null}
             </div>

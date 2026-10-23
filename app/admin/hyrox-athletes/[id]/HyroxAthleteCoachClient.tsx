@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -83,6 +83,26 @@ type LiveCoachPayload = {
   programmeDraftCoachNote: string;
   programmeDraftAthleteNote: string;
 };
+
+function CoachStatusChip({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone: "live" | "ok" | "muted";
+}) {
+  const toneClass =
+    tone === "live"
+      ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
+      : tone === "ok"
+        ? "border-zinc-600 bg-zinc-900 text-zinc-200"
+        : "border-zinc-800 bg-zinc-950 text-zinc-500";
+  return (
+    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-4 ${toneClass}`}>
+      {children}
+    </span>
+  );
+}
 
 export default function HyroxAthleteCoachClient({
   athleteId,
@@ -432,15 +452,26 @@ export default function HyroxAthleteCoachClient({
     <CoachAdminShell
       title={displayAthlete.name}
       actions={
-        <div className="flex flex-col items-end gap-1 text-xs text-zinc-500">
+        <div className="flex max-w-xl flex-col items-stretch gap-2 text-xs text-zinc-500 sm:items-end">
           {livePayload ? (
-            <span className="text-emerald-400/90">
-              Live · {livePayload.hasAssessment ? "Assessment ✓" : "No assessment"} ·{" "}
-              {livePayload.hasTesting ? "Testing ✓" : "No testing"} ·{" "}
-              {livePayload.hasRaceResult ? "RoxFit ✓" : "No race"}
-              {mappedProfileSaved ? " · Profile saved ✓" : " · Profile not saved"}
-              {liveDraftId ? ` · Draft ${status.replace(/_/g, " ")}` : ""}
-            </span>
+            <div className="flex flex-wrap justify-end gap-1.5">
+              <CoachStatusChip tone="live">Live</CoachStatusChip>
+              <CoachStatusChip tone={livePayload.hasAssessment ? "ok" : "muted"}>
+                {livePayload.hasAssessment ? "Assessment" : "No assessment"}
+              </CoachStatusChip>
+              <CoachStatusChip tone={livePayload.hasTesting ? "ok" : "muted"}>
+                {livePayload.hasTesting ? "Testing" : "No testing"}
+              </CoachStatusChip>
+              <CoachStatusChip tone={livePayload.hasRaceResult ? "ok" : "muted"}>
+                {livePayload.hasRaceResult ? "RoxFit" : "No race"}
+              </CoachStatusChip>
+              <CoachStatusChip tone={mappedProfileSaved ? "ok" : "muted"}>
+                {mappedProfileSaved ? "Profile saved" : "Profile not saved"}
+              </CoachStatusChip>
+              {liveDraftId ? (
+                <CoachStatusChip tone="muted">Draft {status.replace(/_/g, " ")}</CoachStatusChip>
+              ) : null}
+            </div>
           ) : (
             <span>Mock coach athlete</span>
           )}

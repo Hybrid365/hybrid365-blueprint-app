@@ -30,6 +30,7 @@ import type { HyroxDailyReadinessRow } from "@/app/lib/hyrox-team/modules/today/
 import { previewPathForAthlete } from "@/app/lib/hyroxAdminAthletePreviewPaths";
 import { isHyroxPerformanceHubEnabledClient } from "@/app/lib/hyrox-team/modules/performanceHub/featureFlag";
 import Link from "next/link";
+import { athleteMobileNavClearanceClass } from "@/components/athlete-command-centre/visual/tokens";
 
 export type PreviewSection =
   | ""
@@ -217,7 +218,7 @@ export default function CoachAthletePreviewClient({
             </div>
             <PreviewAthleteNav basePath={basePath} variant="desktop" />
           </div>
-          <div className="min-w-0 overflow-x-hidden px-4 pb-24 pt-6 sm:px-6 lg:pb-10">
+          <div className={`min-w-0 overflow-x-hidden px-4 pt-6 sm:px-6 ${athleteMobileNavClearanceClass}`}>
             <div className="mx-auto max-w-5xl">{body}</div>
           </div>
           <PreviewAthleteNav basePath={basePath} variant="mobile" />

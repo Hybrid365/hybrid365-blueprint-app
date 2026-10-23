@@ -28,6 +28,13 @@ export const btnGhostClass =
 export const eyebrowClass =
   "text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-400/90";
 
+/** Prefix RPE once. Library targets may already include "RPE". */
+export function formatRpeLabel(rpe: string | null | undefined): string | null {
+  const value = rpe?.trim();
+  if (!value || value === "—") return null;
+  return /^rpe\b/i.test(value) ? value : `RPE ${value}`;
+}
+
 export function PageContent({
   children,
   width = "default",

@@ -51,6 +51,7 @@ import {
   athleteCardInteractive,
   athleteCardPadding,
   eyebrowClass,
+  formatRpeLabel,
 } from "./athleteUi";
 import { useAthletePortalOptional } from "./athletePortalContext";
 import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
@@ -373,7 +374,9 @@ export function AthleteHomeDashboard({
                 <p className={eyebrowClass}>Next session</p>
                 <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">{next.name}</h2>
                 <p className="mt-1 text-sm text-zinc-500">
-                  {next.dateLabel ?? next.day} · {next.duration} · RPE {next.rpeTarget}
+                  {[next.dateLabel ?? next.day, next.duration, formatRpeLabel(next.rpeTarget)]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 <span className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-xs ${sessionTypeStyle(next.type)}`}>
                   {next.priority === "Optional" ? "Optional" : "Key session"}
@@ -458,7 +461,7 @@ export function AthleteHomeDashboard({
             </SnapshotPanel>
 
             <div className="space-y-4">
-              <SnapshotPanel title="Benchmarks" href="/athlete/benchmarks" linkLabel="All tests →">
+              <SnapshotPanel title="Performance" href="/athlete/benchmarks" linkLabel="All tests →">
                 {useLive && benchmarksLoading ? (
                   <p className="text-sm text-zinc-500">Loading benchmark results…</p>
                 ) : useLive && benchmarksError ? (
@@ -528,7 +531,7 @@ export function AthleteHomeDashboard({
               />
               <HubLinkCard
                 href="/athlete/benchmarks"
-                title="Benchmarks"
+                title="Performance"
                 description="Hyrox tests, targets and improvement trends"
                 icon={BarChart3}
                 meta="Logged tests"
