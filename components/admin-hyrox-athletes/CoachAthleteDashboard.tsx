@@ -10,8 +10,7 @@ import { CoachWeeklyReviewPanel } from "@/components/admin-hyrox-athletes/CoachW
 import { ProgrammeBuilder } from "@/components/admin-hyrox-athletes/ProgrammeBuilder";
 import { PerformanceProfileCoachPanel } from "@/components/admin-hyrox-athletes/PerformanceProfileCoachPanel";
 import { PerformanceTestingCoachPanel } from "@/components/admin-hyrox-athletes/PerformanceTestingCoachPanel";
-import { CoachTodaySnapshotPanel } from "@/components/admin-hyrox-athletes/CoachTodaySnapshotPanel";
-import { CoachPerformanceHubPanel } from "@/components/admin-hyrox-athletes/CoachPerformanceHubPanel";
+import { CommandCentreOverview } from "@/components/admin-hyrox-athletes/CommandCentreOverview";
 import { ProfileReviewTab } from "@/components/admin-hyrox-athletes/ProfileReviewTab";
 import { FullAssessmentAnswersTab } from "@/components/admin-hyrox-athletes/FullAssessmentAnswersTab";
 import type { HyroxApplicationRow, HyroxAssessmentRow } from "@/app/lib/hyroxDatabaseTypes";
@@ -19,8 +18,8 @@ import {
   ListStatusBadge,
   ProgrammeStatusBadge,
 } from "@/components/admin-hyrox-athletes/StatusBadge";
-import { DashCard, SectionHeading, StatTile } from "@/components/hyrox-team/HyroxDashboardUi";
-import { Calendar, ExternalLink, Target } from "lucide-react";
+import { DashCard, SectionHeading } from "@/components/hyrox-team/HyroxDashboardUi";
+import { Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -142,7 +141,7 @@ export function CoachAthleteDashboard({
         ))}
       </div>
 
-      {tab === "Overview" && <OverviewTab athlete={athlete} />}
+      {tab === "Overview" && <OverviewTab athlete={athlete} onTabChange={onTabChange} />}
       {tab === "Assessment" && (
         <FullAssessmentAnswersTab
           athlete={assessmentTab.athlete}
@@ -305,71 +304,14 @@ function MiniStat({
   );
 }
 
-function OverviewTab({ athlete }: { athlete: CoachAthlete }) {
-  return (
-    <div className="space-y-4">
-      {athlete.id ? (
-        <DashCard>
-          <SectionHeading title="Athlete portal preview" />
-          <p className="mt-2 text-sm text-zinc-400">
-            Open a read-only preview of this athlete&apos;s HYROX Team portal using your coach
-            session. Writes are blocked server-side.
-          </p>
-          <div className="mt-4">
-            <Link
-              href={`/admin/hyrox-athletes/${athlete.id}/preview/start`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-400/10 px-4 py-2 text-sm font-bold text-amber-100 hover:bg-amber-400/20"
-            >
-              Preview Athlete Experience
-              <ExternalLink className="h-4 w-4" aria-hidden />
-            </Link>
-          </div>
-        </DashCard>
-      ) : null}
-      {athlete.id ? <CoachTodaySnapshotPanel athleteId={athlete.id} /> : null}
-      {athlete.id ? <CoachPerformanceHubPanel athleteId={athlete.id} /> : null}
-    <div className="grid gap-4 lg:grid-cols-2">
-      <DashCard>
-        <SectionHeading title="Athlete classification" />
-        <dl className="space-y-2 text-sm">
-          <Row label="Classification" value={athlete.classification} />
-          <Row label="Race goal" value={athlete.raceGoal} />
-          <Row
-            label="Availability"
-            value={`${athlete.trainingDays} days · ${athlete.weeklyHours}h/week`}
-          />
-          <Row label="Weekly run target" value={`${athlete.weeklyRunKm} km`} />
-          <Row label="Block focus" value={athlete.blockFocus} />
-        </dl>
-      </DashCard>
-      <DashCard>
-        <SectionHeading title="Equipment access" />
-        <p className="text-sm text-zinc-300">{athlete.assessment.equipmentAccess.join(" · ")}</p>
-        <div className="mt-4">
-          <SectionHeading title="Training priorities" />
-        </div>
-        <ul className="space-y-2 text-sm text-zinc-300">
-          {athlete.programmePriorities.map((p) => (
-            <li key={p} className="flex gap-2">
-              <Target className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400/80" />
-              {p}
-            </li>
-          ))}
-        </ul>
-      </DashCard>
-      <DashCard className="lg:col-span-2">
-        <SectionHeading title="Programme status" />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StatTile label="List status" value={athlete.listStatus.replace(/_/g, " ")} />
-          <StatTile label="Last updated" value={athlete.lastUpdated} />
-          <StatTile label="Next coach action" value={athlete.nextCoachAction} />
-        </div>
-      </DashCard>
-    </div>
-    </div>
-  );
+function OverviewTab({
+  athlete,
+  onTabChange,
+}: {
+  athlete: CoachAthlete;
+  onTabChange: (t: AthleteTab) => void;
+}) {
+  return <CommandCentreOverview athleteId={athlete.id} onTabChange={onTabChange} />;
 }
 
 function TestingTab({ athlete }: { athlete: CoachAthlete }) {
@@ -554,15 +496,6 @@ function CoachNotesTab({
         />
       </div>
     </DashCard>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[10px] font-semibold uppercase text-zinc-600">{label}</dt>
-      <dd className="mt-0.5 text-zinc-300">{value}</dd>
-    </div>
   );
 }
 
