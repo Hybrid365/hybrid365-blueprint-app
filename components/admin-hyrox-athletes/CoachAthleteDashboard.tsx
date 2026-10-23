@@ -10,6 +10,7 @@ import { CoachWeeklyReviewPanel } from "@/components/admin-hyrox-athletes/CoachW
 import { ProgrammeBuilder } from "@/components/admin-hyrox-athletes/ProgrammeBuilder";
 import { PerformanceProfileCoachPanel } from "@/components/admin-hyrox-athletes/PerformanceProfileCoachPanel";
 import { PerformanceTestingCoachPanel } from "@/components/admin-hyrox-athletes/PerformanceTestingCoachPanel";
+import { RaceIntelligenceCoachPanel } from "@/components/admin-hyrox-athletes/RaceIntelligenceCoachPanel";
 import { CoachTodaySnapshotPanel } from "@/components/admin-hyrox-athletes/CoachTodaySnapshotPanel";
 import { CoachPerformanceHubPanel } from "@/components/admin-hyrox-athletes/CoachPerformanceHubPanel";
 import { ProfileReviewTab } from "@/components/admin-hyrox-athletes/ProfileReviewTab";
@@ -28,6 +29,7 @@ const TABS = [
   "Overview",
   "Assessment",
   "Testing",
+  "Races",
   "Performance Profile",
   "Profile Review",
   "Programme Builder",
@@ -152,6 +154,7 @@ export function CoachAthleteDashboard({
         />
       )}
       {tab === "Testing" && <TestingTab athlete={athlete} />}
+      {tab === "Races" && athlete.id ? <RaceIntelligenceCoachPanel athleteId={athlete.id} /> : null}
       {tab === "Performance Profile" && athlete.id ? (
         <PerformanceProfileCoachPanel athleteId={athlete.id} />
       ) : null}

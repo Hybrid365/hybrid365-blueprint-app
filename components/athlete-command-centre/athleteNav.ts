@@ -3,6 +3,7 @@ import {
   Activity,
   CalendarDays,
   ClipboardCheck,
+  Flag,
   FlaskConical,
   Home,
   Target,
@@ -47,12 +48,13 @@ export const ATHLETE_NAV_ITEMS: AthleteNavItem[] = [
     mobileMore: true,
   },
   { id: "benchmarks", label: "Benchmarks", href: "/athlete/benchmarks", icon: Target, mobileMore: true },
+  { id: "race-prep", label: "Races", href: "/athlete/race-prep", icon: Flag, mobileMore: true },
   { id: "checkin", label: "Check-In", href: "/athlete/check-in", icon: ClipboardCheck, mobilePrimary: true },
 ];
 
 /**
  * Routes kept for direct links and View-as-Athlete, but hidden until they show live data.
- * coach-notes, race-prep, and resources are placeholder pages.
+ * coach-notes and resources are placeholder pages.
  */
 
 export const ATHLETE_DESKTOP_NAV = ATHLETE_NAV_ITEMS;
