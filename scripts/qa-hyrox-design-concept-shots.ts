@@ -12,6 +12,7 @@ const CONCEPTS = [
   "home-a",
   "home-b",
   "home-c",
+  "home-d",
   "session",
   "complete",
   "progress",
@@ -49,6 +50,42 @@ async function main() {
       await frame.screenshot({ path: `${OUT}/${id}-${width}.png` });
       console.log(`wrote ${OUT}/${id}-${width}.png`);
     }
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('[data-concept-tab="home-d"]').click();
+  await page.locator("[data-home-d]").waitFor();
+
+  await page.locator('[data-home-d-day="wed"]').click();
+  await page.locator("[data-concept-frame]").screenshot({ path: `${OUT}/home-d-triple-390.png` });
+  console.log(`wrote ${OUT}/home-d-triple-390.png`);
+
+  await page.locator('[data-home-d-day="sat"]').click();
+  await page.locator("[data-concept-frame]").screenshot({ path: `${OUT}/home-d-rest-390.png` });
+  console.log(`wrote ${OUT}/home-d-rest-390.png`);
+
+  await page.locator('[data-home-d-day="fri"]').click();
+  const scroll = page.locator("[data-home-d-scroll]");
+  await scroll.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await page.locator("[data-concept-frame]").screenshot({ path: `${OUT}/home-d-scrolled-390.png` });
+  console.log(`wrote ${OUT}/home-d-scrolled-390.png`);
+
+  await scroll.evaluate((node) => {
+    node.scrollTop = 0;
+  });
+  await page.locator('[data-home-d-session="fri-threshold"]').click();
+  await page.locator("[data-home-d-drawer]").waitFor();
+  await page.locator("[data-concept-frame]").screenshot({ path: `${OUT}/home-d-drawer-390.png` });
+  console.log(`wrote ${OUT}/home-d-drawer-390.png`);
+
+  for (const width of [375, 430, 768] as const) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.locator('[data-concept-tab="home-d"]').click();
+    const overflow = await page.locator("[data-home-d]").evaluate((node) => node.scrollWidth > node.clientWidth + 1);
+    if (overflow) throw new Error(`Home D overflows at ${width}`);
+    console.log(`Home D no overflow at ${width}`);
   }
 
   await browser.close();

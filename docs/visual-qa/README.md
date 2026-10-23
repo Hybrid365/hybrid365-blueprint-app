@@ -37,6 +37,11 @@ Lab tabs on `/dev/visual-system`. Capture: `npx tsx scripts/qa-hyrox-design-conc
 | Home A | `concepts/home-a-390.png` | `concepts/home-a-1440.png` |
 | Home B | `concepts/home-b-390.png` | `concepts/home-b-1440.png` |
 | Home C | `concepts/home-c-390.png` | `concepts/home-c-1440.png` |
+| Home D | `concepts/home-d-390.png` | `concepts/home-d-1440.png` |
+| Home D triple | `concepts/home-d-triple-390.png` | |
+| Home D rest | `concepts/home-d-rest-390.png` | |
+| Home D scrolled + nav | `concepts/home-d-scrolled-390.png` | |
+| Home D drawer | `concepts/home-d-drawer-390.png` | |
 | Session detail | `concepts/session-390.png` | `concepts/session-1440.png` |
 | Session complete | `concepts/complete-390.png` | `concepts/complete-1440.png` |
 | Progress | `concepts/progress-390.png` | `concepts/progress-1440.png` |

@@ -235,6 +235,9 @@ function contrast(fg: string, bg: string): number {
   assert.match(lab, /do not replace live athlete Home/);
   const chrome = read("components/athlete-command-centre/visual/concepts/chrome.tsx");
   assert.match(chrome, /CONCEPT_PROTOTYPE_BANNER/);
+  const homeD = read("components/athlete-command-centre/visual/concepts/HomeConceptD.tsx");
+  assert.match(homeD, /Not live Home/);
+  assert.match(lab, /home-d/);
   ok("direction concepts stay labelled prototypes");
 }
 

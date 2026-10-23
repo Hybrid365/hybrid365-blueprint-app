@@ -4,6 +4,7 @@ import { useState } from "react";
 import { HomeConceptA } from "./HomeConceptA";
 import { HomeConceptB } from "./HomeConceptB";
 import { HomeConceptC } from "./HomeConceptC";
+import { HomeConceptD } from "./HomeConceptD";
 import { SessionDetailConcept } from "./SessionDetailConcept";
 import { SessionCompleteConcept } from "./SessionCompleteConcept";
 import { ProgressConcept } from "./ProgressConcept";
@@ -15,6 +16,7 @@ const CONCEPTS = [
   { id: "home-a", label: "Home A" },
   { id: "home-b", label: "Home B" },
   { id: "home-c", label: "Home C" },
+  { id: "home-d", label: "Home D" },
   { id: "session", label: "Session" },
   { id: "complete", label: "Complete" },
   { id: "progress", label: "Progress" },
@@ -62,6 +64,7 @@ export function ConceptsLab() {
         {active === "home-a" ? <HomeConceptA /> : null}
         {active === "home-b" ? <HomeConceptB /> : null}
         {active === "home-c" ? <HomeConceptC /> : null}
+        {active === "home-d" ? <HomeConceptD /> : null}
         {active === "session" ? <SessionDetailConcept /> : null}
         {active === "complete" ? <SessionCompleteConcept /> : null}
         {active === "progress" ? <ProgressConcept /> : null}
