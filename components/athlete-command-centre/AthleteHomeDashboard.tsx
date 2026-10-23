@@ -338,9 +338,11 @@ export function AthleteHomeDashboard({
           value={
             useLive && dashboardLive?.raceReadiness.awaiting
               ? dashboardLive.raceReadiness.value
-              : `${m.raceReadiness.value}%`
+              : useLive
+                ? `${m.raceReadiness.value}%`
+                : "Awaiting data"
           }
-          sub={m.raceReadiness.delta}
+          sub={useLive ? m.raceReadiness.delta : "Starts after first training week"}
           href="/athlete/progress"
           readOnly={isReadOnly}
         />
@@ -438,7 +440,9 @@ export function AthleteHomeDashboard({
                   <p className="text-2xl font-bold text-yellow-400">
                     {useLive && dashboardLive?.raceReadiness.awaiting
                       ? dashboardLive.raceReadiness.value
-                      : `${m.raceReadiness.value}%`}
+                      : useLive
+                        ? `${m.raceReadiness.value}%`
+                        : "—"}
                   </p>
                 </div>
                 <div>

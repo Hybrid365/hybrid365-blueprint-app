@@ -54,14 +54,14 @@ export function AthletePortalShell({
     <HyroxPageShell maxWidth="max-w-7xl">
       {useMockPreview && !isAdminPreview ? <MockPreviewBanner /> : null}
       {!isAdminPreview ? (
-        <div className="sticky top-0 z-40 border-b border-zinc-800/90 bg-black/95 backdrop-blur-md">
+        <div className="sticky top-[var(--hybrid365-env-badge-height,0px)] z-40 border-b border-zinc-800/90 bg-black/95 backdrop-blur-md">
           <div className="px-4 py-3 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-400/90">
                   Hybrid365 Hyrox Team
                 </p>
-                <p className="text-sm text-zinc-500">Athlete portal</p>
+                <p className="text-sm text-zinc-400">Athlete portal</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Link

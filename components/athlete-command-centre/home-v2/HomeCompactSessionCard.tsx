@@ -88,7 +88,7 @@ export function HomeCompactSessionCard({
           type="button"
           disabled={disabled || !session.id}
           onClick={() => onPrimaryAction(session, cta)}
-          className="shrink-0 rounded-lg bg-yellow-400 px-3 py-2 text-[10px] font-bold text-zinc-950 hover:bg-yellow-300 disabled:opacity-50"
+          className="min-h-11 shrink-0 rounded-lg bg-yellow-400 px-3 py-2 text-[10px] font-bold text-zinc-950 hover:bg-yellow-300 disabled:opacity-50"
         >
           <span className="flex items-center gap-1">
             {(cta === "start" || cta === "continue_logging") && <Play className="h-3 w-3" />}

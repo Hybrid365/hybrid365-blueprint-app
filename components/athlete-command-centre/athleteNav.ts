@@ -46,7 +46,7 @@ export const ATHLETE_NAV_ITEMS: AthleteNavItem[] = [
     icon: FlaskConical,
     mobileMore: true,
   },
-  { id: "benchmarks", label: "Benchmarks", href: "/athlete/benchmarks", icon: Target, mobileMore: true },
+  { id: "benchmarks", label: "Performance", href: "/athlete/benchmarks", icon: Target, mobileMore: true },
   { id: "checkin", label: "Check-In", href: "/athlete/check-in", icon: ClipboardCheck, mobilePrimary: true },
 ];
 
