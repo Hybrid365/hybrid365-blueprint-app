@@ -67,6 +67,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
   }
 
   async function act(benchmarkId: string, action: BenchmarkCoachAction) {
+    if (payload?.unavailable) return;
     setBusyId(benchmarkId);
     setError(null);
     try {
@@ -91,6 +92,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
   }
 
   async function saveNotes(benchmarkId: string, notesValue: string) {
+    if (payload?.unavailable) return;
     const current = results.find((row) => row.id === benchmarkId);
     if ((current?.notes ?? "") === notesValue.trim()) return;
     setBusyId(benchmarkId);
@@ -111,6 +113,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
 
   async function addResult(event: React.FormEvent) {
     event.preventDefault();
+    if (payload?.unavailable) return;
     setError(null);
     const res = await fetch(`/api/hyrox/athletes/${encodeURIComponent(athleteId)}/benchmarks`, {
       method: "POST",
@@ -256,7 +259,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
         );
       })}
 
-      <form className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/80 p-4" onSubmit={addResult}>
+      {payload?.unavailable ? null : <form className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/80 p-4" onSubmit={addResult}>
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">Add benchmark</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-zinc-400">
@@ -337,7 +340,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
         <button type="submit" className="rounded-lg bg-yellow-400 px-3 py-2 text-sm font-bold text-zinc-950">
           Save benchmark
         </button>
-      </form>
+      </form>}
     </div>
   );
 }

@@ -78,4 +78,10 @@ No threshold estimate. No HYROX pace estimate. No FTP inferred from a 20-minute 
 
 Athlete UI: `HYROX_PERFORMANCE_PROFILE_ENABLED`, id list, email list, and development `HYROX_PERFORMANCE_PROFILE_DEV_ALL`. Default off.
 
-Coach Performance Profile can ship without the athlete flag.
+Coach Performance Profile can ship without the athlete flag. If migration 021 is not applied, GET returns `unavailable` and the coach panel is read-only.
+
+## Known follow-up (not a Phase 1 merge blocker)
+
+A coach-authenticated session with UPDATE permission can technically set `active_for_programming` directly. Product code uses the service-role activation RPC; the unique one-active index still prevents two simultaneous actives; athletes cannot update; the coach UI does not use a direct activation update.
+
+Future hardening: restrict coach UPDATE semantics, or move sensitive state transitions fully behind privileged RPCs. Do not rewrite migration 021 after it is applied on staging; use a later migration if this is tightened.
