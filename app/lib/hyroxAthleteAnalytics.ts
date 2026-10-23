@@ -2,6 +2,7 @@
  * Deterministic analytics calculations. React must not re-implement this arithmetic.
  * Frozen contract: docs/contracts/athlete-analytics.md
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { isKeyProgrammeSession } from "@/app/lib/hyroxBlockReview";
 import { parseYmd, toYmd } from "@/app/lib/hyroxProgrammeDates";
 import { inferSessionActivityType } from "@/app/lib/hyrox-team/modules/sessionLogging/inferActivityType";
@@ -11,6 +12,14 @@ import {
 } from "@/app/lib/hyrox-team/modules/sessionLogging/aggregates";
 import { localDateYmdInTimeZone } from "@/app/lib/hyrox-team/modules/today/dailyReadinessServer";
 import type { SessionActivityType } from "@/app/lib/hyrox-team/modules/sessionLogging/types";
+import { listAthleteBenchmarks } from "@/app/lib/hyroxAthleteBenchmarkServer";
+import { benchmarkLabel, isBenchmarkType } from "@/app/lib/hyroxBenchmarkTypes";
+import type {
+  HyroxAthleteRow,
+  HyroxProgrammeSessionRow,
+  HyroxProgrammeWeekRow,
+} from "@/app/lib/hyroxDatabaseTypes";
+import { sessionDateYmdFromProgrammeStart } from "@/app/lib/hyroxAthleteProgrammeSort";
 
 export type HyroxAnalyticsModality = "run" | "bike" | "skierg" | "rowerg" | "strength" | "hyrox_specific" | "other";
 export type HyroxModalityBucket = HyroxAnalyticsModality;
@@ -266,7 +275,7 @@ function measure(session: HyroxAnalyticsSessionInput): Measured | null {
   const durationMinutes = session.durationMinutes ?? logged?.durationMinutes ?? null;
   const rpe = session.rpe ?? logged?.rpe ?? null;
   const runDistanceKm =
-    session.runDistanceKm ?? (modality === "run" ? logged?.distanceKm ?? logged?.runDistanceKm ?? null : null);
+    session.runDistanceKm ?? (modality === "run" ? logged?.distanceKm ?? null : null);
   return {
     dateYmd,
     completed: session.status === "completed",
@@ -456,22 +465,7 @@ export function computeHyroxAthleteAnalytics(
   };
 }
 
-/**
- * Public analytics engine. Calculations live in hyroxAthleteAnalyticsCompute.
- * Contract: docs/contracts/athlete-analytics.md
- */
-
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { listAthleteBenchmarks } from "@/app/lib/hyroxAthleteBenchmarkServer";
-import { benchmarkLabel, isBenchmarkType } from "@/app/lib/hyroxBenchmarkTypes";
-import type {
-  HyroxAthleteRow,
-  HyroxProgrammeSessionRow,
-  HyroxProgrammeWeekRow,
-} from "@/app/lib/hyroxDatabaseTypes";
-import { sessionDateYmdFromProgrammeStart } from "@/app/lib/hyroxAthleteProgrammeSort";
-
-
+/** Public analytics engine. Contract: docs/contracts/athlete-analytics.md */
 
 function resolveAthleteId(athlete: string | { id: string }): string {
   return typeof athlete === "string" ? athlete : athlete.id;
@@ -525,7 +519,7 @@ function sessionToInput(
 export async function getHyroxAthleteAnalytics(
   client: SupabaseClient,
   athlete: string | { id: string },
-  options?: { now?: Date; asOf?: Date }
+  options?: { now?: Date; asOf?: Date; timeZone?: string }
 ): Promise<HyroxAthleteAnalytics> {
   const athleteId = resolveAthleteId(athlete);
   const now = options?.asOf ?? options?.now ?? new Date();
@@ -606,6 +600,7 @@ export async function getHyroxAthleteAnalytics(
   return computeHyroxAthleteAnalytics({
     athleteId,
     asOf: now,
+    timeZone: options?.timeZone,
     sessions,
     benchmarks,
     extraUnsupported,

@@ -3,6 +3,7 @@
 import HyroxTeamDashboardActive from "@/app/athlete/dashboard/HyroxTeamDashboardActive";
 import { ProgrammePageView } from "@/components/athlete-command-centre/ProgrammePageView";
 import { ProgressDashboardSection } from "@/components/athlete-command-centre/ProgressDashboardSection";
+import { AthleteAnalyticsSection } from "@/app/athlete/progress/AthleteAnalyticsSection";
 import { PerformanceHubExperience } from "@/components/athlete-command-centre/performance-hub/PerformanceHubExperience";
 import { CheckInPageView } from "@/components/athlete-command-centre/CheckInPageView";
 import { PerformanceTestingPageView } from "@/components/athlete-command-centre/PerformanceTestingPageView";
@@ -50,6 +51,9 @@ export default function CoachAthletePreviewClient({
   performanceHubEnabled,
   homeV2Enabled,
   performanceProfileEnabled,
+  raceIntelligenceEnabled = false,
+  athleteAnalyticsEnabled = false,
+  athleteAnalytics = null,
   athleteTimezone,
   initialCheckIn = null,
   initialCheckInSummary = null,
@@ -62,6 +66,9 @@ export default function CoachAthletePreviewClient({
   performanceHubEnabled: boolean;
   homeV2Enabled: boolean;
   performanceProfileEnabled: boolean;
+  raceIntelligenceEnabled?: boolean;
+  athleteAnalyticsEnabled?: boolean;
+  athleteAnalytics?: import("@/app/lib/hyroxAthleteAnalytics").HyroxAthleteAnalytics | null;
   athleteTimezone: string;
   initialCheckIn?: AthleteWeeklyCheckInView | null;
   initialCheckInSummary?: AthleteCheckInSummary | null;
@@ -119,7 +126,11 @@ export default function CoachAthletePreviewClient({
             title={ATHLETE_PAGE_META.progress.title}
             subtitle={ATHLETE_PAGE_META.progress.subtitle}
           />
-          <ProgressDashboardSection />
+          {athleteAnalyticsEnabled && athleteAnalytics ? (
+            <AthleteAnalyticsSection analytics={athleteAnalytics} />
+          ) : (
+            <ProgressDashboardSection />
+          )}
         </PageContent>
       );
       break;
@@ -182,6 +193,7 @@ export default function CoachAthletePreviewClient({
       performanceHubEnabled={performanceHubEnabled}
       homeV2Enabled={homeV2Enabled}
       performanceProfileEnabled={performanceProfileEnabled}
+      raceIntelligenceEnabled={raceIntelligenceEnabled}
       athleteTimezone={athleteTimezone}
       previewBasePath={basePath}
       adminReturnHref={adminReturnHref}

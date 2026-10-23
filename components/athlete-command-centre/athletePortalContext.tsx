@@ -75,6 +75,8 @@ type AthletePortalContextValue = {
   homeV2Enabled: boolean;
   /** Server-seeded performance profile allow-list. Default off. */
   performanceProfileEnabled: boolean;
+  /** Server-seeded Race Intelligence allow-list. Default off. */
+  raceIntelligenceEnabled: boolean;
 };
 
 const AthletePortalContext = createContext<AthletePortalContextValue | null>(null);
@@ -102,6 +104,7 @@ export function AthletePortalProvider({
   performanceHubEnabled = false,
   homeV2Enabled = false,
   performanceProfileEnabled = false,
+  raceIntelligenceEnabled = false,
 }: {
   children: React.ReactNode;
   hasLinkedAthlete?: boolean;
@@ -119,6 +122,7 @@ export function AthletePortalProvider({
   performanceHubEnabled?: boolean;
   homeV2Enabled?: boolean;
   performanceProfileEnabled?: boolean;
+  raceIntelligenceEnabled?: boolean;
 }) {
   const allowMockPreview = isHyroxAthleteMockPreviewAllowed();
   const [programmePublishedMock, setProgrammePublishedMockState] = useState(false);
@@ -236,6 +240,7 @@ export function AthletePortalProvider({
       performanceHubEnabled,
       homeV2Enabled,
       performanceProfileEnabled,
+      raceIntelligenceEnabled,
     }),
     [
       hydrated,
@@ -265,6 +270,7 @@ export function AthletePortalProvider({
       performanceHubEnabled,
       homeV2Enabled,
       performanceProfileEnabled,
+      raceIntelligenceEnabled,
     ]
   );
 

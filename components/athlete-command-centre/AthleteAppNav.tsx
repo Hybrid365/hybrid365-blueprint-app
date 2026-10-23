@@ -4,12 +4,9 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { MoreHorizontal, X } from "lucide-react";
 import { AthletePortalNavLink } from "./AthletePortalNavLink";
-import {
-  ATHLETE_DESKTOP_NAV,
-  ATHLETE_MOBILE_MORE,
-  ATHLETE_MOBILE_PRIMARY,
-  type AthleteNavItem,
-} from "./athleteNav";
+import { visibleAthleteNavItems, type AthleteNavItem } from "./athleteNav";
+import { useAthletePortalOptional } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 
 function isActive(pathname: string, href: string) {
   if (href === "/athlete/dashboard") return pathname === href;
@@ -41,6 +38,15 @@ type AthleteAppNavProps = {
 export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const portal = useAthletePortalOptional();
+  const preview = useAthleteAdminPreview();
+  const items = visibleAthleteNavItems({
+    raceIntelligenceEnabled:
+      preview?.raceIntelligenceEnabled ?? portal?.raceIntelligenceEnabled ?? false,
+  });
+  const desktop = items;
+  const mobilePrimary = items.filter((item) => item.mobilePrimary);
+  const mobileMore = items.filter((item) => item.mobileMore);
 
   const showDesktop = variant === "desktop" || variant === "all";
   const showMobile = variant === "mobile" || variant === "all";
@@ -53,7 +59,7 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
           aria-label="Athlete portal"
         >
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 px-4 py-2.5 sm:px-6">
-            {ATHLETE_DESKTOP_NAV.map((item) => (
+            {desktop.map((item) => (
               <NavLink key={item.id} item={item} active={isActive(pathname, item.href)} />
             ))}
           </div>
@@ -66,7 +72,7 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
           aria-label="Athlete portal mobile"
         >
           <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] pt-1">
-            {ATHLETE_MOBILE_PRIMARY.map((item) => {
+            {mobilePrimary.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
               return (
@@ -86,7 +92,7 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
               type="button"
               onClick={() => setMoreOpen(true)}
               className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-semibold ${
-                ATHLETE_MOBILE_MORE.some((i) => isActive(pathname, i.href)) ? "text-yellow-400" : "text-zinc-500"
+                mobileMore.some((i) => isActive(pathname, i.href)) ? "text-yellow-400" : "text-zinc-500"
               }`}
             >
               <MoreHorizontal className="h-5 w-5" />
@@ -112,7 +118,7 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
               </button>
             </div>
             <div className="grid gap-2">
-              {ATHLETE_MOBILE_MORE.map((item) => (
+              {mobileMore.map((item) => (
                 <NavLink
                   key={item.id}
                   item={item}

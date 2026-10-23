@@ -1,6 +1,6 @@
 # Contract: Race Intelligence
 
-Status: proposed. Lives on unmerged `feature/hyrox-race-intelligence`. Do not treat this file as deployed behaviour. Migration `022_hyrox_race_intelligence.sql` is **not applied** to staging or production by this work.
+Status: Batch 1 integration. Migration `022_hyrox_race_intelligence.sql` is **not applied** to staging or production. Athlete and coach Races UI default OFF behind `HYROX_RACE_INTELLIGENCE_*`.
 
 Owner: Race intelligence agent.
 
@@ -116,7 +116,7 @@ Until 022 is applied, writes use 001 columns (`total_time`, `category` as divisi
 
 ## UI
 
-Athlete (`/athlete/race-prep`): list of races with result, division, date, progress vs previous or goal, expand for breakdown. Honest empty state. Race-week pacing / fuelling / taper remain “not available yet”.
+Athlete (`/athlete/race-prep`): list of races with result, division, date, progress vs previous or goal, expand for breakdown. Honest empty state. Race-week pacing / fuelling / taper remain “not available yet”. Hidden unless `HYROX_RACE_INTELLIGENCE_*` is on for that athlete.
 
 Coach (athlete admin **Races** tab): result, splits, previous comparison, notes, data-derived observations. Self-report is labelled as athlete-reported. Mock roster athletes have no invented races.
 

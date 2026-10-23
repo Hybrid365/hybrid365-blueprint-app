@@ -2,9 +2,26 @@
 
 import { RaceHistoryAthleteView } from "./RaceHistoryAthleteView";
 import { ATHLETE_PAGE_META, PageContent, PageHeader, athleteCard, athleteCardPadding } from "./athleteUi";
+import { useAthletePortalOptional } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 
 export function RacePrepPageView({ readOnly = false }: { readOnly?: boolean }) {
   const meta = ATHLETE_PAGE_META.racePrep;
+  const portal = useAthletePortalOptional();
+  const preview = useAthleteAdminPreview();
+  const enabled = preview?.raceIntelligenceEnabled ?? portal?.raceIntelligenceEnabled ?? false;
+
+  if (!enabled) {
+    return (
+      <PageContent>
+        <PageHeader
+          eyebrow={meta.eyebrow}
+          title="Race history"
+          subtitle="Race history is not enabled for this athlete yet."
+        />
+      </PageContent>
+    );
+  }
 
   return (
     <PageContent>

@@ -31,6 +31,7 @@ import {
   type HyroxRaceRunKey,
   type HyroxRaceStationKey,
 } from "../app/lib/hyroxRaceIntelligenceTypes";
+import { isHyroxRaceIntelligenceEnabled } from "../app/lib/hyroxRaceIntelligenceFlag";
 
 let passed = 0;
 function ok(name: string) {
@@ -39,6 +40,30 @@ function ok(name: string) {
 }
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
+}
+
+{
+  const prevEnabled = process.env.HYROX_RACE_INTELLIGENCE_ENABLED;
+  const prevIds = process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_IDS;
+  const prevEmails = process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_EMAILS;
+  const prevDev = process.env.HYROX_RACE_INTELLIGENCE_DEV_ALL;
+  delete process.env.HYROX_RACE_INTELLIGENCE_ENABLED;
+  delete process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_IDS;
+  delete process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_EMAILS;
+  delete process.env.HYROX_RACE_INTELLIGENCE_DEV_ALL;
+  assert(!isHyroxRaceIntelligenceEnabled({ id: "abc" }), "default off");
+  process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_IDS = "abc-123";
+  assert(isHyroxRaceIntelligenceEnabled({ id: "abc-123" }), "id allow-list");
+  assert(!isHyroxRaceIntelligenceEnabled({ id: "other" }), "id deny");
+  if (prevEnabled === undefined) delete process.env.HYROX_RACE_INTELLIGENCE_ENABLED;
+  else process.env.HYROX_RACE_INTELLIGENCE_ENABLED = prevEnabled;
+  if (prevIds === undefined) delete process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_IDS;
+  else process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_IDS = prevIds;
+  if (prevEmails === undefined) delete process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_EMAILS;
+  else process.env.HYROX_RACE_INTELLIGENCE_ATHLETE_EMAILS = prevEmails;
+  if (prevDev === undefined) delete process.env.HYROX_RACE_INTELLIGENCE_DEV_ALL;
+  else process.env.HYROX_RACE_INTELLIGENCE_DEV_ALL = prevDev;
+  ok("Race Intelligence flag default off + allow-list");
 }
 
 const ATHLETE = "athlete-1";
@@ -368,9 +393,11 @@ assert(!/percentile|bottom\s*20|population rank/i.test(domain), "domain has no r
 const athleteRoute = readFileSync(join(process.cwd(), "app/api/hyrox/athlete/races/route.ts"), "utf8");
 assert(athleteRoute.includes("requireCurrentHyroxAthleteForApi"), "athlete API uses athlete auth");
 assert(athleteRoute.includes("insertHyroxRaceRecord"), "athlete POST appends");
+assert(athleteRoute.includes("isHyroxRaceIntelligenceEnabled"), "athlete flag");
 const coachRoute = readFileSync(join(process.cwd(), "app/api/hyrox/athletes/[id]/races/route.ts"), "utf8");
 assert(coachRoute.includes("requireHyroxCoachApi"), "coach API uses coach auth");
 assert(coachRoute.includes("insertHyroxRaceRecord"), "coach POST appends");
+assert(coachRoute.includes("isHyroxRaceIntelligenceEnabled"), "coach flag");
 ok("write path is append-only and auth-scoped");
 
 const previewToken = createHyroxAdminAthletePreviewToken({

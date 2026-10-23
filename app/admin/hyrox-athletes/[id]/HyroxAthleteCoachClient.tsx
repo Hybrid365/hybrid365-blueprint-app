@@ -84,7 +84,15 @@ type LiveCoachPayload = {
   programmeDraftAthleteNote: string;
 };
 
-export default function HyroxAthleteCoachClient({ athleteId }: { athleteId: string }) {
+export default function HyroxAthleteCoachClient({
+  athleteId,
+  commandCentreEnabled = false,
+  raceIntelligenceEnabled = false,
+}: {
+  athleteId: string;
+  commandCentreEnabled?: boolean;
+  raceIntelligenceEnabled?: boolean;
+}) {
   const searchParams = useSearchParams();
   const mockAthlete = getCoachAthleteById(athleteId);
   const isLiveId = UUID_RE.test(athleteId);
@@ -515,6 +523,8 @@ export default function HyroxAthleteCoachClient({ athleteId }: { athleteId: stri
           livePersistence,
         }}
         effectiveProfile={effectiveProfile}
+        commandCentreEnabled={commandCentreEnabled}
+        raceIntelligenceEnabled={raceIntelligenceEnabled}
       />
     </CoachAdminShell>
   );

@@ -35,6 +35,7 @@ const groups = {
     "scripts/qa-hyrox-prescription-engine.ts",
     "scripts/qa-hyrox-athlete-analytics.ts",
     "scripts/qa-hyrox-race-intelligence.ts",
+    "scripts/qa-hyrox-batch-1-integration.ts",
   ],
   staging: ["scripts/qa-hybrid365-staging-guards.ts"],
 };

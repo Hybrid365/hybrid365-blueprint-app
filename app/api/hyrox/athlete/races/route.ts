@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
+import { isHyroxRaceIntelligenceEnabled } from "@/app/lib/hyroxRaceIntelligenceFlag";
 import {
   insertHyroxRaceRecord,
   listHyroxRaceHistory,
@@ -10,6 +11,11 @@ import {
 export async function GET(request: NextRequest) {
   const auth = await requireCurrentHyroxAthleteForApi(request);
   if (auth.error) return auth.error;
+  if (!isHyroxRaceIntelligenceEnabled(auth.athlete)) {
+    return auth.withAuthCookies(
+      NextResponse.json({ success: false, error: "Race intelligence is not enabled." }, { status: 404 })
+    );
+  }
 
   const { client } = await createCoachServerClient();
   const result = await listHyroxRaceHistory(client, auth.athlete.id);
@@ -30,6 +36,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireCurrentHyroxAthleteForApi(request);
   if (auth.error) return auth.error;
+  if (!isHyroxRaceIntelligenceEnabled(auth.athlete)) {
+    return auth.withAuthCookies(
+      NextResponse.json({ success: false, error: "Race intelligence is not enabled." }, { status: 404 })
+    );
+  }
 
   const parsed = parseRaceDraft(await request.json().catch(() => null));
   if ("error" in parsed) {

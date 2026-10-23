@@ -4,12 +4,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { MoreHorizontal, X } from "lucide-react";
-import {
-  ATHLETE_DESKTOP_NAV,
-  ATHLETE_MOBILE_MORE,
-  ATHLETE_MOBILE_PRIMARY,
-  type AthleteNavItem,
-} from "@/components/athlete-command-centre/athleteNav";
+import { visibleAthleteNavItems, type AthleteNavItem } from "@/components/athlete-command-centre/athleteNav";
+import { useAthleteAdminPreview } from "@/components/athlete-command-centre/athletePortalAdminPreview";
 import { athleteHrefToPreviewSection } from "@/app/lib/hyroxAdminAthletePreviewPaths";
 
 function mapItem(basePath: string, item: AthleteNavItem): { href: string; item: AthleteNavItem } {
@@ -37,6 +33,13 @@ export function PreviewAthleteNav({
 }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const preview = useAthleteAdminPreview();
+  const items = visibleAthleteNavItems({
+    raceIntelligenceEnabled: preview?.raceIntelligenceEnabled ?? false,
+  });
+  const desktop = items;
+  const mobilePrimary = items.filter((item) => item.mobilePrimary);
+  const mobileMore = items.filter((item) => item.mobileMore);
   const showDesktop = variant === "desktop" || variant === "all";
   const showMobile = variant === "mobile" || variant === "all";
 
@@ -45,7 +48,7 @@ export function PreviewAthleteNav({
       {showDesktop ? (
         <nav className="hidden border-t border-zinc-800/60 lg:block" aria-label="Athlete preview">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 px-4 py-2.5 sm:px-6">
-            {ATHLETE_DESKTOP_NAV.map((item) => {
+            {desktop.map((item) => {
               const mapped = mapItem(basePath, item);
               const active = isActive(pathname, mapped.href, basePath);
               const Icon = item.icon;
@@ -74,7 +77,7 @@ export function PreviewAthleteNav({
           aria-label="Athlete preview mobile"
         >
           <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] pt-1">
-            {ATHLETE_MOBILE_PRIMARY.map((item) => {
+            {mobilePrimary.map((item) => {
               const mapped = mapItem(basePath, item);
               const active = isActive(pathname, mapped.href, basePath);
               const Icon = item.icon;
@@ -119,7 +122,7 @@ export function PreviewAthleteNav({
               </button>
             </div>
             <div className="grid gap-2">
-              {ATHLETE_MOBILE_MORE.map((item) => {
+              {mobileMore.map((item) => {
                 const mapped = mapItem(basePath, item);
                 const Icon = item.icon;
                 return (

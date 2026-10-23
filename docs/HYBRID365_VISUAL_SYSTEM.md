@@ -93,6 +93,10 @@ Do not mix the two titles.
 
 Active Performance values dominate: label, large number, derived split, then the word Current. Pending review rows keep the same hierarchy with more padding. History keeps the status word.
 
+## Batch 1 rollout
+
+Athlete presentation changes are not behind a product flag. If this branch is merged, these are globally visible: Home, Programme, session detail/drawer, Performance (benchmarks), Progress chrome (existing honest empty behaviour when analytics is off), 24px environment badge, and Benchmarks → Performance nav naming. Social labs stay on `/athlete/visual-lab` and `/dev/visual-system` (dev/staging only). Do not merge to main until staging signed-in QA passes.
+
 ## Environment badge
 
 On staging / preview the badge is a reserved 24px strip at the top of the viewport (`--hybrid365-env-badge-height`). Athlete sticky headers use that offset. The label stays unmistakable. It must not cover athlete UI at 375–430px.

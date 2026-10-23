@@ -57,6 +57,10 @@ export const ATHLETE_NAV_ITEMS: AthleteNavItem[] = [
  * coach-notes and resources are placeholder pages.
  */
 
+export function visibleAthleteNavItems(opts?: { raceIntelligenceEnabled?: boolean }): AthleteNavItem[] {
+  return ATHLETE_NAV_ITEMS.filter((item) => item.id !== "race-prep" || Boolean(opts?.raceIntelligenceEnabled));
+}
+
 export const ATHLETE_DESKTOP_NAV = ATHLETE_NAV_ITEMS;
 export const ATHLETE_MOBILE_PRIMARY = ATHLETE_NAV_ITEMS.filter((i) => i.mobilePrimary);
 export const ATHLETE_MOBILE_MORE = ATHLETE_NAV_ITEMS.filter((i) => i.mobileMore);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import { fetchHyroxAthleteById } from "@/app/lib/hyroxAthleteCoachDb";
+import { isHyroxCoachCommandCentreEnabled } from "@/app/lib/hyroxCoachCommandCentreFlag";
 import { loadHyroxCommandCentre } from "@/app/lib/hyroxCommandCentreServer";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
@@ -19,6 +20,9 @@ export async function GET(_request: Request, context: RouteContext) {
   }
   if (!athlete) {
     return NextResponse.json({ success: false, error: "Athlete not found." }, { status: 404 });
+  }
+  if (!isHyroxCoachCommandCentreEnabled({ id: athlete.id })) {
+    return NextResponse.json({ success: false, error: "Command Centre is not enabled." }, { status: 404 });
   }
 
   try {

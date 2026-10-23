@@ -1,6 +1,6 @@
 # Contract: Athlete analytics
 
-Status: proposed. Implementation is local on this worktree (base `origin/main` `679c413`). Default UI flag off. Do not treat this as production behaviour.
+Status: Batch 1 integration. Default UI flag off. Do not treat this as production behaviour until the flag is enabled.
 
 Owner: Analytics agent (Workstream B).
 
@@ -50,7 +50,7 @@ export type HyroxAthleteAnalytics = {
   athleteId: string;
   asOf: string;
   currentWeek: HyroxAnalyticsWeek;
-  previousWeek: HyroxAnalyticsWeek | null;
+  previousWeek: HyroxAnalyticsWeek | null; // compute always returns the previous Monday–Sunday window (plannedSessions may be 0). Adapter/consumers may see null if a payload omitted it.
   rolling4: {
     runDistanceKm: number | null;
     trainingDurationMinutes: number | null;
@@ -130,12 +130,12 @@ Always listed:
 
 Athlete Progress UI, default off:
 
-- `HYROX_ANALYTICS_V1_ENABLED=1`
-- `HYROX_ANALYTICS_V1_ATHLETE_IDS`
-- `HYROX_ANALYTICS_V1_ATHLETE_EMAILS`
-- `HYROX_ANALYTICS_V1_DEV_ALL=1` (development only)
+- `HYROX_ATHLETE_ANALYTICS_ENABLED=1`
+- `HYROX_ATHLETE_ANALYTICS_ATHLETE_IDS`
+- `HYROX_ATHLETE_ANALYTICS_ATHLETE_EMAILS`
+- `HYROX_ATHLETE_ANALYTICS_DEV_ALL=1` (development only)
 
-Compatibility aliases: `HYROX_ATHLETE_ANALYTICS_*`.
+Deprecated alias, still read: `HYROX_ANALYTICS_V1_*`. Generic `HYROX_ANALYTICS_*` is not a flag.
 
 When off, keep the existing Progress screen.
 

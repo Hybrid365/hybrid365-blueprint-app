@@ -23,6 +23,9 @@ import { isHyroxPerformanceHubEnabled } from "@/app/lib/hyrox-team/modules/perfo
 import { isHyroxTodayV2Enabled } from "@/app/lib/hyrox-team/modules/today/featureFlag";
 import { isHyroxHomeV2Enabled } from "@/app/lib/hyrox-team/modules/home/featureFlag";
 import { isHyroxPerformanceProfileEnabled } from "@/app/lib/hyrox-team/modules/performanceProfile/featureFlag";
+import { isHyroxAthleteAnalyticsEnabled } from "@/app/lib/hyroxAthleteAnalyticsFlag";
+import { getHyroxAthleteAnalytics } from "@/app/lib/hyroxAthleteAnalytics";
+import { isHyroxRaceIntelligenceEnabled } from "@/app/lib/hyroxRaceIntelligenceFlag";
 import {
   fetchDailyReadinessForDate,
   localDateYmdInTimeZone,
@@ -129,6 +132,13 @@ export default async function HyroxAthletePreviewPage({ params }: PreviewPagePro
       performanceHubEnabled={isHyroxPerformanceHubEnabled(athlete)}
       homeV2Enabled={isHyroxHomeV2Enabled(athlete)}
       performanceProfileEnabled={isHyroxPerformanceProfileEnabled(athlete)}
+      raceIntelligenceEnabled={isHyroxRaceIntelligenceEnabled(athlete)}
+      athleteAnalyticsEnabled={isHyroxAthleteAnalyticsEnabled(athlete)}
+      athleteAnalytics={
+        isHyroxAthleteAnalyticsEnabled(athlete)
+          ? await getHyroxAthleteAnalytics(supabase, athlete.id).catch(() => null)
+          : null
+      }
       athleteTimezone={athleteTimezone}
       initialCheckIn={checkIn}
       initialCheckInSummary={checkInSummary}

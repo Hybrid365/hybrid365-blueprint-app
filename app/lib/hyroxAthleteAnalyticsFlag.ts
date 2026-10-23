@@ -1,13 +1,13 @@
 /**
  * HYROX athlete analytics Progress UI (default OFF).
  *
- * Env (primary):
+ * Canonical:
  *   HYROX_ATHLETE_ANALYTICS_ENABLED=1
  *   HYROX_ATHLETE_ANALYTICS_ATHLETE_IDS=uuid,...
  *   HYROX_ATHLETE_ANALYTICS_ATHLETE_EMAILS=a@b,...
  *   HYROX_ATHLETE_ANALYTICS_DEV_ALL=1   (development only)
  *
- * HYROX_ANALYTICS_* is a compatibility alias only.
+ * Deprecated alias, still read: HYROX_ANALYTICS_V1_*.
  */
 
 function parseList(raw: string | undefined | null): string[] {
@@ -19,7 +19,7 @@ function parseList(raw: string | undefined | null): string[] {
 }
 
 function prefixEnabled(
-  prefix: "HYROX_ANALYTICS_V1" | "HYROX_ATHLETE_ANALYTICS" | "HYROX_ANALYTICS",
+  prefix: "HYROX_ATHLETE_ANALYTICS" | "HYROX_ANALYTICS_V1",
   athlete: { id: string; email?: string | null }
 ): boolean {
   if (process.env[`${prefix}_ENABLED`] === "1") return true;
@@ -36,9 +36,8 @@ export function isHyroxAthleteAnalyticsEnabled(athlete: {
   email?: string | null;
 } | null | undefined): boolean {
   if (!athlete?.id) return false;
-  if (prefixEnabled("HYROX_ANALYTICS_V1", { id: athlete.id, email: athlete.email })) return true;
   if (prefixEnabled("HYROX_ATHLETE_ANALYTICS", { id: athlete.id, email: athlete.email })) return true;
-  if (prefixEnabled("HYROX_ANALYTICS", { id: athlete.id, email: athlete.email })) return true;
+  if (prefixEnabled("HYROX_ANALYTICS_V1", { id: athlete.id, email: athlete.email })) return true;
   return false;
 }
 
@@ -51,6 +50,5 @@ export function isHyroxAthleteAnalyticsEnabledClient(
 }
 
 export const isHyroxAnalyticsEnabledClient = isHyroxAthleteAnalyticsEnabledClient;
-
 export const isHyroxAnalyticsV1Enabled = isHyroxAthleteAnalyticsEnabled;
 export const isHyroxAnalyticsV1EnabledClient = isHyroxAthleteAnalyticsEnabledClient;

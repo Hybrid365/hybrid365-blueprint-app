@@ -256,7 +256,7 @@ export async function loadHyroxCommandCentre(
     fetchCoachCheckInHistory(supabase, athlete.id, 8).catch(() => []),
     getHyroxAthletePerformanceProfile(supabase, athlete.id),
     loadRecentReadiness(supabase, athlete.id, addDaysYmd(todayYmd, -6)),
-    loadHyroxAthleteAnalyticsFromEngine({ athleteId: athlete.id }),
+    loadHyroxAthleteAnalyticsFromEngine({ athleteId: athlete.id, client: supabase }),
   ]);
 
   const currentBundle = weekNumber != null ? published.get(weekNumber) : undefined;

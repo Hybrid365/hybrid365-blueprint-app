@@ -1,6 +1,6 @@
 import type { CoachAttentionFlag } from "@/app/lib/hyroxCoachAttention";
 import type { CommandCentreAnalyticsStatus } from "@/app/lib/hyroxCommandCentreAnalyticsAdapter";
-import type { HyroxAthleteAnalytics } from "@/app/lib/hyroxCommandCentreAnalyticsTypes";
+import type { HyroxAthleteAnalytics } from "@/app/lib/hyroxAthleteAnalytics";
 
 export type CommandCentreCheckInSummary = {
   weekNumber: number;

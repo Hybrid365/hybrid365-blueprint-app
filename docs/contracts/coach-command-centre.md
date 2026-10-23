@@ -1,6 +1,6 @@
 # Contract: Coach Command Centre
 
-Status: proposed. Implementation lives on `feature/hyrox-coach-command-centre`. Do not treat this file as deployed behaviour.
+Status: Batch 1 integration. Overview replacement is default OFF behind `HYROX_COACH_COMMAND_CENTRE_*`.
 
 Owner: Coach admin agent (Workstream C).
 
@@ -26,60 +26,12 @@ Mock roster athletes are not shown as live Command Centre metrics.
 
 Command Centre does **not** implement a second analytics engine. It must not compute rolling volume, modality distribution, session-RPE load, run distance, or training duration.
 
-It consumes this **frozen** Workstream B interface when `getHyroxAthleteAnalytics` is present:
-
-```ts
-type HyroxWeekSummary = {
-  startDate: string;
-  endDate: string;
-  completeWeek: boolean;
-  plannedSessions: number;
-  completedSessions: number;
-  completionPct: number | null;
-  runDistanceKm: number | null;
-  trainingDurationMinutes: number | null;
-  averageRpe: number | null;
-  sessionRpeLoad: number | null;
-  keySessionsCompleted: number;
-  keySessionsPlanned: number;
-};
-
-type HyroxAthleteAnalytics = {
-  athleteId: string;
-  generatedAt: string;
-  currentWeek: HyroxWeekSummary;
-  previousWeek: HyroxWeekSummary | null;
-  rolling4: {
-    runDistanceKm: number | null;
-    trainingDurationMinutes: number | null;
-    completionPct: number | null;
-    averageRpe: number | null;
-  };
-  distribution: {
-    modality: "run" | "bike" | "skierg" | "rowerg" | "strength" | "hyrox_specific" | "other";
-    sessionCount: number;
-    durationMinutes: number | null;
-  }[];
-  benchmarks: {
-    type: string;
-    label: string;
-    points: {
-      date: string;
-      display: string;
-      normalizedValue: number;
-      normalizedUnit: string;
-      source: string;
-      status: string;
-    }[];
-  }[];
-  unsupported: string[];
-};
-```
+It consumes Workstream B's canonical `HyroxAthleteAnalytics` (`asOf`, `complete`, no required `normalizedUnit`). Import from `app/lib/hyroxAthleteAnalytics.ts`. Do not keep a second payload type.
 
 Wiring on this branch:
 
-- `app/lib/hyroxCommandCentreAnalyticsTypes.ts` — consumer copy of the frozen type. Type-only. Not an engine.
-- `app/lib/hyroxCommandCentreAnalyticsAdapter.ts` — types against the frozen shape. Tries `getHyroxAthleteAnalytics` only if a getter is registered (B is not on this branch). Otherwise returns `{ status: "unavailable", analytics: null }`. Never invents athlete numbers. Never substitutes zeros for missing distance, duration, or RPE.
+- `app/lib/hyroxCommandCentreAnalyticsTypes.ts` — re-exports B types. Not an engine.
+- `app/lib/hyroxCommandCentreAnalyticsAdapter.ts` — maps B payloads (`asOf` / `complete`). Production passes the Supabase client into `loadHyroxAthleteAnalyticsFromEngine`. Tests may register a getter. Missing analytics stay `{ status: "unavailable", analytics: null }`. Never invents athlete numbers.
 
 | B present | Command Centre |
 | --- | --- |
@@ -153,6 +105,16 @@ Coach-only, on this page:
 - Internal coach note → Coach Notes tab, only because that field is already supported on the draft / published week (`coach_note`)
 
 Internal `coach_note` never falls back into athlete copy. Athlete APIs already null it via `withoutInternalWeekCoachNote` / `athleteFacingWeeklyNote`. Command Centre is a coach API and may show the internal note on the coach surface with an Internal label.
+
+## Flag
+
+Default off:
+
+- `HYROX_COACH_COMMAND_CENTRE_ENABLED=1`
+- `HYROX_COACH_COMMAND_CENTRE_ATHLETE_IDS`
+- `HYROX_COACH_COMMAND_CENTRE_DEV_ALL=1` (development only)
+
+When off, the production Overview (preview link, today snapshot, performance hub, classification) remains.
 
 ## Auth
 

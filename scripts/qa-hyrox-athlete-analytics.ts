@@ -49,30 +49,28 @@ const NEXT_MON = new Date("2026-07-27T12:00:00Z");
   ok("Monday-Sunday week containing asOf");
 }
 {
-  const prevEnabled = process.env.HYROX_ANALYTICS_ENABLED;
-  const prevIds = process.env.HYROX_ANALYTICS_ATHLETE_IDS;
-  const prevAthlete = process.env.HYROX_ATHLETE_ANALYTICS_ENABLED;
-  delete process.env.HYROX_ANALYTICS_ENABLED;
-  delete process.env.HYROX_ANALYTICS_ATHLETE_IDS;
-  delete process.env.HYROX_ANALYTICS_ATHLETE_EMAILS;
-  delete process.env.HYROX_ANALYTICS_DEV_ALL;
-  delete process.env.HYROX_ANALYTICS_V1_ENABLED;
-  delete process.env.HYROX_ANALYTICS_V1_ATHLETE_IDS;
+  const prevEnabled = process.env.HYROX_ATHLETE_ANALYTICS_ENABLED;
+  const prevIds = process.env.HYROX_ATHLETE_ANALYTICS_ATHLETE_IDS;
+  const prevV1 = process.env.HYROX_ANALYTICS_V1_ENABLED;
   delete process.env.HYROX_ATHLETE_ANALYTICS_ENABLED;
   delete process.env.HYROX_ATHLETE_ANALYTICS_ATHLETE_IDS;
   delete process.env.HYROX_ATHLETE_ANALYTICS_ATHLETE_EMAILS;
   delete process.env.HYROX_ATHLETE_ANALYTICS_DEV_ALL;
+  delete process.env.HYROX_ANALYTICS_V1_ENABLED;
+  delete process.env.HYROX_ANALYTICS_V1_ATHLETE_IDS;
+  delete process.env.HYROX_ANALYTICS_V1_ATHLETE_EMAILS;
+  delete process.env.HYROX_ANALYTICS_V1_DEV_ALL;
   assert(!isHyroxAnalyticsEnabled({ id: "abc", email: "a@b.com" }), "default off");
   assert(!isHyroxAthleteAnalyticsEnabled({ id: "abc" }), "alias default off");
-  process.env.HYROX_ANALYTICS_ATHLETE_IDS = "abc-123";
+  process.env.HYROX_ATHLETE_ANALYTICS_ATHLETE_IDS = "abc-123";
   assert(isHyroxAnalyticsEnabled({ id: "abc-123" }), "id allow-list");
   assert(!isHyroxAnalyticsEnabled({ id: "other" }), "id deny");
-  if (prevEnabled === undefined) delete process.env.HYROX_ANALYTICS_ENABLED;
-  else process.env.HYROX_ANALYTICS_ENABLED = prevEnabled;
-  if (prevIds === undefined) delete process.env.HYROX_ANALYTICS_ATHLETE_IDS;
-  else process.env.HYROX_ANALYTICS_ATHLETE_IDS = prevIds;
-  if (prevAthlete === undefined) delete process.env.HYROX_ATHLETE_ANALYTICS_ENABLED;
-  else process.env.HYROX_ATHLETE_ANALYTICS_ENABLED = prevAthlete;
+  if (prevEnabled === undefined) delete process.env.HYROX_ATHLETE_ANALYTICS_ENABLED;
+  else process.env.HYROX_ATHLETE_ANALYTICS_ENABLED = prevEnabled;
+  if (prevIds === undefined) delete process.env.HYROX_ATHLETE_ANALYTICS_ATHLETE_IDS;
+  else process.env.HYROX_ATHLETE_ANALYTICS_ATHLETE_IDS = prevIds;
+  if (prevV1 === undefined) delete process.env.HYROX_ANALYTICS_V1_ENABLED;
+  else process.env.HYROX_ANALYTICS_V1_ENABLED = prevV1;
   ok("Feature flag default off + allow-list");
 }
 {

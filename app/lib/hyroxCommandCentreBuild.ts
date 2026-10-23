@@ -4,7 +4,7 @@
  */
 
 import type { CoachAttentionSession } from "@/app/lib/hyroxCoachAttention";
-import type { HyroxAthleteAnalytics } from "@/app/lib/hyroxCommandCentreAnalyticsTypes";
+import type { HyroxAthleteAnalytics } from "@/app/lib/hyroxAthleteAnalytics";
 import type { CommandCentreThisWeek } from "@/app/lib/hyroxCommandCentreTypes";
 
 export type PublishedWeekFacts = {

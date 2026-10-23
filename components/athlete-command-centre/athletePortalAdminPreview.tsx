@@ -28,6 +28,8 @@ export type AdminAthletePreviewContextValue = {
   homeV2Enabled: boolean;
   /** Server-seeded performance profile allow-list (not force-enabled for admin). */
   performanceProfileEnabled: boolean;
+  /** Server-seeded Race Intelligence allow-list (not force-enabled for admin). */
+  raceIntelligenceEnabled: boolean;
   /** IANA timezone for Today/Hub date math — never the admin browser TZ. */
   athleteTimezone: string;
   previewBasePath: string;
@@ -46,6 +48,7 @@ export function AthletePortalAdminPreviewProvider({
   performanceHubEnabled = false,
   homeV2Enabled = false,
   performanceProfileEnabled = false,
+  raceIntelligenceEnabled = false,
   athleteTimezone = "Europe/London",
   previewBasePath,
   adminReturnHref,
@@ -58,6 +61,7 @@ export function AthletePortalAdminPreviewProvider({
   performanceHubEnabled?: boolean;
   homeV2Enabled?: boolean;
   performanceProfileEnabled?: boolean;
+  raceIntelligenceEnabled?: boolean;
   athleteTimezone?: string;
   previewBasePath: string;
   adminReturnHref: string;
@@ -81,6 +85,7 @@ export function AthletePortalAdminPreviewProvider({
       performanceHubEnabled,
       homeV2Enabled,
       performanceProfileEnabled,
+      raceIntelligenceEnabled,
       athleteTimezone,
       previewBasePath,
       adminReturnHref,
@@ -93,6 +98,7 @@ export function AthletePortalAdminPreviewProvider({
     performanceHubEnabled,
     homeV2Enabled,
     performanceProfileEnabled,
+    raceIntelligenceEnabled,
     athleteTimezone,
     previewBasePath,
     adminReturnHref,

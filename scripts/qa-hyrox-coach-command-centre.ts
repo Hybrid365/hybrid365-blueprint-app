@@ -28,6 +28,7 @@ import {
   type CoachAttentionSession,
 } from "../app/lib/hyroxCoachAttention";
 import { isHighRpeVsPrescribed, parsePrescribedRpeRange } from "../app/lib/hyroxCoachAttentionParse";
+import { isHyroxCoachCommandCentreEnabled } from "../app/lib/hyroxCoachCommandCentreFlag";
 import type { CommandCentreThisWeek } from "../app/lib/hyroxCommandCentreTypes";
 
 let passed = 0;
@@ -79,7 +80,7 @@ function frozenWeek(partial: Record<string, unknown> = {}) {
   return {
     startDate: "2026-10-20",
     endDate: "2026-10-26",
-    completeWeek: false,
+    complete: false,
     plannedSessions: 5,
     completedSessions: 3,
     completionPct: 60,
@@ -94,6 +95,26 @@ function frozenWeek(partial: Record<string, unknown> = {}) {
 }
 
 async function main() {
+{
+  const prevEnabled = process.env.HYROX_COACH_COMMAND_CENTRE_ENABLED;
+  const prevIds = process.env.HYROX_COACH_COMMAND_CENTRE_ATHLETE_IDS;
+  const prevDev = process.env.HYROX_COACH_COMMAND_CENTRE_DEV_ALL;
+  delete process.env.HYROX_COACH_COMMAND_CENTRE_ENABLED;
+  delete process.env.HYROX_COACH_COMMAND_CENTRE_ATHLETE_IDS;
+  delete process.env.HYROX_COACH_COMMAND_CENTRE_DEV_ALL;
+  assert(!isHyroxCoachCommandCentreEnabled({ id: "abc" }), "default off");
+  process.env.HYROX_COACH_COMMAND_CENTRE_ATHLETE_IDS = "abc-123";
+  assert(isHyroxCoachCommandCentreEnabled({ id: "abc-123" }), "id allow-list");
+  assert(!isHyroxCoachCommandCentreEnabled({ id: "other" }), "id deny");
+  if (prevEnabled === undefined) delete process.env.HYROX_COACH_COMMAND_CENTRE_ENABLED;
+  else process.env.HYROX_COACH_COMMAND_CENTRE_ENABLED = prevEnabled;
+  if (prevIds === undefined) delete process.env.HYROX_COACH_COMMAND_CENTRE_ATHLETE_IDS;
+  else process.env.HYROX_COACH_COMMAND_CENTRE_ATHLETE_IDS = prevIds;
+  if (prevDev === undefined) delete process.env.HYROX_COACH_COMMAND_CENTRE_DEV_ALL;
+  else process.env.HYROX_COACH_COMMAND_CENTRE_DEV_ALL = prevDev;
+  ok("Command Centre flag default off + allow-list");
+}
+
 {
   const flags = evaluateCoachAttentionFlags(
     baseInput({ currentWeekPublished: false, currentWeekCalendarStatus: "unpublished" })
@@ -277,9 +298,9 @@ async function main() {
 {
   const adapted = adaptHyroxAthleteAnalytics({
     athleteId,
-    generatedAt: "2026-10-23T00:00:00.000Z",
-    currentWeek: frozenWeek({ runDistanceKm: 32.4, trainingDurationMinutes: 310, sessionRpeLoad: 1800, completeWeek: true }),
-    previousWeek: frozenWeek({ startDate: "2026-10-13", endDate: "2026-10-19", completeWeek: true, plannedSessions: 6, completedSessions: 6, completionPct: 100 }),
+    asOf: "2026-10-23T00:00:00.000Z",
+    currentWeek: frozenWeek({ runDistanceKm: 32.4, trainingDurationMinutes: 310, sessionRpeLoad: 1800, complete: true }),
+    previousWeek: frozenWeek({ startDate: "2026-10-13", endDate: "2026-10-19", complete: true, plannedSessions: 6, completedSessions: 6, completionPct: 100 }),
     rolling4: { runDistanceKm: 110, trainingDurationMinutes: null, completionPct: 80, averageRpe: 6 },
     distribution: [{ modality: "hyrox_specific", durationMinutes: 40, sessionCount: 2 }],
     benchmarks: [
@@ -291,7 +312,6 @@ async function main() {
             date: "2026-09-01",
             display: "21:00",
             normalizedValue: 1260,
-            normalizedUnit: "seconds",
             source: "coach_entered",
             status: "approved",
           },
@@ -301,10 +321,11 @@ async function main() {
     unsupported: ["wearables"],
   });
   assert(adapted?.currentWeek.runDistanceKm === 32.4, "distance");
-  assert(adapted?.currentWeek.completeWeek === true, "completeWeek");
+  assert(adapted?.currentWeek.complete === true, "complete");
+  assert(adapted?.asOf === "2026-10-23T00:00:00.000Z", "asOf");
   assert(adapted?.currentWeek.keySessionsPlanned === 2, "key planned");
   assert(adapted?.distribution[0]?.modality === "hyrox_specific", "modality");
-  assert(adapted?.benchmarks[0]?.points[0]?.normalizedUnit === "seconds", "unit");
+  assert(adapted?.benchmarks[0]?.points[0]?.display === "21:00", "point kept without normalizedUnit");
   assert(adapted?.rolling4.trainingDurationMinutes === null, "null stays null");
   ok("adapter consumes frozen B payload without recomputing");
 }
@@ -312,7 +333,7 @@ async function main() {
 {
   const missingDistance = adaptHyroxAthleteAnalytics({
     athleteId,
-    generatedAt: "2026-10-23T00:00:00.000Z",
+    asOf: "2026-10-23T00:00:00.000Z",
     currentWeek: frozenWeek(),
     previousWeek: null,
     rolling4: { runDistanceKm: null, trainingDurationMinutes: null, completionPct: null, averageRpe: null },
@@ -328,7 +349,7 @@ async function main() {
 {
   registerHyroxAthleteAnalyticsGetter(async () => ({
     athleteId,
-    generatedAt: "2026-10-23T00:00:00.000Z",
+    asOf: "2026-10-23T00:00:00.000Z",
     currentWeek: frozenWeek({ runDistanceKm: 12 }),
     previousWeek: null,
     rolling4: { runDistanceKm: null, trainingDurationMinutes: null, completionPct: null, averageRpe: null },
@@ -366,7 +387,7 @@ async function main() {
   };
   const overlaid = overlayAnalyticsOnThisWeek(unpublished, {
     athleteId,
-    generatedAt: "2026-10-23T00:00:00.000Z",
+    asOf: "2026-10-23T00:00:00.000Z",
     currentWeek: frozenWeek({ runDistanceKm: 20, plannedSessions: 9, completedSessions: 9 }),
     previousWeek: null,
     rolling4: { runDistanceKm: null, trainingDurationMinutes: null, completionPct: null, averageRpe: null },
@@ -444,16 +465,21 @@ async function main() {
   assert(layout.includes("assertHyroxCoachAccess"), "layout");
   const dashboard = readFileSync(join(root, "components/admin-hyrox-athletes/CoachAthleteDashboard.tsx"), "utf8");
   assert(dashboard.includes("CommandCentreOverview"), "mounted");
+  assert(dashboard.includes("commandCentreEnabled"), "C flag gates Overview");
   assert(dashboard.includes("ProgrammeBuilder"), "builder remains");
+  assert(route.includes("isHyroxCoachCommandCentreEnabled"), "API flag");
+  const adapter = readFileSync(join(root, "app/lib/hyroxCommandCentreAnalyticsAdapter.ts"), "utf8");
+  assert(adapter.includes("getHyroxAthleteAnalytics"), "registers B getter");
+  assert(adapter.includes("asOf"), "accepts asOf");
+  assert(!adapter.includes("normalizedUnit"), "does not require normalizedUnit");
+  assert(!adapter.includes("adaptSessionsToHyroxAthleteAnalytics"), "no session rollup");
+  assert(adapter.includes("unavailable"), "unavailable path");
   const overview = readFileSync(
     join(root, "components/admin-hyrox-athletes/CommandCentreOverview.tsx"),
     "utf8"
   );
   assert(overview.includes("/preview/start"), "view as");
   assert(overview.includes("never shown to the athlete"), "internal label");
-  const adapter = readFileSync(join(root, "app/lib/hyroxCommandCentreAnalyticsAdapter.ts"), "utf8");
-  assert(!adapter.includes("adaptSessionsToHyroxAthleteAnalytics"), "no session rollup");
-  assert(adapter.includes("unavailable"), "unavailable path");
   ok("coach API + admin layout + overview wiring");
 }
 

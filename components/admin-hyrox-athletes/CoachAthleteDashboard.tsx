@@ -21,8 +21,8 @@ import {
   ListStatusBadge,
   ProgrammeStatusBadge,
 } from "@/components/admin-hyrox-athletes/StatusBadge";
-import { DashCard, SectionHeading } from "@/components/hyrox-team/HyroxDashboardUi";
-import { Calendar } from "lucide-react";
+import { DashCard, SectionHeading, StatTile } from "@/components/hyrox-team/HyroxDashboardUi";
+import { Calendar, ExternalLink, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -111,6 +111,8 @@ export function CoachAthleteDashboard({
   assessmentTab,
   programmeWorkflowInject,
   effectiveProfile = null,
+  commandCentreEnabled = false,
+  raceIntelligenceEnabled = false,
 }: {
   athlete: CoachAthlete;
   tab: AthleteTab;
@@ -123,13 +125,16 @@ export function CoachAthleteDashboard({
   assessmentTab: AssessmentTabPanelProps;
   programmeWorkflowInject: ProgrammeWorkflowInjectProps;
   effectiveProfile?: HyroxAthleteProfile | null;
+  commandCentreEnabled?: boolean;
+  raceIntelligenceEnabled?: boolean;
 }) {
+  const visibleTabs = TABS.filter((t) => t !== "Races" || raceIntelligenceEnabled);
   return (
     <div>
       <AthleteCommandHeader athlete={athlete} programmeStatus={programmeStatus} />
 
       <div className="mb-6 flex flex-wrap gap-2 border-b border-zinc-800 pb-3">
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <button
             key={t}
             type="button"
@@ -145,7 +150,13 @@ export function CoachAthleteDashboard({
         ))}
       </div>
 
-      {tab === "Overview" && <OverviewTab athlete={athlete} onTabChange={onTabChange} />}
+      {tab === "Overview" && (
+        <OverviewTab
+          athlete={athlete}
+          onTabChange={onTabChange}
+          commandCentreEnabled={commandCentreEnabled}
+        />
+      )}
       {tab === "Assessment" && (
         <FullAssessmentAnswersTab
           athlete={assessmentTab.athlete}
@@ -155,7 +166,9 @@ export function CoachAthleteDashboard({
         />
       )}
       {tab === "Testing" && <TestingTab athlete={athlete} />}
-      {tab === "Races" && athlete.id ? <RaceIntelligenceCoachPanel athleteId={athlete.id} /> : null}
+      {tab === "Races" && raceIntelligenceEnabled && athlete.id ? (
+        <RaceIntelligenceCoachPanel athleteId={athlete.id} />
+      ) : null}
       {tab === "Performance Profile" && athlete.id ? (
         <PerformanceProfileCoachPanel athleteId={athlete.id} />
       ) : null}
@@ -312,11 +325,88 @@ function MiniStat({
 function OverviewTab({
   athlete,
   onTabChange,
+  commandCentreEnabled,
 }: {
   athlete: CoachAthlete;
   onTabChange: (t: AthleteTab) => void;
+  commandCentreEnabled: boolean;
 }) {
-  return <CommandCentreOverview athleteId={athlete.id} onTabChange={onTabChange} />;
+  if (commandCentreEnabled) {
+    return <CommandCentreOverview athleteId={athlete.id} onTabChange={onTabChange} />;
+  }
+  return (
+    <div className="space-y-4">
+      {athlete.id ? (
+        <DashCard>
+          <SectionHeading title="Athlete portal preview" />
+          <p className="mt-2 text-sm text-zinc-400">
+            Open a read-only preview of this athlete&apos;s HYROX Team portal using your coach
+            session. Writes are blocked server-side.
+          </p>
+          <div className="mt-4">
+            <Link
+              href={`/admin/hyrox-athletes/${athlete.id}/preview/start`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-400/10 px-4 py-2 text-sm font-bold text-amber-100 hover:bg-amber-400/20"
+            >
+              Preview Athlete Experience
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
+        </DashCard>
+      ) : null}
+      {athlete.id ? <CoachTodaySnapshotPanel athleteId={athlete.id} /> : null}
+      {athlete.id ? <CoachPerformanceHubPanel athleteId={athlete.id} /> : null}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <DashCard>
+          <SectionHeading title="Athlete classification" />
+          <dl className="space-y-2 text-sm">
+            <Row label="Classification" value={athlete.classification} />
+            <Row label="Race goal" value={athlete.raceGoal} />
+            <Row
+              label="Availability"
+              value={`${athlete.trainingDays} days · ${athlete.weeklyHours}h/week`}
+            />
+            <Row label="Weekly run target" value={`${athlete.weeklyRunKm} km`} />
+            <Row label="Block focus" value={athlete.blockFocus} />
+          </dl>
+        </DashCard>
+        <DashCard>
+          <SectionHeading title="Equipment access" />
+          <p className="text-sm text-zinc-300">{athlete.assessment.equipmentAccess.join(" · ")}</p>
+          <div className="mt-4">
+            <SectionHeading title="Training priorities" />
+          </div>
+          <ul className="space-y-2 text-sm text-zinc-300">
+            {athlete.programmePriorities.map((p) => (
+              <li key={p} className="flex gap-2">
+                <Target className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400/80" />
+                {p}
+              </li>
+            ))}
+          </ul>
+        </DashCard>
+        <DashCard className="lg:col-span-2">
+          <SectionHeading title="Programme status" />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatTile label="List status" value={athlete.listStatus.replace(/_/g, " ")} />
+            <StatTile label="Last updated" value={athlete.lastUpdated} />
+            <StatTile label="Next coach action" value={athlete.nextCoachAction} />
+          </div>
+        </DashCard>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-zinc-500">{label}</dt>
+      <dd className="text-right text-zinc-200">{value}</dd>
+    </div>
+  );
 }
 
 function TestingTab({ athlete }: { athlete: CoachAthlete }) {

@@ -32,6 +32,7 @@
     "qa:hyrox-benchmarks": "npx --yes tsx scripts/qa-hyrox-benchmarks.ts",
     "qa:hyrox-visual-system": "npx --yes tsx scripts/qa-hyrox-visual-system.ts",
     "qa:hyrox-race-intelligence": "npx --yes tsx scripts/qa-hyrox-race-intelligence.ts",
+    "qa:hyrox-batch-1-integration": "npx --yes tsx scripts/qa-hyrox-batch-1-integration.ts",
     "qa:hyrox-data": "node scripts/qa-hyrox-suite.mjs data",
     "qa:hyrox-all": "node scripts/qa-hyrox-suite.mjs all",
     "qa:hybrid365-staging": "node scripts/qa-hyrox-suite.mjs staging",
