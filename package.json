@@ -16,6 +16,7 @@
     "qa:programme-coaching-methodology": "npx --yes tsx scripts/qa-programme-coaching-methodology.ts",
     "qa:hyrox-today-readiness": "npx --yes tsx scripts/qa-hyrox-today-readiness.ts",
     "qa:hyrox-performance-hub": "npx --yes tsx scripts/qa-hyrox-performance-hub.ts",
+    "qa:hyrox-athlete-analytics": "npx --yes tsx scripts/qa-hyrox-athlete-analytics.ts",
     "qa:hyrox-admin-athlete-preview": "npx --yes tsx scripts/qa-hyrox-admin-athlete-preview.ts",
     "qa:hyrox-home-v2": "npx --yes tsx scripts/qa-hyrox-home-v2.ts",
     "qa:hyrox-programme-blocks": "npx --yes tsx scripts/qa-hyrox-programme-blocks.ts",
