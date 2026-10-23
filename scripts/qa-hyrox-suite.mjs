@@ -27,6 +27,7 @@ const groups = {
     "scripts/qa-hyrox-today-readiness.ts",
     "scripts/qa-hyrox-performance-hub.ts",
     "scripts/qa-hyrox-benchmarks.ts",
+    "scripts/qa-hyrox-athlete-analytics.ts",
   ],
   staging: ["scripts/qa-hybrid365-staging-guards.ts"],
 };
