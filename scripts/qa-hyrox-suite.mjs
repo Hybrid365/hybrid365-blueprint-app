@@ -12,6 +12,7 @@ const groups = {
   core: [
     "scripts/qa-hyrox-middleware-admin-timeout.ts",
     "scripts/qa-hyrox-admin-athlete-preview.ts",
+    "scripts/qa-hyrox-coach-command-centre.ts",
   ],
   programme: [
     "scripts/qa-hyrox-programme-blocks.ts",
@@ -22,6 +23,7 @@ const groups = {
   auth: [
     "scripts/qa-hyrox-middleware-admin-timeout.ts",
     "scripts/qa-hyrox-admin-athlete-preview.ts",
+    "scripts/qa-hyrox-coach-command-centre.ts",
   ],
   data: [
     "scripts/qa-hyrox-today-readiness.ts",

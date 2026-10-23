@@ -50,7 +50,7 @@ function tabFromQuery(param: string | null): AthleteTab {
   if (param && TAB_VALUES.includes(param as AthleteTab)) {
     return param as AthleteTab;
   }
-  return "Programme Builder";
+  return "Overview";
 }
 
 function programmeStatusToCoachStatus(
