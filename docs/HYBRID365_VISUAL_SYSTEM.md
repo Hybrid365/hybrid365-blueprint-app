@@ -2,6 +2,42 @@
 
 Presentation only. Do not change what a status means in order to make a screen look finished.
 
+Hybrid365 is a **high-performance athlete operating system**. It is not generic coaching SaaS, a template fitness app, or a WHOOP / Strava / TrainingPeaks clone. Research: `docs/HYBRID365_PRODUCT_DESIGN_BENCHMARK.md`. Motion: `docs/HYBRID365_INTERACTION_SYSTEM.md`. Direction concepts live in the staging visual lab only — they do not replace live Home.
+
+## Philosophy
+
+### 1. Training first
+
+Today’s session and the decision it asks for outrank wellness decoration. Home is not a recovery ring. Programme is not a social feed. If the athlete has work today, that work is the first story.
+
+### 2. Performance numbers have weight
+
+The important metric is visually larger than its label, date, and source. Session primary target, active benchmark, race overall, week completion — one king per component. Derived pace or split sits directly under the number.
+
+### 3. Self-comparison
+
+Progress is vs previous self, vs the programmed target, vs recent baseline (`previousWeek`, `rolling4`, prior benchmark, prior race). Do not invent composite scores, population percentiles, or a race-readiness percentage to make the screen feel finished.
+
+### 4. Coach presence
+
+The athlete should feel an actual coach authored the week. Athlete-facing notes, week changes, and pending review use a recognisable mark (left gold rule, “Coach” eyebrow, status word). Internal coach notes never appear. Preview stays read-only.
+
+### 5. Action next to insight
+
+If the UI states that a check-in is due, a session is next, or a test is pending, the control lives in that module. Do not add an Explore grid that restates the nav.
+
+### 6. Progress should feel alive
+
+Now → recent trend → longer-term. Weeks and tests accumulate. Empty series stay empty. Do not draw zeros.
+
+### 7. Technical but human
+
+Tabular numbers, units, sources, dates. Observations are sentences. No laboratory rainbow and no mascot.
+
+### 8. Restraint
+
+No glow, large gradients, animated rings, confetti, gamified badges, or card-within-card unless the interaction needs a grouping. Hairlines and type scale do the work. Gold is an accent, not a fill.
+
 ## Colour
 
 - Near-black surfaces: zinc 950 / black
@@ -111,6 +147,28 @@ On staging / preview the badge is a reserved 24px strip at the top of the viewpo
 - `SessionCompleteSocial`, `WeekInReviewSocial`, `PerformanceProgressSocial`
 
 Every card is labelled **Prototype** and **Demo — not a live athlete result**. Props come from `SOCIAL_PROTOTYPE_DEMO`. No export pipeline. Do not render these as a production athlete result.
+
+## Staging direction concepts
+
+Product-design prototypes in `components/athlete-command-centre/visual/concepts/`. Same galleries. Tabs: Home A / Home B / Home C, Session, Complete, Progress, Performance, Races.
+
+Every concept is labelled **Prototype · demo data · not a live athlete result**. Fixture `CONCEPT_FIXTURE` / `CONCEPT_ANALYTICS` / `CONCEPT_RACES` uses B and E field names only. Do not wire these into live `/athlete/dashboard`. STOP for human visual review before any live adoption.
+
+## Data visualisation language
+
+Broadcast-influenced, mobile-first. Not a generic chart-library dashboard.
+
+| Idea | Form | Rule |
+| --- | --- | --- |
+| Performance trajectory | Hairline polyline + points | Measured points only. Label the unit. |
+| Weekly volume | Same trajectory, or a single stacked modality bar | No pie charts. No rainbow series. |
+| Benchmark progression | Named times in a vertical list, delta vs previous | Do not count the clock up. |
+| Target vs actual | Two (or three) dominant numerals: Target / Actual / RPE | Secondary feedback recedes. |
+| Race run splits | Eight-column strip, height = time, fastest/slowest marked | Empty splits stay empty. |
+| Station vs previous | Label · current · signed delta | Faster is not green-for-good; keep the word/sign. |
+| Programme structure | Work/rest timeline | Picture before paragraph. |
+
+Colour in charts is gold vs zinc. Do not encode success as neon green. `unsupported` fields stay listed as unsupported.
 
 ## QA
 

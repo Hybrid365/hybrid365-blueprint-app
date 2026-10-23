@@ -13,6 +13,7 @@ import { PerformanceProgressCard } from "./social/PerformanceProgressCard";
 import { SessionCompleteCard } from "./social/SessionCompleteCard";
 import { WeekInReviewCard } from "./social/WeekInReviewCard";
 import { SOCIAL_PROTOTYPE_DEMO } from "./social/demoProps";
+import { ConceptsLab } from "./concepts/ConceptsLab";
 import { visualBody, visualEyebrow } from "./tokens";
 
 /** Staging / development gallery. Every sample value is labelled as a prototype. */
@@ -21,6 +22,8 @@ export function VisualSystemLab() {
 
   return (
     <div className="space-y-12 pb-16">
+      <ConceptsLab />
+
       <header className="border-b border-zinc-800 pb-6">
         <p className={visualEyebrow}>Visual system</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">Athlete primitives</h1>

@@ -227,5 +227,16 @@ function contrast(fg: string, bg: string): number {
   ok("completion is restrained; lab empty states stay honest");
 }
 
+{
+  const fixture = read("components/athlete-command-centre/visual/concepts/fixture.ts");
+  assert.match(fixture, /Prototype · demo data · not a live athlete result/);
+  assert.match(fixture, /prototype-not-a-live-athlete/);
+  const lab = read("components/athlete-command-centre/visual/concepts/ConceptsLab.tsx");
+  assert.match(lab, /do not replace live athlete Home/);
+  const chrome = read("components/athlete-command-centre/visual/concepts/chrome.tsx");
+  assert.match(chrome, /CONCEPT_PROTOTYPE_BANNER/);
+  ok("direction concepts stay labelled prototypes");
+}
+
 console.log(`\n${passed} visual-system checks passed`);
 console.log(`Viewports to screenshot: ${QA_VIEWPORTS.join(", ")}`);
