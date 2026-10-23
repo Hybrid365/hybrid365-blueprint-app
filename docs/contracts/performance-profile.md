@@ -1,10 +1,12 @@
 # Contract: Performance Profile
 
-Status: proposed. The implementation lives on unmerged `feature/hyrox-performance-profile-phase-1`. Do not treat this file as deployed behaviour.
+Status: Phase 1 is on `main` (`679c413`). Migration 021 is applied in production and staging. Athlete-facing Performance Profile remains flag-default OFF. Coach Performance Profile can read the table.
 
 Owner: Performance data agent.
 
 Consumers: Athlete product, Coach admin, Prescription engine, Analytics, Track automation.
+
+Do not change this resolver shape in Batch 1. Prescription Workstream A reads `HyroxAthletePerformanceProfile` as published in `app/lib/hyroxBenchmarkProfile.ts`.
 
 ## Purpose
 
