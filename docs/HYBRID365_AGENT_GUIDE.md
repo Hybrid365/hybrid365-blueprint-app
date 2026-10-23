@@ -127,6 +127,7 @@ The experience agent works on top of an approved contract. It does not rename st
 ## Where to read next
 
 - Coaching platform constitution: `docs/HYBRID365_COACHING_PLATFORM.md`
+- Coaching operating model (1-1 / Track workflow): `docs/HYBRID365_COACHING_OPERATING_MODEL.md`
 - Staging and demo athletes: `docs/HYBRID365_STAGING.md`
 - Visual language: `docs/HYBRID365_VISUAL_SYSTEM.md`
 - Performance Profile contract: `docs/contracts/performance-profile.md`

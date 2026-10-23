@@ -2,7 +2,7 @@
 
 Product constitution. This does not authorise a live Home change, a production deploy, a merge, or applying a migration.
 
-Related: `docs/HYBRID365_PLATFORM_BLUEPRINT.md` (architecture map), `docs/HYBRID365_AGENT_GUIDE.md` (engineering invariants), `docs/HYBRID365_VISUAL_SYSTEM.md` (presentation), `docs/HYBRID365_INTERACTION_SYSTEM.md` (motion).
+Related: `docs/HYBRID365_COACHING_OPERATING_MODEL.md` (canonical 1-1 / Track workflow), `docs/HYBRID365_PLATFORM_BLUEPRINT.md` (architecture map), `docs/HYBRID365_AGENT_GUIDE.md` (engineering invariants), `docs/HYBRID365_VISUAL_SYSTEM.md` (presentation), `docs/HYBRID365_INTERACTION_SYSTEM.md` (motion).
 
 ---
 
