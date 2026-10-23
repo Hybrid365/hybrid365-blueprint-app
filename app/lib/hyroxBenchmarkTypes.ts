@@ -100,6 +100,7 @@ export type HyroxAthleteBenchmarkRow = {
   notes: string | null;
   source_table: string | null;
   source_id: string | null;
+  idempotency_key: string | null;
   submitted_by_user_id: string | null;
   approved_by_user_id: string | null;
   approved_at: string | null;

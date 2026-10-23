@@ -25,7 +25,7 @@ type Payload = {
 const FAMILIES = ["Running", "Ergs", "Bike", "HYROX", "Strength"] as const;
 
 function statusLabel(row: HyroxAthleteBenchmarkRow): string {
-  if (row.status === "pending") return "Pending review";
+  if (row.status === "pending") return "Pending coach review";
   if (row.status === "historical") return "Historical";
   if (row.active_for_programming) return "Current";
   if (row.source === "coach_entered" || row.source === "lab_test") return "Coach verified";
@@ -59,6 +59,7 @@ export function PerformanceProfileAthleteView({ readOnly = false }: { readOnly?:
   const [division, setDivision] = useState("");
   const [eventName, setEventName] = useState("");
   const [notes, setNotes] = useState("");
+  const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
 
   const loadKey = athleteId ?? "self";
 
@@ -107,14 +108,20 @@ export function PerformanceProfileAthleteView({ readOnly = false }: { readOnly?:
           division,
           eventName,
           notes,
+          submissionKey,
         }),
       });
-      const json = (await res.json()) as Payload;
+      const json = (await res.json()) as Payload & { duplicate?: boolean };
       if (!res.ok || !json.success) {
         setError(json.error ?? "Could not submit result.");
         return;
       }
-      setNotice("Submitted for coach review. It will not change your current benchmarks until your coach approves it.");
+      setSubmissionKey(crypto.randomUUID());
+      setNotice(
+        json.duplicate
+          ? "This result was already submitted. It is pending coach review."
+          : "Submitted for coach review. It will not change your current benchmarks until your coach approves it."
+      );
       setOpen(false);
       setTime("");
       setDistanceKm("");

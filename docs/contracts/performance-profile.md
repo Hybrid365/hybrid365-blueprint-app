@@ -22,6 +22,7 @@ One row is one result. Required facts:
 - `activeForProgramming`
 - notes, context (HR, environment, division, reps)
 - submitted by, approved by, approved at
+- optional `idempotencyKey` (one originating submission; retries reuse the row)
 
 Sources: `athlete_submitted`, `coach_entered`, `onboarding_test`, `performance_test`, `race_result`, `lab_test`, `imported`.
 
@@ -36,8 +37,10 @@ Types for Phase 1: `run_5k`, `run_10k`, `run_30min`, `threshold_pace`, `hyrox_ru
 - Coach approval does not have to activate.
 - Activating a row clears the previous active row of that type.
 - Fastest lifetime result is not selected automatically.
-- A repeated save of the same linked test value does not append a duplicate.
+- A repeated save of the same linked source record, type, value and date does not append a duplicate.
+- The same value on another date, or from another source record, is a new row.
 - A changed value appends. It does not overwrite the older benchmark row.
+- Coaches cannot delete history through RLS. Rejected or historical status is used instead. Service role may delete for staging resets.
 - Race results enter as history, not as an active pace.
 
 ## Resolver output

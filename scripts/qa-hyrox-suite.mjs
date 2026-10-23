@@ -23,7 +23,11 @@ const groups = {
     "scripts/qa-hyrox-middleware-admin-timeout.ts",
     "scripts/qa-hyrox-admin-athlete-preview.ts",
   ],
-  data: ["scripts/qa-hyrox-today-readiness.ts", "scripts/qa-hyrox-performance-hub.ts"],
+  data: [
+    "scripts/qa-hyrox-today-readiness.ts",
+    "scripts/qa-hyrox-performance-hub.ts",
+    "scripts/qa-hyrox-benchmarks.ts",
+  ],
   staging: ["scripts/qa-hybrid365-staging-guards.ts"],
 };
 

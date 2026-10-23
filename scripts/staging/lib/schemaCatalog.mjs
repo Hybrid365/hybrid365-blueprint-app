@@ -6,9 +6,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const MAX_STAGING_MIGRATION = 20;
+export const MAX_STAGING_MIGRATION = 21;
 
-/** Ordered migration files allowed on staging: numbered 001..020. 021+ is refused. */
+/** Ordered migration files allowed on staging: numbered 001..021. 022+ is refused. */
 export function stagingMigrationPlan(migrationsDir) {
   const files = readdirSync(migrationsDir).filter((name) => name.endsWith(".sql")).sort();
   const allowed = [];

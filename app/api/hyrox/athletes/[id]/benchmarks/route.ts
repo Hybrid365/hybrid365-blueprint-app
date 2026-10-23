@@ -3,6 +3,7 @@ import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import {
   getHyroxAthletePerformanceProfile,
   insertAthleteBenchmark,
+  submissionIdempotencyKey,
 } from "@/app/lib/hyroxAthleteBenchmarkServer";
 import { BenchmarkMathError } from "@/app/lib/hyroxBenchmarkMath";
 import {
@@ -12,6 +13,7 @@ import {
   type BenchmarkDraftInput,
   type BenchmarkSource,
 } from "@/app/lib/hyroxBenchmarkTypes";
+import { BenchmarkWorkflowError } from "@/app/lib/hyroxBenchmarkWorkflow";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -38,7 +40,7 @@ export async function POST(request: Request, context: RouteContext) {
   if (auth.error) return auth.error;
   const { id } = await context.params;
   const body = (await request.json().catch(() => null)) as
-    | (BenchmarkDraftInput & { source?: BenchmarkSource; makeActive?: boolean })
+    | (BenchmarkDraftInput & { source?: BenchmarkSource; makeActive?: boolean; submissionKey?: string })
     | null;
   const type = body?.benchmarkType;
   if (!body || !type || !isBenchmarkType(type) || !COACH_ENTRY_TYPES.includes(type)) {
@@ -49,17 +51,18 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const normalized = normalizeBenchmarkInput({ ...body, benchmarkType: type });
     const { client } = await createCoachServerClient();
-    const row = await insertAthleteBenchmark(client, id, normalized, {
+    const saved = await insertAthleteBenchmark(client, id, normalized, {
       source,
       status: "approved",
       makeActive: Boolean(body.makeActive),
       approvedByUserId: auth.ctx.userId,
       submittedByUserId: auth.ctx.userId,
+      idempotencyKey: submissionIdempotencyKey("coach", body.submissionKey),
     });
-    return NextResponse.json({ success: true, result: row });
+    return NextResponse.json({ success: true, result: saved.row, duplicate: saved.duplicate });
   } catch (error) {
     const message = error instanceof BenchmarkMathError || error instanceof Error ? error.message : "Could not save benchmark.";
-    const status = error instanceof BenchmarkMathError ? 400 : 500;
+    const status = error instanceof BenchmarkMathError || error instanceof BenchmarkWorkflowError ? 400 : 500;
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }

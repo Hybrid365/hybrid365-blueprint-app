@@ -3,6 +3,8 @@
  * Run: npx tsx scripts/qa-hyrox-benchmarks.ts
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   createHyroxAdminAthletePreviewToken,
   getAdminAthletePreviewMutationBlock,
@@ -30,7 +32,7 @@ import {
   type BenchmarkType,
 } from "../app/lib/hyroxBenchmarkTypes";
 import { isHyroxPerformanceProfileEnabled } from "../app/lib/hyrox-team/modules/performanceProfile/featureFlag";
-import { linkedBenchmarkUnchanged } from "../app/lib/hyroxAthleteBenchmarkServer";
+import { linkedIdempotencyKey, submissionIdempotencyKey } from "../app/lib/hyroxAthleteBenchmarkServer";
 import {
   applyBenchmarkCoachAction,
   assertSingleActivePerType,
@@ -120,16 +122,105 @@ rows = applyBenchmarkCoachAction([row("kept", "run_5k", "approved", true)], "kep
 assert(rows[0]?.status === "historical" && !rows[0]?.activeForProgramming, "historical");
 ok("reject and historical never stay active");
 
+const link = { sourceTable: "hyrox_performance_test_results", sourceId: "11111111-1111-4111-8111-111111111111" };
+const sameValueLater = normalizeBenchmarkInput({ benchmarkType: "run_5k", time: "17:42", date: "2026-10-20" });
+const sameValueEarlier = normalizeBenchmarkInput({ benchmarkType: "run_5k", time: "17:42", date: "2026-09-01" });
+assert(linkedIdempotencyKey(link, five) === linkedIdempotencyKey(link, { ...five }), "same linked save reuses its key");
 assert(
-  linkedBenchmarkUnchanged({ normalized_value: 1062, result_date: "2026-10-12" }, five) === true,
-  "same result is not appended again"
+  linkedIdempotencyKey(link, five) ===
+    "hyrox_performance_test_results:11111111-1111-4111-8111-111111111111:run_5k:1062:2026-10-12",
+  "linked key format"
 );
-const changed = normalizeBenchmarkInput({ benchmarkType: "run_5k", time: "18:02", date: "2026-10-20" });
+assert(linkedIdempotencyKey(link, sameValueLater) !== linkedIdempotencyKey(link, sameValueEarlier), "same value on another date is a new result");
 assert(
-  linkedBenchmarkUnchanged({ normalized_value: 1062, result_date: "2026-10-12" }, changed) === false,
-  "changed result appends"
+  linkedIdempotencyKey(link, five) !==
+    linkedIdempotencyKey({ ...link, sourceId: "22222222-2222-4222-8222-222222222222" }, five),
+  "same value from another source record is a new result"
 );
-ok("new results do not overwrite older benchmark history");
+const changed = normalizeBenchmarkInput({ benchmarkType: "run_5k", time: "18:02", date: "2026-10-12" });
+assert(linkedIdempotencyKey(link, changed) !== linkedIdempotencyKey(link, five), "edited value is a new result");
+ok("linked results are deduplicated by source identity, never by value alone");
+
+const formKey = "6F1C2D3E-4A5B-4C6D-8E7F-901234567890";
+assert(submissionIdempotencyKey("athlete", formKey) === `athlete:${formKey.toLowerCase()}`, "athlete key scoped");
+assert(submissionIdempotencyKey("coach", formKey) === `coach:${formKey.toLowerCase()}`, "coach key scoped");
+assert(submissionIdempotencyKey("athlete", formKey) !== submissionIdempotencyKey("coach", formKey), "scopes differ");
+for (const bad of [undefined, null, "", "17:42", "not-a-uuid", 42, "x".repeat(400)]) {
+  assert(submissionIdempotencyKey("athlete", bad) === null, `rejects submission key ${String(bad).slice(0, 12)}`);
+}
+ok("form submission keys are validated and scoped");
+
+const migration = readFileSync(join(process.cwd(), "supabase/migrations/021_hyrox_athlete_benchmarks.sql"), "utf8");
+const sql = migration.replace(/--.*$/gm, "");
+function policyBody(name: string): string {
+  const match = sql.match(new RegExp(`create policy ${name}\\s[\\s\\S]*?;`, "i"));
+  assert(match, `policy ${name} exists`);
+  return match![0].replace(/\s+/g, " ");
+}
+const athleteInsert = policyBody("hyrox_athlete_benchmarks_athlete_insert");
+for (const clause of [
+  "for insert",
+  "status = 'pending'",
+  "active_for_programming = false",
+  "source = 'athlete_submitted'",
+  "submitted_by_user_id = auth.uid()",
+  "approved_by_user_id is null",
+  "approved_at is null",
+  "source_table is null",
+  "source_id is null",
+  "ha.user_id = auth.uid()",
+]) {
+  assert(athleteInsert.includes(clause), `athlete insert policy enforces ${clause}`);
+}
+assert(policyBody("hyrox_athlete_benchmarks_athlete_select").includes("for select"), "athlete select only");
+const policies = [...sql.matchAll(/create policy (\w+)\s+on public\.hyrox_athlete_benchmarks\s+for (\w+)/gi)].map(
+  (m) => `${m[1]}:${m[2].toLowerCase()}`
+);
+assert(
+  JSON.stringify(policies.sort()) ===
+    JSON.stringify(
+      [
+        "hyrox_athlete_benchmarks_athlete_insert:insert",
+        "hyrox_athlete_benchmarks_athlete_select:select",
+        "hyrox_athlete_benchmarks_coach_insert:insert",
+        "hyrox_athlete_benchmarks_coach_select:select",
+        "hyrox_athlete_benchmarks_coach_update:update",
+      ].sort()
+    ),
+  `unexpected policy set ${policies.join(", ")}`
+);
+assert(!/for (all|delete)\b/i.test(sql), "no FOR ALL or FOR DELETE policy");
+assert(/drop policy if exists hyrox_athlete_benchmarks_coach_all/i.test(sql), "old coach FOR ALL policy is dropped");
+ok("021 RLS: athletes submit pending rows for themselves only; coaches cannot delete");
+
+assert(/idempotency_key text/i.test(sql), "idempotency column");
+assert(/unique \(athlete_id, idempotency_key\)/i.test(sql), "idempotency unique per athlete");
+assert(/hyrox_athlete_benchmarks_one_active_idx[\s\S]*?where active_for_programming = true/i.test(sql), "one active index kept");
+ok("021 idempotency key is unique per athlete and nullable");
+
+assert(/create or replace function public\.hyrox_activate_athlete_benchmark/i.test(sql), "activation function");
+assert(/for update/i.test(sql) && /pg_advisory_xact_lock/i.test(sql), "activation locks the row and the type");
+assert(/security invoker/i.test(sql), "activation does not escalate privileges");
+assert(/revoke all on function public\.hyrox_activate_athlete_benchmark\([^)]*\) from public/i.test(sql), "revoked from public");
+assert(/revoke all on function public\.hyrox_activate_athlete_benchmark\([^)]*\) from anon, authenticated/i.test(sql), "revoked from API roles");
+assert(/grant execute on function public\.hyrox_activate_athlete_benchmark\([^)]*\) to service_role/i.test(sql), "service role only");
+ok("021 activation function is atomic and server-only");
+
+const server = readFileSync(join(process.cwd(), "app/lib/hyroxAthleteBenchmarkServer.ts"), "utf8");
+assert(server.includes('rpc("hyrox_activate_athlete_benchmark"'), "server activates through the RPC");
+assert(!/update\(\{\s*active_for_programming:\s*true/.test(server), "server never sets active directly");
+assert(!server.includes("linkedBenchmarkUnchanged"), "no value-only dedupe");
+for (const route of [
+  "app/api/hyrox/athlete/benchmarks/route.ts",
+  "app/api/hyrox/athletes/[id]/benchmarks/route.ts",
+]) {
+  const source = readFileSync(join(process.cwd(), route), "utf8");
+  assert(source.includes("submissionIdempotencyKey("), `${route} uses the submission key`);
+}
+const athleteRoute = readFileSync(join(process.cwd(), "app/api/hyrox/athlete/benchmarks/route.ts"), "utf8");
+assert(athleteRoute.includes('source: "athlete_submitted"') && athleteRoute.includes('status: "pending"') && athleteRoute.includes("makeActive: false"), "athlete route fixes source, status and active");
+assert(athleteRoute.includes("auth.athlete.id") && !/body\.(athleteId|athlete_id|source|status)/.test(athleteRoute), "athlete route ignores client identity and status");
+ok("server workflows use idempotency keys and atomic activation");
 
 const profile = buildHyroxAthletePerformanceProfile([
   {

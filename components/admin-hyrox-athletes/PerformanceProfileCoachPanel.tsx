@@ -45,6 +45,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
   const [makeActive, setMakeActive] = useState(true);
   const [notes, setNotes] = useState("");
   const [thresholdHr, setThresholdHr] = useState("");
+  const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/hyrox/athletes/${encodeURIComponent(athleteId)}/benchmarks`, {
@@ -128,6 +129,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
         makeActive,
         notes,
         thresholdHr,
+        submissionKey,
       }),
     });
     const json = (await res.json()) as Payload;
@@ -135,6 +137,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
       setError(json.error ?? "Could not save the benchmark.");
       return;
     }
+    setSubmissionKey(crypto.randomUUID());
     setTime("");
     setPace("");
     setDistanceKm("");
@@ -173,7 +176,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
 
       {pending.length ? (
         <section className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">Pending review</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">Pending coach review</p>
           {pending.map((row) => (
             <article key={row.id} className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">

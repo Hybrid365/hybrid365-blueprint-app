@@ -3,6 +3,7 @@ import { requireCurrentHyroxAthleteForApi } from "@/app/lib/hyroxAthleteApiAuth"
 import {
   getHyroxAthletePerformanceProfile,
   insertAthleteBenchmark,
+  submissionIdempotencyKey,
 } from "@/app/lib/hyroxAthleteBenchmarkServer";
 import { BenchmarkMathError } from "@/app/lib/hyroxBenchmarkMath";
 import {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     return auth.withAuthCookies(disabled());
   }
 
-  const body = (await request.json().catch(() => null)) as BenchmarkDraftInput | null;
+  const body = (await request.json().catch(() => null)) as (BenchmarkDraftInput & { submissionKey?: string }) | null;
   const type = body?.benchmarkType;
   if (!body || !type || !isBenchmarkType(type) || !ATHLETE_SUBMIT_TYPES.includes(type as BenchmarkType)) {
     return auth.withAuthCookies(
@@ -60,13 +61,16 @@ export async function POST(request: NextRequest) {
   try {
     const normalized = normalizeBenchmarkInput({ ...body, benchmarkType: type });
     const { client } = await createCoachServerClient();
-    const row = await insertAthleteBenchmark(client, auth.athlete.id, normalized, {
+    const saved = await insertAthleteBenchmark(client, auth.athlete.id, normalized, {
       source: "athlete_submitted",
       status: "pending",
       makeActive: false,
       submittedByUserId: auth.athlete.user_id,
+      idempotencyKey: submissionIdempotencyKey("athlete", body.submissionKey),
     });
-    return auth.withAuthCookies(NextResponse.json({ success: true, result: row }));
+    return auth.withAuthCookies(
+      NextResponse.json({ success: true, result: saved.row, duplicate: saved.duplicate })
+    );
   } catch (error) {
     const message = error instanceof BenchmarkMathError || error instanceof Error ? error.message : "Could not submit result.";
     const status = error instanceof BenchmarkMathError ? 400 : 500;
