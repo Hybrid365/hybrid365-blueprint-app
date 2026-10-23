@@ -1,4 +1,5 @@
 import { environmentBadge } from "@/app/lib/hybrid365EnvironmentBadge";
+import { ENV_BADGE_HEIGHT_PX } from "@/components/athlete-command-centre/visual/tokens";
 
 export function EnvironmentBadge() {
   const badge = environmentBadge();
@@ -6,17 +7,21 @@ export function EnvironmentBadge() {
 
   const tone =
     badge.tone === "danger"
-      ? "bg-red-600 text-white ring-red-300/60"
-      : "bg-amber-400 text-black ring-black/20";
+      ? "bg-red-600 text-white"
+      : "bg-amber-400 text-black";
 
   return (
-    <div
-      role="status"
-      aria-label={`Environment: ${badge.label}`}
-      data-environment-badge={badge.label}
-      className={`pointer-events-none fixed left-1/2 top-0 z-[2147483647] -translate-x-1/2 rounded-b px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-widest shadow-lg ring-1 ${tone}`}
-    >
-      {badge.label}
-    </div>
+    <>
+      <style>{`:root{--hybrid365-env-badge-height:${ENV_BADGE_HEIGHT_PX}px;--h365-env-banner:${ENV_BADGE_HEIGHT_PX}px}`}</style>
+      <div
+        role="status"
+        aria-label={`Environment: ${badge.label}`}
+        data-environment-badge={badge.label}
+        data-environment-badge-layout="bar"
+        className={`pointer-events-none fixed inset-x-0 top-0 z-[2147483647] flex h-6 items-center justify-center font-mono text-[11px] font-bold uppercase tracking-[0.2em] ${tone}`}
+      >
+        {badge.label}
+      </div>
+    </>
   );
 }

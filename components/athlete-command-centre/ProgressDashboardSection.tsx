@@ -1,7 +1,7 @@
 "use client";
 
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
-import { athleteCard, athleteCardPadding, eyebrowClass } from "./athleteUi";
+import { BenchmarkCard, ProgressChartCard, SectionHeader, TrainingSummary } from "./visual";
 
 export function ProgressDashboardSection() {
   const { useLive, dashboardLive } = useAthleteDashboardLive();
@@ -18,34 +18,40 @@ export function ProgressDashboardSection() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className={`${athleteCard} ${athleteCardPadding}`}>
-        <p className={eyebrowClass}>Progress</p>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-300">
-          Your performance trends will appear here as more sessions and testing data are logged.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <ProgressChartCard
+        title="Progress"
+        empty="Your performance trends will appear here as more sessions and testing data are logged."
+      />
 
       {completion ? (
-        <div className={`${athleteCard} ${athleteCardPadding}`}>
-          <p className={eyebrowClass}>This week</p>
-          <p className="mt-2 text-2xl font-bold text-white">{completion.pct}%</p>
-          <p className="mt-1 text-sm text-zinc-400">
-            {completion.done} of {completion.planned} sessions logged
-          </p>
-        </div>
-      ) : null}
+        <TrainingSummary
+          title="This week"
+          items={[
+            { label: "Completion", value: `${completion.pct}%` },
+            { label: "Logged", value: `${completion.done}/${completion.planned}`, sub: "Sessions" },
+          ]}
+        />
+      ) : (
+        <TrainingSummary
+          title="This week"
+          items={[]}
+          empty="Session completion appears after this week is logged."
+        />
+      )}
 
       {benchmarks.length > 0 ? (
-        <section className="space-y-3">
-          <p className={eyebrowClass}>Logged benchmarks</p>
+        <section>
+          <SectionHeader title="Logged benchmarks" />
           <div className="grid gap-3 sm:grid-cols-2">
             {benchmarks.map((item) => (
-              <article key={item.label} className={`${athleteCard} ${athleteCardPadding}`}>
-                <p className="text-sm font-semibold text-white">{item.label}</p>
-                <p className="mt-1 text-lg font-bold text-white">{item.latest}</p>
-                {item.change ? <p className="mt-1 text-xs text-zinc-500">{item.change}</p> : null}
-              </article>
+              <BenchmarkCard
+                key={item.label}
+                label={item.label}
+                value={item.latest}
+                status="approved"
+                meta={item.change?.trim() || null}
+              />
             ))}
           </div>
         </section>

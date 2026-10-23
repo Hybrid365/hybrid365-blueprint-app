@@ -3,6 +3,12 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --hybrid365-env-badge-height: 0px;
+  --h365-env-banner: 0px;
+  --h365-motion-fast: 120ms;
+  --h365-motion-base: 160ms;
+  --h365-motion-enter: 180ms;
+  --h365-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --background: oklch(0.13 0.005 285);
   --foreground: oklch(0.98 0 0);
   --card: oklch(0.17 0.005 285);
@@ -82,5 +88,26 @@
 
   body {
     @apply bg-background text-foreground;
+    padding-top: var(--hybrid365-env-badge-height, 0px);
+  }
+}
+
+@keyframes h365-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .h365-motion-none,
+  .h365-motion-enter,
+  [data-h365-motion] {
+    animation: none !important;
+    transition: none !important;
   }
 }

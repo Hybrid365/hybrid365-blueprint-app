@@ -19,6 +19,8 @@ import {
   type HyroxSessionLogForm,
 } from "./useHyroxSessionLog";
 import { SessionActivityLogFields } from "./SessionActivityLogFields";
+import { SessionCompleteConfirm } from "./visual/SessionCompleteConfirm";
+import { SessionTarget, SessionTargetRow } from "./visual/SessionTarget";
 
 type Props = {
   sessionId: string | null;
@@ -220,7 +222,7 @@ export function SessionDrawer({
       <aside
         role="dialog"
         aria-modal="true"
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-zinc-800 bg-zinc-950 shadow-2xl animate-in slide-in-from-right duration-300 overflow-hidden"
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col overflow-hidden border-l border-zinc-800 bg-zinc-950 shadow-2xl motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-150 motion-reduce:animate-none"
       >
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4">
           <div>
@@ -243,18 +245,19 @@ export function SessionDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-zinc-700 p-2 text-zinc-400 hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
         </header>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          <div className="grid grid-cols-3 gap-2 text-center text-sm">
-            <Meta label="Duration" value={`${d.durationMin} min`} />
-            <Meta label="RPE" value={d.rpeTarget} />
-            <Meta label="HR zone" value={d.hrZone} />
-          </div>
+          <SessionTargetRow>
+            <SessionTarget label="Duration" value={`${d.durationMin} min`} />
+            <SessionTarget label="RPE" value={d.rpeTarget} />
+            <SessionTarget label="HR zone" value={d.hrZone} />
+          </SessionTargetRow>
+          <SessionTarget label="Pace / load" value={d.targetPaceLoad} />
 
           <Block title="Objective" accent>
             <p className="text-sm leading-relaxed text-zinc-300">{d.objective}</p>
@@ -394,16 +397,18 @@ export function SessionDrawer({
             </p>
           ) : null}
           {successMessage ? (
-            <p className="rounded-lg border border-emerald-500/35 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
-              {successMessage}
-            </p>
+            <SessionCompleteConfirm
+              rpe={form.rpe}
+              notes={form.notes}
+              actuals={form.score.trim() ? [{ label: "Score", value: form.score }] : undefined}
+            />
           ) : null}
 
           <button
             type="button"
             disabled={!canSave || isComplete}
             onClick={() => void handleMarkComplete()}
-            className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Saving…" : isComplete ? "Already complete" : "Mark complete"}
           </button>
@@ -415,7 +420,7 @@ export function SessionDrawer({
                 clearMessages();
                 setShowLogForm((v) => !v);
               }}
-              className="rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {showLogForm ? "Hide log" : "Log session"}
             </button>
@@ -423,7 +428,7 @@ export function SessionDrawer({
               type="button"
               disabled={!canSave || !showLogForm}
               onClick={() => void handleSaveLog()}
-              className="rounded-xl border border-yellow-400/40 py-2.5 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 rounded-xl border border-yellow-400/40 py-2.5 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save log"}
             </button>
@@ -443,15 +448,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {label}
       {children}
     </label>
-  );
-}
-
-function Meta({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/80 p-2">
-      <p className="text-[10px] text-zinc-500">{label}</p>
-      <p className="font-bold text-white">{value}</p>
-    </div>
   );
 }
 

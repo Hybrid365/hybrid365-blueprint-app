@@ -10,7 +10,7 @@ type Props = {
 
 export function MobileAnchorBar({ activeSection }: Props) {
   return (
-    <div className="sticky top-0 z-30 -mx-4 border-b border-zinc-800 bg-black/95 px-4 py-2 backdrop-blur-md lg:hidden">
+    <div className="sticky top-[var(--hybrid365-env-badge-height,0px)] z-30 -mx-4 border-b border-zinc-800 bg-black/95 px-4 py-2 backdrop-blur-md lg:hidden">
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {DASHBOARD_SECTIONS.map((s) => (
           <button

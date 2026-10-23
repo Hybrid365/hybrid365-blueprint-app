@@ -1,9 +1,11 @@
 "use client";
 
-import { CheckCircle2, Clock, Heart } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
 import { SessionStatusBadge, sessionTypeStyle } from "@/components/hyrox-team/HyroxDashboardUi";
 import { btnPrimaryClass, btnSecondaryClass } from "./athleteUi";
+import { SessionTarget } from "./visual/SessionTarget";
+import { visualTouch } from "./visual/tokens";
 
 function sessionTags(session: HyroxSession): string[] {
   if (session.type === "Run" && session.name.toLowerCase().includes("threshold")) {
@@ -16,9 +18,11 @@ function sessionTags(session: HyroxSession): string[] {
   return [session.type];
 }
 
-function priorityStyle(p: HyroxSession["priority"]) {
-  if (p === "Key") return "border-yellow-400/40 bg-yellow-400/15 text-yellow-300";
-  return "border-zinc-700 text-zinc-400";
+function populated(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const t = value.trim();
+  if (!t || t === "—" || t.toLowerCase() === "per programme prescription") return null;
+  return t;
 }
 
 type Props = {
@@ -29,94 +33,85 @@ type Props = {
 
 export function WeekSessionCard({ session, onView, onLog }: Props) {
   const done = session.status === "complete";
+  const keySession = session.priority === "Key";
   const tags = sessionTags(session);
   const coachNote = session.coachNote?.trim() ?? "";
   const coachPreview = coachNote.slice(0, 120) + (coachNote.length > 120 ? "…" : "");
   const hrRaw = session.detail?.hrZone?.trim() ?? "";
   const hrZone = hrRaw && hrRaw !== "—" && hrRaw !== "Per programme prescription" ? hrRaw : null;
+  const pace = populated(session.detail?.targetPaceLoad) || populated(session.plannedTargets?.targetPace) || populated(session.plannedTargets?.targetSplit);
 
   return (
     <article
-      className={`group rounded-2xl border shadow-sm shadow-black/10 transition duration-200 ${
+      className={`rounded-2xl border bg-zinc-950/80 shadow-sm shadow-black/10 ${
         done
-          ? "border-emerald-500/35 bg-emerald-950/15 hover:border-emerald-500/50"
+          ? "border-zinc-800"
           : session.status === "modified"
-            ? "border-amber-500/30 bg-amber-950/10 hover:border-amber-500/40"
+            ? "border-amber-500/30"
             : session.status === "missed"
-              ? "border-red-500/25 bg-red-950/10"
-              : "border-zinc-800 bg-zinc-900/80 hover:border-zinc-700"
+              ? "border-zinc-800"
+              : keySession
+                ? "border-yellow-400/35"
+                : "border-zinc-800"
       }`}
     >
-      <button type="button" onClick={onView} className="w-full p-4 text-left sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950">
-            <span className="text-[10px] font-semibold uppercase text-zinc-500">{session.dayShort}</span>
-            {done ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-400" /> : null}
+      <button type="button" onClick={onView} className="w-full min-h-11 p-4 text-left sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-black">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{session.dayShort}</span>
+            {done ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-zinc-300" /> : null}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
               {session.dateLabel}
             </p>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <h4 className="text-base font-bold text-white sm:text-lg">{session.name}</h4>
-              {session.priority === "Key" ? (
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${priorityStyle("Key")}`}>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <h4 className="text-lg font-bold tracking-tight text-white">{session.name}</h4>
+              {keySession ? (
+                <span className="rounded-full border border-yellow-400/40 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-yellow-300">
                   Key session
                 </span>
               ) : session.priority === "Optional" ? (
-                <span className="rounded-full border border-zinc-600 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                <span className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-[10px] font-medium text-zinc-400">
                   Optional add-on
                 </span>
               ) : null}
               <SessionStatusBadge status={session.status} />
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {tags.map((t) => (
-                <span
-                  key={t}
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${sessionTypeStyle(session.type)}`}
-                >
-                  {t}
-                </span>
-              ))}
+            <p className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${sessionTypeStyle(session.type)}`}>
+              {session.type}
+            </p>
+            {tags.length > 1 ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {tags.filter((t) => t !== session.type).map((t) => (
+                  <span key={t} className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <SessionTarget label="Duration" value={session.duration} />
+              <SessionTarget label="RPE" value={session.rpeTarget ? `RPE ${session.rpeTarget}` : null} />
+              {pace ? <SessionTarget label="Pace / split" value={pace} /> : null}
+              {hrZone ? <SessionTarget label="HR" value={hrZone} /> : null}
             </div>
-            <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-500">
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5 text-yellow-400/80" />
-                {session.duration}
-              </span>
-              <span>RPE {session.rpeTarget}</span>
-              {hrZone ? (
-                <span className="inline-flex items-center gap-1">
-                  <Heart className="h-3.5 w-3.5 text-red-400/80" />
-                  {hrZone}
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-2 line-clamp-2 text-xs text-zinc-500">{session.intent}</p>
+            <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-zinc-400">{session.intent}</p>
             {coachNote ? (
-              <p className="mt-2 rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-2.5 py-2 text-xs text-zinc-400">
-                <span className="font-semibold text-yellow-400/80">Coach: </span>
+              <p className="mt-3 border-t border-zinc-800 pt-3 text-sm leading-relaxed text-zinc-400">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-yellow-400/80">Coach </span>
                 {coachPreview}
               </p>
             ) : null}
           </div>
         </div>
       </button>
-      <div className="flex gap-2 border-t border-zinc-800/80 px-4 pb-4 pt-3 sm:px-5">
-        <button
-          type="button"
-          onClick={onView}
-          className={`${btnPrimaryClass} flex-1 !min-h-0 py-2.5 text-xs`}
-        >
+      <div className="flex gap-2 border-t border-zinc-800 px-4 py-3 sm:px-5">
+        <button type="button" onClick={onView} className={`${btnPrimaryClass} ${visualTouch} flex-1 text-sm`}>
           View session
         </button>
         {onLog ? (
-          <button
-            type="button"
-            onClick={onLog}
-            className={`${btnSecondaryClass} flex-1 !min-h-0 py-2.5 text-xs`}
-          >
+          <button type="button" onClick={onLog} className={`${btnSecondaryClass} ${visualTouch} flex-1 text-sm`}>
             Log result
           </button>
         ) : null}

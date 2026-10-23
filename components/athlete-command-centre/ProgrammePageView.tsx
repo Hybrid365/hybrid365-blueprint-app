@@ -429,10 +429,10 @@ export function ProgrammePageView({
                   key={tab.globalWeek}
                   type="button"
                   onClick={() => setSelectedWeek(tab.globalWeek)}
-                  className={`flex min-w-[108px] shrink-0 flex-col rounded-xl border px-4 py-3 text-left transition ${
+                  className={`flex min-h-11 min-w-[116px] shrink-0 flex-col justify-center rounded-xl border px-4 py-2.5 text-left motion-safe:transition-colors motion-safe:duration-150 ${
                     active
                       ? "border-yellow-400/50 bg-yellow-400/10"
-                      : "border-zinc-800 bg-zinc-900/80 hover:border-zinc-700"
+                      : "border-zinc-800 bg-zinc-950/80 hover:border-zinc-700"
                   }`}
                 >
                   <span className="text-sm font-bold text-white">{tab.label}</span>

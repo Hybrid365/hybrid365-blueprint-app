@@ -12,7 +12,13 @@ import {
 } from "@/app/lib/hyroxBenchmarkTypes";
 import type { HyroxAthletePerformanceProfile } from "@/app/lib/hyroxBenchmarkProfile";
 import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
-import { athleteCard, athleteCardPadding, btnPrimaryClass, btnSecondaryClass, eyebrowClass } from "./athleteUi";
+import { athleteCard, athleteCardPadding, btnPrimaryClass, btnSecondaryClass } from "./athleteUi";
+import {
+  BenchmarkCard,
+  SectionHeader,
+  StatusPill,
+  athleteBenchmarkStatus,
+} from "./visual";
 
 type Payload = {
   success?: boolean;
@@ -23,14 +29,6 @@ type Payload = {
 };
 
 const FAMILIES = ["Running", "Ergs", "Bike", "HYROX", "Strength"] as const;
-
-function statusLabel(row: HyroxAthleteBenchmarkRow): string {
-  if (row.status === "pending") return "Pending coach review";
-  if (row.status === "historical") return "Historical";
-  if (row.active_for_programming) return "Current";
-  if (row.source === "coach_entered" || row.source === "lab_test") return "Coach verified";
-  return "Approved";
-}
 
 function fieldClass() {
   return "mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-500/60";
@@ -135,12 +133,14 @@ export function PerformanceProfileAthleteView({ readOnly = false }: { readOnly?:
 
   const results = payload?.results ?? [];
   const current = results.filter((row) => row.active_for_programming && row.status === "approved");
+  const pending = results.filter((row) => row.status === "pending");
+  const history = results.filter((row) => row.status !== "pending");
 
   return (
     <div className="space-y-8">
       {payload?.unavailable ? (
         <div className={`${athleteCard} ${athleteCardPadding}`}>
-          <p className={eyebrowClass}>Performance</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-400/90">Performance</p>
           <p className="mt-3 text-sm leading-relaxed text-zinc-300">
             Benchmark history is not available until the performance profile database update is applied.
           </p>
@@ -155,25 +155,20 @@ export function PerformanceProfileAthleteView({ readOnly = false }: { readOnly?:
         if (!rows.length) return null;
         return (
           <section key={family} className="space-y-3">
-            <p className={eyebrowClass}>{family}</p>
+            <SectionHeader title={family} />
             <div className="grid gap-3 sm:grid-cols-2">
               {rows.map((row) => {
                 const shown = presentBenchmark(row);
                 const age = benchmarkAgeLabel(row.result_date);
                 return (
-                  <article key={row.id} className={`${athleteCard} ${athleteCardPadding}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                        {shown.label}
-                      </p>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-yellow-400/90">Current</p>
-                    </div>
-                    <p className="mt-3 text-3xl font-bold tracking-tight text-white">
-                      {shown.primary}
-                    </p>
-                    {shown.derived ? <p className="mt-1 text-sm text-zinc-300">{shown.derived}</p> : null}
-                    {age ? <p className="mt-3 text-xs text-zinc-500">{age}</p> : null}
-                  </article>
+                  <BenchmarkCard
+                    key={row.id}
+                    label={shown.label}
+                    value={shown.primary}
+                    derived={shown.derived}
+                    status="current"
+                    meta={age}
+                  />
                 );
               })}
             </div>
@@ -197,7 +192,7 @@ export function PerformanceProfileAthleteView({ readOnly = false }: { readOnly?:
             </button>
           ) : (
             <form className="space-y-4" onSubmit={submit}>
-              <p className={eyebrowClass}>Submit for coach review</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-400/90">Submit for coach review</p>
               <label className="block text-xs font-semibold text-zinc-400">
                 Benchmark
                 <select className={fieldClass()} value={benchmarkType} onChange={(event) => setBenchmarkType(event.target.value as BenchmarkType)}>
@@ -298,23 +293,58 @@ export function PerformanceProfileAthleteView({ readOnly = false }: { readOnly?:
         <p className="text-xs text-zinc-500">Read-only preview. Result submission is disabled.</p>
       )}
 
-      {results.length ? (
+      {pending.length ? (
         <section className="space-y-3">
-          <p className={eyebrowClass}>History</p>
-          <div className="space-y-2">
-            {results.map((row) => (
-              <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    {presentBenchmark(row).label} · {presentBenchmark(row).primary}
+          <SectionHeader
+            title="Waiting for coach review"
+            description="Submitted results stay pending. They do not change your current benchmarks."
+          />
+          <div className="space-y-3">
+            {pending.map((row) => {
+              const shown = presentBenchmark(row);
+              return (
+                <article key={row.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 px-5 py-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      {shown.label}
+                    </p>
+                    <StatusPill status="pending" />
+                  </div>
+                  <p className="mt-4 text-[30px] font-bold leading-none tracking-tight text-white">
+                    {shown.primary}
                   </p>
-                  <p className="mt-1 text-xs text-zinc-500">{row.result_date}</p>
-                </div>
-                <p className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
-                  {statusLabel(row)}
-                </p>
-              </div>
-            ))}
+                  {shown.derived ? <p className="mt-2 text-sm text-zinc-300">{shown.derived}</p> : null}
+                  <p className="mt-3 text-xs text-zinc-500">{row.result_date}</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {history.length ? (
+        <section className="space-y-3">
+          <SectionHeader title="History" />
+          <div className="space-y-3">
+            {history.map((row) => {
+              const shown = presentBenchmark(row);
+              return (
+                <article
+                  key={row.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      {shown.label}
+                    </p>
+                    <p className="mt-2 text-xl font-bold tracking-tight text-white">{shown.primary}</p>
+                    {shown.derived ? <p className="mt-1 text-sm text-zinc-300">{shown.derived}</p> : null}
+                    <p className="mt-2 text-xs text-zinc-500">{row.result_date}</p>
+                  </div>
+                  <StatusPill status={athleteBenchmarkStatus(row)} />
+                </article>
+              );
+            })}
           </div>
         </section>
       ) : null}

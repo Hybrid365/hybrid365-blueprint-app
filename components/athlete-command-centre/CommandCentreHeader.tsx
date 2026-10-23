@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, ClipboardCheck, Target, Timer, TrendingUp } from "lucide-react";
+import { Calendar, Target, Timer } from "lucide-react";
 import {
   MOCK_ATHLETE,
   MOCK_CHECK_IN,
@@ -119,7 +119,9 @@ export function CommandCentreHeader() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 lg:justify-end">
-          <Pill icon={Timer} label={`${a.raceCountdownWeeks} wks to race`} accent />
+          {useLive && a.raceCountdownWeeks > 0 ? (
+            <Pill icon={Timer} label={`${a.raceCountdownWeeks} wks to race`} accent />
+          ) : null}
           <Pill icon={Calendar} label={`Week ${a.currentWeek}/${a.totalWeeks}`} />
           <Pill icon={Target} label={block.name} />
         </div>
@@ -136,9 +138,14 @@ export function CommandCentreHeader() {
         <StatTile label="Phase" value={a.blockPhase} sub={`Block ${a.blockId} · ${block.name}`} />
         <StatTile
           label="Race readiness"
-          value={useLive && dashboardLive?.raceReadiness.awaiting ? dashboardLive.raceReadiness.value : `${m.raceReadiness.value}%`}
-          sub={m.raceReadiness.delta}
-          icon={TrendingUp}
+          value={
+            useLive && dashboardLive?.raceReadiness.awaiting
+              ? dashboardLive.raceReadiness.value
+              : useLive
+                ? String(m.raceReadiness.value)
+                : "Awaiting data"
+          }
+          sub={useLive ? m.raceReadiness.delta : "Starts after first training week"}
         />
       </div>
 
@@ -188,27 +195,24 @@ function StatTile({
   sub,
   highlight,
   warn,
-  icon: Icon,
 }: {
   label: string;
   value: string;
   sub: string;
   highlight?: boolean;
   warn?: boolean;
-  icon?: typeof TrendingUp;
 }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
-      <p className="text-[10px] font-semibold uppercase text-zinc-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase text-zinc-400">{label}</p>
       <p
-        className={`mt-1 flex items-center gap-1.5 text-lg font-bold ${
-          highlight ? "text-yellow-400" : warn ? "text-amber-300" : "text-white"
+        className={`mt-2 text-2xl font-bold tracking-tight ${
+          highlight ? "text-white" : warn ? "text-amber-200" : "text-white"
         }`}
       >
-        {Icon ? <Icon className="h-4 w-4 text-emerald-400" /> : null}
         {value}
       </p>
-      <p className="mt-0.5 text-[11px] text-zinc-500">{sub}</p>
+      <p className="mt-0.5 text-[11px] text-zinc-400">{sub}</p>
     </div>
   );
 }

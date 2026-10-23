@@ -359,9 +359,14 @@ export const ATHLETE_PAGE_META = {
     subtitle: "Logged sessions and benchmarks. Trends appear as more data is recorded.",
   },
   benchmarks: {
-    eyebrow: "Benchmarks",
+    eyebrow: "Performance",
+    title: "Performance",
+    subtitle: "Current benchmarks, history, and results waiting for coach review.",
+  },
+  performanceTesting: {
+    eyebrow: "Performance testing",
     title: "Performance testing",
-    subtitle: "Baseline, latest results and targets across Hyrox markers.",
+    subtitle: "Testing-week protocol, daily tests, and submitted results.",
   },
   checkin: {
     eyebrow: "Check-in",

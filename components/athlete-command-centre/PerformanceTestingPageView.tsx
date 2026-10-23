@@ -254,7 +254,7 @@ export function PerformanceTestingPageView({
           {weekDays.map((day) => (
             <li
               key={`${day.day}-${day.title}`}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm"
+              className="flex min-h-11 flex-col gap-2 rounded-xl border border-zinc-800 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
             >
               <span className="font-semibold text-white">
                 {day.day} — {day.title}
@@ -401,7 +401,7 @@ export function PerformanceTestingPageView({
             .map((r) => (
               <li
                 key={r.id}
-                className="flex flex-wrap justify-between gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm"
+                className="flex min-h-11 flex-col gap-2 rounded-xl border border-zinc-800 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
                 <span className="text-zinc-200">
                   {performanceTestTypeLabel(r.test_type as PerformanceTestType)}

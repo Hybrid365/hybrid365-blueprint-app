@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
 function subscribeReducedMotion(callback: () => void) {
   const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -16,6 +16,7 @@ export function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeReducedMotion, getReducedMotionSnapshot, () => false);
 }
 
+/** Measured results render immediately. Do not count up from zero. */
 export function CountUp({
   value,
   suffix = "",
@@ -25,32 +26,9 @@ export function CountUp({
   suffix?: string;
   className?: string;
 }) {
-  const reduced = usePrefersReducedMotion();
-  const [display, setDisplay] = useState(reduced ? value : 0);
-
-  useEffect(() => {
-    if (reduced) {
-      setDisplay(value);
-      return;
-    }
-    let frame = 0;
-    const start = performance.now();
-    const from = display;
-    const duration = 600;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(Math.round(from + (value - from) * eased));
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animate on value change
-  }, [value, reduced]);
-
   return (
     <span className={`tabular-nums ${className}`}>
-      {display}
+      {value}
       {suffix}
     </span>
   );
@@ -72,7 +50,7 @@ export function AnimatedProgressBar({
         className="h-full rounded-full bg-yellow-400"
         style={{
           width: `${pct}%`,
-          transition: reduced ? undefined : "width 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+          transition: reduced ? undefined : "width 180ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       />
     </div>
