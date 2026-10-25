@@ -19,6 +19,7 @@
     "qa:hyrox-athlete-analytics": "npx --yes tsx scripts/qa-hyrox-athlete-analytics.ts",
     "qa:hyrox-prescription-engine": "npx --yes tsx scripts/qa-hyrox-prescription-engine.ts",
     "qa:hyrox-session-family": "npx --yes tsx scripts/qa-hyrox-session-family.ts",
+    "qa:hyrox-session-family-builder": "npx --yes tsx scripts/qa-hyrox-session-family-builder.ts",
     "qa:hyrox-admin-athlete-preview": "npx --yes tsx scripts/qa-hyrox-admin-athlete-preview.ts",
     "qa:hyrox-coach-command-centre": "npx --yes tsx scripts/qa-hyrox-coach-command-centre.ts",
     "qa:hyrox-home-v2": "npx --yes tsx scripts/qa-hyrox-home-v2.ts",

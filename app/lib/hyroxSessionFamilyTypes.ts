@@ -200,6 +200,11 @@ export type SessionFamily = {
   objective: string;
   tags: string[];
   description: string;
+  /**
+   * Monotonic code definition version. Bump when stage structure/rules change.
+   * Drafts/publishes store this value; published structured snapshots remain SoT for history.
+   */
+  definitionVersion: number;
   eligibility: SessionFamilyEligibility;
   /** Single default entry stage. */
   defaultEntryStageId: string;

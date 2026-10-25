@@ -224,6 +224,13 @@ export function collectSessionFamilyIssues(family: SessionFamily): string[] {
     push(issues, `family.modality invalid: ${String(family.modality)}`);
   }
   if (!family.objective) push(issues, "family.objective required");
+  if (
+    typeof family.definitionVersion !== "number" ||
+    !Number.isInteger(family.definitionVersion) ||
+    family.definitionVersion < 1
+  ) {
+    push(issues, "family.definitionVersion must be an integer >= 1");
+  }
   if (!Array.isArray(family.stages) || family.stages.length === 0) {
     push(issues, "family.stages must be a non-empty array");
     return issues;

@@ -1,7 +1,7 @@
 # Contract: Session family (progressive programming)
 
-Status: Slice 1 — code-first domain model + Threshold 5-minute pilot.  
-**Not** wired to the live programme builder. **No** DB tables. **No** migrations.
+Status: Slice 1 domain + Slice 2 builder adapters / draft-publish domain.  
+**Not** wired to live Programme Builder UX. **No** DB migrations. Optional JSONB fields only.
 
 Owner: Progressive programming (on `integrate/hyrox-batch-1`).
 
@@ -138,7 +138,56 @@ Same SessionFamily / Stage / PrescriptionRule objects later. No automated progre
 
 Read-only prototype in `hyroxSessionFamilyLegacyMap.ts`. Alias/map only; never rewrite published or completed history.
 
+## Family definition versioning
+
+`SessionFamily.definitionVersion` (integer ≥ 1). Bump when stage structure or rules change.
+
+| Layer | Stores |
+| --- | --- |
+| Code family | current `definitionVersion` |
+| Draft attachment | version at generation |
+| Published snapshot | version + **full structuredWorkout + rules + resolved snapshots** |
+
+Published history is self-contained. Old drafts may warn if `attachment.familyDefinitionVersion < family.definitionVersion` (future UX) — never silently rewrite published rows.
+
+## Slice 2 — builder adapter
+
+`structuredWorkoutToCoachEditConfig` → existing `CoachSessionEditConfig` plus additive:
+
+```ts
+structuredRecoveries?: { durationSeconds; type: walk|jog|easy_move|passive; note? }[]
+```
+
+Free-text `recovery` / `restRecovery` are **derived labels** when structured recoveries exist — not SoT.
+
+`coachEditConfigToStructuredWorkout` round-trips family-generated threshold configs when `structuredRecoveries` present.
+
+### Adapter gaps (documented)
+
+- Multi-block workouts: only first `repeat` maps into reps/recovery fields
+- Non-minute / distance work: not mapped to `repDurationMinutes`
+- Free-text-only recovery (no `structuredRecoveries`): round-trip returns null
+
+## Draft semantics
+
+`CoachDraftSession.sessionFamily?: SessionFamilyDraftAttachment | null` (optional; legacy omits).
+
+Attachment holds: `familyId`, `stageId`, `familyDefinitionVersion`, names/labels, `structuredWorkout` snapshot, `prescriptionSlots` (rules), live `prescriptionPreview` (re-resolvable).
+
+Draft preview updates when the Performance Profile changes **before** publish. Published snapshots do not.
+
+### Structural unlink (`shouldRetainSessionFamilyLink`)
+
+**Retain:** notes, sessionName, warmup/cooldown/mainSet wording, RPE/HR labels, pace override.  
+**Unlink:** kind, reps, work duration, structured recovery list change, or missing `structuredRecoveries`.
+
+## Publish / Copy / Carry
+
+See `docs/contracts/programme-prescription-snapshot.md`.
+
 ## File ownership
+
+**Slice 1**
 
 - `docs/contracts/session-family.md`
 - `app/lib/hyroxSessionFamilyTypes.ts`
@@ -150,15 +199,29 @@ Read-only prototype in `hyroxSessionFamilyLegacyMap.ts`. Alias/map only; never r
 - `app/lib/families/threshold5MinRepeats.ts`
 - `scripts/qa-hyrox-session-family.ts`
 
+**Slice 2**
+
+- `docs/contracts/programme-prescription-snapshot.md`
+- `app/lib/hyroxSessionFamilyDraftTypes.ts`
+- `app/lib/hyroxSessionFamilyBuilderAdapter.ts`
+- `app/lib/hyroxSessionFamilyDraft.ts`
+- `app/lib/hyroxSessionFamilyUnlink.ts`
+- `app/lib/hyroxSessionFamilyPublish.ts`
+- `app/lib/hyroxSessionFamilyCopyCarry.ts`
+- `scripts/qa-hyrox-session-family-builder.ts`
+- additive optional fields on `CoachSessionEditConfig` / `CoachDraftSession`
+
 ## Divergence from existing builder / library
 
 | Existing | Relationship |
 | --- | --- |
-| `CoachSessionEditConfig` (reps, recovery string) | Future adapter can project `StructuredWorkout` → editConfig; not done in slice 1 |
+| `CoachSessionEditConfig` | Extended with optional `structuredRecoveries`; adapter projects family stages |
 | Coach library free-text `mainSet` | Remains; legacy map is advisory |
 | `thresholdBlockProgression.ts` | Remains; week-indexed ladders must not become stage ids |
+| Live Copy Week / Auto-Carry | Unchanged; pure helpers define future semantics only |
 | Community `runPrescription.ts` / `progressionFamilies.ts` | Stay outside 1-1 path |
 
-## Ready for builder wiring?
+## Ready for live Programme Builder UX?
 
-**Not yet** — see slice return report. Domain + pilot + QA must stay green; then add draft refs (`familyId` / `stageId`), editConfig projection, and publish snapshot fields in a later slice.
+**Domain adapters: yes (slice 2 green).**  
+**Live UX / wiring: not yet** — Slice 3 should add progression assignment UI + call these helpers from publish/copy paths without changing semantics.

@@ -216,6 +216,7 @@ export const THRESHOLD_5MIN_REPEATS_FAMILY: SessionFamily = {
   tags: ["threshold", "run", "intervals", "pilot"],
   description:
     "Progressive 5-minute threshold repeats. Volume first, then recovery quality/density. Consolidation and deload are explicit stages — never implied by calendar week.",
+  definitionVersion: 1,
   eligibility: {
     suitableLevels: ["intermediate", "advanced", "pro"],
     avoidIf: ["beginner_without_threshold_anchor", "acute_injury"],

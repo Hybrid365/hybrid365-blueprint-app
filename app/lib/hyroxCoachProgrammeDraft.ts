@@ -129,6 +129,16 @@ export type CoachSessionEditConfig = {
    * Additive — old drafts omit this. Athlete rendering uses compiled mainSetLines.
    */
   customParts?: CoachCustomSessionPart[];
+  /**
+   * Structured recoveries from SessionFamily adapters (progressive programming).
+   * Additive — preferred SoT over free-text `recovery` / `restRecovery` when present.
+   * Live builder may ignore until family UX lands; JSONB can carry this field.
+   */
+  structuredRecoveries?: Array<{
+    durationSeconds: number;
+    type: "walk" | "jog" | "easy_move" | "passive";
+    note?: string;
+  }>;
 };
 
 export type PerformanceTestSessionMetadata = {
@@ -149,6 +159,12 @@ export type CoachDraftSession = SandboxSessionBlock & {
   coachLibraryId?: string;
   volumeMeta?: CoachSessionVolumeMeta;
   performanceMetadata?: PerformanceTestSessionMetadata;
+  /**
+   * Optional SessionFamily link (progressive programming).
+   * Additive — legacy drafts omit this. Shape: SessionFamilyDraftAttachment.
+   * Not required for publish of non-family sessions.
+   */
+  sessionFamily?: import("@/app/lib/hyroxSessionFamilyDraftTypes").SessionFamilyDraftAttachment | null;
 };
 
 /** @deprecated use LibraryCategory from hyroxCoachSessionLibrary */
