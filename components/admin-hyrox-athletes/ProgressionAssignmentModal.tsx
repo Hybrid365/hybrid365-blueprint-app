@@ -11,6 +11,7 @@ import {
 import {
   formatStageKeyShort,
   listPilotSessionFamilies,
+  proposeContinueProgressionStages,
   proposeDefaultProgressionStages,
   type ProgressionBlockLength,
   type ProgressionWeekProposal,
@@ -19,7 +20,17 @@ import { resolveSessionFamilyStage } from "@/app/lib/hyroxSessionFamilyResolve";
 import type { SessionFamily, SessionFamilyStage } from "@/app/lib/hyroxSessionFamilyTypes";
 
 const WEEKDAYS: WeekdayName[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SLOTS: SandboxTimeOfDay[] = ["AM", "Main", "PM"];
+const SLOTS: SandboxTimeOfDay[] = ["AM", "Main", "PM", "Optional"];
+
+export type ProgressionAssignmentMode = "assign" | "continue";
+
+export type ProgressionAssignmentSeed = {
+  familyId: string;
+  entryStageId: string;
+  day: WeekdayName;
+  slot: SandboxTimeOfDay;
+  mode?: ProgressionAssignmentMode;
+};
 
 function formatPace(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds)) return "—";
@@ -41,6 +52,8 @@ export type ProgressionAssignmentApplyPayload = {
   overridePaceSecondsPerKm: number | null;
   overrideReason: string;
   resolvedAt: string;
+  /** continue = proposals are future-only; do not touch current week session */
+  mode: ProgressionAssignmentMode;
 };
 
 export function ProgressionAssignmentModal({
@@ -50,6 +63,7 @@ export function ProgressionAssignmentModal({
   profile,
   defaultDay = "Wed",
   defaultSlot = "AM",
+  seed = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -57,10 +71,13 @@ export function ProgressionAssignmentModal({
   profile: HyroxAthletePerformanceProfile | null;
   defaultDay?: WeekdayName;
   defaultSlot?: SandboxTimeOfDay;
+  /** When set (library / placed session), pre-fill family/stage/day/slot. */
+  seed?: ProgressionAssignmentSeed | null;
 }) {
   const families = useMemo(() => listPilotSessionFamilies(), []);
   const [familyId, setFamilyId] = useState(families[0]?.id ?? "");
   const family = families.find((f) => f.id === familyId) ?? families[0] ?? null;
+  const mode: ProgressionAssignmentMode = seed?.mode === "continue" ? "continue" : "assign";
 
   const [entryStageId, setEntryStageId] = useState(family?.defaultEntryStageId ?? "");
   const [blockLength, setBlockLength] = useState<ProgressionBlockLength>(4);
@@ -72,26 +89,42 @@ export function ProgressionAssignmentModal({
   const [applying, setApplying] = useState(false);
 
   useEffect(() => {
-    if (!open || !family) return;
-    setFamilyId(family.id);
-    setEntryStageId(family.defaultEntryStageId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when modal opens / family id changes
-  }, [open, family?.id, family?.defaultEntryStageId]);
+    if (!open) return;
+    const seededFamily =
+      (seed?.familyId ? families.find((f) => f.id === seed.familyId) : null) ??
+      families[0] ??
+      null;
+    if (!seededFamily) return;
+    setFamilyId(seededFamily.id);
+    setEntryStageId(seed?.entryStageId || seededFamily.defaultEntryStageId);
+    setDay(seed?.day ?? defaultDay);
+    setSlot(seed?.slot ?? defaultSlot);
+    setBlockLength(4);
+    setOverrideText("");
+    setOverrideReason("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when modal opens / seed changes
+  }, [open, seed?.familyId, seed?.entryStageId, seed?.day, seed?.slot, seed?.mode, defaultDay, defaultSlot]);
 
   useEffect(() => {
     if (!family || !entryStageId) return;
     try {
       setProposals(
-        proposeDefaultProgressionStages({
-          family,
-          entryStageId,
-          blockLength,
-        })
+        mode === "continue"
+          ? proposeContinueProgressionStages({
+              family,
+              currentStageId: entryStageId,
+              blockLength,
+            })
+          : proposeDefaultProgressionStages({
+              family,
+              entryStageId,
+              blockLength,
+            })
       );
     } catch {
       setProposals([]);
     }
-  }, [family, entryStageId, blockLength]);
+  }, [family, entryStageId, blockLength, mode]);
 
   const [resolvedAtTick, setResolvedAtTick] = useState(0);
   useEffect(() => {
@@ -143,9 +176,13 @@ export function ProgressionAssignmentModal({
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
         <header className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
           <div>
-            <h2 className="text-sm font-bold tracking-wide text-white">Add progression</h2>
+            <h2 className="text-sm font-bold tracking-wide text-white">
+              {mode === "continue" ? "Build progression" : "Add progression"}
+            </h2>
             <p className="text-[11px] text-zinc-500">
-              Pilot · Session family assignment · coach approves every stage
+              {mode === "continue"
+                ? "Current week stays as-is · future weeks are a proposal you can edit"
+                : "Pilot · Session family assignment · coach approves every stage"}
             </p>
           </div>
           <button
@@ -324,6 +361,17 @@ export function ProgressionAssignmentModal({
               </p>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
+              {mode === "continue" && family ? (
+                <div className="mb-3 rounded-lg border border-violet-500/30 bg-violet-400/5 px-3 py-2 text-[11px] text-violet-100">
+                  Current week keeps{" "}
+                  <span className="font-semibold">
+                    {formatStageKeyShort(
+                      family.stages.find((s) => s.id === entryStageId)?.key ?? "stage"
+                    )}
+                  </span>{" "}
+                  (not duplicated). Rows below are future drafts only.
+                </div>
+              ) : null}
               <div className="mb-2 hidden grid-cols-[52px_72px_1fr_1.2fr_140px] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-600 lg:grid">
                 <span>Week</span>
                 <span>Day</span>
@@ -432,7 +480,9 @@ export function ProgressionAssignmentModal({
           <p className="text-[11px] text-zinc-500">
             {blocked
               ? "Blocked until threshold anchor or coach override is available."
-              : "Inserts draft sessions into consecutive weeks starting from the selected week tab."}
+              : mode === "continue"
+                ? "Inserts future draft weeks only — current week session is unchanged."
+                : "Inserts draft sessions into consecutive weeks starting from the selected week tab."}
           </p>
           <div className="flex gap-2">
             <button
@@ -458,6 +508,7 @@ export function ProgressionAssignmentModal({
                     overridePaceSecondsPerKm: overrideSeconds,
                     overrideReason,
                     resolvedAt,
+                    mode,
                   });
                 } finally {
                   setApplying(false);

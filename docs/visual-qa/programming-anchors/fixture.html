@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Programming Anchors — visual fixture</title>
+    <style>
+      :root {
+        --bg: #09090b;
+        --panel: #09090b;
+        --border: #27272a;
+        --muted: #71717a;
+        --text: #fafafa;
+        --gold: #facc15;
+        --stale: #fcd34d;
+        --ok: #34d399;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 24px;
+      }
+      h1 { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); margin: 0 0 4px; }
+      .sub { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+      .grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; max-width: 1100px; }
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #030303;
+        padding: 16px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid #18181b;
+        padding: 8px 0;
+      }
+      .row:last-child { border-bottom: 0; }
+      .label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+      .value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .sec { font-size: 10px; color: var(--muted); }
+      .meta { text-align: right; font-size: 10px; color: #a1a1aa; }
+      .not { color: #52525b; }
+      .stale { color: var(--stale); }
+      .curr { color: var(--ok); opacity: 0.7; }
+      .group { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #52525b; margin: 12px 0 4px; }
+      .ctx { border-color: #7c3aed55; background: #2e106510; }
+      .warn { margin-top: 10px; border: 1px solid #f59e0b55; background: #451a0340; color: #fef3c7; font-size: 11px; padding: 10px; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="grid">
+      <section class="panel" id="overview">
+        <h1>Programming Anchors</h1>
+        <p class="sub">Active values only · missing stays Not set · never estimated</p>
+        <div class="group">Running</div>
+        <div class="row"><div><div class="label">Threshold</div><div class="value">3:48/km</div></div><div class="meta">Lab tested · 12 Oct<br/><span class="curr">Current</span></div></div>
+        <div class="row"><div><div class="label">5K</div><div class="value">18:20</div><div class="sec">3:40/km</div></div><div class="meta">Benchmark test · 10 Oct<br/><span class="curr">Current</span></div></div>
+        <div class="row"><div><div class="label">10K</div><div class="value">38:10</div><div class="sec">3:49/km</div></div><div class="meta">Race result · 1 Sep<br/><span class="curr">Current</span></div></div>
+        <div class="row"><div><div class="label">HYROX run</div><div class="value">4:10/km</div></div><div class="meta">Coach estimate · 20 Oct<br/><span class="curr">Current</span></div></div>
+        <div class="group">Erg</div>
+        <div class="row"><div><div class="label">Ski 2K</div><div class="value">7:35</div><div class="sec">1:53.8/500m</div></div><div class="meta">Benchmark test · 20 Oct<br/><span class="curr">Current</span></div></div>
+        <div class="row"><div><div class="label">Row 2K</div><div class="value">7:10</div><div class="sec">1:47.5/500m</div></div><div class="meta">Benchmark test · 20 Oct<br/><span class="curr">Current</span></div></div>
+        <div class="group">Bike</div>
+        <div class="row"><div><div class="label">FTP</div><div class="value">285 W</div></div><div class="meta">Lab tested · 20 Oct<br/><span class="curr">Current</span></div></div>
+      </section>
+
+      <div>
+        <section class="panel" id="compact">
+          <h1>Programming Anchors</h1>
+          <p class="sub">Programme Builder · compact</p>
+          <div class="row"><div><div class="label">Threshold</div><div class="value">3:48/km</div></div><div class="meta">Lab tested · 12 Oct</div></div>
+          <div class="row"><div><div class="label">5K</div><div class="value">18:20</div></div><div class="meta">Benchmark test · 10 Oct</div></div>
+          <div class="row"><div><div class="label">HYROX run</div><div class="value">4:10/km</div></div><div class="meta">Coach estimate · 20 Oct</div></div>
+          <div class="row"><div><div class="label">Ski 2K</div><div class="value">7:35</div></div><div class="meta">Benchmark test</div></div>
+          <div class="row"><div><div class="label">Row 2K</div><div class="value">7:10</div></div><div class="meta">Benchmark test</div></div>
+          <div class="row"><div><div class="label">FTP</div><div class="value">285 W</div></div><div class="meta">Lab tested</div></div>
+        </section>
+
+        <section class="panel ctx" id="session" style="margin-top:16px">
+          <h1 style="color:#ddd6fe">Prescription context</h1>
+          <p class="sub">Threshold — 5 Minute Repeats · Stage 2</p>
+          <div class="row"><div class="label">Active threshold</div><div class="value">3:48/km<div class="sec">Lab tested · 12 Oct</div></div></div>
+          <div class="row"><div class="label">Rule</div><div class="sec" style="color:#d4d4d8;font-family:ui-monospace">@THRESHOLD +5s/km</div></div>
+          <div class="row"><div class="label">Suggested athlete target</div><div class="value" style="color:#facc15">3:53/km</div></div>
+          <div class="row"><div class="label">Coach fixed target</div><div class="value" style="color:#6ee7b7">3:50/km</div></div>
+        </section>
+
+        <section class="panel" id="missing" style="margin-top:16px">
+          <h1>Programming Anchors</h1>
+          <p class="sub">Missing threshold</p>
+          <div class="row"><div><div class="label">Threshold</div><div class="value not">Not set</div></div><div class="meta not">Not set</div></div>
+          <div class="warn">Threshold anchor not set. Open Performance Profile to set a coach estimate, or enter an explicit manual target.</div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { HyroxAthletePerformanceProfile } from "@/app/lib/hyroxBenchmarkProfile";
 import type { CoachDraftSession, CoachSessionEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { calcThresholdMinutesFromConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
+import { buildSessionPrescriptionContext } from "@/app/lib/hyroxProgrammingAnchors";
 import { detectManualTargetStaleWarning } from "@/app/lib/hyroxSessionTargetOverrides";
 import { PrescriptionDetailBlocks } from "@/components/admin-hyrox-athletes/PrescriptionDetailBlocks";
 import { X } from "lucide-react";
@@ -12,11 +14,15 @@ export function SessionEditDrawer({
   open,
   onClose,
   onSave,
+  profile = null,
+  onOpenPerformanceProfile,
 }: {
   session: CoachDraftSession | null;
   open: boolean;
   onClose: () => void;
   onSave: (config: CoachSessionEditConfig) => void | Promise<void>;
+  profile?: HyroxAthletePerformanceProfile | null;
+  onOpenPerformanceProfile?: () => void;
 }) {
   const [c, setC] = useState<CoachSessionEditConfig | null>(null);
 
@@ -27,6 +33,18 @@ export function SessionEditDrawer({
   const staleTargetWarning = useMemo(
     () => (session && c ? detectManualTargetStaleWarning(session, c) : null),
     [session, c]
+  );
+
+  const prescriptionContext = useMemo(
+    () =>
+      session && c
+        ? buildSessionPrescriptionContext({
+            profile,
+            sessionFamily: session.sessionFamily,
+            editConfig: c,
+          })
+        : null,
+    [session, c, profile]
   );
 
   if (!open || !session || !c) return null;
@@ -94,10 +112,76 @@ export function SessionEditDrawer({
             }
           />
 
+          {prescriptionContext ? (
+            <div className="space-y-2 rounded-xl border border-violet-500/30 bg-violet-400/5 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-200/90">
+                Prescription context
+              </p>
+              <p className="text-[11px] text-zinc-500">{prescriptionContext.title}</p>
+              <dl className="space-y-1.5 text-xs">
+                <div className="flex justify-between gap-2 border-b border-zinc-800/80 py-1">
+                  <dt className="text-zinc-500">{prescriptionContext.anchorLabel}</dt>
+                  <dd className="text-right font-bold tabular-nums text-white">
+                    {prescriptionContext.anchorValue ?? "Not set"}
+                    {prescriptionContext.anchorSourceLine ? (
+                      <span className="mt-0.5 block text-[10px] font-normal text-zinc-500">
+                        {prescriptionContext.anchorSourceLine}
+                      </span>
+                    ) : null}
+                  </dd>
+                </div>
+                {prescriptionContext.ruleExpression ? (
+                  <div className="flex justify-between gap-2 border-b border-zinc-800/80 py-1">
+                    <dt className="text-zinc-500">Rule</dt>
+                    <dd className="font-mono text-[11px] text-zinc-300">
+                      {prescriptionContext.ruleExpression}
+                    </dd>
+                  </div>
+                ) : null}
+                {prescriptionContext.suggestedTarget ? (
+                  <div className="flex justify-between gap-2 border-b border-zinc-800/80 py-1">
+                    <dt className="text-zinc-500">Suggested athlete target</dt>
+                    <dd className="font-bold tabular-nums text-yellow-300">
+                      {prescriptionContext.suggestedTarget}
+                    </dd>
+                  </div>
+                ) : null}
+                {prescriptionContext.coachFixedTarget ? (
+                  <div className="flex justify-between gap-2 py-1">
+                    <dt className="text-zinc-500">Coach fixed target</dt>
+                    <dd className="font-bold tabular-nums text-emerald-300">
+                      {prescriptionContext.coachFixedTarget}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+              {prescriptionContext.missingAnchorWarning ? (
+                <div className="rounded-lg border border-amber-500/35 bg-amber-950/40 px-3 py-2 text-[11px] text-amber-100">
+                  <p>{prescriptionContext.missingAnchorWarning}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {onOpenPerformanceProfile ? (
+                      <button
+                        type="button"
+                        onClick={onOpenPerformanceProfile}
+                        className="rounded border border-amber-500/40 px-2 py-1 text-[10px] font-semibold text-amber-100 hover:bg-amber-500/10"
+                      >
+                        Open Performance Profile
+                      </button>
+                    ) : null}
+                    <span className="self-center text-[10px] text-amber-200/70">
+                      or set explicit manual target below
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 space-y-3">
-            <p className="text-xs font-bold uppercase text-amber-300">Manual targets / pacing</p>
+            <p className="text-xs font-bold uppercase text-amber-300">Manual / fixed targets</p>
             <p className="text-[11px] text-zinc-500">
-              These override generated library text on the athlete session detail (pace, split, HR, RPE, rest).
+              Explicit coach target wins on the athlete session. System rule and formula stay preserved
+              for provenance — never silent estimates.
             </p>
             {staleTargetWarning ? (
               <p className="rounded-lg border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-xs text-amber-100">
@@ -105,10 +189,10 @@ export function SessionEditDrawer({
               </p>
             ) : null}
             <Field
-              label="Target pace / load"
+              label="Coach fixed target (pace / load)"
               value={c.targetPaceLoad ?? ""}
               onChange={(v) => patch({ targetPaceLoad: v })}
-              placeholder="e.g. 3:40–3:50/km · heavy but smooth"
+              placeholder="e.g. 3:50/km — overrides suggested target"
             />
             <Field
               label="Target split / watts"

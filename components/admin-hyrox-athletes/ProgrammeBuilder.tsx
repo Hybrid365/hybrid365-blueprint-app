@@ -26,9 +26,9 @@ import {
   createCoachDraftSessionFromFamilyStage,
   applyEditConfigWithFamilyLink,
 } from "@/app/lib/hyroxSessionFamilyDraft";
-import { formatStageKeyShort } from "@/app/lib/hyroxSessionFamilyProposal";
 import { shouldRetainSessionFamilyLink } from "@/app/lib/hyroxSessionFamilyUnlink";
 import { ProgrammeValidationPanel } from "@/components/admin-hyrox-athletes/ProgrammeValidationPanel";
+import { ProgrammingAnchorsPanel } from "@/components/admin-hyrox-athletes/ProgrammingAnchorsPanel";
 import { SessionEditDrawer } from "@/components/admin-hyrox-athletes/SessionEditDrawer";
 import { SessionLibraryPanel } from "@/components/admin-hyrox-athletes/SessionLibraryPanel";
 import {
@@ -61,6 +61,7 @@ import { CoachPublishResultPanel } from "@/components/admin-hyrox-athletes/Coach
 import {
   ProgressionAssignmentModal,
   type ProgressionAssignmentApplyPayload,
+  type ProgressionAssignmentSeed,
 } from "@/components/admin-hyrox-athletes/ProgressionAssignmentModal";
 import { ChangeStageModal } from "@/components/admin-hyrox-athletes/ChangeStageModal";
 import {
@@ -68,6 +69,8 @@ import {
   refreshFamilyLinkedDraftWeekPreviews,
   targetGlobalWeeksForProgression,
 } from "@/app/lib/hyroxSessionFamilyApply";
+import { coachFamilySessionTitle } from "@/app/lib/hyroxSessionFamilyAthleteCopy";
+import { resolveLibrarySessionFamilyLink } from "@/app/lib/hyroxSessionFamilyLibraryBridge";
 import { globalWeekForBlock } from "@/app/lib/hyroxCoachProgrammeDraft";
 import {
   buildPerformanceTestingWeek1Draft,
@@ -100,6 +103,7 @@ export function ProgrammeBuilder({
   livePersistence,
   effectiveProfile = null,
   sessionFamiliesEnabled: sessionFamiliesEnabledProp = false,
+  onOpenPerformanceProfile,
 }: {
   athlete: CoachAthlete;
   programmeStatus: CoachProgrammeStatus;
@@ -119,6 +123,8 @@ export function ProgrammeBuilder({
   livePersistence?: LiveProgrammePersistenceProps;
   effectiveProfile?: HyroxAthleteProfile | null;
   sessionFamiliesEnabled?: boolean;
+  /** Jump to Performance Profile tab to confirm / set programming anchors */
+  onOpenPerformanceProfile?: () => void;
 }) {
   const block = useCoachBlockProgramme({
     athlete,
@@ -200,6 +206,9 @@ export function ProgrammeBuilder({
   const [hydrateDetailsConfirmOpen, setHydrateDetailsConfirmOpen] = useState(false);
   const [copyWeekOpen, setCopyWeekOpen] = useState(false);
   const [progressionOpen, setProgressionOpen] = useState(false);
+  const [progressionSeed, setProgressionSeed] = useState<ProgressionAssignmentSeed | null>(
+    null
+  );
   const [perfProfile, setPerfProfile] = useState<HyroxAthletePerformanceProfile | null>(null);
   const [unlinkConfirm, setUnlinkConfirm] = useState<{
     dayIndex: number;
@@ -346,7 +355,7 @@ export function ProgrammeBuilder({
     : null;
 
   useEffect(() => {
-    if (!sessionFamiliesEnabled || !athlete.id) return;
+    if (!athlete.id) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -365,7 +374,7 @@ export function ProgrammeBuilder({
     return () => {
       cancelled = true;
     };
-  }, [athlete.id, sessionFamiliesEnabled, progressionOpen]);
+  }, [athlete.id, progressionOpen]);
 
   // When a draft with family sessions is opened, refresh live prescription previews
   // from the current Performance Profile (never reuse published snapshots as draft targets).
@@ -385,6 +394,49 @@ export function ProgrammeBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh once per draft/profile fingerprint
   }, [sessionFamiliesEnabled, perfProfile, draft.week, draft.generatedAt, setDraft]);
 
+  const openProgressionAssign = useCallback((seed?: ProgressionAssignmentSeed | null) => {
+    setProgressionSeed(seed ?? null);
+    setProgressionOpen(true);
+  }, []);
+
+  const handleLibraryBuildProgression = useCallback(
+    (entry: CoachLibraryEntry) => {
+      const link = resolveLibrarySessionFamilyLink(entry);
+      if (!link) {
+        showToast("This library session is not mapped to a Session Family stage.");
+        return;
+      }
+      if (!addTarget) {
+        showToast("Select a day/slot first, then Build progression.");
+        return;
+      }
+      openProgressionAssign({
+        familyId: link.family.id,
+        entryStageId: link.stage.id,
+        day: addTarget.day,
+        slot: addTarget.slot,
+        mode: "assign",
+      });
+    },
+    [addTarget, openProgressionAssign, showToast]
+  );
+
+  const handlePlacedBuildProgression = useCallback(
+    (dayIndex: number, sessionIndex: number) => {
+      const session = draft.days[dayIndex]?.sessions[sessionIndex];
+      const att = session?.sessionFamily;
+      if (!session || !att) return;
+      openProgressionAssign({
+        familyId: att.familyId,
+        entryStageId: att.stageId,
+        day: draft.days[dayIndex]!.day as WeekdayName,
+        slot: session.timeOfDay,
+        mode: "continue",
+      });
+    },
+    [draft.days, openProgressionAssign]
+  );
+
   const handleProgressionApply = useCallback(
     async (payload: ProgressionAssignmentApplyPayload) => {
       const profile = perfProfile;
@@ -393,7 +445,11 @@ export function ProgrammeBuilder({
         return;
       }
 
-      const startGlobalWeek = globalWeekForBlock(selectedBlock, selectedCycle);
+      // continue: proposals are future-only → start at next programme week
+      const startGlobalWeek =
+        payload.mode === "continue"
+          ? globalWeekForBlock(selectedBlock, selectedCycle) + 1
+          : globalWeekForBlock(selectedBlock, selectedCycle);
       const globalWeeks = targetGlobalWeeksForProgression({
         startGlobalWeek,
         blockLength: payload.proposals.length,
@@ -456,9 +512,7 @@ export function ProgrammeBuilder({
           base: {
             timeOfDay: payload.slot,
             badges: ["Main"],
-            title: `${payload.family.name} · ${formatStageKeyShort(
-              payload.family.stages.find((s) => s.id === proposal.stageId)?.key ?? "stage"
-            )}`,
+            title: coachFamilySessionTitle(payload.family.name),
             sessionType: "run_development",
             duration: "60 min",
             intensity: "RPE 7–8",
@@ -544,10 +598,13 @@ export function ProgrammeBuilder({
       }
 
       setProgressionOpen(false);
+      setProgressionSeed(null);
       showToast(
         skipped > 0
           ? `Progression applied to ${applied} week(s). ${skipped} week(s) skipped.`
-          : `Progression applied to ${applied} week(s) (drafts only — not published).`
+          : payload.mode === "continue"
+            ? `Future progression applied to ${applied} week(s) (current week unchanged · drafts only).`
+            : `Progression applied to ${applied} week(s) (drafts only — not published).`
       );
     },
     [
@@ -822,8 +879,17 @@ export function ProgrammeBuilder({
             <button
               type="button"
               disabled={saving}
-              onClick={() => setProgressionOpen(true)}
+              onClick={() =>
+                openProgressionAssign({
+                  familyId: "",
+                  entryStageId: "",
+                  day: addTarget?.day ?? "Wed",
+                  slot: addTarget?.slot ?? "AM",
+                  mode: "assign",
+                })
+              }
               className="rounded-full border border-violet-500/40 bg-violet-400/10 px-3 py-1.5 text-xs font-bold text-violet-100 disabled:opacity-50"
+              title="Global entry — prefer Build progression from an eligible library card"
             >
               Add progression
             </button>
@@ -896,10 +962,16 @@ export function ProgrammeBuilder({
         <SessionLibraryPanel
           addTarget={replaceTarget ? null : addTarget}
           onAdd={replaceTarget ? handleLibraryAddForReplace : handleAdd}
+          onBuildProgression={
+            sessionFamiliesEnabled && !replaceTarget
+              ? handleLibraryBuildProgression
+              : undefined
+          }
           onBuildFromScratch={() => setScratchOpen(true)}
           replaceMode={Boolean(replaceTarget)}
           equipmentAvailable={athlete.programmeInputs.equipment}
           athlete={athlete}
+          sessionFamiliesEnabled={sessionFamiliesEnabled}
         />
         <WeeklyScheduleBuilder
           days={draft.days}
@@ -939,8 +1011,16 @@ export function ProgrammeBuilder({
               ? (di, si) => setChangeStageTarget({ dayIndex: di, sessionIndex: si })
               : undefined
           }
+          onBuildProgression={
+            sessionFamiliesEnabled ? handlePlacedBuildProgression : undefined
+          }
         />
         <aside className="flex flex-col gap-4 overflow-y-auto">
+          <ProgrammingAnchorsPanel
+            profile={perfProfile}
+            variant="compact"
+            onOpenProfile={onOpenPerformanceProfile}
+          />
           <WeeklySummaryPanel summary={summary} />
           <ProgrammeValidationPanel
             warnings={validation.warnings}
@@ -994,6 +1074,8 @@ export function ProgrammeBuilder({
       <SessionEditDrawer
         session={editSession ?? null}
         open={editTarget != null}
+        profile={perfProfile}
+        onOpenPerformanceProfile={onOpenPerformanceProfile}
         onClose={() => setEditTarget(null)}
         onSave={async (config: CoachSessionEditConfig) => {
           if (!editTarget) return;
@@ -1021,11 +1103,25 @@ export function ProgrammeBuilder({
       {sessionFamiliesEnabled ? (
         <ProgressionAssignmentModal
           open={progressionOpen}
-          onClose={() => setProgressionOpen(false)}
+          onClose={() => {
+            setProgressionOpen(false);
+            setProgressionSeed(null);
+          }}
           onApply={handleProgressionApply}
           profile={perfProfile}
           defaultDay={addTarget?.day ?? "Wed"}
-          defaultSlot={addTarget?.slot === "PM" ? "PM" : addTarget?.slot === "AM" ? "AM" : "AM"}
+          defaultSlot={addTarget?.slot ?? "AM"}
+          seed={
+            progressionSeed?.familyId
+              ? progressionSeed
+              : {
+                  familyId: "",
+                  entryStageId: "",
+                  day: addTarget?.day ?? "Wed",
+                  slot: addTarget?.slot ?? "AM",
+                  mode: "assign",
+                }
+          }
         />
       ) : null}
 

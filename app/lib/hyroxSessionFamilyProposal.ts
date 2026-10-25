@@ -25,6 +25,28 @@ export type ProgressionWeekProposal = {
  * Final week of a 4-week block defaults to Consolidation when available (coach can change).
  * Never hardcodes "week 4 = deload".
  */
+/**
+ * Future-only proposals when current week already has `currentStageId`.
+ * `blockLength` is the full path length including the existing week
+ * (e.g. 4 → 3 future weeks). Never duplicates the current stage into apply list.
+ */
+export function proposeContinueProgressionStages(args: {
+  family: SessionFamily;
+  currentStageId: string;
+  blockLength: ProgressionBlockLength;
+}): ProgressionWeekProposal[] {
+  const full = proposeDefaultProgressionStages({
+    family: args.family,
+    entryStageId: args.currentStageId,
+    blockLength: args.blockLength,
+  });
+  return full.slice(1).map((p, i) => ({
+    ...p,
+    offset: i,
+    label: `Week ${i + 2}`,
+  }));
+}
+
 export function proposeDefaultProgressionStages(args: {
   family: SessionFamily;
   entryStageId: string;

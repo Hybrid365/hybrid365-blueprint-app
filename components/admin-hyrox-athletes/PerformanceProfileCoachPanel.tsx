@@ -12,6 +12,8 @@ import {
 } from "@/app/lib/hyroxBenchmarkTypes";
 import type { HyroxAthletePerformanceProfile } from "@/app/lib/hyroxBenchmarkProfile";
 import type { BenchmarkCoachAction } from "@/app/lib/hyroxBenchmarkWorkflow";
+import { programmingAnchorSourceLabel } from "@/app/lib/hyroxProgrammingAnchors";
+import { ProgrammingAnchorsPanel } from "@/components/admin-hyrox-athletes/ProgrammingAnchorsPanel";
 
 type Payload = {
   success?: boolean;
@@ -163,8 +165,15 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
       ) : null}
       {error ? <p className="text-sm text-amber-300">{error}</p> : null}
 
+      <ProgrammingAnchorsPanel
+        profile={payload?.profile ?? null}
+        variant="overview"
+        pendingCount={pending.length}
+        unavailable={Boolean(payload?.unavailable)}
+      />
+
       <section className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">Programming profile</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">Programming readiness</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {(payload?.profile?.readiness ?? []).map((item) => (
             <div key={item.type} className="flex items-center justify-between rounded-lg border border-zinc-800 px-3 py-2">
@@ -186,7 +195,9 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
                 <p className="text-sm font-semibold text-white">
                   {presentBenchmark(row).label} · {presentBenchmark(row).primary}
                 </p>
-                <p className="text-xs text-zinc-500">{row.result_date} · {row.source.replaceAll("_", " ")}</p>
+                <p className="text-xs text-zinc-500">
+                  {row.result_date} · {programmingAnchorSourceLabel(row.source)} · Pending review
+                </p>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <ActionButton disabled={busyId === row.id} onClick={() => act(row.id, "approve_and_activate")}>
@@ -224,7 +235,7 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
                       {" · "}
                       {row.result_date}
                       {" · "}
-                      {row.source.replaceAll("_", " ")}
+                      {programmingAnchorSourceLabel(row.source)}
                       {benchmarkAgeLabel(row.result_date) ? ` · ${benchmarkAgeLabel(row.result_date)}` : ""}
                     </p>
                     <input
@@ -323,8 +334,8 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
           <label className="text-xs text-zinc-400">
             Source
             <select className={inputClass()} value={source} onChange={(event) => setSource(event.target.value as typeof source)}>
-              <option value="coach_entered">Coach entered</option>
-              <option value="lab_test">Lab test</option>
+              <option value="coach_entered">Coach estimate</option>
+              <option value="lab_test">Lab tested</option>
               <option value="imported">Imported</option>
             </select>
           </label>

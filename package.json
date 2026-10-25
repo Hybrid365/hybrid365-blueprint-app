@@ -35,6 +35,7 @@
     "qa:hyrox-athlete": "node scripts/qa-hyrox-suite.mjs athlete",
     "qa:hyrox-auth": "node scripts/qa-hyrox-suite.mjs auth",
     "qa:hyrox-benchmarks": "npx --yes tsx scripts/qa-hyrox-benchmarks.ts",
+    "qa:hyrox-programming-anchors": "npx --yes tsx scripts/qa-hyrox-programming-anchors.ts",
     "qa:hyrox-visual-system": "npx --yes tsx scripts/qa-hyrox-visual-system.ts",
     "qa:hyrox-race-intelligence": "npx --yes tsx scripts/qa-hyrox-race-intelligence.ts",
     "qa:hyrox-batch-1-integration": "npx --yes tsx scripts/qa-hyrox-batch-1-integration.ts",

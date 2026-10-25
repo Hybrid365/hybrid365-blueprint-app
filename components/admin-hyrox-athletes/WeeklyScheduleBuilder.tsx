@@ -3,8 +3,25 @@
 import type { CoachDraftDay, CoachDraftSession } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { TIME_OF_DAY_OPTIONS, WEEKDAYS, type WeekdayName } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { SandboxTimeOfDay } from "@/app/lib/hyroxProgrammeSandbox";
-import { coachFamilyContextLabel } from "@/app/lib/hyroxSessionFamilyAthleteCopy";
+import {
+  coachFamilySessionSubtitle,
+  coachFamilySessionTitle,
+  coachStageShortLabel,
+} from "@/app/lib/hyroxSessionFamilyAthleteCopy";
+import {
+  formatRecoveriesWithSuffix,
+  formatRepeatBlock,
+} from "@/app/lib/hyroxSessionFamilyFormat";
 import { PrescriptionDetailBlocks } from "@/components/admin-hyrox-athletes/PrescriptionDetailBlocks";
+
+function familyStructureLine(session: CoachDraftSession): string {
+  const workout = session.sessionFamily?.structuredWorkout;
+  const block = workout?.blocks.find((b) => b.type === "repeat");
+  if (!block || block.type !== "repeat") {
+    return session.sessionFamily?.stageLabel ?? "";
+  }
+  return `${formatRepeatBlock(block)} · ${formatRecoveriesWithSuffix(block.recoveries)}`;
+}
 
 export function WeeklyScheduleBuilder({
   days,
@@ -17,6 +34,7 @@ export function WeeklyScheduleBuilder({
   onDuplicate,
   onViewDetail,
   onChangeStage,
+  onBuildProgression,
 }: {
   days: CoachDraftDay[];
   addTarget: { day: WeekdayName; slot: SandboxTimeOfDay } | null;
@@ -28,6 +46,7 @@ export function WeeklyScheduleBuilder({
   onDuplicate: (dayIndex: number, sessionIndex: number) => void;
   onViewDetail: (dayIndex: number, sessionIndex: number) => void;
   onChangeStage?: (dayIndex: number, sessionIndex: number) => void;
+  onBuildProgression?: (dayIndex: number, sessionIndex: number) => void;
 }) {
   return (
     <section className="flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-950/60">
@@ -50,6 +69,7 @@ export function WeeklyScheduleBuilder({
             onDuplicate={onDuplicate}
             onViewDetail={onViewDetail}
             onChangeStage={onChangeStage}
+            onBuildProgression={onBuildProgression}
           />
         ))}
       </div>
@@ -69,6 +89,7 @@ function DayColumn({
   onDuplicate,
   onViewDetail,
   onChangeStage,
+  onBuildProgression,
 }: {
   day: CoachDraftDay;
   dayIndex: number;
@@ -81,6 +102,7 @@ function DayColumn({
   onDuplicate: (dayIndex: number, sessionIndex: number) => void;
   onViewDetail: (dayIndex: number, sessionIndex: number) => void;
   onChangeStage?: (dayIndex: number, sessionIndex: number) => void;
+  onBuildProgression?: (dayIndex: number, sessionIndex: number) => void;
 }) {
   const weekday = day.day as WeekdayName;
 
@@ -134,6 +156,11 @@ function DayColumn({
                   ? () => onChangeStage(dayIndex, sessionIndex)
                   : undefined
               }
+              onBuildProgression={
+                onBuildProgression && s.sessionFamily
+                  ? () => onBuildProgression(dayIndex, sessionIndex)
+                  : undefined
+              }
             />
           ))}
         </ul>
@@ -152,6 +179,7 @@ function SessionCard({
   onDuplicate,
   onViewDetail,
   onChangeStage,
+  onBuildProgression,
 }: {
   session: CoachDraftSession;
   hardLabel: string;
@@ -162,9 +190,31 @@ function SessionCard({
   onDuplicate: () => void;
   onViewDetail: () => void;
   onChangeStage?: () => void;
+  onBuildProgression?: () => void;
 }) {
   const p = session.prescription;
-  const target = p?.targetPace ?? p?.targetSplit ?? p?.targetLoad;
+  const family = session.sessionFamily;
+  const familyTarget =
+    family?.prescriptionPreview?.slots.find((s) => s.slot === "run")?.resolvedValue ?? null;
+  const formatPreviewPace = (seconds: number | null) => {
+    if (seconds == null || !Number.isFinite(seconds)) return null;
+    const whole = Math.round(seconds);
+    return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}/km`;
+  };
+  const target =
+    formatPreviewPace(familyTarget) ??
+    p?.targetPace ??
+    p?.targetSplit ??
+    p?.targetLoad;
+  const title = family
+    ? coachFamilySessionTitle(family.familyName)
+    : session.title;
+  const subtitle = family
+    ? coachFamilySessionSubtitle({
+        stageKey: family.stageKey,
+        structureLine: familyStructureLine(session),
+      })
+    : null;
 
   return (
     <li
@@ -194,29 +244,33 @@ function SessionCard({
             {b}
           </span>
         ))}
-        {!session.coachLibraryId && !session.sessionId ? (
+        {!session.coachLibraryId && !session.sessionId && !family ? (
           <span className="rounded border border-violet-500/40 bg-violet-400/10 px-1 text-[9px] text-violet-100">
             Custom
           </span>
         ) : null}
-        {session.sessionFamily ? (
+        {family ? (
           <span className="rounded border border-violet-500/35 bg-violet-400/10 px-1 text-[9px] text-violet-100">
-            {coachFamilyContextLabel(session.sessionFamily)}
+            {coachStageShortLabel(family.stageKey)}
           </span>
         ) : null}
       </div>
-      <p className="mt-1 text-xs font-bold text-white">{session.title}</p>
-      <p className="text-[10px] uppercase text-zinc-600">
-        {session.sessionType.replace(/_/g, " ")} · {hardLabel}
-      </p>
+      <p className="mt-1 text-xs font-bold text-white">{title}</p>
+      {subtitle ? (
+        <p className="mt-0.5 text-[10px] font-medium text-violet-100/90">{subtitle}</p>
+      ) : (
+        <p className="text-[10px] uppercase text-zinc-600">
+          {session.sessionType.replace(/_/g, " ")} · {hardLabel}
+        </p>
+      )}
       <p className="mt-1 text-[10px] text-zinc-500">
         {session.duration}
         {session.thresholdMinutes ? ` · TH ${session.thresholdMinutes}′` : ""}
       </p>
       {target ? (
-        <p className="mt-0.5 text-[10px] text-yellow-400/70">Target: {target}</p>
+        <p className="mt-0.5 text-[10px] text-yellow-400/80">Target: {target}</p>
       ) : null}
-      <p className="mt-0.5 text-[10px] text-zinc-500">{session.rpeHr}</p>
+      {!family ? <p className="mt-0.5 text-[10px] text-zinc-500">{session.rpeHr}</p> : null}
       <p className="mt-1 line-clamp-2 text-[10px] text-zinc-600">{session.rationale}</p>
       {session.showDetail && p ? (
         <div className="mt-2 max-h-[min(70vh,720px)] overflow-y-auto border-t border-zinc-800 pt-2">
@@ -227,6 +281,9 @@ function SessionCard({
         <Btn label="View" onClick={onViewDetail} />
         <Btn label="Edit" onClick={onEdit} />
         {onChangeStage ? <Btn label="Change stage" onClick={onChangeStage} /> : null}
+        {onBuildProgression ? (
+          <Btn label="Build progression" onClick={onBuildProgression} />
+        ) : null}
         <Btn label="Move" onClick={onMove} />
         <Btn label="Replace" onClick={onReplace} />
         <Btn label="Dup opt" onClick={onDuplicate} />

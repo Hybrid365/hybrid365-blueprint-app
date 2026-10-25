@@ -203,6 +203,7 @@ export function CoachAthleteDashboard({
           onClearAssessmentMappingBanner={programmeWorkflowInject.onClearAssessmentMappingBanner}
           livePersistence={programmeWorkflowInject.livePersistence}
           effectiveProfile={effectiveProfile}
+          onOpenPerformanceProfile={() => onTabChange("Performance Profile")}
         />
       )}
       {tab === "Block Review" && programmeWorkflowInject.livePersistence?.athleteId ? (

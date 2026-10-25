@@ -16,6 +16,13 @@ import {
 } from "../app/lib/hyroxSessionFamiliesFlag";
 import { createCoachDraftSessionFromFamilyStage } from "../app/lib/hyroxSessionFamilyDraft";
 import {
+  coachFamilySessionSubtitle,
+  coachFamilySessionTitle,
+  sanitizeAthleteSessionTitle,
+} from "../app/lib/hyroxSessionFamilyAthleteCopy";
+import { resolveLibrarySessionFamilyLink } from "../app/lib/hyroxSessionFamilyLibraryBridge";
+import {
+  proposeContinueProgressionStages,
   proposeDefaultProgressionStages,
 } from "../app/lib/hyroxSessionFamilyProposal";
 import {
@@ -197,5 +204,45 @@ assert(copiedSession.sessionFamily?.stageId === ids.s1, "same stage");
 assert(copiedSession.sessionFamily?.prescriptionPreview === null, "preview cleared");
 assert(copiedSession.editConfig.targetPace === undefined, "pace cleared for re-resolve");
 ok("Case F Copy Week helper keeps stage, clears resolution");
+
+// Library → family bridge + continue proposals (discoverability entry)
+const link6x5 = resolveLibrarySessionFamilyLink({ id: "th-6x5", sessionLibraryId: "coach_th-6x5" });
+assert(link6x5?.stage.id === ids.s2, "th-6x5 maps to Stage 2");
+assert(link6x5?.family.id === family.id, "th-6x5 family");
+const linkNoise = resolveLibrarySessionFamilyLink({ id: "unrelated-session" });
+assert(linkNoise === null, "unmapped library → no family choice");
+ok("Case A/B bridge: eligible library maps Stage 2; non-family null");
+
+const assign4 = proposeDefaultProgressionStages({
+  family,
+  entryStageId: ids.s2,
+  blockLength: 4,
+});
+assert(assign4[0]?.stageId === ids.s2, "assign starts at Stage 2");
+assert(assign4.length === 4, "assign 4 weeks");
+
+const continue4 = proposeContinueProgressionStages({
+  family,
+  currentStageId: ids.s2,
+  blockLength: 4,
+});
+assert(continue4.every((p) => p.stageId !== ids.s2) || continue4[0]?.stageId === ids.s3, "continue skips duplicating Stage 2 as first apply");
+assert(continue4.length === 3, `continue 4-week path → 3 future (got ${continue4.length})`);
+assert(continue4[0]?.stageId === ids.s3, "first future is Stage 3");
+ok("Case C continue: current Stage 2 not duplicated; future proposed");
+
+assert(coachFamilySessionTitle(family.name) === family.name, "coach title is family name");
+assert(
+  coachFamilySessionSubtitle({
+    stageKey: "stage_2",
+    structureLine: "6 × 5 min · 2 min walk recovery",
+  }).startsWith("Stage 2"),
+  "coach subtitle has stage + structure"
+);
+assert(
+  sanitizeAthleteSessionTitle(`${family.name} · Stage 2`) === "Threshold Intervals",
+  "athlete title still sanitised"
+);
+ok("Case F coach hierarchy vs athlete-safe title");
 
 console.log(`\nqa-hyrox-session-family-ux: ${passed} checks passed`);

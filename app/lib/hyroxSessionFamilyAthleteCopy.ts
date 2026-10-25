@@ -48,21 +48,37 @@ export function sanitizeAthleteSessionTitle(raw: string | null | undefined): str
   return title || "Session";
 }
 
+export function coachStageShortLabel(stageKey: string): string {
+  if (stageKey.startsWith("stage_")) return `Stage ${stageKey.replace("stage_", "")}`;
+  if (stageKey === "consolidation") return "Consolidation";
+  if (stageKey.startsWith("deload")) return "Deload";
+  return stageKey;
+}
+
+/** Compact coach badge: "Threshold 5 Minute Repeats · Stage 2" */
 export function coachFamilyContextLabel(attachment: {
   familyName: string;
   stageKey: string;
   stageLabel?: string;
 }): string {
-  const short =
-    attachment.stageKey.startsWith("stage_")
-      ? `Stage ${attachment.stageKey.replace("stage_", "")}`
-      : attachment.stageKey === "consolidation"
-        ? "Consolidation"
-        : attachment.stageKey.startsWith("deload")
-          ? "Deload"
-          : attachment.stageKey;
+  const short = coachStageShortLabel(attachment.stageKey);
   const familyShort = attachment.familyName.replace(/^Threshold — /, "Threshold ");
   return `${familyShort} · ${short}`;
+}
+
+/** Coach card primary title — family product name only (no stage/structure). */
+export function coachFamilySessionTitle(familyName: string): string {
+  return familyName.trim() || "Session";
+}
+
+/** Coach card secondary line: Stage N · structure */
+export function coachFamilySessionSubtitle(args: {
+  stageKey: string;
+  structureLine: string;
+}): string {
+  const stage = coachStageShortLabel(args.stageKey);
+  const structure = args.structureLine.trim();
+  return structure ? `${stage} · ${structure}` : stage;
 }
 
 export function athleteFacingTitleForFamilyAttachment(

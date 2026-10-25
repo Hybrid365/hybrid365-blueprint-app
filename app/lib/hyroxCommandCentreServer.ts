@@ -19,14 +19,9 @@ import {
   summarizePublishedWeek,
 } from "@/app/lib/hyroxCommandCentreBuild";
 import type { HyroxCommandCentrePayload } from "@/app/lib/hyroxCommandCentreTypes";
-import {
-  formatDuration,
-  formatPacePerKm,
-  formatSplitPer500,
-  formatWatts,
-} from "@/app/lib/hyroxBenchmarkMath";
 import type { HyroxAthletePerformanceProfile } from "@/app/lib/hyroxBenchmarkProfile";
 import { benchmarkLabel } from "@/app/lib/hyroxBenchmarkTypes";
+import { buildProgrammingAnchorsSummary } from "@/app/lib/hyroxProgrammingAnchors";
 import type {
   HyroxAthleteRow,
   HyroxProgrammeSessionRow,
@@ -195,50 +190,17 @@ async function loadRecentReadiness(
 function formatProfileAnchors(
   profile: HyroxAthletePerformanceProfile
 ): HyroxCommandCentrePayload["performanceProfile"]["anchors"] {
-  return [
-    {
-      key: "run5k",
-      label: "5K",
-      display: profile.run5k ? formatDuration(profile.run5k.resultSeconds) : null,
-      derived: profile.run5k ? formatPacePerKm(profile.run5k.paceSecondsPerKm) : null,
-      resultDate: profile.run5k?.resultDate ?? null,
-    },
-    {
-      key: "threshold",
-      label: "Threshold",
-      display: profile.threshold ? formatPacePerKm(profile.threshold.paceSecondsPerKm) : null,
-      derived: null,
-      resultDate: profile.threshold?.resultDate ?? null,
-    },
-    {
-      key: "ski2k",
-      label: "Ski 2K",
-      display: profile.ski2k ? formatDuration(profile.ski2k.resultSeconds) : null,
-      derived: profile.ski2k ? formatSplitPer500(profile.ski2k.splitSecondsPer500) : null,
-      resultDate: profile.ski2k?.resultDate ?? null,
-    },
-    {
-      key: "row2k",
-      label: "Row 2K",
-      display: profile.row2k ? formatDuration(profile.row2k.resultSeconds) : null,
-      derived: profile.row2k ? formatSplitPer500(profile.row2k.splitSecondsPer500) : null,
-      resultDate: profile.row2k?.resultDate ?? null,
-    },
-    {
-      key: "ftp",
-      label: "FTP",
-      display: profile.ftp ? formatWatts(profile.ftp.watts) : null,
-      derived: null,
-      resultDate: profile.ftp?.resultDate ?? null,
-    },
-    {
-      key: "hyroxRun",
-      label: "HYROX run pace",
-      display: profile.hyroxRun ? formatPacePerKm(profile.hyroxRun.paceSecondsPerKm) : null,
-      derived: null,
-      resultDate: profile.hyroxRun?.resultDate ?? null,
-    },
-  ];
+  const summary = buildProgrammingAnchorsSummary(profile, { includeRun10k: true });
+  return summary.items.map((item) => ({
+    key: item.key,
+    label: item.label,
+    display: item.primary,
+    derived: item.secondary,
+    resultDate: item.resultDate,
+    source: item.source,
+    sourceLabel: item.sourceLabel,
+    freshness: item.freshness,
+  }));
 }
 
 export async function loadHyroxCommandCentre(

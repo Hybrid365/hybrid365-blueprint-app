@@ -21,6 +21,8 @@ import {
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import type { WeekdayName } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { SandboxTimeOfDay } from "@/app/lib/hyroxProgrammeSandbox";
+import { coachStageShortLabel } from "@/app/lib/hyroxSessionFamilyAthleteCopy";
+import { resolveLibrarySessionFamilyLink } from "@/app/lib/hyroxSessionFamilyLibraryBridge";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 
 const CATEGORIES = Object.keys(LIBRARY_CATEGORY_LABELS) as LibraryCategory[];
@@ -162,19 +164,24 @@ function ExpandableStandards({ entry }: { entry: CoachLibraryEntry }) {
 export function SessionLibraryPanel({
   addTarget,
   onAdd,
+  onBuildProgression,
   onBuildFromScratch,
   replaceMode = false,
   equipmentAvailable,
   athlete,
   performanceProfile = null,
+  sessionFamiliesEnabled = false,
 }: {
   addTarget: { day: WeekdayName; slot: SandboxTimeOfDay } | null;
   onAdd: (entry: CoachLibraryEntry) => void;
+  /** SessionFamily multi-week proposal from this library card's mapped stage. */
+  onBuildProgression?: (entry: CoachLibraryEntry) => void;
   onBuildFromScratch?: () => void;
   replaceMode?: boolean;
   equipmentAvailable?: Record<string, boolean>;
   athlete?: CoachAthlete | null;
   performanceProfile?: HyroxCoachPerformanceProfile | null;
+  sessionFamiliesEnabled?: boolean;
 }) {
   const [category, setCategory] = useState<LibraryCategory>("all");
   const [quickFilter, setQuickFilter] = useState<LibraryQuickFilter | null>(null);
@@ -182,6 +189,7 @@ export function SessionLibraryPanel({
   const [query, setQuery] = useState("");
   const [intensityBand, setIntensityBand] = useState<string>("all");
   const [movementFocus, setMovementFocus] = useState<string>("all");
+  const [addChoiceId, setAddChoiceId] = useState<string | null>(null);
 
   const guardrailContext = useMemo(
     () => (athlete ? guardrailContextFromAthlete(athlete) : undefined),
@@ -337,6 +345,11 @@ export function SessionLibraryPanel({
             (g) => g.severity === "warn" || g.severity === "block_suggestion"
           );
           const hints = deriveProgrammingBuilderHints(s, { performanceProfile });
+          const familyLink =
+            sessionFamiliesEnabled && !replaceMode
+              ? resolveLibrarySessionFamilyLink(s)
+              : null;
+          const showAddChoice = Boolean(familyLink && onBuildProgression);
 
           return (
             <li
@@ -357,14 +370,30 @@ export function SessionLibraryPanel({
                         Hybrid Engine
                       </span>
                     ) : null}
-                    {hints.map((h) => (
-                      <span
-                        key={h.kind}
-                        className={`rounded px-1 text-[8px] font-semibold ${hintToneClass(h.tone)}`}
+                    {familyLink ? (
+                      <button
+                        type="button"
+                        disabled={!addTarget && !replaceMode}
+                        onClick={() => {
+                          if (!addTarget && !replaceMode) return;
+                          setAddChoiceId((id) => (id === s.id ? null : s.id));
+                        }}
+                        className="rounded bg-violet-400/20 px-1 text-[8px] font-semibold text-violet-100 ring-1 ring-violet-400/35 hover:bg-violet-400/30 disabled:opacity-40"
+                        title="Tap + or this badge to add session or build progression"
                       >
-                        {h.label}
-                      </span>
-                    ))}
+                        Progression available
+                      </button>
+                    ) : null}
+                    {hints
+                      .filter((h) => !(familyLink && h.kind === "progression_available"))
+                      .map((h) => (
+                        <span
+                          key={h.kind}
+                          className={`rounded px-1 text-[8px] font-semibold ${hintToneClass(h.tone)}`}
+                        >
+                          {h.label}
+                        </span>
+                      ))}
                     {isCoachStapleEntry(s) ? (
                       <span className="rounded bg-yellow-400/20 px-1 text-[8px] font-semibold text-yellow-200">
                         Staple
@@ -386,6 +415,11 @@ export function SessionLibraryPanel({
                       : ""}
                   </p>
                   <PriorityMeta entry={s} />
+                  {familyLink ? (
+                    <p className="mt-1 text-[9px] font-medium text-violet-200/90">
+                      {coachStageShortLabel(familyLink.stage.key)} of {familyLink.family.name}
+                    </p>
+                  ) : null}
                   <ExpandableStandards entry={s} />
                   {guardrails.length > 0 ? (
                     <p className="mt-1 line-clamp-2 text-[9px] text-amber-300/80">
@@ -393,21 +427,69 @@ export function SessionLibraryPanel({
                     </p>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  disabled={!addTarget && !replaceMode}
-                  onClick={() => onAdd(s)}
-                  title={
-                    addTarget || replaceMode
-                      ? replaceMode
-                        ? "Replace session"
-                        : "Add to schedule"
-                      : "Pick a day slot first"
-                  }
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-yellow-400/20 text-yellow-300 disabled:opacity-30"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    disabled={!addTarget && !replaceMode}
+                    onClick={() => {
+                      if (showAddChoice) {
+                        setAddChoiceId((id) => (id === s.id ? null : s.id));
+                        return;
+                      }
+                      onAdd(s);
+                    }}
+                    title={
+                      addTarget || replaceMode
+                        ? replaceMode
+                          ? "Replace session"
+                          : showAddChoice
+                            ? "Add session or build progression"
+                            : "Add to schedule"
+                        : "Pick a day slot first"
+                    }
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl disabled:opacity-30 ${
+                      showAddChoice
+                        ? "bg-violet-400/20 text-violet-100 ring-1 ring-violet-400/40"
+                        : "bg-yellow-400/20 text-yellow-300"
+                    }`}
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                  {addChoiceId === s.id && showAddChoice ? (
+                    <div
+                      className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-zinc-600 bg-zinc-950 shadow-xl"
+                      role="menu"
+                    >
+                      <button
+                        type="button"
+                        className="block w-full px-3 py-2.5 text-left text-xs text-zinc-100 hover:bg-zinc-900"
+                        onClick={() => {
+                          setAddChoiceId(null);
+                          onAdd(s);
+                        }}
+                      >
+                        <span className="font-bold">Add this session</span>
+                        <span className="mt-0.5 block text-[10px] text-zinc-500">
+                          One workout on the selected day/slot
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="block w-full border-t border-zinc-800 px-3 py-2.5 text-left text-xs text-violet-100 hover:bg-violet-400/10"
+                        onClick={() => {
+                          setAddChoiceId(null);
+                          onBuildProgression?.(s);
+                        }}
+                      >
+                        <span className="font-bold">Build progression</span>
+                        <span className="mt-0.5 block text-[10px] text-violet-200/70">
+                          Multi-week proposal from{" "}
+                          {coachStageShortLabel(familyLink!.stage.key)}
+                        </span>
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </li>
           );

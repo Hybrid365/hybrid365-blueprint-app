@@ -305,7 +305,7 @@ export function CommandCentreOverview({
 
       <Section
         eyebrow="Performance profile"
-        title="Active anchors"
+        title="Programming Anchors"
         action={
           <TextAction onClick={() => onTabChange("Performance Profile")}>Open Performance Profile</TextAction>
         }
@@ -317,20 +317,53 @@ export function CommandCentreOverview({
         ) : (
           <>
             <p className="mb-2 text-xs text-zinc-500">
-              Pending review: {data.performanceProfile.pendingCount ?? 0}. Management stays on the
-              Performance Profile tab.
+              Active values only · Pending review: {data.performanceProfile.pendingCount ?? 0} (not used
+              until approved &amp; activated). Manage on Performance Profile.
             </p>
-            <dl>
-              {data.performanceProfile.anchors.map((anchor) => (
-                <FactRow
-                  key={anchor.key}
-                  label={anchor.label}
-                  value={anchor.display ?? "No active anchor"}
-                  hint={anchor.derived}
-                  available={Boolean(anchor.display)}
-                />
-              ))}
-            </dl>
+            <div className="rounded-lg border border-zinc-800/90 bg-zinc-950/50 px-3">
+              {data.performanceProfile.anchors.map((anchor) => {
+                const set = Boolean(anchor.display);
+                const provenance = !set
+                  ? "Not set"
+                  : [anchor.sourceLabel, anchor.resultDate ? formatShortDate(anchor.resultDate) : null]
+                      .filter(Boolean)
+                      .join(" · ");
+                return (
+                  <div
+                    key={anchor.key}
+                    className="flex items-start justify-between gap-3 border-b border-zinc-800/80 py-2 last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                        {anchor.label}
+                      </p>
+                      <p
+                        className={`text-sm font-bold tabular-nums ${
+                          !set
+                            ? "text-zinc-600"
+                            : anchor.freshness === "stale"
+                              ? "text-amber-200"
+                              : "text-zinc-100"
+                        }`}
+                      >
+                        {anchor.display ?? "Not set"}
+                      </p>
+                      {anchor.derived && set ? (
+                        <p className="text-[10px] tabular-nums text-zinc-500">{anchor.derived}</p>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0 text-right text-[10px]">
+                      <p className={!set ? "text-zinc-600" : "text-zinc-400"}>{provenance}</p>
+                      {set && anchor.freshness === "stale" ? (
+                        <p className="text-amber-400/80">Stale</p>
+                      ) : set && anchor.freshness === "current" ? (
+                        <p className="text-emerald-500/60">Current</p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </>
         )}
       </Section>

@@ -41,11 +41,16 @@ export type CommandCentreThisWeek = {
 };
 
 export type CommandCentreProfileAnchor = {
-  key: "run5k" | "threshold" | "ski2k" | "row2k" | "ftp" | "hyroxRun";
+  key: "run5k" | "run10k" | "threshold" | "ski2k" | "row2k" | "ftp" | "hyroxRun";
   label: string;
   display: string | null;
   derived: string | null;
   resultDate: string | null;
+  /** Stored BenchmarkSource when active; null when not set */
+  source: string | null;
+  /** Coach-facing source label e.g. Lab tested, Coach estimate */
+  sourceLabel: string | null;
+  freshness: "current" | "stale" | "not_set";
 };
 
 export type CommandCentrePerformanceProfile = {
