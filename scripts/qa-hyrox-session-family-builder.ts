@@ -82,9 +82,9 @@ assertValidSessionFamily(family);
 function baseFields(title: string) {
   return {
     timeOfDay: "AM" as const,
-    badges: ["Key" as const],
+    badges: ["Main" as const],
     title,
-    sessionType: "run" as const,
+    sessionType: "run_development" as const,
     duration: "60 min",
     intensity: "RPE 7–8",
     rpeHr: "RPE 7–8",

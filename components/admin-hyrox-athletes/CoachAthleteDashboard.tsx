@@ -113,6 +113,7 @@ export function CoachAthleteDashboard({
   effectiveProfile = null,
   commandCentreEnabled = false,
   raceIntelligenceEnabled = false,
+  sessionFamiliesEnabled = false,
 }: {
   athlete: CoachAthlete;
   tab: AthleteTab;
@@ -127,6 +128,7 @@ export function CoachAthleteDashboard({
   effectiveProfile?: HyroxAthleteProfile | null;
   commandCentreEnabled?: boolean;
   raceIntelligenceEnabled?: boolean;
+  sessionFamiliesEnabled?: boolean;
 }) {
   const visibleTabs = TABS.filter((t) => t !== "Races" || raceIntelligenceEnabled);
   return (
@@ -194,6 +196,7 @@ export function CoachAthleteDashboard({
           onStatusChange={onProgrammeStatusChange}
           coachNotes={coachNotes}
           onCoachNotesChange={onCoachNotesChange}
+          sessionFamiliesEnabled={sessionFamiliesEnabled}
           injectedDraft={programmeWorkflowInject.injectedDraft}
           draftInjectionKey={programmeWorkflowInject.draftInjectionKey}
           assessmentMappingBanner={programmeWorkflowInject.assessmentMappingBanner}

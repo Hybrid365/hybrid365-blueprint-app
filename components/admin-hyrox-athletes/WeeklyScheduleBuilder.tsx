@@ -186,6 +186,18 @@ function SessionCard({
             Custom
           </span>
         ) : null}
+        {session.sessionFamily ? (
+          <span className="rounded border border-violet-500/35 bg-violet-400/10 px-1 text-[9px] text-violet-100">
+            Progression ·{" "}
+            {session.sessionFamily.stageKey.startsWith("stage_")
+              ? `S${session.sessionFamily.stageKey.replace("stage_", "")}`
+              : session.sessionFamily.stageKey === "consolidation"
+                ? "Consol"
+                : session.sessionFamily.stageKey.startsWith("deload")
+                  ? "Deload"
+                  : session.sessionFamily.stageKey}
+          </span>
+        ) : null}
       </div>
       <p className="mt-1 text-xs font-bold text-white">{session.title}</p>
       <p className="text-[10px] uppercase text-zinc-600">

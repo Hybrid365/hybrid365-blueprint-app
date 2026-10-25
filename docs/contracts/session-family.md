@@ -221,7 +221,25 @@ See `docs/contracts/programme-prescription-snapshot.md`.
 | Live Copy Week / Auto-Carry | Unchanged; pure helpers define future semantics only |
 | Community `runPrescription.ts` / `progressionFamilies.ts` | Stay outside 1-1 path |
 
-## Ready for live Programme Builder UX?
+## Slice 3 — coach UX (pilot)
 
-**Domain adapters: yes (slice 2 green).**  
-**Live UX / wiring: not yet** — Slice 3 should add progression assignment UI + call these helpers from publish/copy paths without changing semantics.
+Flag (default OFF):
+
+- `HYROX_SESSION_FAMILIES_ENABLED=1`
+- `HYROX_SESSION_FAMILIES_ATHLETE_IDS=uuid,...`
+- `HYROX_SESSION_FAMILIES_DEV_ALL=1` (development only)
+
+Server seeds `sessionFamiliesEnabled` into the coach athlete page. When ON:
+
+- **Add progression** opens `ProgressionAssignmentModal` (Threshold 5-min pilot only)
+- Coach picks entry stage, 3/4-week block, day/slot, optional override
+- Default proposal follows `coach_default_block` edges; 4th week defaults to Consolidation (editable; not deload-by-week)
+- Apply uses `createCoachDraftSessionFromFamilyStage` across consecutive block cycles
+- Session cards show `Progression · S#`
+- Structural edit → confirm unlink via `applyEditConfigWithFamilyLink`
+- Publish embeds `prescription.sessionFamily` snapshot
+- Copy Week / Auto-Carry preserve stage, clear/re-resolve preview (no auto-progress)
+
+## Ready for real 1-1 coach use?
+
+**Behind allow-list only** after staging Cases A–G. Not production-default.

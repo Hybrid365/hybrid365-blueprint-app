@@ -278,6 +278,91 @@ export function embedSessionFamilyPublishInPrescription(
   };
 }
 
+/**
+ * Prefer live profile resolve; fall back to draft preview freeze when profile unavailable.
+ * Returns null when attachment missing or neither path can produce a publishable snapshot.
+ */
+export function tryBuildSessionFamilyPublishSnapshotForDraft(args: {
+  attachment: SessionFamilyDraftAttachment;
+  profile?: HyroxAthletePerformanceProfile | null;
+  publishedAt: string;
+}): SessionFamilyPublishSnapshot | null {
+  const overrides =
+    args.attachment.prescriptionPreview?.slots
+      .filter((s) => s.source === "coach_override" && s.resolvedValue != null && s.resolvedUnit)
+      .map((s) => ({
+        slot: s.slot,
+        value: s.resolvedValue!,
+        unit: s.resolvedUnit!,
+      })) ?? [];
+
+  if (args.profile) {
+    try {
+      return buildSessionFamilyPublishSnapshot({
+        attachment: args.attachment,
+        profile: args.profile,
+        overrides: overrides.length ? overrides : undefined,
+        publishedAt: args.publishedAt,
+      });
+    } catch {
+      // fall through to preview freeze
+    }
+  }
+
+  const preview = args.attachment.prescriptionPreview;
+  if (!preview?.slots?.length) return null;
+  if (preview.slots.some((s) => s.resolvedValue == null)) return null;
+
+  const slots: SessionFamilyPublishedSlot[] = preview.slots.map((slot) => {
+    const rule = args.attachment.prescriptionSlots.find((p) => p.slot === slot.slot)?.rule ??
+      slot.rule;
+    return {
+      slot: slot.slot,
+      rule,
+      snapshot: {
+        rule,
+        expression: slot.expression,
+        anchorType: rule.basis,
+        anchorValue: slot.anchorValue,
+        anchorUnit: slot.resolvedUnit,
+        offset: rule.adjustment.type === "seconds_per_km" || rule.adjustment.type === "seconds_per_500m"
+          ? rule.adjustment.value
+          : null,
+        resolvedValue: slot.resolvedValue,
+        resolvedUnit: slot.resolvedUnit,
+        resolvedAt: args.publishedAt,
+        source: slot.source,
+        missingAnchor: slot.missingAnchor,
+      },
+      formulaResolvedValue:
+        slot.source === "coach_override" ? slot.anchorValue != null && rule.adjustment.type === "seconds_per_km"
+          ? slot.anchorValue + rule.adjustment.value
+          : null
+        : slot.resolvedValue,
+      formulaResolvedUnit: slot.resolvedUnit,
+      finalResolvedValue: slot.resolvedValue,
+      finalResolvedUnit: slot.resolvedUnit,
+    };
+  });
+
+  return {
+    familyId: args.attachment.familyId,
+    stageId: args.attachment.stageId,
+    familyDefinitionVersion: args.attachment.familyDefinitionVersion,
+    familyName: args.attachment.familyName,
+    stageKey: args.attachment.stageKey,
+    stageLabel: args.attachment.stageLabel,
+    structuredWorkout: structuredClone(args.attachment.structuredWorkout),
+    slots,
+    publishedAt: args.publishedAt,
+    publishability: {
+      status: overrides.length ? "PUBLISHABLE_WITH_COACH_OVERRIDE" : "PUBLISHABLE",
+      reasons: ["Frozen from draft prescription preview at publish."],
+      missingAnchors: [],
+    },
+  };
+}
+
 export function readSessionFamilyPublishFromPrescription(
   prescription: unknown
 ): SessionFamilyPublishSnapshot | null {

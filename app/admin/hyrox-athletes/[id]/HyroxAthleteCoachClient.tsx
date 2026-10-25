@@ -108,10 +108,12 @@ export default function HyroxAthleteCoachClient({
   athleteId,
   commandCentreEnabled = false,
   raceIntelligenceEnabled = false,
+  sessionFamiliesEnabled = false,
 }: {
   athleteId: string;
   commandCentreEnabled?: boolean;
   raceIntelligenceEnabled?: boolean;
+  sessionFamiliesEnabled?: boolean;
 }) {
   const searchParams = useSearchParams();
   const mockAthlete = getCoachAthleteById(athleteId);
@@ -556,6 +558,7 @@ export default function HyroxAthleteCoachClient({
         effectiveProfile={effectiveProfile}
         commandCentreEnabled={commandCentreEnabled}
         raceIntelligenceEnabled={raceIntelligenceEnabled}
+        sessionFamiliesEnabled={sessionFamiliesEnabled}
       />
     </CoachAdminShell>
   );

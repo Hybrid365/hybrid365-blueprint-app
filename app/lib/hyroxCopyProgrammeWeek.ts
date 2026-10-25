@@ -82,6 +82,25 @@ function stripAthleteHistoryFromSession(session: CoachDraftSession): CoachDraftS
     delete cloned[key];
   }
   cloned.draftId = `copy-${crypto.randomUUID()}`;
+
+  // Family-linked: preserve family/stage/structure/rules; clear live preview for re-resolve.
+  // Never auto-progress stage on Copy Week / Auto-Carry.
+  if (cloned.sessionFamily) {
+    cloned.sessionFamily = {
+      ...cloned.sessionFamily,
+      structuredWorkout: structuredClone(cloned.sessionFamily.structuredWorkout),
+      prescriptionSlots: structuredClone(cloned.sessionFamily.prescriptionSlots),
+      prescriptionPreview: null,
+    };
+    if (cloned.editConfig) {
+      cloned.editConfig = {
+        ...cloned.editConfig,
+        targetPace: undefined,
+        targetPaceLoad: undefined,
+      };
+    }
+  }
+
   return cloned;
 }
 

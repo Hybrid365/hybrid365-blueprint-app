@@ -207,10 +207,46 @@ export async function copyProgrammeWeekDraft(
     throw new CopyProgrammeWeekError(decision.code, decision.message, 409);
   }
 
-  const cloned: CoachDraftWeek = cloneCoachDraftWeekForTarget(sourceDraft, {
+  let cloned: CoachDraftWeek = cloneCoachDraftWeekForTarget(sourceDraft, {
     athleteId: params.athleteId,
     targetWeek,
   });
+
+  // Family-linked sessions: same stage, re-resolve targets against current Performance Profile.
+  try {
+    const { getHyroxAthletePerformanceProfile } = await import(
+      "@/app/lib/hyroxAthleteBenchmarkServer"
+    );
+    const { getSessionFamily } = await import("@/app/lib/hyroxSessionFamilyRegistry");
+    const { refreshFamilyLinkedDraftPreview } = await import(
+      "@/app/lib/hyroxSessionFamilyDraft"
+    );
+    const profileResult = await getHyroxAthletePerformanceProfile(
+      supabase,
+      params.athleteId
+    );
+    const resolvedAt = new Date().toISOString();
+    cloned = {
+      ...cloned,
+      days: cloned.days.map((day) => ({
+        ...day,
+        sessions: day.sessions.map((session) => {
+          if (!session.sessionFamily) return session;
+          const family = getSessionFamily(session.sessionFamily.familyId);
+          if (!family) return session;
+          return refreshFamilyLinkedDraftPreview(
+            session,
+            family,
+            profileResult.profile,
+            resolvedAt
+          );
+        }),
+      })),
+    };
+  } catch {
+    // Keep stripped preview; coach can refresh by editing. Never fail copy.
+  }
+
   const summary = computeWeeklySummary(cloned, params.athlete);
   const validation = validateCoachDraft(cloned, params.athlete);
   const targetBlock = blockNumberForGlobalWeek(targetWeek);

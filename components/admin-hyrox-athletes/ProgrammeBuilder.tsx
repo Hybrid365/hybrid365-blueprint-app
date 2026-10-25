@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildAthleteWeekPreview } from "@/app/lib/buildAthleteWeekPreview";
 import { generateWeeklyRationale } from "@/app/lib/generateWeeklyRationale";
+import type { HyroxAthletePerformanceProfile } from "@/app/lib/hyroxBenchmarkProfile";
 import { BLOCK_WEEK_FOCUS_LABELS } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import type { CoachLibraryEntry } from "@/app/lib/hyroxCoachSessionLibrary";
@@ -20,6 +21,13 @@ import {
   type WeekdayName,
 } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { SandboxTimeOfDay } from "@/app/lib/hyroxProgrammeSandbox";
+import { isHyroxSessionFamiliesEnabledClient } from "@/app/lib/hyroxSessionFamiliesFlag";
+import {
+  createCoachDraftSessionFromFamilyStage,
+  applyEditConfigWithFamilyLink,
+} from "@/app/lib/hyroxSessionFamilyDraft";
+import { formatStageKeyShort } from "@/app/lib/hyroxSessionFamilyProposal";
+import { shouldRetainSessionFamilyLink } from "@/app/lib/hyroxSessionFamilyUnlink";
 import { ProgrammeValidationPanel } from "@/components/admin-hyrox-athletes/ProgrammeValidationPanel";
 import { SessionEditDrawer } from "@/components/admin-hyrox-athletes/SessionEditDrawer";
 import { SessionLibraryPanel } from "@/components/admin-hyrox-athletes/SessionLibraryPanel";
@@ -51,6 +59,10 @@ import {
 } from "@/components/admin-hyrox-athletes/CoachProgrammeDraftDebugPanel";
 import { CoachPublishResultPanel } from "@/components/admin-hyrox-athletes/CoachPublishResultPanel";
 import {
+  ProgressionAssignmentModal,
+  type ProgressionAssignmentApplyPayload,
+} from "@/components/admin-hyrox-athletes/ProgressionAssignmentModal";
+import {
   buildPerformanceTestingWeek1Draft,
   draftHasSessions,
   draftLooksLikePerformanceTestingWeek,
@@ -80,6 +92,7 @@ export function ProgrammeBuilder({
   onClearAssessmentMappingBanner,
   livePersistence,
   effectiveProfile = null,
+  sessionFamiliesEnabled: sessionFamiliesEnabledProp = false,
 }: {
   athlete: CoachAthlete;
   programmeStatus: CoachProgrammeStatus;
@@ -98,6 +111,7 @@ export function ProgrammeBuilder({
   onClearAssessmentMappingBanner?: () => void;
   livePersistence?: LiveProgrammePersistenceProps;
   effectiveProfile?: HyroxAthleteProfile | null;
+  sessionFamiliesEnabled?: boolean;
 }) {
   const block = useCoachBlockProgramme({
     athlete,
@@ -178,6 +192,17 @@ export function ProgrammeBuilder({
   const [perfWeekConfirmOpen, setPerfWeekConfirmOpen] = useState(false);
   const [hydrateDetailsConfirmOpen, setHydrateDetailsConfirmOpen] = useState(false);
   const [copyWeekOpen, setCopyWeekOpen] = useState(false);
+  const [progressionOpen, setProgressionOpen] = useState(false);
+  const [perfProfile, setPerfProfile] = useState<HyroxAthletePerformanceProfile | null>(null);
+  const [unlinkConfirm, setUnlinkConfirm] = useState<{
+    dayIndex: number;
+    sessionIndex: number;
+    config: CoachSessionEditConfig;
+    reason: string;
+  } | null>(null);
+  const sessionFamiliesEnabled = isHyroxSessionFamiliesEnabledClient(
+    sessionFamiliesEnabledProp
+  );
   const weekIsPublished = Boolean(
     selectedBlockSummary?.status === "published" ||
       effectiveBlockWeeks.find((w) => w.cycle === selectedCycle)?.published
@@ -307,6 +332,199 @@ export function ProgrammeBuilder({
   const editSession = editTarget
     ? draft.days[editTarget.dayIndex]?.sessions[editTarget.sessionIndex]
     : null;
+
+  useEffect(() => {
+    if (!sessionFamiliesEnabled || !athlete.id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/hyrox/athletes/${athlete.id}/benchmarks`);
+        const data = (await res.json()) as {
+          success?: boolean;
+          profile?: HyroxAthletePerformanceProfile;
+        };
+        if (!cancelled && data.success && data.profile) {
+          setPerfProfile(data.profile);
+        }
+      } catch {
+        if (!cancelled) setPerfProfile(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athlete.id, sessionFamiliesEnabled, progressionOpen]);
+
+  const insertFamilySessionOnDay = useCallback(
+    (week: CoachDraftWeek, session: CoachDraftSession, day: WeekdayName): CoachDraftWeek => {
+      const dayIndex = week.days.findIndex((d) => d.day === day);
+      if (dayIndex < 0) return week;
+      return {
+        ...week,
+        days: week.days.map((d, i) =>
+          i === dayIndex ? { ...d, sessions: [...d.sessions, session] } : d
+        ),
+      };
+    },
+    []
+  );
+
+  const handleProgressionApply = useCallback(
+    async (payload: ProgressionAssignmentApplyPayload) => {
+      const profile = perfProfile;
+      if (!profile) {
+        showToast("Performance Profile unavailable — cannot resolve progression targets.");
+        return;
+      }
+
+      const emptyProfileFallback = profile;
+      let applied = 0;
+      let skipped = 0;
+
+      for (const proposal of payload.proposals) {
+        const targetCycle = (selectedCycle + proposal.offset) as 1 | 2 | 3 | 4;
+        if (targetCycle > 4) {
+          skipped += 1;
+          continue;
+        }
+
+        const session = createCoachDraftSessionFromFamilyStage({
+          family: payload.family,
+          stageId: proposal.stageId,
+          profile: emptyProfileFallback,
+          resolvedAt: payload.resolvedAt,
+          draftId: `fam-${payload.family.id}-${proposal.stageId}-${crypto.randomUUID()}`,
+          base: {
+            timeOfDay: payload.slot,
+            badges: ["Main"],
+            title: `${payload.family.name} · ${formatStageKeyShort(
+              payload.family.stages.find((s) => s.id === proposal.stageId)?.key ?? "stage"
+            )}`,
+            sessionType: "run_development",
+            duration: "60 min",
+            intensity: "RPE 7–8",
+            rpeHr: "RPE 7–8",
+            isKeySession: true,
+            isOptional: false,
+            rationale: payload.family.objective,
+            sessionId: `session-family:${payload.family.id}`,
+            prescription: null,
+            sessionDetail: null,
+          },
+          overrides:
+            payload.overridePaceSecondsPerKm != null
+              ? [
+                  {
+                    slot: "run",
+                    value: payload.overridePaceSecondsPerKm,
+                    unit: "s/km",
+                  },
+                ]
+              : undefined,
+        });
+
+        if (payload.overrideReason.trim() && session.sessionFamily) {
+          session.coachNote = [session.coachNote, `Override: ${payload.overrideReason.trim()}`]
+            .filter(Boolean)
+            .join(" · ");
+        }
+
+        if (targetCycle === selectedCycle) {
+          await applyDraftMutation(
+            (prev) => insertFamilySessionOnDay(prev, session, payload.day),
+            {
+              successMessage: `Added ${session.title} to ${payload.day} ${payload.slot}`,
+            }
+          );
+          applied += 1;
+          continue;
+        }
+
+        if (!isLive) {
+          skipped += 1;
+          continue;
+        }
+
+        const meta = effectiveBlockWeeks.find((w) => w.cycle === targetCycle);
+        if (!meta?.draftId || !meta.draftData) {
+          skipped += 1;
+          continue;
+        }
+
+        const nextWeek = insertFamilySessionOnDay(meta.draftData, session, payload.day);
+        try {
+          const res = await fetch(`/api/hyrox/programme-drafts/${meta.draftId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              draft: nextWeek,
+              coach_note: coachNotes.weeklyCoachNote,
+              athlete_facing_note: coachNotes.athleteFacingNote,
+              effective_profile: livePersistence?.effectiveProfile,
+            }),
+          });
+          if (res.ok) applied += 1;
+          else skipped += 1;
+        } catch {
+          skipped += 1;
+        }
+      }
+
+      setProgressionOpen(false);
+      showToast(
+        skipped > 0
+          ? `Progression applied to ${applied} week(s). ${skipped} week(s) skipped (generate block drafts first, or stays within Block W1–W4).`
+          : `Progression applied to ${applied} week(s).`
+      );
+    },
+    [
+      applyDraftMutation,
+      coachNotes.athleteFacingNote,
+      coachNotes.weeklyCoachNote,
+      effectiveBlockWeeks,
+      insertFamilySessionOnDay,
+      isLive,
+      livePersistence?.effectiveProfile,
+      perfProfile,
+      selectedCycle,
+      showToast,
+    ]
+  );
+
+  const commitSessionEdit = useCallback(
+    async (dayIndex: number, sessionIndex: number, config: CoachSessionEditConfig) => {
+      setEditTarget(null);
+      setUnlinkConfirm(null);
+      const result = await applyDraftMutation(
+        (prev) => ({
+          ...prev,
+          days: prev.days.map((d, di) =>
+            di === dayIndex
+              ? {
+                  ...d,
+                  sessions: d.sessions.map((s, i) => {
+                    if (i !== sessionIndex) return s;
+                    if (s.sessionFamily) {
+                      return applyEditConfigWithFamilyLink(s, config);
+                    }
+                    return applyEditConfigToSession({ ...s, editConfig: config });
+                  }),
+                }
+              : d
+          ),
+        }),
+        {
+          successMessage: isLive
+            ? "Session applied and saved to draft."
+            : "Session updated (local preview)",
+        }
+      );
+      if (!result.ok && isLive) {
+        showToast(`Session edit failed: ${result.error ?? "unknown error"}`);
+      }
+    },
+    [applyDraftMutation, isLive, showToast]
+  );
 
   const selectedForDebug = findSessionByIndices(
     draft,
@@ -526,6 +744,16 @@ export function ProgrammeBuilder({
               Copy week to…
             </button>
           ) : null}
+          {sessionFamiliesEnabled ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => setProgressionOpen(true)}
+              className="rounded-full border border-violet-500/40 bg-violet-400/10 px-3 py-1.5 text-xs font-bold text-violet-100 disabled:opacity-50"
+            >
+              Add progression
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -691,33 +919,76 @@ export function ProgrammeBuilder({
         onSave={async (config: CoachSessionEditConfig) => {
           if (!editTarget) return;
           const { dayIndex, sessionIndex } = editTarget;
-          setEditTarget(null);
-          const result = await applyDraftMutation(
-            (prev) => ({
-              ...prev,
-              days: prev.days.map((d, di) =>
-                di === dayIndex
-                  ? {
-                      ...d,
-                      sessions: d.sessions.map((s, i) => {
-                        if (i !== sessionIndex) return s;
-                        return applyEditConfigToSession({ ...s, editConfig: config });
-                      }),
-                    }
-                  : d
-              ),
-            }),
-            {
-              successMessage: isLive
-                ? "Session applied and saved to draft."
-                : "Session updated (local preview)",
+          const current = draft.days[dayIndex]?.sessions[sessionIndex];
+          if (current?.sessionFamily) {
+            const decision = shouldRetainSessionFamilyLink({
+              attachment: current.sessionFamily,
+              nextEditConfig: config,
+            });
+            if (!decision.retain) {
+              setUnlinkConfirm({
+                dayIndex,
+                sessionIndex,
+                config,
+                reason: decision.reason,
+              });
+              return;
             }
-          );
-          if (!result.ok && isLive) {
-            block.showToast(`Session edit failed: ${result.error ?? "unknown error"}`);
           }
+          await commitSessionEdit(dayIndex, sessionIndex, config);
         }}
       />
+
+      {sessionFamiliesEnabled ? (
+        <ProgressionAssignmentModal
+          open={progressionOpen}
+          onClose={() => setProgressionOpen(false)}
+          onApply={handleProgressionApply}
+          profile={perfProfile}
+          defaultDay={addTarget?.day ?? "Wed"}
+          defaultSlot={addTarget?.slot === "PM" ? "PM" : addTarget?.slot === "AM" ? "AM" : "AM"}
+        />
+      ) : null}
+
+      {unlinkConfirm ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-5">
+            <h3 className="font-bold text-white">Structural edit</h3>
+            <p className="mt-2 text-sm text-zinc-300">
+              This edit changes the canonical progression stage.
+            </p>
+            <p className="mt-2 text-xs text-zinc-500">{unlinkConfirm.reason}</p>
+            <p className="mt-2 text-xs text-orange-200">
+              Continue to unlink this session from the Session Family, or cancel to keep the link.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded border border-zinc-600 px-3 py-1.5 text-xs text-zinc-300"
+                onClick={() => setUnlinkConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded border border-orange-500/50 bg-orange-400/15 px-3 py-1.5 text-xs font-bold text-orange-100"
+                onClick={() =>
+                  void commitSessionEdit(
+                    unlinkConfirm.dayIndex,
+                    unlinkConfirm.sessionIndex,
+                    unlinkConfirm.config
+                  )
+                }
+              >
+                Continue and unlink
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {moveState ? (
         <MoveModal

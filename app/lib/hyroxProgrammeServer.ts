@@ -61,6 +61,10 @@ import {
 } from "@/app/lib/hyroxProgrammeSessionSync";
 import { resolveAthleteSessionDetailFromPublishedRow } from "@/app/lib/hyroxAthleteSessionDetail";
 import {
+  embedSessionFamilyPublishInPrescription,
+  tryBuildSessionFamilyPublishSnapshotForDraft,
+} from "@/app/lib/hyroxSessionFamilyPublish";
+import {
   deriveLiveGlobalWeek,
   deriveWeekCalendarStatusForAthleteWeek,
   getBlockWeekRole,
@@ -869,21 +873,46 @@ function toDraftInsertRow(
 
 export function buildSessionInsertRowsFromDraftWeek(
   draftWeek: CoachDraftWeek,
-  params: { programmeWeekId: string; athleteId: string }
+  params: {
+    programmeWeekId: string;
+    athleteId: string;
+    /** When provided, family-linked sessions freeze live prescription snapshots. */
+    performanceProfile?: import("@/app/lib/hyroxBenchmarkProfile").HyroxAthletePerformanceProfile | null;
+    publishedAt?: string;
+  }
 ) {
+  const publishedAt = params.publishedAt ?? new Date().toISOString();
   return draftWeek.days.flatMap((day) =>
-    day.sessions.map((sess) => ({
+    day.sessions.map((sess) => {
+      let prescription: Record<string, unknown> = {
+        ...(sess.prescription ?? {}),
+        editConfig: sess.editConfig,
+        rpeTarget: sess.rpeHr ?? sess.prescription?.rpeTarget,
+      };
+
+      if (sess.sessionFamily) {
+        try {
+          const snap = tryBuildSessionFamilyPublishSnapshotForDraft({
+            attachment: sess.sessionFamily,
+            profile: params.performanceProfile ?? null,
+            publishedAt,
+          });
+          if (snap) {
+            prescription = embedSessionFamilyPublishInPrescription(prescription, snap);
+          }
+        } catch {
+          // Keep base prescription — do not fail legacy publish for family snapshot errors.
+        }
+      }
+
+      return {
       programme_week_id: params.programmeWeekId,
       athlete_id: params.athleteId,
       day_of_week: day.day,
       session_slot: sess.timeOfDay,
       session_name: derivePublishedSessionName(sess),
       category: sess.sessionType ?? "general",
-      prescription: {
-        ...(sess.prescription ?? {}),
-        editConfig: sess.editConfig,
-        rpeTarget: sess.rpeHr ?? sess.prescription?.rpeTarget,
-      } as unknown as HyroxJson,
+      prescription: prescription as unknown as HyroxJson,
       metadata: {
         duration: sess.duration,
         intensity: sess.intensity,
@@ -924,7 +953,8 @@ export function buildSessionInsertRowsFromDraftWeek(
             : {}),
       } as unknown as HyroxJson,
       status: "scheduled" as const,
-    }))
+      };
+    })
   );
 }
 
@@ -1241,9 +1271,27 @@ export async function publishProgrammeDraft(
 
   if (weekError) throw new Error(weekError.message);
 
+  let performanceProfile = null as
+    | import("@/app/lib/hyroxBenchmarkProfile").HyroxAthletePerformanceProfile
+    | null;
+  try {
+    const { getHyroxAthletePerformanceProfile } = await import(
+      "@/app/lib/hyroxAthleteBenchmarkServer"
+    );
+    const profileResult = await getHyroxAthletePerformanceProfile(
+      supabase,
+      params.athleteRow.id
+    );
+    performanceProfile = profileResult.profile;
+  } catch {
+    performanceProfile = null;
+  }
+
   const sessionRows = buildSessionInsertRowsFromDraftWeek(draftWeek, {
     programmeWeekId: (week as HyroxProgrammeWeekRow).id,
     athleteId: params.athleteRow.id,
+    performanceProfile,
+    publishedAt: new Date().toISOString(),
   });
 
   if (sessionRows.length > 0) {

@@ -151,15 +151,7 @@ export function createCoachDraftSessionFromFamilyStage(
     coachNote: stage.internalCoachNotes ?? "",
     editConfig,
     sessionFamily: attachment,
-    prescription: {
-      objective: input.family.objective,
-      warmup: stage.structuredWorkout.warmup,
-      mainSet: adapted.editConfig.mainSetLines ?? [],
-      cooldown: stage.structuredWorkout.cooldown,
-      targetPace: editConfig.targetPace ?? null,
-      targetRPE: editConfig.rpeTarget ?? null,
-      coachNote: stage.internalCoachNotes ?? null,
-    },
+    prescription: null,
   };
 
   // Silence unused — runSlot documents multi-slot readiness
