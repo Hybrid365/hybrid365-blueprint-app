@@ -1,7 +1,13 @@
 # Progressive programming architecture
 
-**Status:** Research proposal + **decided product constraints** (2026-10-25). No schema implemented. No product code.  
+**Status:** Research proposal + **decided product constraints** (2026-10-25).  
+**Slice 1 implemented (code-first, not builder-wired):** `docs/contracts/session-family.md`, `app/lib/hyroxSessionFamily*.ts`, pilot `app/lib/families/threshold5MinRepeats.ts`.  
 **Depends on:** `docs/research/TRAINING_LIBRARY_AUDIT.md`, `docs/contracts/prescription-engine.md`, `docs/HYBRID365_COACHING_OPERATING_MODEL.md`.
+
+### Slice 1 clarifications (no change to decided constraints)
+
+- Prescription slot id canonicalized to `run` (architecture draft said `primary_run`).
+- Pilot Stage 4 = 6 × 5 min · 90 sec jog (RECOVERY_QUALITY / DENSITY; no volume jump). Consolidation and deload remain separate explicit stages.
 
 ---
 
