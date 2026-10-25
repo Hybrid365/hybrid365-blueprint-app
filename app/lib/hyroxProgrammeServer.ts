@@ -74,8 +74,16 @@ import {
   type ProgrammeLengthWeeks,
   type ProgrammeWeekCalendarStatus,
 } from "@/app/lib/hyroxProgrammeDates";
+import {
+  collapseToCanonicalPublishedWeeks,
+  selectCanonicalPublishedWeek,
+} from "@/app/lib/hyroxProgrammeWeekIdentity";
+import { sanitizeAthleteSessionTitle } from "@/app/lib/hyroxSessionFamilyAthleteCopy";
 
 export { sessionRowKey } from "@/app/lib/hyroxProgrammeSessionSync";
+
+const PROGRAMME_WEEK_SELECT =
+  "id, athlete_id, source_draft_id, created_at, updated_at, block_number, week_number, week_start_date, week_end_date, weekly_focus, coach_note, athlete_facing_note, weekly_summary, status, published_at";
 
 const MAPPED_PROFILE_SELECT =
   "id, athlete_id, created_at, updated_at, mapped_profile, coach_overrides, effective_profile, athlete_level, main_limiter, secondary_limiter, recovery_risk, double_session_readiness, first_block_focus, coach_review_flags, status";
@@ -609,11 +617,17 @@ export function mapPublishedSessionsToAthleteUi(
     const day = s.day_of_week;
     const short = dayShort[day] ?? day.slice(0, 3);
     const timeOfDay = (s.session_slot as ProgrammeTimeOfDay) ?? "Main";
-    const coachNote =
-      (meta.coachNote as string) ??
-      (prescription.coachNote as string) ??
-      (prescription.coach_note as string) ??
-      "";
+    const hasFamilyPublish = Boolean(
+      prescription.sessionFamily &&
+        typeof prescription.sessionFamily === "object"
+    );
+    // Family internal coach notes must never surface to athletes.
+    const coachNote = hasFamilyPublish
+      ? ""
+      : (meta.coachNote as string) ??
+        (prescription.coachNote as string) ??
+        (prescription.coach_note as string) ??
+        "";
     const feedback = parseHyroxAthleteSessionFeedback(s.athlete_feedback);
     const displayName = resolveAthleteSessionDisplayName(s);
     const plannedTargets =
@@ -653,7 +667,11 @@ export function mapPublishedSessionsToAthleteUi(
         : formatProgrammeDayLabel(day, timeOfDay),
       name: displayName,
       type: inferSessionType(s.category, s.session_name),
-      focus: (meta.focus as string) ?? s.category,
+      focus: hasFamilyPublish
+        ? sanitizeAthleteSessionTitle(
+            typeof meta.focus === "string" ? meta.focus : displayName
+          )
+        : (meta.focus as string) ?? s.category,
       duration,
       rpeTarget,
       status: mapDbSessionStatus(s.status),
@@ -668,10 +686,14 @@ export function mapPublishedSessionsToAthleteUi(
       priority: (timeOfDay === "Optional" || s.session_slot === "Optional"
         ? "Optional"
         : "Key") as HyroxSession["priority"],
-      intent: detail.objective || (meta.intent as string) || s.session_name,
+      intent: hasFamilyPublish
+        ? detail.objective || displayName
+        : detail.objective || (meta.intent as string) || s.session_name,
       timeOfDay,
-      coachNote: detail.coachNote || coachNote || undefined,
-      detail,
+      coachNote: hasFamilyPublish
+        ? undefined
+        : detail.coachNote || coachNote || undefined,
+      detail: hasFamilyPublish ? { ...detail, coachNote: "" } : detail,
     };
   });
 
@@ -703,14 +725,16 @@ export async function fetchPublishedWeekCountForBlock(
   const weekNumbers = [1, 2, 3, 4].map((cycle) =>
     globalWeekForBlock(blockNumber, cycle as 1 | 2 | 3 | 4)
   );
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from("hyrox_programme_weeks")
-    .select("id", { count: "exact", head: true })
+    .select("id, week_number, published_at, updated_at, created_at, status")
     .eq("athlete_id", athleteId)
     .eq("status", "published")
     .in("week_number", weekNumbers);
   if (error) throw new Error(error.message);
-  return count ?? 0;
+  return collapseToCanonicalPublishedWeeks(
+    (data as HyroxProgrammeWeekRow[] | null) ?? []
+  ).length;
 }
 
 export async function fetchAthletePublishedProgramme(
@@ -721,9 +745,7 @@ export async function fetchAthletePublishedProgramme(
   const [{ data: publishedWeeks }, { data: draft }] = await Promise.all([
     supabase
       .from("hyrox_programme_weeks")
-      .select(
-        "id, athlete_id, source_draft_id, created_at, updated_at, block_number, week_number, week_start_date, week_end_date, weekly_focus, coach_note, athlete_facing_note, weekly_summary, status, published_at"
-      )
+      .select(PROGRAMME_WEEK_SELECT)
       .eq("athlete_id", athlete.id)
       .eq("status", "published")
       .order("week_number", { ascending: true }),
@@ -737,7 +759,10 @@ export async function fetchAthletePublishedProgramme(
       .maybeSingle(),
   ]);
 
-  const weekRows = (publishedWeeks as HyroxProgrammeWeekRow[] | null) ?? [];
+  // Deterministic: one canonical published row per global week_number.
+  const weekRows = collapseToCanonicalPublishedWeeks(
+    (publishedWeeks as HyroxProgrammeWeekRow[] | null) ?? []
+  );
   const weekIds = weekRows.map((w) => w.id);
 
   let allSessions: HyroxProgrammeSessionRow[] = [];
@@ -916,7 +941,9 @@ export function buildSessionInsertRowsFromDraftWeek(
       metadata: {
         duration: sess.duration,
         intensity: sess.intensity,
-        focus: day.stationFocus ?? sess.title,
+        focus: sess.sessionFamily
+          ? derivePublishedSessionName(sess)
+          : day.stationFocus ?? sess.title,
         intent: sess.rationale,
         isKeySession: sess.isKeySession,
         isOptional: sess.isOptional,
@@ -1115,9 +1142,17 @@ export async function syncPublishedWeekSessionsFromDraft(
       week_start_date: startYmd,
       week_end_date: endYmd,
       source_draft_id: params.sourceDraftId ?? params.week.source_draft_id,
+      published_at: now,
       updated_at: now,
+      status: "published",
     })
     .eq("id", params.week.id);
+
+  await archiveSupersededPublishedWeeks(supabase, {
+    athleteId: params.athleteId,
+    weekNumber: params.week.week_number,
+    keepId: params.week.id,
+  });
 
   const { data: refreshedRows, error: refreshError } = await supabase
     .from("hyrox_programme_sessions")
@@ -1217,6 +1252,33 @@ export async function fetchDraftForAthleteWeek(
   return (data as HyroxProgrammeDraftRow | null) ?? null;
 }
 
+/**
+ * Archive every published sibling for the same athlete + week_number except `keepId`.
+ * Does not delete rows or sessions — historical evidence stays attached to archived week ids.
+ */
+export async function archiveSupersededPublishedWeeks(
+  supabase: SupabaseClient,
+  params: { athleteId: string; weekNumber: number; keepId: string }
+): Promise<string[]> {
+  const { data: rows, error } = await supabase
+    .from("hyrox_programme_weeks")
+    .select("id")
+    .eq("athlete_id", params.athleteId)
+    .eq("week_number", params.weekNumber)
+    .eq("status", "published")
+    .neq("id", params.keepId);
+  if (error) throw new Error(error.message);
+  const ids = ((rows as { id: string }[] | null) ?? []).map((r) => r.id);
+  if (!ids.length) return [];
+  const now = new Date().toISOString();
+  const { error: archiveError } = await supabase
+    .from("hyrox_programme_weeks")
+    .update({ status: "archived", updated_at: now })
+    .in("id", ids);
+  if (archiveError) throw new Error(archiveError.message);
+  return ids;
+}
+
 export async function publishProgrammeDraft(
   supabase: SupabaseClient,
   params: {
@@ -1248,57 +1310,108 @@ export async function publishProgrammeDraft(
     params.draft.week_number
   );
 
-  const { data: week, error: weekError } = await supabase
-    .from("hyrox_programme_weeks")
-    .insert({
-      athlete_id: params.athleteRow.id,
-      source_draft_id: params.draft.id,
-      block_number: params.draft.block_number,
-      week_number: params.draft.week_number,
-      week_start_date: startYmd,
-      week_end_date: endYmd,
-      weekly_focus: params.weeklyFocus || null,
-      coach_note: params.draft.coach_note,
-      athlete_facing_note: params.draft.athlete_facing_note,
-      weekly_summary: params.draft.weekly_summary,
-      status: "published",
-      published_at: new Date().toISOString(),
-    })
-    .select(
-      "id, athlete_id, source_draft_id, created_at, updated_at, block_number, week_number, week_start_date, week_end_date, weekly_focus, coach_note, athlete_facing_note, weekly_summary, status, published_at"
-    )
-    .single();
+  const publishedAt = new Date().toISOString();
+  const existingCanonical = await fetchPublishedWeekForAthlete(
+    supabase,
+    params.athleteRow.id,
+    params.draft.block_number,
+    params.draft.week_number
+  );
 
-  if (weekError) throw new Error(weekError.message);
+  let week: HyroxProgrammeWeekRow;
+  let sessionCount: number;
 
-  let performanceProfile = null as
-    | import("@/app/lib/hyroxBenchmarkProfile").HyroxAthletePerformanceProfile
-    | null;
-  try {
-    const { getHyroxAthletePerformanceProfile } = await import(
-      "@/app/lib/hyroxAthleteBenchmarkServer"
-    );
-    const profileResult = await getHyroxAthletePerformanceProfile(
-      supabase,
-      params.athleteRow.id
-    );
-    performanceProfile = profileResult.profile;
-  } catch {
-    performanceProfile = null;
-  }
+  if (existingCanonical) {
+    // Republish: sync sessions onto the canonical week; archive any duplicate published siblings.
+    await archiveSupersededPublishedWeeks(supabase, {
+      athleteId: params.athleteRow.id,
+      weekNumber: params.draft.week_number,
+      keepId: existingCanonical.id,
+    });
 
-  const sessionRows = buildSessionInsertRowsFromDraftWeek(draftWeek, {
-    programmeWeekId: (week as HyroxProgrammeWeekRow).id,
-    athleteId: params.athleteRow.id,
-    performanceProfile,
-    publishedAt: new Date().toISOString(),
-  });
+    const { data: updatedWeek, error: updateError } = await supabase
+      .from("hyrox_programme_weeks")
+      .update({
+        source_draft_id: params.draft.id,
+        block_number: params.draft.block_number,
+        week_start_date: startYmd,
+        week_end_date: endYmd,
+        weekly_focus: params.weeklyFocus || null,
+        coach_note: params.draft.coach_note,
+        athlete_facing_note: params.draft.athlete_facing_note,
+        weekly_summary: params.draft.weekly_summary,
+        status: "published",
+        published_at: publishedAt,
+        updated_at: publishedAt,
+      })
+      .eq("id", existingCanonical.id)
+      .select(PROGRAMME_WEEK_SELECT)
+      .single();
+    if (updateError) throw new Error(updateError.message);
+    week = updatedWeek as HyroxProgrammeWeekRow;
 
-  if (sessionRows.length > 0) {
-    const { error: sessionsError } = await supabase
-      .from("hyrox_programme_sessions")
-      .insert(sessionRows);
-    if (sessionsError) throw new Error(sessionsError.message);
+    const sync = await syncPublishedWeekSessionsFromDraft(supabase, {
+      week,
+      draftWeek,
+      athleteId: params.athleteRow.id,
+      programmeStartDate: params.programmeStartDate,
+      sourceDraftId: params.draft.id,
+      audit,
+    });
+    sessionCount = sync.rowsAfterPublish;
+  } else {
+    const { data: inserted, error: weekError } = await supabase
+      .from("hyrox_programme_weeks")
+      .insert({
+        athlete_id: params.athleteRow.id,
+        source_draft_id: params.draft.id,
+        block_number: params.draft.block_number,
+        week_number: params.draft.week_number,
+        week_start_date: startYmd,
+        week_end_date: endYmd,
+        weekly_focus: params.weeklyFocus || null,
+        coach_note: params.draft.coach_note,
+        athlete_facing_note: params.draft.athlete_facing_note,
+        weekly_summary: params.draft.weekly_summary,
+        status: "published",
+        published_at: publishedAt,
+      })
+      .select(PROGRAMME_WEEK_SELECT)
+      .single();
+
+    if (weekError) throw new Error(weekError.message);
+    week = inserted as HyroxProgrammeWeekRow;
+
+    let performanceProfile = null as
+      | import("@/app/lib/hyroxBenchmarkProfile").HyroxAthletePerformanceProfile
+      | null;
+    try {
+      const { getHyroxAthletePerformanceProfile } = await import(
+        "@/app/lib/hyroxAthleteBenchmarkServer"
+      );
+      const profileResult = await getHyroxAthletePerformanceProfile(
+        supabase,
+        params.athleteRow.id
+      );
+      performanceProfile = profileResult.profile;
+    } catch {
+      performanceProfile = null;
+    }
+
+    const sessionRows = buildSessionInsertRowsFromDraftWeek(draftWeek, {
+      programmeWeekId: week.id,
+      athleteId: params.athleteRow.id,
+      performanceProfile,
+      publishedAt,
+    });
+
+    if (sessionRows.length > 0) {
+      const { error: sessionsError } = await supabase
+        .from("hyrox_programme_sessions")
+        .insert(sessionRows);
+      if (sessionsError) throw new Error(sessionsError.message);
+    }
+    sessionCount = sessionRows.length;
   }
 
   const statusFrom = params.athleteRow.status;
@@ -1306,7 +1419,7 @@ export async function publishProgrammeDraft(
   await Promise.all([
     supabase
       .from("hyrox_programme_drafts")
-      .update({ status: "published", published_at: new Date().toISOString() })
+      .update({ status: "published", published_at: publishedAt })
       .eq("id", params.draft.id),
     supabase
       .from("hyrox_athletes")
@@ -1315,8 +1428,8 @@ export async function publishProgrammeDraft(
         programme_status: "published",
         programme_start_date: params.programmeStartDate,
         programme_started_at:
-          params.athleteRow.programme_started_at ?? new Date().toISOString(),
-        programme_updated_at: new Date().toISOString(),
+          params.athleteRow.programme_started_at ?? publishedAt,
+        programme_updated_at: publishedAt,
         current_block: params.draft.block_number,
         current_programme_block: params.draft.block_number,
         current_week: liveWeek,
@@ -1332,36 +1445,41 @@ export async function publishProgrammeDraft(
     reason: "programme_published",
     metadata: {
       draft_id: params.draft.id,
-      programme_week_id: (week as HyroxProgrammeWeekRow).id,
+      programme_week_id: week.id,
       programme_status: "published",
-      session_count: sessionRows.length,
+      session_count: sessionCount,
+      republish: Boolean(existingCanonical),
     },
   });
 
   return {
-    week: week as HyroxProgrammeWeekRow,
-    sessionCount: sessionRows.length,
+    week,
+    sessionCount,
     audit,
   };
 }
 
+/**
+ * Canonical published week for athlete + global week_number.
+ * Prefer matching block_number when provided; never use unordered maybeSingle.
+ */
 async function fetchPublishedWeekForAthlete(
   supabase: SupabaseClient,
   athleteId: string,
   blockNumber: number,
   weekNumber: number
 ): Promise<HyroxProgrammeWeekRow | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("hyrox_programme_weeks")
-    .select(
-      "id, athlete_id, source_draft_id, created_at, updated_at, block_number, week_number, week_start_date, week_end_date, weekly_focus, coach_note, athlete_facing_note, weekly_summary, status, published_at"
-    )
+    .select(PROGRAMME_WEEK_SELECT)
     .eq("athlete_id", athleteId)
-    .eq("block_number", blockNumber)
     .eq("week_number", weekNumber)
-    .eq("status", "published")
-    .maybeSingle();
-  return (data as HyroxProgrammeWeekRow | null) ?? null;
+    .eq("status", "published");
+  if (error) throw new Error(error.message);
+  const rows = (data as HyroxProgrammeWeekRow[] | null) ?? [];
+  if (!rows.length) return null;
+  const sameBlock = rows.filter((r) => r.block_number === blockNumber);
+  return selectCanonicalPublishedWeek(sameBlock.length ? sameBlock : rows);
 }
 
 /** Publish all four weeks from approved draft_data in DB (no regeneration at publish). */

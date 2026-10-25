@@ -1,7 +1,7 @@
 # Contract: Session family (progressive programming)
 
-Status: Slice 1 domain + Slice 2 builder adapters / draft-publish domain.  
-**Not** wired to live Programme Builder UX. **No** DB migrations. Optional JSONB fields only.
+Status: Slice 1–5 — domain, builder adapters, coach UX pilot, staging hardening, publish integrity.  
+Allow-list flag only. **No** DB migrations / 022. Optional JSONB fields only.
 
 Owner: Progressive programming (on `integrate/hyrox-batch-1`).
 

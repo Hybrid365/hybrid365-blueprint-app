@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import { fetchHyroxAthleteById } from "@/app/lib/hyroxAthleteCoachDb";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
-import type { HyroxAthleteRow, HyroxProgrammeSessionRow } from "@/app/lib/hyroxDatabaseTypes";
+import type {
+  HyroxAthleteRow,
+  HyroxProgrammeSessionRow,
+  HyroxProgrammeWeekRow,
+} from "@/app/lib/hyroxDatabaseTypes";
 import {
   fetchDailyReadinessForDate,
   localDateYmdInTimeZone,
@@ -11,6 +15,7 @@ import { buildCoachTodaySessionRows } from "@/app/lib/hyrox-team/modules/today/c
 import { resolveTodaysSessions } from "@/app/lib/hyrox-team/modules/today/resolveTodaySessions";
 import { mapPublishedSessionsToAthleteUi } from "@/app/lib/hyroxProgrammeServer";
 import { deriveLiveGlobalWeek } from "@/app/lib/hyroxProgrammeDates";
+import { selectCanonicalPublishedWeek } from "@/app/lib/hyroxProgrammeWeekIdentity";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -45,13 +50,18 @@ export async function GET(request: Request, context: RouteContext) {
   const programmeStart = row.programme_start_date?.trim() || null;
   if (programmeStart) {
     const liveWeek = deriveLiveGlobalWeek(programmeStart);
-    const { data: weekRow } = await supabase
+    const { data: weekRows } = await supabase
       .from("hyrox_programme_weeks")
-      .select("id, week_number")
+      .select(
+        "id, athlete_id, source_draft_id, created_at, updated_at, block_number, week_number, week_start_date, week_end_date, weekly_focus, coach_note, athlete_facing_note, weekly_summary, status, published_at"
+      )
       .eq("athlete_id", row.id)
       .eq("status", "published")
-      .eq("week_number", liveWeek)
-      .maybeSingle();
+      .eq("week_number", liveWeek);
+
+    const weekRow = selectCanonicalPublishedWeek(
+      (weekRows as HyroxProgrammeWeekRow[] | null) ?? []
+    );
 
     if (weekRow?.id) {
       const { data: sessionRows } = await supabase

@@ -3,6 +3,7 @@
 import type { CoachDraftDay, CoachDraftSession } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { TIME_OF_DAY_OPTIONS, WEEKDAYS, type WeekdayName } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { SandboxTimeOfDay } from "@/app/lib/hyroxProgrammeSandbox";
+import { coachFamilyContextLabel } from "@/app/lib/hyroxSessionFamilyAthleteCopy";
 import { PrescriptionDetailBlocks } from "@/components/admin-hyrox-athletes/PrescriptionDetailBlocks";
 
 export function WeeklyScheduleBuilder({
@@ -200,14 +201,7 @@ function SessionCard({
         ) : null}
         {session.sessionFamily ? (
           <span className="rounded border border-violet-500/35 bg-violet-400/10 px-1 text-[9px] text-violet-100">
-            {session.sessionFamily.familyName.replace(/^Threshold — /, "Threshold ")} ·{" "}
-            {session.sessionFamily.stageKey.startsWith("stage_")
-              ? `Stage ${session.sessionFamily.stageKey.replace("stage_", "")}`
-              : session.sessionFamily.stageKey === "consolidation"
-                ? "Consolidation"
-                : session.sessionFamily.stageKey.startsWith("deload")
-                  ? "Deload"
-                  : session.sessionFamily.stageKey}
+            {coachFamilyContextLabel(session.sessionFamily)}
           </span>
         ) : null}
       </div>

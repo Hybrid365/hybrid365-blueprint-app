@@ -77,6 +77,8 @@ export type SessionFamilyPublishSnapshot = {
   familyName: string;
   stageKey: string;
   stageLabel: string;
+  /** Athlete-safe session title (no stage / family internal labels). */
+  athleteFacingTitle: string;
   structuredWorkout: StructuredWorkout;
   slots: SessionFamilyPublishedSlot[];
   publishedAt: string;

@@ -3,6 +3,7 @@ import type { HyroxJson, HyroxProgrammeSessionRow } from "@/app/lib/hyroxDatabas
 import { formatProgrammeDayLabel } from "@/app/lib/hyroxAthleteProgrammeSort";
 import type { ProgrammeTimeOfDay } from "@/app/lib/hyroxAthleteProgrammeSort";
 import { resolveAthleteSessionDisplayName } from "@/app/lib/hyroxProgrammeSessionSync";
+import { sanitizeAthleteSessionTitle } from "@/app/lib/hyroxSessionFamilyAthleteCopy";
 import type { CoachSessionEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
 import {
   parseMainSetBlocks,
@@ -112,10 +113,17 @@ export function resolveAthleteSessionDetailFromPublishedRow(
   const coachPacingNote =
     (typeof cfg.coachPacingNote === "string" && cfg.coachPacingNote.trim()) || undefined;
 
-  const coachNote =
-    (typeof cfg.coachNote === "string" && cfg.coachNote.trim()) ||
-    (typeof prescription.coachNote === "string" && prescription.coachNote) ||
-    "";
+  const hasFamilyPublish = Boolean(
+    prescription.sessionFamily &&
+      typeof prescription.sessionFamily === "object" &&
+      !Array.isArray(prescription.sessionFamily)
+  );
+  // Internal family coach notes must never leak to athlete session detail.
+  const coachNote = hasFamilyPublish
+    ? ""
+    : (typeof cfg.coachNote === "string" && cfg.coachNote.trim()) ||
+      (typeof prescription.coachNote === "string" && prescription.coachNote) ||
+      "";
 
   const stationFocus = resolveStationFocus(edit, coachNote);
   const fullPrescription = resolveFullPrescriptionText(prescription, edit, overrideMainSet);
@@ -157,16 +165,24 @@ export function resolveAthleteSessionDetailContent(
     opts?.weekLabel ?? formatProgrammeDayLabel(session.day, session.timeOfDay as ProgrammeTimeOfDay);
 
   if (d) {
+    const displayName = (session.name || d.title || "").trim();
+    const safeFocus = sanitizeAthleteSessionTitle(session.focus || session.type);
+    const tags = [session.type, safeFocus]
+      .map((t) => t?.trim())
+      .filter((t): t is string => Boolean(t))
+      .filter((t, i, arr) => arr.indexOf(t) === i)
+      .filter((t) => t.toLowerCase() !== displayName.toLowerCase())
+      .filter((t) => !/Stage\s*\d|·\s*S\d|familyId|stageId/i.test(t));
     return {
       sessionId: session.id,
       weekLabel,
-      categoryTag: session.focus || session.type,
+      categoryTag: session.type || safeFocus,
       objective: d.objective,
       durationMin: d.durationMin,
       rpeTarget: d.rpe,
       hrZone: d.hrZone,
       targetPaceLoad: d.targetPaceLoad,
-      tags: [session.type, session.focus].filter(Boolean),
+      tags: tags.length ? tags : [session.type].filter(Boolean),
       warmUp: d.warmUp,
       mainSet: d.mainSet,
       mainSetBlocks: d.mainSetBlocks,

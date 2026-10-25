@@ -37,6 +37,7 @@ import {
   deriveWeekCalendarStatusForAthleteWeek,
   weekDateRangeFromProgrammeStart,
 } from "@/app/lib/hyroxProgrammeDates";
+import { collapseToCanonicalPublishedWeeks } from "@/app/lib/hyroxProgrammeWeekIdentity";
 import { extractPlannedTargets } from "@/app/lib/hyrox-team/modules/sessionLogging/plannedTargets";
 import {
   isHyroxDailyReadinessRelationMissing,
@@ -137,8 +138,10 @@ async function loadPublishedWeeks(
     .eq("status", "published")
     .in("week_number", unique);
 
-  const weekRows = (weeks as HyroxProgrammeWeekRow[] | null) ?? [];
-  if (!weekRows.length) return out;
+  const weekRowsRaw = (weeks as HyroxProgrammeWeekRow[] | null) ?? [];
+  if (!weekRowsRaw.length) return out;
+
+  const weekRows = collapseToCanonicalPublishedWeeks(weekRowsRaw);
 
   const { data: sessionRows } = await supabase
     .from("hyrox_programme_sessions")

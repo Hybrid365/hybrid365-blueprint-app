@@ -1,6 +1,7 @@
 import type { HyroxAthleteRow, HyroxProgrammeWeekRow } from "@/app/lib/hyroxDatabaseTypes";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { listHyroxAthletes } from "@/app/lib/hyroxAthleteCoachDb";
+import { collapseToCanonicalPublishedWeeks } from "@/app/lib/hyroxProgrammeWeekIdentity";
 
 export type PublishedViewAthleteSummary = {
   id: string;
@@ -66,7 +67,9 @@ export async function listPublishedViewSummaries(
   }
 
   const rows: PublishedViewAthleteSummary[] = athletes.map((athlete) => {
-    const published = weeksByAthlete.get(athlete.id) ?? [];
+    const published = collapseToCanonicalPublishedWeeks(
+      weeksByAthlete.get(athlete.id) ?? []
+    );
     const weekNumbers = published.map((w) => w.week_number);
     const lastPublishedAt =
       published

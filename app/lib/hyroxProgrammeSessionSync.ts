@@ -2,6 +2,11 @@ import type { CoachDraftSession, CoachDraftWeek, CoachSessionEditConfig } from "
 import { deriveMainSetLinesFromEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { resolveAthleteSessionDetailFromPublishedRow } from "@/app/lib/hyroxAthleteSessionDetail";
 import type { HyroxJson, HyroxProgrammeSessionRow } from "@/app/lib/hyroxDatabaseTypes";
+import {
+  athleteFacingSessionFamilyTitle,
+  athleteFacingTitleForFamilyAttachment,
+  sanitizeAthleteSessionTitle,
+} from "@/app/lib/hyroxSessionFamilyAthleteCopy";
 
 export type DraftSessionInsertRow = {
   day_of_week: string;
@@ -55,7 +60,12 @@ export function draftIdFromMetadata(metadata: HyroxJson | null | undefined): str
 
 /** Name written to hyrox_programme_sessions.session_name (athlete UI primary label). */
 export function derivePublishedSessionName(sess: CoachDraftSession): string {
-  return sess.title?.trim() || sess.editConfig?.sessionName?.trim() || "Session";
+  if (sess.sessionFamily) {
+    const facing = athleteFacingTitleForFamilyAttachment(sess.sessionFamily);
+    if (facing) return facing;
+  }
+  const raw = sess.title?.trim() || sess.editConfig?.sessionName?.trim() || "Session";
+  return sanitizeAthleteSessionTitle(raw);
 }
 
 export function pickSessionSyncFields(row: {
@@ -86,9 +96,25 @@ function editConfigFromPrescription(prescription: HyroxJson | null | undefined):
 
 /** Athlete-facing display name from a published DB row. */
 export function resolveAthleteSessionDisplayName(row: HyroxProgrammeSessionRow): string {
+  const prescription =
+    row.prescription && typeof row.prescription === "object" && !Array.isArray(row.prescription)
+      ? (row.prescription as Record<string, unknown>)
+      : null;
+  const familySnap = prescription?.sessionFamily as
+    | { familyId?: string; familyName?: string; athleteFacingTitle?: string }
+    | undefined;
+  if (familySnap?.athleteFacingTitle?.trim()) {
+    return sanitizeAthleteSessionTitle(familySnap.athleteFacingTitle);
+  }
+  if (familySnap?.familyId) {
+    return athleteFacingSessionFamilyTitle({
+      id: familySnap.familyId,
+      name: familySnap.familyName ?? row.session_name ?? "Session",
+    });
+  }
   const cfg = editConfigFromPrescription(row.prescription);
   const cfgName = typeof cfg.sessionName === "string" ? cfg.sessionName.trim() : "";
-  return cfgName || row.session_name?.trim() || "Session";
+  return sanitizeAthleteSessionTitle(cfgName || row.session_name?.trim() || "Session");
 }
 
 export function publishedSessionLivePreview(row: HyroxProgrammeSessionRow): string {

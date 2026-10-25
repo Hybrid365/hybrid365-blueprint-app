@@ -13,6 +13,7 @@ import type {
   SessionFamilyPublishedSlot,
 } from "@/app/lib/hyroxSessionFamilyDraftTypes";
 import { SESSION_FAMILY_PUBLISH_JSON_KEY as PUBLISH_KEY } from "@/app/lib/hyroxSessionFamilyDraftTypes";
+import { athleteFacingTitleForFamilyAttachment } from "@/app/lib/hyroxSessionFamilyAthleteCopy";
 import { getSessionFamily } from "@/app/lib/hyroxSessionFamilyRegistry";
 import { collectSessionFamilyIssues } from "@/app/lib/hyroxSessionFamilyValidate";
 import type { PrescriptionSlotId, SessionFamily } from "@/app/lib/hyroxSessionFamilyTypes";
@@ -257,6 +258,9 @@ export function buildSessionFamilyPublishSnapshot(args: {
     familyName: args.attachment.familyName,
     stageKey: args.attachment.stageKey,
     stageLabel: args.attachment.stageLabel,
+    athleteFacingTitle:
+      athleteFacingTitleForFamilyAttachment(args.attachment, args.family) ??
+      "Threshold Intervals",
     structuredWorkout: structuredClone(args.attachment.structuredWorkout),
     slots,
     publishedAt: args.publishedAt,
@@ -352,6 +356,8 @@ export function tryBuildSessionFamilyPublishSnapshotForDraft(args: {
     familyName: args.attachment.familyName,
     stageKey: args.attachment.stageKey,
     stageLabel: args.attachment.stageLabel,
+    athleteFacingTitle:
+      athleteFacingTitleForFamilyAttachment(args.attachment) ?? "Threshold Intervals",
     structuredWorkout: structuredClone(args.attachment.structuredWorkout),
     slots,
     publishedAt: args.publishedAt,
