@@ -32,8 +32,21 @@ Older captures from the first pass: `docs/qa/visual-system/screenshots/`.
 
 Lab tabs on `/dev/visual-system`. Capture: `npx tsx scripts/qa-hyrox-design-concept-shots.ts`.
 
+**Coached Command Centre** (consolidated review direction): `concepts/COACHED_COMMAND_CENTRE.md`.
+
 | Concept | 390 | 1440 |
 | --- | --- | --- |
+| Coached Home | `concepts/coached-home-390.png` | `concepts/coached-home-1440.png` |
+| Coached Session | `concepts/coached-session-390.png` | `concepts/coached-session-1440.png` |
+| Coached Complete | `concepts/coached-complete-390.png` | `concepts/coached-complete-1440.png` |
+| Coached Progress | `concepts/coached-progress-390.png` | `concepts/coached-progress-1440.png` |
+| Coached Performance | `concepts/coached-performance-390.png` | `concepts/coached-performance-1440.png` |
+| Coached Races | `concepts/coached-race-390.png` | `concepts/coached-race-1440.png` |
+| Coached Home empty | `concepts/coached-home-empty-390.png` | |
+| Coached Home loading | `concepts/coached-home-loading-390.png` | |
+| Coached Progress empty | `concepts/coached-progress-empty-390.png` | |
+| Coached Race empty | `concepts/coached-race-empty-390.png` | |
+| Coached Complete form | `concepts/coached-complete-form-390.png` | |
 | Home A | `concepts/home-a-390.png` | `concepts/home-a-1440.png` |
 | Home B | `concepts/home-b-390.png` | `concepts/home-b-1440.png` |
 | Home C | `concepts/home-c-390.png` | `concepts/home-c-1440.png` |

@@ -433,6 +433,8 @@ Qualitative scores: **strong / mixed / weak**. Verdicts are KEEP / REFINE / RETH
 
 Why: Hybrid365 is 1-1 coaching for HYROX, not recovery hardware and not a file analyser. The athlete opens the app to know what to do now, why the coach wrote it, and whether they are actually getting fitter. That is A + C, with B’s density available on Progress and Race, not as Home’s personality.
 
+**Consolidated visual-lab concept (Phase 0 review):** `docs/visual-qa/concepts/COACHED_COMMAND_CENTRE.md` and lab tabs `Coached Home` … `Coached Races` on `/dev/visual-system`. Includes mobile/desktop frames, loading/empty states, and workflow evaluation. Home D remains a separate week-first research prototype.
+
 What should stay in Batch 1 live UI: D primitives, honest empties, status words, Performance naming, B/E contracts, restrained completion, session drawer, programme week chips.
 
 What should change later (after human visual review, not in this task): Home 4-up and readiness %, session structure as a picture, completion as target vs actual, Progress as a story, Performance as a hero mark, Races as split analysis.

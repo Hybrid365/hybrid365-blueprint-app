@@ -232,12 +232,16 @@ function contrast(fg: string, bg: string): number {
   assert.match(fixture, /Prototype · demo data · not a live athlete result/);
   assert.match(fixture, /prototype-not-a-live-athlete/);
   const lab = read("components/athlete-command-centre/visual/concepts/ConceptsLab.tsx");
-  assert.match(lab, /do not replace live athlete Home/);
+  assert.match(lab, /do not replace[\s\S]*live athlete Home/);
+  assert.match(lab, /coached-home/);
+  assert.match(lab, /Coached Command Centre/);
   const chrome = read("components/athlete-command-centre/visual/concepts/chrome.tsx");
   assert.match(chrome, /CONCEPT_PROTOTYPE_BANNER/);
   const homeD = read("components/athlete-command-centre/visual/concepts/HomeConceptD.tsx");
   assert.match(homeD, /Not live Home/);
   assert.match(lab, /home-d/);
+  const coachedBrief = read("docs/visual-qa/concepts/COACHED_COMMAND_CENTRE.md");
+  assert.match(coachedBrief, /Do not apply to live athlete screens/);
   ok("direction concepts stay labelled prototypes");
 }
 

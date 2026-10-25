@@ -150,7 +150,7 @@ Every card is labelled **Prototype** and **Demo — not a live athlete result**.
 
 ## Staging direction concepts
 
-Product-design prototypes in `components/athlete-command-centre/visual/concepts/`. Same galleries. Tabs: Home A / Home B / Home C, Session, Complete, Progress, Performance, Races.
+Product-design prototypes in `components/athlete-command-centre/visual/concepts/`. Same galleries. Primary review tabs: **Coached** Home / Session / Complete / Progress / Performance / Races (consolidated direction). Earlier research tabs: Home A / B / C / D, Session, Complete, Progress, Performance, Races. Brief: `docs/visual-qa/concepts/COACHED_COMMAND_CENTRE.md`.
 
 Every concept is labelled **Prototype · demo data · not a live athlete result**. Fixture `CONCEPT_FIXTURE` / `CONCEPT_ANALYTICS` / `CONCEPT_RACES` uses B and E field names only. Do not wire these into live `/athlete/dashboard`. STOP for human visual review before any live adoption.
 
