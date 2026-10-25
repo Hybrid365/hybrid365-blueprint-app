@@ -6,7 +6,7 @@ This document does **not** authorise product code, a live Home change, a migrati
 
 Related: `docs/HYBRID365_PLATFORM_BLUEPRINT.md`, `docs/HYBRID365_AGENT_GUIDE.md`, `docs/HYBRID365_VISUAL_SYSTEM.md`, `docs/HYBRID365_INTERACTION_SYSTEM.md`, contracts in `docs/contracts/`. Research (not canonical): `docs/research/`.
 
-Home D is the preferred athlete Home direction. It remains visual-lab only until a named human rollout task. Flags `HYROX_HOME_V2_*`, `HYROX_TODAY_V2_*`, and `HYROX_PERFORMANCE_HUB_*` stay off.
+Home D is the **approved** athlete Home foundation (sticky Mon–Sun day nav retained; refine, do not replace with Home A/C). Canonical: `docs/HYBRID365_HOME_DIRECTION.md`. It remains visual-lab only until a named human rollout task. Flags `HYROX_HOME_V2_*`, `HYROX_TODAY_V2_*`, and `HYROX_PERFORMANCE_HUB_*` stay off.
 
 ---
 

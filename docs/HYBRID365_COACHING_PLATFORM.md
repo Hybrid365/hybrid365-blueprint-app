@@ -82,7 +82,7 @@ Home is training-first, not analytics-first.
 
 A persistent bottom navigation provides access to the main product areas.
 
-Visual-lab direction: Home D (`components/athlete-command-centre/visual/concepts/HomeConceptD.tsx`). Do not treat that prototype as live Home until a human rollout task says so.
+Visual-lab Home foundation: **Version D** (`components/athlete-command-centre/visual/concepts/HomeConceptD.tsx`) — week-first layout with sticky interactive date navigation. Approved after visual review; supersedes Home A/C as the Home shell. Refinement only (typography, today’s emphasis, small progression signals, coach adjustment presentation). Do not remove the day strip. Canonical: `docs/HYBRID365_HOME_DIRECTION.md`. Do not treat the prototype as live Home until a named human rollout task says so.
 
 ### Session
 

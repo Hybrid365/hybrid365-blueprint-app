@@ -32,11 +32,17 @@ Older captures from the first pass: `docs/qa/visual-system/screenshots/`.
 
 Lab tabs on `/dev/visual-system`. Capture: `npx tsx scripts/qa-hyrox-design-concept-shots.ts`.
 
-**Coached Command Centre** (consolidated review direction): `concepts/COACHED_COMMAND_CENTRE.md`.
+**Home foundation:** Version D — `docs/HYBRID365_HOME_DIRECTION.md` (sticky day nav retained).  
+**Supporting surfaces:** Coached Session / Complete / Progress / Performance / Races — `concepts/COACHED_COMMAND_CENTRE.md` (Coached Home is comparison-only, not the Home target).
 
 | Concept | 390 | 1440 |
 | --- | --- | --- |
-| Coached Home | `concepts/coached-home-390.png` | `concepts/coached-home-1440.png` |
+| Home D (Home foundation) | `concepts/home-d-390.png` | `concepts/home-d-1440.png` |
+| Home D triple | `concepts/home-d-triple-390.png` | |
+| Home D rest | `concepts/home-d-rest-390.png` | |
+| Home D scrolled + nav | `concepts/home-d-scrolled-390.png` | |
+| Home D drawer | `concepts/home-d-drawer-390.png` | |
+| Coached Home *(not Home target)* | `concepts/coached-home-390.png` | `concepts/coached-home-1440.png` |
 | Coached Session | `concepts/coached-session-390.png` | `concepts/coached-session-1440.png` |
 | Coached Complete | `concepts/coached-complete-390.png` | `concepts/coached-complete-1440.png` |
 | Coached Progress | `concepts/coached-progress-390.png` | `concepts/coached-progress-1440.png` |
@@ -50,11 +56,6 @@ Lab tabs on `/dev/visual-system`. Capture: `npx tsx scripts/qa-hyrox-design-conc
 | Home A | `concepts/home-a-390.png` | `concepts/home-a-1440.png` |
 | Home B | `concepts/home-b-390.png` | `concepts/home-b-1440.png` |
 | Home C | `concepts/home-c-390.png` | `concepts/home-c-1440.png` |
-| Home D | `concepts/home-d-390.png` | `concepts/home-d-1440.png` |
-| Home D triple | `concepts/home-d-triple-390.png` | |
-| Home D rest | `concepts/home-d-rest-390.png` | |
-| Home D scrolled + nav | `concepts/home-d-scrolled-390.png` | |
-| Home D drawer | `concepts/home-d-drawer-390.png` | |
 | Session detail | `concepts/session-390.png` | `concepts/session-1440.png` |
 | Session complete | `concepts/complete-390.png` | `concepts/complete-1440.png` |
 | Progress | `concepts/progress-390.png` | `concepts/progress-1440.png` |

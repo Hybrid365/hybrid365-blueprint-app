@@ -12,7 +12,7 @@ The coaching loop is:
 
 **Athlete profile → Prescription → Training → Execution → Feedback → Interpretation → Adaptation → Progress**
 
-Product constitution (Home, session, adaptation, Track vs 1-1): `docs/HYBRID365_COACHING_PLATFORM.md`. Canonical workflow: `docs/HYBRID365_COACHING_OPERATING_MODEL.md`.
+Product constitution (Home, session, adaptation, Track vs 1-1): `docs/HYBRID365_COACHING_PLATFORM.md`. Canonical workflow: `docs/HYBRID365_COACHING_OPERATING_MODEL.md`. Athlete Home foundation (Version D): `docs/HYBRID365_HOME_DIRECTION.md`.
 
 Two products share one engine:
 

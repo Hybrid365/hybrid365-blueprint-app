@@ -64,12 +64,15 @@ export function ConceptsLab() {
         <p className={visualEyebrow}>Direction research</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">Hybrid365 concepts</h1>
         <p className={`mt-2 ${visualBody}`}>
-          Staging-only prototypes. Demo-labelled fixture data. Coached tabs are the consolidated review
-          direction (A hierarchy + C coach + B telemetry on Progress/Race). These screens do not replace
-          live athlete Home, Programme, or logging.
+          Staging-only prototypes. Demo-labelled fixture data. <span className="text-zinc-200">Home D</span> is
+          the approved Home foundation (sticky day nav — refine, do not replace). Coached Session / Complete /
+          Progress / Performance / Races remain supporting direction. Coached Home is comparison-only. These
+          screens do not replace live athlete Home, Programme, or logging.
         </p>
         <p className={`mt-2 ${visualBody}`}>
-          Brief: <span className="text-zinc-200">docs/visual-qa/concepts/COACHED_COMMAND_CENTRE.md</span>
+          Home: <span className="text-zinc-200">docs/HYBRID365_HOME_DIRECTION.md</span>
+          {" · "}
+          Supporting: <span className="text-zinc-200">docs/visual-qa/concepts/COACHED_COMMAND_CENTRE.md</span>
         </p>
       </header>
 

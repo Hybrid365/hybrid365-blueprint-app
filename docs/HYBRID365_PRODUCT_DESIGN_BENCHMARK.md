@@ -429,14 +429,22 @@ Qualitative scores: **strong / mixed / weak**. Verdicts are KEEP / REFINE / RETH
 
 ## Recommended direction
 
-**Coached command centre** — Concept A’s hierarchy, Concept C’s coach language, Concept B’s telemetry only when it supports the session.
+### Home (approved)
 
-Why: Hybrid365 is 1-1 coaching for HYROX, not recovery hardware and not a file analyser. The athlete opens the app to know what to do now, why the coach wrote it, and whether they are actually getting fitter. That is A + C, with B’s density available on Progress and Race, not as Home’s personality.
+**Version D (Home D)** is the athlete Home foundation — week-first Training Command Centre with a **sticky, interactive Mon–Sun date bar**, selected-day sessions, coach context, and insights below the fold.
 
-**Consolidated visual-lab concept (Phase 0 review):** `docs/visual-qa/concepts/COACHED_COMMAND_CENTRE.md` and lab tabs `Coached Home` … `Coached Races` on `/dev/visual-system`. Includes mobile/desktop frames, loading/empty states, and workflow evaluation. Home D remains a separate week-first research prototype.
+This **supersedes** the earlier Phase 0 idea of Home A/C (or the consolidated `Coached Home` tab) as the primary Home layout. Canonical write-up: `docs/HYBRID365_HOME_DIRECTION.md`.
 
-What should stay in Batch 1 live UI: D primitives, honest empties, status words, Performance naming, B/E contracts, restrained completion, session drawer, programme week chips.
+Goal for Home is **refinement of D**, not redesign: stronger type/target hierarchy, clearer emphasis on today’s primary session, small performance indicators, better coach-adjustment presentation, spacing/polish, subtle motion. Do not remove the sticky day navigation or replace D with a single-day hero.
 
-What should change later (after human visual review, not in this task): Home 4-up and readiness %, session structure as a picture, completion as target vs actual, Progress as a story, Performance as a hero mark, Races as split analysis.
+### Other athlete surfaces
 
-STOP. Do not apply this to live athlete surfaces until that review.
+**Coached Command Centre** research still applies to Session, Completion, Progress, Performance, and Races — A’s clarity, C’s coach language, B’s telemetry where it supports the story (Progress / Race), not as Home’s personality.
+
+Lab: `/dev/visual-system` → **Home D** (Home foundation) · **Coached** Session / Complete / Progress / Performance / Races. Brief for non-Home: `docs/visual-qa/concepts/COACHED_COMMAND_CENTRE.md`.
+
+Why: Hybrid365 is 1-1 coaching for HYROX. The athlete opens Home to move through the week and act on the selected day’s work — not to face a wellness dashboard or a file analyser.
+
+What should stay in Batch 1 live UI until a named rollout: D primitives, honest empties, status words, Performance naming, B/E contracts, restrained completion, session drawer, programme week chips. Live Home remains the current product until an explicit Home D adoption task.
+
+STOP. Do not apply Home D or Coached concepts to live athlete surfaces in a docs-only pass.

@@ -1,123 +1,120 @@
-# Coached Command Centre — consolidated concept
+# Coached Command Centre — supporting concepts
 
-Visual-lab only. Provisional direction approved for concept work. **Do not apply to live athlete screens, migrations, or production routes until human visual approval.**
+Visual-lab only. **Do not apply to live athlete screens, migrations, or production routes until a named human task.**
+
+**Home update (25 Oct 2026):** Version D is the approved **Home** foundation. See `docs/HYBRID365_HOME_DIRECTION.md`. The earlier Coached Home (A/C single-day hero) layout is **not** the Home target. This document remains the reference for **Session, Completion, Progress, Performance, and Races**.
 
 Related: `docs/HYBRID365_PRODUCT_DESIGN_BENCHMARK.md`, `docs/HYBRID365_VISUAL_SYSTEM.md`, `docs/HYBRID365_INTERACTION_SYSTEM.md`, B/E contracts.
 
-Lab: `/dev/visual-system` → **Coached** tabs. Capture: `npx tsx scripts/qa-hyrox-design-concept-shots.ts`.
+Lab: `/dev/visual-system` → Home D (Home) · **Coached** Session / Complete / Progress / Performance / Races. Capture: `npx tsx scripts/qa-hyrox-design-concept-shots.ts`.
 
 ---
 
-## Composition recipe
+## What still applies
 
-| Source | Keep |
+| Surface | Keep from Coached research |
 | --- | --- |
-| **Home A** | Hierarchy: today → one progression signal → coach last among equals, never above the session |
-| **Home C** | Visible coach presence and training intent — authored decisions, not branding |
-| **Home B** | Telemetry density only on Progress and Race Intelligence |
-| **Contracts** | B analytics fields, E race analysis, honest empties, status words, no invented readiness |
+| **Session** | Purpose + primary target in seconds; structure as a picture; coach decision copy; then complete |
+| **Completion** | Three bands: Prescribed · Actual · Subjective; no celebration wall |
+| **Progress** | Improvement vs previous before volume; B analytics fields only; unsupported named |
+| **Performance** | Hero mark · previous · pending review; status words |
+| **Races** | Overall → run analysis → station analysis → vs previous; observations from stored splits only |
+| **Contracts** | Honest empties, no invented readiness, B/E field honesty |
 
-### Refinements applied
+| Source | Role after Home D approval |
+| --- | --- |
+| **Home A** | Hierarchy ideas only (type weight, one king number) — **borrow into Home D’s selected-day block**, do not replace D |
+| **Home C** | Coach presence / adjustment language — **on Home D’s selected day**, not a new Home shell |
+| **Home B** | Telemetry density on Progress and Race only |
+| **Home D** | **Home foundation** — sticky week nav, selected day, session previews |
 
-1. **Home** — today’s training is the hero; one personal progression signal (current 5K + delta vs previous) sits secondary. No week modality wall, no sRPE load, no readiness %.
-2. **Coach presence** — CoachMark carries a real decision (today’s note, or “why this week changed” when an adjustment exists). Decorative “Coach” chrome without copy is forbidden.
-3. **Session** — purpose + primary target readable in &lt;3s; structure as a picture; prescription secondary; coach; then complete.
-4. **Completion** — three visual bands: Prescribed · Actual · Subjective. No celebration wall.
-5. **Progress** — improvement vs previous (benchmark trajectory, week-over-week) before volume charts.
-6. **Race** — Overall → Run analysis → Station analysis → vs previous. Observations only from stored splits.
-7. **Avoid** — readiness scores, gamification, equal-weight dashboard clutter.
+### Avoid (all surfaces)
 
-Home D (week-first strip) remains a separate research prototype. This consolidated concept is the **approved direction for review**, not a live Home swap.
+Readiness scores, gamification, equal-weight dashboard clutter, fake zeros, leaking internal coach notes.
 
 ---
 
-## Screens in lab
+## Home (superseded for layout)
 
-| Tab id | Screen | Mobile | Desktop |
-| --- | --- | --- | --- |
-| `coached-home` | Home | Single column, today king | Today + coach · progression rail |
-| `coached-session` | Session detail | Purpose → target → structure | Same hierarchy, wider structure |
-| `coached-complete` | Completion | Prescribed / Actual / Subjective bands | Same |
-| `coached-progress` | Progress | Now improvement → recent → longer | Wide charts after the improvement story |
-| `coached-performance` | Performance | Hero mark + previous + pending | Same |
-| `coached-race` | Race Intelligence | Overall → runs → stations → compare | Two-column run/station after overall |
+Do **not** treat lab tab `coached-home` as the approved Home. Prefer **Home D**.
 
-State toggle in lab: **Populated** · **Loading** · **Empty** (honest unavailable copy; never invent zeros).
+If refining Home later: keep D’s sticky date navigation and week→day structure; optionally absorb small Coached ideas (stronger target type, one mark delta, clearer adjustment CoachMark) without rebuilding the frame.
+
+---
+
+## Screens in lab (non-Home Coached tabs)
+
+| Tab id | Screen | Notes |
+| --- | --- | --- |
+| `coached-session` | Session detail | Supporting direction |
+| `coached-complete` | Completion | Prescribed / Actual / Subjective |
+| `coached-progress` | Progress | Improvement first |
+| `coached-performance` | Performance | Hero mark |
+| `coached-race` | Race Intelligence | Overall → run → station |
+| `coached-home` | *(archived research)* | Not the Home foundation — kept for comparison only |
+
+Home foundation tab: `home-d`.
+
+State toggle on Coached tabs: **Populated** · **Loading** · **Empty**.
 
 Fixture source: `concepts/fixture.ts` — labelled prototype demo data, not a live athlete.
 
 ---
 
-## Workflow evaluation
+## Workflow evaluation (non-Home)
 
-### 1. Pre-session
-
-| Need | Concept response |
-| --- | --- |
-| What do I do today? | Home: session name + primary target as the largest type |
-| Why this session? | Purpose line under target; coach note is a decision, not a slogan |
-| Open work fast | Single primary CTA → Session |
-| Fail if empty | Empty Home: “No published session for today” — no fake threshold run |
-
-**Pass criteria:** Athlete can name the session and target without scrolling past the fold on 390.
-
-### 2. Session completion
+### Session completion
 
 | Need | Concept response |
 | --- | --- |
 | Understand the workout | Session: purpose + king number + interval picture |
-| Log without a form wall | Complete: target/actual entry band, then subjective chips |
-| See what was prescribed vs done | Three labelled bands; TargetActual component |
-| Coach visibility | Confirm line: “Your coach can see this result.” |
+| Log without a form wall | Complete: prescribed / actual / subjective bands |
+| Coach visibility | “Your coach can see this result.” |
 
-**Pass criteria:** Prescribed, actual, and RPE are visually distinct after save. No confetti.
+**Pass:** Prescribed, actual, and RPE visually distinct. No confetti.
 
-### 3. Training progression
+### Training progression
 
 | Need | Concept response |
 | --- | --- |
-| Am I getting better? | Progress opens on 5K trajectory vs previous marks; week-over-week completion second |
+| Am I getting better? | Progress opens on mark trajectory vs previous |
 | Volume context | Rolling run km after the improvement story |
-| Unsupported data | Explicit “Unsupported” line — never invent HR series |
 
-**Pass criteria:** First Progress section answers “better than last mark?” before “how many km?”
+**Pass:** First Progress section answers “better than last mark?” before “how many km?”
 
-### 4. Coach adjustment
-
-| Need | Concept response |
-| --- | --- |
-| Notice a change | Home CoachMark labelled with coach name + “adjustment” when `whyChanged` exists |
-| Understand the decision | Copy states what changed and why (demo fixture uses Tuesday fade → Saturday shortened) |
-| Not mysterious | No silent chrome; if no adjustment, show today’s session coach note only |
-
-**Pass criteria:** Adjustment copy is readable without opening Programme. Empty state has no fake adjustment.
-
-### 5. Race comparison
+### Race comparison
 
 | Need | Concept response |
 | --- | --- |
-| Overall result | Large overall + vs previous / vs goal |
-| Run vs station | Separate sections; run fade called out |
-| Vs previous race | Station deltas and observations from stored splits only |
-| Empty | “No race results stored” — no invented Manchester time |
+| Overall / run / station | Separate sections; fade and station deltas from stored splits |
 
-**Pass criteria:** Athlete can answer overall, weakest run signal, and biggest station delta without mixing sections.
+**Pass:** Sections do not mix. Empty = no invented race time.
+
+### Pre-session / coach adjustment (Home)
+
+Evaluated against **Home D**, not Coached Home:
+
+| Need | Home D response |
+| --- | --- |
+| What do I do? | Select day (sticky strip) → session preview with primary target |
+| Coach changed the plan | Selected-day CoachMark with real adjustment copy when present |
+| Empty | Honest unpublished / rest / no session — never invent a threshold run |
 
 ---
 
 ## What this concept deliberately omits
 
-- Readiness / recovery / strain composites
-- Explore as a Home destination
-- Week strip as Home (that remains Home D research)
+- Replacing Home D with an A/C hero Home
+- Removing the sticky date navigation
 - Full HYROX training-day split sheets on Complete
-- Live SessionDrawer / Home / Progress replacement
+- Live SessionDrawer / Home / Progress replacement in a docs pass
 - Any migration or production route change
 
 ---
 
 ## Approval gate
 
-**STOP for human visual approval.** After approval, a separate named task may roll concepts into live athlete surfaces behind a new flag (do not reuse `HYROX_HOME_V2_*`).
+Home foundation: **Home D** (`docs/HYBRID365_HOME_DIRECTION.md`).  
+Supporting surfaces: this file’s Session / Complete / Progress / Performance / Race guidance.
 
-Screenshots: `docs/visual-qa/concepts/coached-*-{390,1440}.png` plus empty/loading variants where captured.
+**STOP for implementation until a named human task.** Live athlete surfaces unchanged in documentation-only work.
