@@ -15,6 +15,7 @@ export function WeeklyScheduleBuilder({
   onRemove,
   onDuplicate,
   onViewDetail,
+  onChangeStage,
 }: {
   days: CoachDraftDay[];
   addTarget: { day: WeekdayName; slot: SandboxTimeOfDay } | null;
@@ -25,6 +26,7 @@ export function WeeklyScheduleBuilder({
   onRemove: (dayIndex: number, sessionIndex: number) => void;
   onDuplicate: (dayIndex: number, sessionIndex: number) => void;
   onViewDetail: (dayIndex: number, sessionIndex: number) => void;
+  onChangeStage?: (dayIndex: number, sessionIndex: number) => void;
 }) {
   return (
     <section className="flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-950/60">
@@ -46,6 +48,7 @@ export function WeeklyScheduleBuilder({
             onRemove={onRemove}
             onDuplicate={onDuplicate}
             onViewDetail={onViewDetail}
+            onChangeStage={onChangeStage}
           />
         ))}
       </div>
@@ -64,6 +67,7 @@ function DayColumn({
   onRemove,
   onDuplicate,
   onViewDetail,
+  onChangeStage,
 }: {
   day: CoachDraftDay;
   dayIndex: number;
@@ -75,6 +79,7 @@ function DayColumn({
   onRemove: (dayIndex: number, sessionIndex: number) => void;
   onDuplicate: (dayIndex: number, sessionIndex: number) => void;
   onViewDetail: (dayIndex: number, sessionIndex: number) => void;
+  onChangeStage?: (dayIndex: number, sessionIndex: number) => void;
 }) {
   const weekday = day.day as WeekdayName;
 
@@ -123,6 +128,11 @@ function DayColumn({
               onRemove={() => onRemove(dayIndex, sessionIndex)}
               onDuplicate={() => onDuplicate(dayIndex, sessionIndex)}
               onViewDetail={() => onViewDetail(dayIndex, sessionIndex)}
+              onChangeStage={
+                onChangeStage && s.sessionFamily
+                  ? () => onChangeStage(dayIndex, sessionIndex)
+                  : undefined
+              }
             />
           ))}
         </ul>
@@ -140,6 +150,7 @@ function SessionCard({
   onRemove,
   onDuplicate,
   onViewDetail,
+  onChangeStage,
 }: {
   session: CoachDraftSession;
   hardLabel: string;
@@ -149,6 +160,7 @@ function SessionCard({
   onRemove: () => void;
   onDuplicate: () => void;
   onViewDetail: () => void;
+  onChangeStage?: () => void;
 }) {
   const p = session.prescription;
   const target = p?.targetPace ?? p?.targetSplit ?? p?.targetLoad;
@@ -188,11 +200,11 @@ function SessionCard({
         ) : null}
         {session.sessionFamily ? (
           <span className="rounded border border-violet-500/35 bg-violet-400/10 px-1 text-[9px] text-violet-100">
-            Progression ·{" "}
+            {session.sessionFamily.familyName.replace(/^Threshold — /, "Threshold ")} ·{" "}
             {session.sessionFamily.stageKey.startsWith("stage_")
-              ? `S${session.sessionFamily.stageKey.replace("stage_", "")}`
+              ? `Stage ${session.sessionFamily.stageKey.replace("stage_", "")}`
               : session.sessionFamily.stageKey === "consolidation"
-                ? "Consol"
+                ? "Consolidation"
                 : session.sessionFamily.stageKey.startsWith("deload")
                   ? "Deload"
                   : session.sessionFamily.stageKey}
@@ -220,6 +232,7 @@ function SessionCard({
       <div className="mt-2 flex flex-wrap gap-1">
         <Btn label="View" onClick={onViewDetail} />
         <Btn label="Edit" onClick={onEdit} />
+        {onChangeStage ? <Btn label="Change stage" onClick={onChangeStage} /> : null}
         <Btn label="Move" onClick={onMove} />
         <Btn label="Replace" onClick={onReplace} />
         <Btn label="Dup opt" onClick={onDuplicate} />

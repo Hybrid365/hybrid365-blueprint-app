@@ -272,10 +272,18 @@ export function ProgressionAssignmentModal({
                 Athlete target
               </p>
               {missingThreshold ? (
-                <p className="mt-1 text-xs text-orange-300">
-                  Threshold pace unavailable. This progression requires an active threshold
-                  benchmark or a coach override. Do not estimate.
-                </p>
+                <div className="mt-1 space-y-1.5">
+                  <p className="text-xs text-orange-300">
+                    Missing threshold anchor. Formula cannot resolve. Apply is blocked until a
+                    Performance Profile threshold exists or you set a coach override. No silent
+                    estimate.
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    Open the athlete{" "}
+                    <span className="font-semibold text-zinc-300">Performance Profile</span> tab
+                    to set an active threshold benchmark, or enter a coach override below.
+                  </p>
+                </div>
               ) : (
                 <p className="mt-1 text-xs text-zinc-300">
                   Anchor threshold{" "}
@@ -312,52 +320,110 @@ export function ProgressionAssignmentModal({
                 Generated block preview · edit stages before apply
               </p>
               <p className="text-[11px] text-zinc-500">
-                Proposal only. Stages are independent of calendar week numbers.
+                WEEK · DAY · STAGE · STRUCTURE · TARGET — stages are not calendar week numbers.
               </p>
             </div>
-            <div className="flex-1 space-y-2 overflow-y-auto p-4">
-              {weekResolutions.map(({ proposal, stage, resolution }, idx) => (
-                <div
-                  key={proposal.offset}
-                  className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-bold text-white">{proposal.label}</span>
-                    <span className="text-[10px] text-zinc-500">
-                      {day} {slot}
-                    </span>
-                    <select
-                      className="ml-auto rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-200"
-                      value={proposal.stageId}
-                      onChange={(e) => {
-                        const stageId = e.target.value;
-                        setProposals((prev) =>
-                          prev.map((p, i) => (i === idx ? { ...p, stageId } : p))
-                        );
-                      }}
-                    >
-                      {family?.stages.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {formatStageKeyShort(s.key)} — {s.label}
-                        </option>
-                      ))}
-                    </select>
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="mb-2 hidden grid-cols-[52px_72px_1fr_1.2fr_140px] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-600 lg:grid">
+                <span>Week</span>
+                <span>Day</span>
+                <span>Stage</span>
+                <span>Structure</span>
+                <span>Target</span>
+              </div>
+              <div className="space-y-2">
+                {weekResolutions.map(({ proposal, stage, resolution }, idx) => (
+                  <div
+                    key={proposal.offset}
+                    className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3"
+                  >
+                    <div className="grid grid-cols-1 gap-2 lg:grid-cols-[52px_72px_1fr_1.2fr_140px] lg:items-start">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase text-zinc-600 lg:hidden">
+                          Week
+                        </p>
+                        <p className="text-xs font-bold text-white">{proposal.label}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase text-zinc-600 lg:hidden">
+                          Day
+                        </p>
+                        <p className="text-xs text-zinc-300">
+                          {day} {slot}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase text-zinc-600 lg:hidden">
+                          Stage
+                        </p>
+                        <select
+                          className="w-full rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-200"
+                          value={proposal.stageId}
+                          onChange={(e) => {
+                            const stageId = e.target.value;
+                            setProposals((prev) =>
+                              prev.map((p, i) => (i === idx ? { ...p, stageId } : p))
+                            );
+                          }}
+                        >
+                          {family?.stages.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {formatStageKeyShort(s.key)} — {s.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase text-zinc-600 lg:hidden">
+                          Structure
+                        </p>
+                        <p className="text-xs text-zinc-200">
+                          {stage ? stageStructureLine(stage) : proposal.stageId}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase text-zinc-600 lg:hidden">
+                          Target
+                        </p>
+                        <p className="font-mono text-[11px] text-yellow-200/90">
+                          {formatPace(resolution.slots[0]?.resolvedValue)}
+                          {resolution.slots[0]?.source === "coach_override"
+                            ? " · coach override"
+                            : ""}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[9px] text-zinc-500">
+                          RULE {resolution.slots[0]?.expression ?? "—"}
+                          {(() => {
+                            const slot = resolution.slots[0];
+                            if (
+                              !slot ||
+                              slot.source !== "coach_override" ||
+                              slot.anchorValue == null
+                            ) {
+                              return "";
+                            }
+                            const adj = slot.rule.adjustment;
+                            const formula =
+                              adj.type === "seconds_per_km" || adj.type === "seconds_per_500m"
+                                ? slot.anchorValue + adj.value
+                                : adj.type === "identity"
+                                  ? slot.anchorValue
+                                  : null;
+                            return formula != null
+                              ? ` · formula ${formatPace(formula)}`
+                              : "";
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                    {!resolution.publishable ? (
+                      <p className="mt-2 text-[11px] text-orange-300">
+                        {resolution.slots[0]?.publishBlockReason ?? "Not publishable"}
+                      </p>
+                    ) : null}
                   </div>
-                  <p className="mt-1.5 text-xs text-zinc-200">
-                    {stage ? stageStructureLine(stage) : proposal.stageId}
-                  </p>
-                  <p className="mt-1 font-mono text-[11px] text-yellow-200/90">
-                    {resolution.slots[0]?.expression ?? "—"} →{" "}
-                    {formatPace(resolution.slots[0]?.resolvedValue)}
-                    {resolution.slots[0]?.source === "coach_override" ? " (coach override)" : ""}
-                  </p>
-                  {!resolution.publishable ? (
-                    <p className="mt-1 text-[11px] text-orange-300">
-                      {resolution.slots[0]?.publishBlockReason ?? "Not publishable"}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>

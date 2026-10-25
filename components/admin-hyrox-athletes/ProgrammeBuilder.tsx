@@ -62,6 +62,13 @@ import {
   ProgressionAssignmentModal,
   type ProgressionAssignmentApplyPayload,
 } from "@/components/admin-hyrox-athletes/ProgressionAssignmentModal";
+import { ChangeStageModal } from "@/components/admin-hyrox-athletes/ChangeStageModal";
+import {
+  insertSessionOnWeekday,
+  refreshFamilyLinkedDraftWeekPreviews,
+  targetGlobalWeeksForProgression,
+} from "@/app/lib/hyroxSessionFamilyApply";
+import { globalWeekForBlock } from "@/app/lib/hyroxCoachProgrammeDraft";
 import {
   buildPerformanceTestingWeek1Draft,
   draftHasSessions,
@@ -200,6 +207,11 @@ export function ProgrammeBuilder({
     config: CoachSessionEditConfig;
     reason: string;
   } | null>(null);
+  const [changeStageTarget, setChangeStageTarget] = useState<{
+    dayIndex: number;
+    sessionIndex: number;
+  } | null>(null);
+  const familyPreviewRefreshedFor = useRef<string | null>(null);
   const sessionFamiliesEnabled = isHyroxSessionFamiliesEnabledClient(
     sessionFamiliesEnabledProp
   );
@@ -355,19 +367,23 @@ export function ProgrammeBuilder({
     };
   }, [athlete.id, sessionFamiliesEnabled, progressionOpen]);
 
-  const insertFamilySessionOnDay = useCallback(
-    (week: CoachDraftWeek, session: CoachDraftSession, day: WeekdayName): CoachDraftWeek => {
-      const dayIndex = week.days.findIndex((d) => d.day === day);
-      if (dayIndex < 0) return week;
-      return {
-        ...week,
-        days: week.days.map((d, i) =>
-          i === dayIndex ? { ...d, sessions: [...d.sessions, session] } : d
-        ),
-      };
-    },
-    []
-  );
+  // When a draft with family sessions is opened, refresh live prescription previews
+  // from the current Performance Profile (never reuse published snapshots as draft targets).
+  useEffect(() => {
+    if (!sessionFamiliesEnabled || !perfProfile) return;
+    const hasFamily = draft.days.some((d) => d.sessions.some((s) => s.sessionFamily));
+    if (!hasFamily) return;
+    const key = `${draft.week}:${draft.generatedAt}:${perfProfile.threshold?.paceSecondsPerKm ?? "x"}`;
+    if (familyPreviewRefreshedFor.current === key) return;
+    familyPreviewRefreshedFor.current = key;
+    const refreshed = refreshFamilyLinkedDraftWeekPreviews(
+      draft,
+      perfProfile,
+      new Date().toISOString()
+    );
+    setDraft(refreshed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh once per draft/profile fingerprint
+  }, [sessionFamiliesEnabled, perfProfile, draft.week, draft.generatedAt, setDraft]);
 
   const handleProgressionApply = useCallback(
     async (payload: ProgressionAssignmentApplyPayload) => {
@@ -377,21 +393,64 @@ export function ProgrammeBuilder({
         return;
       }
 
-      const emptyProfileFallback = profile;
+      const startGlobalWeek = globalWeekForBlock(selectedBlock, selectedCycle);
+      const globalWeeks = targetGlobalWeeksForProgression({
+        startGlobalWeek,
+        blockLength: payload.proposals.length,
+      });
+
+      type EnsuredWeek = {
+        globalWeek: number;
+        draftId: string;
+        created: boolean;
+        block: number;
+        draftData?: CoachDraftWeek;
+      };
+      let ensuredWeeks: EnsuredWeek[] = [];
+
+      // Ensure future (and cross-block) draft shells exist without mutating current_week.
+      if (isLive && livePersistence?.athleteId && livePersistence.effectiveProfile) {
+        try {
+          const ensureRes = await fetch(
+            `/api/hyrox/athletes/${livePersistence.athleteId}/programme-drafts/ensure-weeks`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                global_weeks: globalWeeks,
+                effective_profile: livePersistence.effectiveProfile,
+                coach_note: coachNotes.weeklyCoachNote,
+                athlete_facing_note: coachNotes.athleteFacingNote,
+              }),
+            }
+          );
+          const ensureData = (await ensureRes.json()) as {
+            success?: boolean;
+            error?: string;
+            weeks?: EnsuredWeek[];
+          };
+          if (!ensureRes.ok || !ensureData.success || !ensureData.weeks) {
+            showToast(ensureData.error ?? "Could not ensure future draft weeks.");
+            return;
+          }
+          ensuredWeeks = ensureData.weeks;
+        } catch {
+          showToast("Network error ensuring progression draft weeks.");
+          return;
+        }
+      }
+
       let applied = 0;
       let skipped = 0;
 
-      for (const proposal of payload.proposals) {
-        const targetCycle = (selectedCycle + proposal.offset) as 1 | 2 | 3 | 4;
-        if (targetCycle > 4) {
-          skipped += 1;
-          continue;
-        }
+      for (let i = 0; i < payload.proposals.length; i++) {
+        const proposal = payload.proposals[i];
+        const globalWeek = globalWeeks[i];
 
         const session = createCoachDraftSessionFromFamilyStage({
           family: payload.family,
           stageId: proposal.stageId,
-          profile: emptyProfileFallback,
+          profile,
           resolvedAt: payload.resolvedAt,
           draftId: `fam-${payload.family.id}-${proposal.stageId}-${crypto.randomUUID()}`,
           base: {
@@ -423,15 +482,15 @@ export function ProgrammeBuilder({
               : undefined,
         });
 
-        if (payload.overrideReason.trim() && session.sessionFamily) {
+        if (payload.overrideReason.trim()) {
           session.coachNote = [session.coachNote, `Override: ${payload.overrideReason.trim()}`]
             .filter(Boolean)
             .join(" · ");
         }
 
-        if (targetCycle === selectedCycle) {
+        if (globalWeek === draft.week) {
           await applyDraftMutation(
-            (prev) => insertFamilySessionOnDay(prev, session, payload.day),
+            (prev) => insertSessionOnWeekday(prev, session, payload.day, payload.slot),
             {
               successMessage: `Added ${session.title} to ${payload.day} ${payload.slot}`,
             }
@@ -445,15 +504,29 @@ export function ProgrammeBuilder({
           continue;
         }
 
-        const meta = effectiveBlockWeeks.find((w) => w.cycle === targetCycle);
-        if (!meta?.draftId || !meta.draftData) {
+        const ensured = ensuredWeeks.find((w) => w.globalWeek === globalWeek);
+        if (!ensured?.draftId) {
           skipped += 1;
           continue;
         }
 
-        const nextWeek = insertFamilySessionOnDay(meta.draftData, session, payload.day);
+        // Prefer ensure payload; re-fetch if missing so we never invent a second week shell.
         try {
-          const res = await fetch(`/api/hyrox/programme-drafts/${meta.draftId}`, {
+          let existing = ensured.draftData ?? null;
+          if (!existing) {
+            const getRes = await fetch(`/api/hyrox/programme-drafts/${ensured.draftId}`);
+            const getData = (await getRes.json()) as {
+              success?: boolean;
+              draftData?: CoachDraftWeek;
+            };
+            existing = getData.draftData ?? null;
+          }
+          if (!existing) {
+            skipped += 1;
+            continue;
+          }
+          const nextWeek = insertSessionOnWeekday(existing, session, payload.day, payload.slot);
+          const res = await fetch(`/api/hyrox/programme-drafts/${ensured.draftId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -473,19 +546,20 @@ export function ProgrammeBuilder({
       setProgressionOpen(false);
       showToast(
         skipped > 0
-          ? `Progression applied to ${applied} week(s). ${skipped} week(s) skipped (generate block drafts first, or stays within Block W1–W4).`
-          : `Progression applied to ${applied} week(s).`
+          ? `Progression applied to ${applied} week(s). ${skipped} week(s) skipped.`
+          : `Progression applied to ${applied} week(s) (drafts only — not published).`
       );
     },
     [
       applyDraftMutation,
       coachNotes.athleteFacingNote,
       coachNotes.weeklyCoachNote,
-      effectiveBlockWeeks,
-      insertFamilySessionOnDay,
+      draft.week,
       isLive,
+      livePersistence?.athleteId,
       livePersistence?.effectiveProfile,
       perfProfile,
+      selectedBlock,
       selectedCycle,
       showToast,
     ]
@@ -860,6 +934,11 @@ export function ProgrammeBuilder({
               )
             );
           }}
+          onChangeStage={
+            sessionFamiliesEnabled
+              ? (di, si) => setChangeStageTarget({ dayIndex: di, sessionIndex: si })
+              : undefined
+          }
         />
         <aside className="flex flex-col gap-4 overflow-y-auto">
           <WeeklySummaryPanel summary={summary} />
@@ -947,6 +1026,48 @@ export function ProgrammeBuilder({
           profile={perfProfile}
           defaultDay={addTarget?.day ?? "Wed"}
           defaultSlot={addTarget?.slot === "PM" ? "PM" : addTarget?.slot === "AM" ? "AM" : "AM"}
+        />
+      ) : null}
+
+      {sessionFamiliesEnabled ? (
+        <ChangeStageModal
+          open={changeStageTarget != null}
+          session={
+            changeStageTarget
+              ? draft.days[changeStageTarget.dayIndex]?.sessions[
+                  changeStageTarget.sessionIndex
+                ] ?? null
+              : null
+          }
+          profile={perfProfile}
+          onClose={() => setChangeStageTarget(null)}
+          onConfirm={async (next) => {
+            if (!changeStageTarget) return;
+            const { dayIndex, sessionIndex } = changeStageTarget;
+            setChangeStageTarget(null);
+            // Updates FUTURE DRAFT only via applyDraftMutation. If the week was already
+            // published, existing athlete sessions stay immutable until an explicit republish.
+            await applyDraftMutation(
+              (prev) => ({
+                ...prev,
+                days: prev.days.map((d, di) =>
+                  di === dayIndex
+                    ? {
+                        ...d,
+                        sessions: d.sessions.map((s, i) =>
+                          i === sessionIndex ? next : s
+                        ),
+                      }
+                    : d
+                ),
+              }),
+              {
+                successMessage: weekIsPublished
+                  ? `Stage updated in draft to ${next.sessionFamily?.stageLabel ?? "new stage"} (athlete week unchanged until republish).`
+                  : `Stage updated to ${next.sessionFamily?.stageLabel ?? "new stage"}`,
+              }
+            );
+          }}
         />
       ) : null}
 

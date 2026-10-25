@@ -17,6 +17,29 @@ import {
 
 type RouteContext = { params: Promise<{ draftId: string }> };
 
+export async function GET(_request: Request, context: RouteContext) {
+  const auth = await requireHyroxCoachApi();
+  if (auth.error) return auth.error;
+
+  const { draftId } = await context.params;
+  const { client: supabase, mode } = await createCoachServerClient();
+  const { draft: draftRow, error: draftError } = await fetchProgrammeDraftById(supabase, draftId);
+  logCoachDraftRoute("get", draftId, draftRow, { coachSupabaseMode: mode });
+
+  if (draftError) {
+    return NextResponse.json({ success: false, error: draftError }, { status: 500 });
+  }
+  if (!draftRow) {
+    return NextResponse.json({ success: false, error: "Draft not found." }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    draft: draftRow,
+    draftData: draftRow.draft_data,
+  });
+}
+
 export async function PATCH(request: Request, context: RouteContext) {
   const auth = await requireHyroxCoachApi();
   if (auth.error) return auth.error;

@@ -365,7 +365,7 @@ export async function fetchProgrammeDraftById(
 }
 
 export function logCoachDraftRoute(
-  action: "approve" | "publish" | "patch" | "load",
+  action: "approve" | "publish" | "patch" | "load" | "get",
   draftId: string,
   draft: HyroxProgrammeDraftRow | null,
   extra?: Record<string, unknown>
