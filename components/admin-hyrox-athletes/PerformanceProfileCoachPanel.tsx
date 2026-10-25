@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import type { AssessmentBridgePayload } from "@/app/lib/hyroxAssessmentBenchmarkBridge";
 import {
   COACH_ENTRY_TYPES,
   benchmarkAgeLabel,
@@ -22,6 +23,7 @@ type Payload = {
   profile?: HyroxAthletePerformanceProfile;
   results?: HyroxAthleteBenchmarkRow[];
   result?: HyroxAthleteBenchmarkRow;
+  assessmentBridge?: AssessmentBridgePayload | null;
 };
 
 const FAMILIES = ["Running", "Ergs", "Bike", "HYROX", "Strength"] as const;
@@ -48,6 +50,8 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
   const [notes, setNotes] = useState("");
   const [thresholdHr, setThresholdHr] = useState("");
   const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
+  const [importBusyKey, setImportBusyKey] = useState<string | null>(null);
+  const addFormRef = useRef<HTMLFormElement | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/hyrox/athletes/${encodeURIComponent(athleteId)}/benchmarks`, {
@@ -113,6 +117,58 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
     setBusyId(null);
   }
 
+  function focusCoachEstimate(kind: "threshold_pace" | "hyrox_run_pace") {
+    setBenchmarkType(kind);
+    setSource("coach_entered");
+    setMakeActive(true);
+    setDate(new Date().toISOString().slice(0, 10));
+    setPace("");
+    setNotes(kind === "threshold_pace" ? "Coach estimate for programming" : "Coach-set HYROX run pace");
+    window.setTimeout(() => {
+      addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
+
+  async function importAssessmentField(fieldKey: string, makeActive: boolean, forceDuplicate = false) {
+    if (payload?.unavailable) return;
+    setImportBusyKey(`${fieldKey}:${makeActive ? "active" : "pending"}`);
+    setError(null);
+    try {
+      const res = await fetch(`/api/hyrox/athletes/${encodeURIComponent(athleteId)}/benchmarks`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "import_assessment",
+          assessmentFieldKey: fieldKey,
+          makeActive,
+          forceDuplicate,
+        }),
+      });
+      const json = (await res.json()) as Payload & {
+        requiresConfirm?: boolean;
+        duplicate?: boolean;
+        match?: string;
+      };
+      if (res.status === 409 && json.requiresConfirm && !forceDuplicate) {
+        const ok = window.confirm(
+          `${json.error ?? "An active value already exists."}\n\nAdd this assessment value as pending anyway?`
+        );
+        if (ok) {
+          await importAssessmentField(fieldKey, makeActive, true);
+        }
+        return;
+      }
+      if (!res.ok || !json.success) {
+        setError(json.error ?? "Could not import assessment result.");
+        return;
+      }
+      await load();
+    } finally {
+      setImportBusyKey(null);
+    }
+  }
+
   async function addResult(event: React.FormEvent) {
     event.preventDefault();
     if (payload?.unavailable) return;
@@ -171,6 +227,119 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
         pendingCount={pending.length}
         unavailable={Boolean(payload?.unavailable)}
       />
+
+      {!payload?.profile?.threshold && !payload?.unavailable ? (
+        <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200/90">Threshold</p>
+          <p className="mt-1 text-sm font-bold text-zinc-500">Not set</p>
+          <p className="mt-1 text-[11px] text-zinc-500">
+            Never derived from 5K/10K. Enter an explicit coach estimate or lab value.
+          </p>
+          <button
+            type="button"
+            className="mt-2 rounded-lg border border-amber-500/40 bg-amber-400/10 px-3 py-1.5 text-xs font-bold text-amber-100"
+            onClick={() => focusCoachEstimate("threshold_pace")}
+          >
+            Set coach estimate
+          </button>
+        </section>
+      ) : null}
+
+      {!payload?.profile?.hyroxRun && !payload?.unavailable ? (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/80 px-4 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">HYROX run pace</p>
+          <p className="mt-1 text-sm font-bold text-zinc-500">Not set</p>
+          <p className="mt-1 text-[11px] text-zinc-500">
+            Race PB is context only. Set HYROX run pace explicitly if you want it as an anchor.
+          </p>
+          <button
+            type="button"
+            className="mt-2 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200"
+            onClick={() => focusCoachEstimate("hyrox_run_pace")}
+          >
+            Set HYROX run pace
+          </button>
+        </section>
+      ) : null}
+
+      {payload?.assessmentBridge ? (
+        <section className="space-y-3 rounded-xl border border-sky-500/25 bg-sky-950/20 p-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-300/90">
+              Assessment results available
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-500">
+              From completed onboarding assessment
+              {payload.assessmentBridge.submittedAt
+                ? ` · ${new Date(payload.assessmentBridge.submittedAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}`
+                : ""}
+              . Adds to Performance Profile — never auto-activates unless you choose Add &amp; set active.
+            </p>
+          </div>
+          {payload.assessmentBridge.candidates.map((c) => {
+            const blocked = c.match === "active_same" || c.match === "pending_same";
+            const busyPending = importBusyKey === `${c.key}:pending`;
+            const busyActive = importBusyKey === `${c.key}:active`;
+            return (
+              <article
+                key={c.key}
+                className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-800/80 py-2 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{c.label}</p>
+                  <p className="text-sm font-bold tabular-nums text-white">{c.displayValue}</p>
+                  <p className="text-[10px] text-zinc-500">{c.provenance}</p>
+                  {c.matchDetail ? (
+                    <p
+                      className={`mt-0.5 text-[10px] ${
+                        blocked ? "text-emerald-400/80" : "text-amber-300/80"
+                      }`}
+                    >
+                      {c.matchDetail}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <ActionButton
+                    disabled={Boolean(importBusyKey) || blocked || Boolean(payload?.unavailable)}
+                    onClick={() => void importAssessmentField(c.key, false)}
+                  >
+                    {busyPending ? "Adding…" : "Add to Performance Profile"}
+                  </ActionButton>
+                  <ActionButton
+                    disabled={Boolean(importBusyKey) || c.match === "active_same" || Boolean(payload?.unavailable)}
+                    onClick={() => {
+                      const ok = window.confirm(
+                        `Add ${c.label} ${c.displayValue} and set it active for programming now?`
+                      );
+                      if (ok) void importAssessmentField(c.key, true);
+                    }}
+                  >
+                    {busyActive ? "Activating…" : "Add & set active"}
+                  </ActionButton>
+                </div>
+              </article>
+            );
+          })}
+          {payload.assessmentBridge.context.length ? (
+            <div className="space-y-2 border-t border-zinc-800 pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Context only</p>
+              {payload.assessmentBridge.context.map((ctx) => (
+                <div key={`${ctx.label}:${ctx.displayValue}`} className="text-[11px]">
+                  <p className="font-semibold text-zinc-300">
+                    {ctx.label}: <span className="tabular-nums text-white">{ctx.displayValue}</span>
+                  </p>
+                  <p className="text-zinc-500">{ctx.note}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-4">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">Programming readiness</p>
@@ -270,7 +439,12 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
         );
       })}
 
-      {payload?.unavailable ? null : <form className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/80 p-4" onSubmit={addResult}>
+      {payload?.unavailable ? null : (
+        <form
+          ref={addFormRef}
+          className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/80 p-4"
+          onSubmit={addResult}
+        >
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">Add benchmark</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-zinc-400">
@@ -351,7 +525,8 @@ export function PerformanceProfileCoachPanel({ athleteId }: { athleteId: string 
         <button type="submit" className="rounded-lg bg-yellow-400 px-3 py-2 text-sm font-bold text-zinc-950">
           Save benchmark
         </button>
-      </form>}
+      </form>
+      )}
     </div>
   );
 }

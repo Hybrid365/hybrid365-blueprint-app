@@ -73,7 +73,7 @@ export function programmingAnchorSourceLabel(source: BenchmarkSource): string {
     case "performance_test":
       return "Benchmark test";
     case "onboarding_test":
-      return "Onboarding test";
+      return "Onboarding assessment";
     case "race_result":
       return "Race result";
     case "athlete_submitted":
