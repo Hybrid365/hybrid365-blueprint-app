@@ -85,9 +85,29 @@ export function targetGlobalWeeksForProgression(args: {
 }
 
 export function describeStageStructure(stage: SessionFamilyStage): string {
-  const block = stage.structuredWorkout.blocks.find((b) => b.type === "repeat");
-  if (!block || block.type !== "repeat") return stage.label;
-  return `${formatRepeatBlock(block)} · ${formatRecoveriesWithSuffix(block.recoveries)}`;
+  const workout = stage.structuredWorkout;
+  const repeat = workout.blocks.find((b) => b.type === "repeat");
+  if (repeat && repeat.type === "repeat") {
+    return `${formatRepeatBlock(repeat)} · ${formatRecoveriesWithSuffix(repeat.recoveries)}`;
+  }
+  const station = workout.blocks.find((b) => b.type === "station_round");
+  if (station && station.type === "station_round") {
+    const run =
+      station.run?.kind === "distance"
+        ? ` + ${station.run.value}${station.run.unit}`
+        : station.run?.kind === "time"
+          ? ` + ${Math.round(station.run.value / 60)} min run`
+          : "";
+    const rec = station.recoveries?.length
+      ? ` · ${formatRecoveriesWithSuffix(station.recoveries)}`
+      : "";
+    return `${station.rounds} × (${station.station.name}${run})${rec}`;
+  }
+  const continuous = workout.blocks.find((b) => b.type === "continuous");
+  if (continuous && continuous.type === "continuous") {
+    return stage.label;
+  }
+  return stage.label;
 }
 
 export type ManualStageOption = {

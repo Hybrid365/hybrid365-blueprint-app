@@ -1,5 +1,8 @@
 /** Coach weekly review — admin Hyrox athlete detail. */
 
+import type { AdaptationCoachDecision } from "@/app/lib/hyroxAdaptationTypes";
+import type { WeeklyAdaptationSlice } from "@/app/lib/hyroxAdaptationWeeklyReview";
+import { parseAdaptationDecisions } from "@/app/lib/hyroxAdaptationWeeklyReview";
 import {
   isHighLoggedRpe,
   isKeyProgrammeSession,
@@ -12,6 +15,8 @@ export type HyroxWeeklyCoachNotes = {
   adjustmentsForNextWeek?: string;
   followUpMessageNeeded?: string;
   sessionChangesRequired?: string;
+  /** Append-only adaptation decisions (foundation — no dedicated table yet) */
+  adaptationDecisions?: AdaptationCoachDecision[];
 };
 
 export type WeeklyReviewAlertSeverity = "info" | "warn" | "critical";
@@ -90,6 +95,8 @@ export type HyroxWeeklyReviewPayload = {
   alerts: WeeklyReviewAlert[];
   coachNotes: HyroxWeeklyCoachNotes;
   coachReviewUpdatedAt: string | null;
+  /** Adaptation foundation slice — recommend-only */
+  adaptation: WeeklyAdaptationSlice | null;
 };
 
 const FATIGUE_KEYWORDS =
@@ -103,11 +110,13 @@ export function parseWeeklyCoachNotesJson(raw: unknown): HyroxWeeklyCoachNotes {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const o = raw as Record<string, unknown>;
   const str = (k: string) => (typeof o[k] === "string" ? o[k] : undefined);
+  const decisions = parseAdaptationDecisions(o.adaptationDecisions);
   return {
     coachObservations: str("coachObservations"),
     adjustmentsForNextWeek: str("adjustmentsForNextWeek"),
     followUpMessageNeeded: str("followUpMessageNeeded"),
     sessionChangesRequired: str("sessionChangesRequired"),
+    adaptationDecisions: decisions.length ? decisions : undefined,
   };
 }
 

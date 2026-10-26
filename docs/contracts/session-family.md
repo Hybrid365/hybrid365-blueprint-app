@@ -1,7 +1,7 @@
 # Contract: Session family (progressive programming)
 
-Status: Slice 1–5 — domain, builder adapters, coach UX pilot, staging hardening, publish integrity.  
-Allow-list flag only. **No** DB migrations / 022. Optional JSONB fields only.
+Status: Slice 1–5 + library expansion batch — 11 code-first families (threshold pilot + HYROX compromised, tempo, easy/long, ski/row, stations, strength foundation).  
+Allow-list flag only. **No** DB migrations / 022. Optional JSONB fields only. Prefer ~30–50 strong families over raw library size.
 
 Owner: Progressive programming (on `integrate/hyrox-batch-1`).
 

@@ -10,6 +10,7 @@ import { useAthletePortalOptional } from "./athletePortalContext";
 import type {
   SessionActivityMetrics,
   SessionActivityType,
+  SessionExecutionFeedbackChips,
   SessionPlannedTargets,
 } from "@/app/lib/hyrox-team/modules/sessionLogging/types";
 
@@ -22,6 +23,7 @@ export type HyroxSessionLogForm = {
   activityType?: SessionActivityType;
   planned?: SessionPlannedTargets | null;
   metrics?: SessionActivityMetrics | null;
+  execution?: SessionExecutionFeedbackChips | null;
 };
 
 export type HyroxSessionLogSaveParams = {
@@ -113,6 +115,7 @@ async function saveViaApi(
       activityType: params.feedback?.activityType,
       planned: params.feedback?.planned,
       metrics: params.feedback?.metrics,
+      execution: params.feedback?.execution,
       expectedAthleteId,
       portalMutationToken,
     }),
@@ -286,6 +289,7 @@ export function useHyroxSessionLog() {
           activityType: params.feedback?.activityType,
           planned: params.feedback?.planned,
           metrics: params.feedback?.metrics,
+          execution: params.feedback?.execution,
           expectedAthleteId: portalAthlete?.id ?? null,
         });
 

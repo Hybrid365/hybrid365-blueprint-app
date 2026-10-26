@@ -103,7 +103,9 @@ export function ProgrammeBuilder({
   livePersistence,
   effectiveProfile = null,
   sessionFamiliesEnabled: sessionFamiliesEnabledProp = false,
+  weekComposerEnabled = false,
   onOpenPerformanceProfile,
+  onOpenWeekComposer,
 }: {
   athlete: CoachAthlete;
   programmeStatus: CoachProgrammeStatus;
@@ -123,8 +125,11 @@ export function ProgrammeBuilder({
   livePersistence?: LiveProgrammePersistenceProps;
   effectiveProfile?: HyroxAthleteProfile | null;
   sessionFamiliesEnabled?: boolean;
+  weekComposerEnabled?: boolean;
   /** Jump to Performance Profile tab to confirm / set programming anchors */
   onOpenPerformanceProfile?: () => void;
+  /** Jump to Week Composer tab */
+  onOpenWeekComposer?: () => void;
 }) {
   const block = useCoachBlockProgramme({
     athlete,
@@ -892,6 +897,15 @@ export function ProgrammeBuilder({
               title="Global entry — prefer Build progression from an eligible library card"
             >
               Add progression
+            </button>
+          ) : null}
+          {weekComposerEnabled && onOpenWeekComposer ? (
+            <button
+              type="button"
+              onClick={onOpenWeekComposer}
+              className="rounded-full border border-zinc-600 bg-zinc-900 px-3 py-1.5 text-xs font-bold text-zinc-200"
+            >
+              Open Composer
             </button>
           ) : null}
         </div>

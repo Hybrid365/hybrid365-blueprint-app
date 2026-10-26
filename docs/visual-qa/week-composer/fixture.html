@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Week Composer — visual fixture</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #0c0c0f;
+      --line: #27272a;
+      --muted: #71717a;
+      --text: #f4f4f5;
+      --gold: #facc15;
+      --emerald: #6ee7b7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1c1917 0%, var(--bg) 55%);
+      color: var(--text);
+      padding: 28px;
+    }
+    .eyebrow {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #ca8a04;
+      font-weight: 700;
+    }
+    h1 { margin: 6px 0 4px; font-size: 22px; font-weight: 650; }
+    .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+    .grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 14px; }
+    .card {
+      background: color-mix(in srgb, var(--card) 88%, black);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(250, 204, 21, 0.12);
+      color: #fde68a;
+      border: 1px solid rgba(250, 204, 21, 0.35);
+      margin-right: 6px;
+    }
+    .chip.ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: #3f3f46;
+    }
+    textarea {
+      width: 100%;
+      margin-top: 8px;
+      min-height: 88px;
+      border-radius: 10px;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: var(--text);
+      padding: 10px;
+      font: inherit;
+      font-size: 13px;
+    }
+    .days { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .day {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 4px;
+      background: #18181b;
+      color: #52525b;
+    }
+    .day.on {
+      background: rgba(250, 204, 21, 0.18);
+      color: #fde68a;
+      border: 1px solid rgba(250, 204, 21, 0.35);
+    }
+    .label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-top: 12px;
+    }
+    .btn {
+      margin-top: 14px;
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 11px;
+      font-weight: 800;
+      background: var(--gold);
+      color: #18181b;
+    }
+    .meta { font-size: 12px; color: #a1a1aa; line-height: 1.55; }
+    .meta strong { color: #fafafa; font-weight: 650; }
+    .vol { display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; }
+    .vol span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .week { margin-top: 16px; display: grid; gap: 8px; }
+    .row {
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(9, 9, 11, 0.7);
+    }
+    .dow { font-size: 12px; font-weight: 800; color: #a1a1aa; padding-top: 2px; }
+    .title { font-size: 13px; font-weight: 600; }
+    .action {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+    .progress { background: rgba(16, 185, 129, 0.15); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.35); }
+    .keep { background: #27272a; color: #d4d4d8; }
+    .reduce { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.35); }
+    .diff { font-size: 11px; color: #d4d4d8; margin-top: 4px; }
+    .diff b { color: #fde68a; }
+    .why { font-size: 11px; color: #71717a; margin-top: 3px; }
+    .warn {
+      margin-top: 12px;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      background: rgba(120, 53, 15, 0.2);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #fde68a;
+    }
+  </style>
+</head>
+<body>
+  <div class="eyebrow">Week Composer</div>
+  <h1>Coach proposal surface</h1>
+  <p class="sub">System proposes · coach reviews · draft apply only · publish separate</p>
+
+  <div class="grid">
+    <div class="card">
+      <span class="chip">Next Week</span>
+      <span class="chip ghost">Remaining Week</span>
+      <div class="label">Coach instruction</div>
+      <textarea readonly>Keep the same weekly structure. Progress Tuesday threshold. Reduce Saturday HYROX slightly. Target 65–70 km. Sunday long run 90 minutes.</textarea>
+      <div class="label">PROGRESS</div>
+      <div class="days"><span class="day">Mon</span><span class="day on">Tue</span><span class="day">Wed</span><span class="day">Thu</span><span class="day">Fri</span><span class="day">Sat</span><span class="day">Sun</span></div>
+      <div class="label">REDUCE</div>
+      <div class="days"><span class="day">Mon</span><span class="day">Tue</span><span class="day">Wed</span><span class="day">Thu</span><span class="day">Fri</span><span class="day on">Sat</span><span class="day">Sun</span></div>
+      <button class="btn" type="button">Generate proposal</button>
+    </div>
+    <div class="card">
+      <div class="label" style="margin-top:0">Athlete context</div>
+      <div class="meta">
+        Target week <strong>7</strong><br />
+        Anchors <strong>threshold, 5K</strong><br />
+        Pain flags <strong>0</strong><br />
+        Authority <strong>coach</strong> · auto-apply forbidden
+      </div>
+      <div style="border-top:1px solid var(--line); margin-top:14px; padding-top:10px">
+        <div class="vol"><span>Proposed run volume</span><span>67.5 km</span></div>
+        <div class="vol"><span>Previous / current</span><span>64 km</span></div>
+        <div class="vol"><span>Change</span><span>+3.5 km</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="row">
+      <div class="dow">MON</div>
+      <div>
+        <div class="title">Easy Run <span class="action keep">KEEP</span></div>
+        <div class="diff"><b>UNCHANGED</b> · Easy 60 min</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="dow">TUE</div>
+      <div>
+        <div class="title">Threshold — 5 Minute Repeats <span class="action progress">PROGRESS</span></div>
+        <div class="diff"><b>PROGRESSED</b> 6 × 5 min · 2 min walk → 6 × 5 min · 60s walk + 60s jog · <span style="color:#fde68a">3:55/km</span></div>
+        <div class="why">Why: Completed last exposure at target · RPE 6 · controlled · no pain</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="dow">SAT</div>
+      <div>
+        <div class="title">Compromised Stations <span class="action reduce">REDUCE</span></div>
+        <div class="diff"><b>REDUCED</b> — no suitable canonical library session</div>
+        <div class="why">Library gap: no Session Family linked for HYROX compromised</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="dow">SUN</div>
+      <div>
+        <div class="title">Long Run <span class="action keep">KEEP</span></div>
+        <div class="diff"><b>UNCHANGED</b> · 90 min</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="warn">
+    <strong>Session library gaps</strong><br />
+    no_family — No suitable canonical library session for Saturday HYROX / compromised reduce
+  </div>
+</body>
+</html>

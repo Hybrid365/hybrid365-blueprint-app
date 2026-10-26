@@ -12,9 +12,14 @@ import type {
   HyroxProgrammeSessionRow,
   HyroxProgrammeSessionStatus,
 } from "@/app/lib/hyroxDatabaseTypes";
+import { resolveFeedbackProfile } from "@/app/lib/hyroxSessionExecutionFeedbackConfig";
+import { isHyroxSessionExecutionChipsEnabled } from "@/app/lib/hyroxSessionExecutionFlag";
+import { programmeStatusForCompletion } from "@/app/lib/hyroxSessionExecutionSummary";
+import { isSessionCompletion } from "@/app/lib/hyroxSessionExecutionTypes";
+import { validateExecutionChipsForSubmit } from "@/app/lib/hyroxSessionExecutionValidate";
 
 const SESSION_SELECT =
-  "id, programme_week_id, athlete_id, status, completed_at, athlete_feedback, day_of_week, session_name";
+  "id, programme_week_id, athlete_id, status, completed_at, athlete_feedback, day_of_week, session_name, category";
 
 export type HyroxSessionLogInput = {
   programmeSessionId: string;
@@ -99,14 +104,51 @@ export async function upsertHyroxAthleteSessionLog(
 
   await assertSessionLoggable(supabase, athlete, existing);
 
-  const completed = input.completed === true;
-  const nextStatus: HyroxProgrammeSessionStatus = completed
-    ? "completed"
-    : input.status && ["scheduled", "completed", "missed", "modified"].includes(input.status)
-      ? input.status
-      : input.feedback?.modifications?.trim()
-        ? "modified"
-        : (existing.status as HyroxProgrammeSessionStatus);
+  const chipsEnabled = isHyroxSessionExecutionChipsEnabled({ id: athlete.id });
+  const executionCompletion = input.feedback?.execution?.completion;
+  const fromExecution =
+    executionCompletion && isSessionCompletion(executionCompletion)
+      ? programmeStatusForCompletion(executionCompletion)
+      : null;
+
+  if (chipsEnabled) {
+    const completing =
+      input.completed === true ||
+      fromExecution === "completed" ||
+      fromExecution === "modified" ||
+      fromExecution === "missed";
+    if (completing) {
+      if (!input.feedback?.execution) {
+        throw new HyroxSessionLogError(
+          "Structured session feedback is required for this athlete.",
+          "VALIDATION"
+        );
+      }
+      const profile = resolveFeedbackProfile({
+        activityType: input.feedback.activityType,
+        category: existing.category,
+        sessionName: existing.session_name,
+      });
+      const validated = validateExecutionChipsForSubmit({
+        chips: input.feedback.execution,
+        profile,
+      });
+      if (!validated.ok) {
+        throw new HyroxSessionLogError(validated.error, "VALIDATION");
+      }
+    }
+  }
+
+  const completed = input.completed === true || fromExecution === "completed";
+  const nextStatus: HyroxProgrammeSessionStatus = fromExecution
+    ? fromExecution
+    : completed
+      ? "completed"
+      : input.status && ["scheduled", "completed", "missed", "modified"].includes(input.status)
+        ? input.status
+        : input.feedback?.modifications?.trim()
+          ? "modified"
+          : (existing.status as HyroxProgrammeSessionStatus);
 
   const athlete_feedback = input.feedback
     ? buildHyroxAthleteSessionFeedback(existing.athlete_feedback, input.feedback)

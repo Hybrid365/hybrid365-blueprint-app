@@ -1,6 +1,7 @@
 import { isHyroxCoachCommandCentreEnabled } from "@/app/lib/hyroxCoachCommandCentreFlag";
 import { isHyroxRaceIntelligenceEnabled } from "@/app/lib/hyroxRaceIntelligenceFlag";
 import { isHyroxSessionFamiliesEnabled } from "@/app/lib/hyroxSessionFamiliesFlag";
+import { isHyroxWeekComposerEnabled } from "@/app/lib/hyroxWeekComposerFlag";
 import HyroxAthleteCoachClient from "./HyroxAthleteCoachClient";
 
 export const metadata = {
@@ -19,6 +20,7 @@ export default async function HyroxAthleteCoachPage({
       commandCentreEnabled={isHyroxCoachCommandCentreEnabled({ id })}
       raceIntelligenceEnabled={isHyroxRaceIntelligenceEnabled({ id })}
       sessionFamiliesEnabled={isHyroxSessionFamiliesEnabled({ id })}
+      weekComposerEnabled={isHyroxWeekComposerEnabled({ id })}
     />
   );
 }

@@ -12,6 +12,7 @@ import { isHyroxPerformanceHubEnabled } from "@/app/lib/hyrox-team/modules/perfo
 import { isHyroxHomeV2Enabled } from "@/app/lib/hyrox-team/modules/home/featureFlag";
 import { isHyroxPerformanceProfileEnabled } from "@/app/lib/hyrox-team/modules/performanceProfile/featureFlag";
 import { isHyroxRaceIntelligenceEnabled } from "@/app/lib/hyroxRaceIntelligenceFlag";
+import { isHyroxSessionExecutionChipsEnabled } from "@/app/lib/hyroxSessionExecutionFlag";
 import { isHyroxProgrammeRoute } from "@/app/lib/supabase/resolveAuthUser";
 import { AthletePaymentPendingNotice } from "@/components/athlete-command-centre/AthletePaymentPendingNotice";
 import { AthleteUnlinkedNotice } from "@/components/athlete-command-centre/AthleteUnlinkedNotice";
@@ -187,6 +188,9 @@ export default async function AthleteLayout({ children }: { children: React.Reac
     id: resolvedAthlete.id,
     email: resolvedAthlete.email ?? user.email ?? null,
   });
+  const sessionExecutionChipsEnabled = isHyroxSessionExecutionChipsEnabled({
+    id: resolvedAthlete.id,
+  });
 
   return (
     <AthletePortalProvider
@@ -205,6 +209,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       homeV2Enabled={homeV2Enabled}
       performanceProfileEnabled={performanceProfileEnabled}
       raceIntelligenceEnabled={raceIntelligenceEnabled}
+      sessionExecutionChipsEnabled={sessionExecutionChipsEnabled}
     >
       {children}
     </AthletePortalProvider>

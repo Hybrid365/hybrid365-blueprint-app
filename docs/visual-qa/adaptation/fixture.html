@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Adaptation foundation — coach weekly review fixture</title>
+    <style>
+      :root {
+        --bg: #09090b;
+        --card: #18181b;
+        --line: #27272a;
+        --text: #fafafa;
+        --muted: #71717a;
+        --yellow: #facc15;
+        --amber: #fbbf24;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 32px;
+      }
+      .card {
+        max-width: 720px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--card);
+        padding: 20px;
+      }
+      .eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: color-mix(in oklab, var(--yellow) 90%, white);
+      }
+      .verb {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--yellow);
+        margin: 4px 0;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      ul {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: #a1a1aa;
+        font-size: 14px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .btn {
+        border: 1px solid #3f3f46;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #d4d4d8;
+      }
+      .btn.primary {
+        border-color: color-mix(in oklab, var(--yellow) 50%, transparent);
+        background: color-mix(in oklab, var(--yellow) 12%, transparent);
+        color: #fef9c3;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+      }
+      .stat span {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+      }
+      .stat strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <p class="eyebrow">Execution &amp; adaptation</p>
+      <div class="stats">
+        <div class="stat"><span>Complete / partial / missed</span><strong>3 / 1 / 1</strong></div>
+        <div class="stat"><span>Unresolved</span><strong>0</strong></div>
+        <div class="stat"><span>Avg session RPE</span><strong>6.5</strong></div>
+        <div class="stat"><span>Quality done</span><strong>1 / 1</strong></div>
+      </div>
+      <p class="eyebrow">Recommendation</p>
+      <p style="margin: 6px 0 0; font-weight: 700">Threshold — 5 Minute Repeats · Stage 2</p>
+      <p class="verb">PROGRESS</p>
+      <p class="meta">Confidence high · Suggested next: 6 × 5 min · 60 sec walk + 60 sec jog · Auto-apply forbidden</p>
+      <p class="meta" style="margin-top:6px;color:#86efac">Automation: SAFE_FAMILY_PROGRESSION (Track-ready later — 1-1 still coach decides)</p>
+      <ul>
+        <li>Completed session</li>
+        <li>All pace/target chips achieved</li>
+        <li>RPE 6</li>
+        <li>Control: controlled</li>
+        <li>No pain reported</li>
+        <li>Previous comparable family exposure also completed well</li>
+      </ul>
+      <div style="margin-top:12px;border:1px solid #27272a;border-radius:10px;padding:10px;background:#09090b">
+        <p class="eyebrow" style="color:#52525b">Athlete explanation preview</p>
+        <p style="margin:4px 0 0;font-weight:700">Threshold progressed</p>
+        <p class="meta" style="margin-top:4px">You completed the session, hit all prescribed targets, RPE 6, controlled feel, no pain.</p>
+        <p style="margin-top:6px;font-size:12px;color:#fde68a">Next exposure: 6 × 5 min · 60 sec walk + 60 sec jog.</p>
+      </div>
+      <div class="actions">
+        <div class="btn primary">Accept PROGRESS</div>
+        <div class="btn">REPEAT</div>
+        <div class="btn">REDUCE</div>
+        <div class="btn">DELOAD</div>
+        <div class="btn">KEEP</div>
+        <div class="btn">COACH_REVIEW</div>
+      </div>
+    </div>
+  </body>
+</html>

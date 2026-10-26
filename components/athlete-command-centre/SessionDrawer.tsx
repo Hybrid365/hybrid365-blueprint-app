@@ -10,17 +10,40 @@ import {
   emptyMetricsForActivity,
   type SessionActivityMetrics,
   type SessionActivityType,
+  type SessionExecutionFeedbackChips,
   type SessionPlannedTargets,
 } from "@/app/lib/hyrox-team/modules/sessionLogging/types";
 import { inferSessionActivityType } from "@/app/lib/hyrox-team/modules/sessionLogging/inferActivityType";
 import { extractPlannedTargets } from "@/app/lib/hyrox-team/modules/sessionLogging/plannedTargets";
+import { resolveFeedbackProfile } from "@/app/lib/hyroxSessionExecutionFeedbackConfig";
+import {
+  SessionExecutionChips,
+  executionChipsReady,
+} from "./SessionExecutionChips";
 import {
   useHyroxSessionLog,
   type HyroxSessionLogForm,
 } from "./useHyroxSessionLog";
+import { useAthletePortalOptional } from "./athletePortalContext";
+import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 import { SessionActivityLogFields } from "./SessionActivityLogFields";
 import { SessionCompleteConfirm } from "./visual/SessionCompleteConfirm";
 import { SessionTarget, SessionTargetRow } from "./visual/SessionTarget";
+
+function todayYmdLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function isPastUnloggedSession(session: HyroxSession | null | undefined): boolean {
+  if (!session) return false;
+  if (session.status !== "upcoming") return false;
+  if (!session.dateYmd) return false;
+  return session.dateYmd < todayYmdLocal();
+}
 
 type Props = {
   sessionId: string | null;
@@ -91,6 +114,7 @@ function formFromSession(
     activityType,
     planned,
     metrics,
+    execution: null,
   };
 }
 
@@ -113,6 +137,10 @@ export function SessionDrawer({
     if (!resolvedDetail) return null;
     return { ...resolvedDetail, coachNote: realCoachNote };
   }, [sessionDetail, sessionId, realCoachNote]);
+  const portal = useAthletePortalOptional();
+  const adminPreview = useAthleteAdminPreview();
+  const chipsEnabled = Boolean(portal?.sessionExecutionChipsEnabled);
+  void adminPreview;
   const {
     saving,
     error,
@@ -122,6 +150,9 @@ export function SessionDrawer({
   } = useHyroxSessionLog();
   const [showLogForm, setShowLogForm] = useState(initialShowLogForm);
   const [form, setForm] = useState<HyroxSessionLogForm>(() => formFromSession(session, d));
+  const [forgottenPhase, setForgottenPhase] = useState<"prompt" | "flow" | "dismissed">(
+    "prompt"
+  );
   const drawerResetKey = open
     ? `${sessionId}|${initialShowLogForm}|${session?.completedAt ?? ""}|${session?.loggedRpe ?? ""}|${session?.logNotes ?? ""}|${session?.logScore ?? ""}`
     : "closed";
@@ -131,6 +162,7 @@ export function SessionDrawer({
     setLastDrawerResetKey(drawerResetKey);
     setForm(formFromSession(session, d));
     setShowLogForm(initialShowLogForm);
+    setForgottenPhase("prompt");
   }
 
   useEffect(() => {
@@ -169,6 +201,17 @@ export function SessionDrawer({
     [onSessionUpdated, d]
   );
 
+  const feedbackProfile = useMemo(
+    () =>
+      resolveFeedbackProfile({
+        activityType: form.activityType,
+        category: d?.categoryTag ?? session?.type,
+        sessionName: session?.name ?? sessionTitle,
+        sessionTypeLabel: session?.type,
+      }),
+    [form.activityType, d?.categoryTag, session?.type, session?.name, sessionTitle]
+  );
+
   const feedbackPayload = useMemo(
     () => ({
       rpe: form.rpe || undefined,
@@ -178,12 +221,17 @@ export function SessionDrawer({
       activityType: form.activityType,
       planned: form.planned ?? null,
       metrics: form.metrics ?? null,
+      execution: form.execution ?? null,
     }),
     [form]
   );
 
   const handleMarkComplete = useCallback(async () => {
     if (!sessionId || !canSave) return;
+    if (chipsEnabled) {
+      setShowLogForm(true);
+      return;
+    }
     clearMessages();
     const updated = await saveSessionLog({
       programmeSessionId: sessionId,
@@ -191,7 +239,48 @@ export function SessionDrawer({
       feedback: feedbackPayload,
     });
     if (updated) handleUpdated(updated);
-  }, [sessionId, canSave, clearMessages, saveSessionLog, feedbackPayload, handleUpdated]);
+  }, [
+    sessionId,
+    canSave,
+    chipsEnabled,
+    clearMessages,
+    saveSessionLog,
+    feedbackPayload,
+    handleUpdated,
+  ]);
+
+  const handleSaveStructured = useCallback(async () => {
+    if (!sessionId || !canSave || !form.execution) return;
+    if (!executionChipsReady(form.execution, feedbackProfile)) return;
+    clearMessages();
+    const updated = await saveSessionLog({
+      programmeSessionId: sessionId,
+      completed: form.execution.completion === "complete",
+      feedback: {
+        ...feedbackPayload,
+        execution: form.execution,
+        rpe:
+          form.execution.rpe != null
+            ? String(form.execution.rpe)
+            : feedbackPayload.rpe,
+        notes: form.execution.athleteNote ?? feedbackPayload.notes,
+        score:
+          form.execution.actuals?.primaryResult != null
+            ? String(form.execution.actuals.primaryResult)
+            : feedbackPayload.score,
+      },
+    });
+    if (updated) handleUpdated(updated);
+  }, [
+    sessionId,
+    canSave,
+    form.execution,
+    feedbackProfile,
+    clearMessages,
+    saveSessionLog,
+    feedbackPayload,
+    handleUpdated,
+  ]);
 
   const handleSaveLog = useCallback(async () => {
     if (!sessionId || !canSave) return;
@@ -207,9 +296,20 @@ export function SessionDrawer({
   if (!open || !d) return null;
 
   const recordFields = d.recordFields ?? ["RPE", "Duration", "Notes"];
-  const isComplete = session?.status === "complete" || form.completed;
+  const alreadyLogged =
+    session?.status === "complete" ||
+    session?.status === "missed" ||
+    session?.status === "modified";
+  const isComplete = alreadyLogged || form.completed;
   const activityType = form.activityType ?? "other";
   const metrics = form.metrics ?? emptyMetricsForActivity(activityType);
+  const showForgotten =
+    chipsEnabled &&
+    isPastUnloggedSession(session) &&
+    forgottenPhase === "prompt" &&
+    !alreadyLogged &&
+    !successMessage;
+  const structuredReady = executionChipsReady(form.execution ?? null, feedbackProfile);
 
   return (
     <>
@@ -329,7 +429,45 @@ export function SessionDrawer({
             </ul>
           </Block>
 
-          {showLogForm ? (
+          {chipsEnabled ? (
+            <SessionExecutionChips
+              profile={feedbackProfile}
+              value={form.execution ?? null}
+              forgottenPrompt={showForgotten}
+              onForgottenChoice={(choice) => {
+                if (choice === "later") {
+                  setForgottenPhase("dismissed");
+                  onClose();
+                  return;
+                }
+                setForgottenPhase("flow");
+                if (choice === "no") {
+                  setForm((f) => ({
+                    ...f,
+                    execution: { completion: "missed", missedReason: null, athleteNote: null },
+                  }));
+                } else {
+                  setForm((f) => ({
+                    ...f,
+                    execution: f.execution?.completion
+                      ? f.execution
+                      : { completion: "complete", pain: null, rpe: null },
+                  }));
+                }
+              }}
+              onChange={(execution: SessionExecutionFeedbackChips) =>
+                setForm((f) => ({
+                  ...f,
+                  execution,
+                  completed: execution.completion === "complete",
+                  rpe: execution.rpe != null ? String(execution.rpe) : f.rpe,
+                  notes: execution.athleteNote ?? f.notes,
+                }))
+              }
+            />
+          ) : null}
+
+          {showLogForm && !chipsEnabled ? (
             <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-4 space-y-3">
               <p className="text-xs font-bold uppercase text-yellow-400">Log session</p>
               <label className="flex items-center gap-2 text-sm text-zinc-300">
@@ -383,6 +521,28 @@ export function SessionDrawer({
               </Field>
             </div>
           ) : null}
+
+          {showLogForm && chipsEnabled ? (
+            <details className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+              <summary className="cursor-pointer text-xs font-semibold text-zinc-400">
+                Extra metrics (optional)
+              </summary>
+              <div className="mt-3">
+                <SessionActivityLogFields
+                  activityType={activityType}
+                  planned={form.planned ?? null}
+                  metrics={metrics}
+                  disabled={!canSave}
+                  onChange={(nextMetrics) =>
+                    setForm((f) => ({
+                      ...f,
+                      metrics: nextMetrics,
+                    }))
+                  }
+                />
+              </div>
+            </details>
+          ) : null}
         </div>
 
         <footer className="shrink-0 space-y-2 border-t border-zinc-800 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -399,40 +559,73 @@ export function SessionDrawer({
           {successMessage ? (
             <SessionCompleteConfirm
               rpe={form.rpe}
+              execution={form.execution?.execution ?? null}
               notes={form.notes}
               actuals={form.score.trim() ? [{ label: "Score", value: form.score }] : undefined}
             />
           ) : null}
 
-          <button
-            type="button"
-            disabled={!canSave || isComplete}
-            onClick={() => void handleMarkComplete()}
-            className="min-h-11 w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving ? "Saving…" : isComplete ? "Already complete" : "Mark complete"}
-          </button>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              disabled={!canSave}
-              onClick={() => {
-                clearMessages();
-                setShowLogForm((v) => !v);
-              }}
-              className="min-h-11 rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {showLogForm ? "Hide log" : "Log session"}
-            </button>
-            <button
-              type="button"
-              disabled={!canSave || !showLogForm}
-              onClick={() => void handleSaveLog()}
-              className="min-h-11 rounded-xl border border-yellow-400/40 py-2.5 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {saving ? "Saving…" : "Save log"}
-            </button>
-          </div>
+          {chipsEnabled ? (
+            <>
+              <button
+                type="button"
+                disabled={!canSave || alreadyLogged || showForgotten || !structuredReady}
+                onClick={() => void handleSaveStructured()}
+                className="min-h-11 w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving
+                  ? "Saving…"
+                  : alreadyLogged
+                    ? "Already logged"
+                    : form.execution?.completion === "missed"
+                      ? "Save missed"
+                      : "Save feedback"}
+              </button>
+              <button
+                type="button"
+                disabled={!canSave}
+                onClick={() => {
+                  clearMessages();
+                  setShowLogForm((v) => !v);
+                }}
+                className="min-h-11 w-full rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {showLogForm ? "Hide extra metrics" : "Add extra metrics"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={!canSave || isComplete}
+                onClick={() => void handleMarkComplete()}
+                className="min-h-11 w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? "Saving…" : isComplete ? "Already complete" : "Mark complete"}
+              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={!canSave}
+                  onClick={() => {
+                    clearMessages();
+                    setShowLogForm((v) => !v);
+                  }}
+                  className="min-h-11 rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showLogForm ? "Hide log" : "Log session"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!canSave || !showLogForm}
+                  onClick={() => void handleSaveLog()}
+                  className="min-h-11 rounded-xl border border-yellow-400/40 py-2.5 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saving ? "Saving…" : "Save log"}
+                </button>
+              </div>
+            </>
+          )}
         </footer>
       </aside>
     </>

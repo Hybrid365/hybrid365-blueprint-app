@@ -47,6 +47,10 @@ export function parseHyroxAthleteSessionFeedback(
     activityType: (o.activityType as SessionActivityType) ?? null,
     planned: (o.planned as SessionPlannedTargets) ?? null,
     metrics: (o.metrics as SessionActivityMetrics) ?? null,
+    execution:
+      o.execution && typeof o.execution === "object" && !Array.isArray(o.execution)
+        ? (o.execution as HyroxAthleteSessionFeedbackV2["execution"])
+        : null,
   };
 }
 
@@ -132,6 +136,15 @@ export function buildHyroxAthleteSessionFeedback(
   if (activityType !== undefined) next.activityType = activityType;
   if (metrics !== undefined) next.metrics = metrics;
   if (planned !== undefined) next.planned = planned;
+  if (patch.execution !== undefined) {
+    next.execution = patch.execution;
+    if (patch.execution?.rpe != null && patch.rpe === undefined) {
+      next.rpe = String(patch.execution.rpe);
+    }
+    if (patch.execution?.athleteNote != null && patch.notes === undefined) {
+      next.notes = patch.execution.athleteNote;
+    }
+  }
 
   return next as HyroxJson;
 }

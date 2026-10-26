@@ -15,6 +15,8 @@ export type HyroxSession = {
   day: string;
   dayShort: string;
   dateLabel: string;
+  /** Calendar YMD when programme start is known — used for forgotten-session prompt */
+  dateYmd?: string | null;
   name: string;
   type: "Run" | "Strength" | "Hybrid" | "Recovery" | "Aerobic";
   focus: string;

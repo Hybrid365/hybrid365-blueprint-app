@@ -94,6 +94,20 @@ export type SessionActivityMetrics =
   | HyroxSessionMetrics
   | OtherSessionMetrics;
 
+/** Structured completion chips — see docs/contracts/session-execution.md */
+export type SessionExecutionFeedbackChips = {
+  completion: "complete" | "partial" | "missed";
+  execution?: "all" | "most" | "some" | "missed_target" | null;
+  rpe?: number | null;
+  control?: "very_controlled" | "controlled" | "appropriate" | "hard" | "maximal" | null;
+  pain?: "none" | "minor" | "meaningful" | null;
+  energy?: "good" | "ok" | "low" | null;
+  legs?: "good" | "heavy" | "sore" | null;
+  athleteNote?: string | null;
+  missedReason?: "illness" | "life" | "fatigue" | "pain_injury" | "schedule" | "other" | null;
+  actuals?: Record<string, string | number | null> | null;
+};
+
 export type HyroxAthleteSessionFeedbackV2 = {
   /** Legacy fields — always dual-read by existing UI */
   rpe?: string | null;
@@ -106,6 +120,8 @@ export type HyroxAthleteSessionFeedbackV2 = {
   activityType?: SessionActivityType | null;
   planned?: SessionPlannedTargets | null;
   metrics?: SessionActivityMetrics | null;
+  /** Adaptation foundation — additive structured chips */
+  execution?: SessionExecutionFeedbackChips | null;
 };
 
 export function emptyStrengthEntry(): StrengthExerciseEntry {

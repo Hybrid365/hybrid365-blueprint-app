@@ -155,9 +155,11 @@ function validateStage(stage: SessionFamilyStage, familyId: string, issues: stri
     }
   }
   validateStructuredWorkout(stage.structuredWorkout, `${path}.structuredWorkout`, issues);
-  if (!Array.isArray(stage.prescriptionSlots) || stage.prescriptionSlots.length === 0) {
-    push(issues, `${path}: at least one prescription slot required`);
-  } else {
+  // Empty slots allowed for volume/structure families (easy/long, strength, stations)
+  // where load/duration is coach-controlled and no anchor formula applies.
+  if (!Array.isArray(stage.prescriptionSlots)) {
+    push(issues, `${path}: prescriptionSlots must be an array (may be empty)`);
+  } else if (stage.prescriptionSlots.length > 0) {
     const seenSlots = new Set<string>();
     for (const slot of stage.prescriptionSlots) {
       if (!SLOT_SET.has(slot.slot)) {

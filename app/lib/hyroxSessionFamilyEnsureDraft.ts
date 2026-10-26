@@ -23,6 +23,20 @@ export async function fetchLatestDraftForGlobalWeek(
   athleteId: string,
   weekNumber: number
 ): Promise<HyroxProgrammeDraftRow | null> {
+  // Prefer an unpublished working draft over a published snapshot of the same week.
+  const { data: unpublished, error: unpubErr } = await supabase
+    .from("hyrox_programme_drafts")
+    .select(DRAFT_SELECT)
+    .eq("athlete_id", athleteId)
+    .eq("week_number", weekNumber)
+    .neq("status", "archived")
+    .is("published_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (unpubErr) throw new Error(unpubErr.message);
+  if (unpublished) return unpublished as HyroxProgrammeDraftRow;
+
   const { data, error } = await supabase
     .from("hyrox_programme_drafts")
     .select(DRAFT_SELECT)

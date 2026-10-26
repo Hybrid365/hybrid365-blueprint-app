@@ -8,6 +8,7 @@ import { formatRaceCountdown } from "@/app/lib/hyroxCoachMockAthletes";
 import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBlockReviewPanel";
 import { CoachWeeklyReviewPanel } from "@/components/admin-hyrox-athletes/CoachWeeklyReviewPanel";
 import { ProgrammeBuilder } from "@/components/admin-hyrox-athletes/ProgrammeBuilder";
+import { WeekComposerPanel } from "@/components/admin-hyrox-athletes/WeekComposerPanel";
 import { PerformanceProfileCoachPanel } from "@/components/admin-hyrox-athletes/PerformanceProfileCoachPanel";
 import { PerformanceTestingCoachPanel } from "@/components/admin-hyrox-athletes/PerformanceTestingCoachPanel";
 import { CommandCentreOverview } from "@/components/admin-hyrox-athletes/CommandCentreOverview";
@@ -34,6 +35,7 @@ const TABS = [
   "Performance Profile",
   "Profile Review",
   "Programme Builder",
+  "Week Composer",
   "Block Review",
   "Weekly Review",
   "Check-Ins",
@@ -87,6 +89,12 @@ export type ProgrammeWorkflowInjectProps = {
   assessmentMappingBanner: { bullets: string[] } | null;
   onClearAssessmentMappingBanner: () => void;
   livePersistence?: LiveProgrammePersistenceProps;
+  /** Week Composer → open applied draft in Programme Builder */
+  onComposerDraftApplied?: (args: {
+    draft: CoachDraftWeek;
+    draftId: string | null;
+    targetWeekNumber: number;
+  }) => void;
 };
 
 export type AthleteTab = (typeof TABS)[number];
@@ -114,6 +122,7 @@ export function CoachAthleteDashboard({
   commandCentreEnabled = false,
   raceIntelligenceEnabled = false,
   sessionFamiliesEnabled = false,
+  weekComposerEnabled = false,
 }: {
   athlete: CoachAthlete;
   tab: AthleteTab;
@@ -129,8 +138,13 @@ export function CoachAthleteDashboard({
   commandCentreEnabled?: boolean;
   raceIntelligenceEnabled?: boolean;
   sessionFamiliesEnabled?: boolean;
+  weekComposerEnabled?: boolean;
 }) {
-  const visibleTabs = TABS.filter((t) => t !== "Races" || raceIntelligenceEnabled);
+  const visibleTabs = TABS.filter((t) => {
+    if (t === "Races" && !raceIntelligenceEnabled) return false;
+    if (t === "Week Composer" && !weekComposerEnabled) return false;
+    return true;
+  });
   return (
     <div>
       <AthleteCommandHeader athlete={athlete} programmeStatus={programmeStatus} />
@@ -203,9 +217,34 @@ export function CoachAthleteDashboard({
           onClearAssessmentMappingBanner={programmeWorkflowInject.onClearAssessmentMappingBanner}
           livePersistence={programmeWorkflowInject.livePersistence}
           effectiveProfile={effectiveProfile}
+          weekComposerEnabled={weekComposerEnabled}
           onOpenPerformanceProfile={() => onTabChange("Performance Profile")}
+          onOpenWeekComposer={
+            weekComposerEnabled ? () => onTabChange("Week Composer") : undefined
+          }
         />
       )}
+      {tab === "Week Composer" && weekComposerEnabled && programmeWorkflowInject.livePersistence?.athleteId ? (
+        <WeekComposerPanel
+          athleteId={programmeWorkflowInject.livePersistence.athleteId}
+          suggestedWeek={
+            athlete.programmeBlock && athlete.blockWeek
+              ? (athlete.programmeBlock - 1) * 4 + athlete.blockWeek
+              : undefined
+          }
+          onOpenProgrammeBuilder={(args) => {
+            if (programmeWorkflowInject.onComposerDraftApplied) {
+              programmeWorkflowInject.onComposerDraftApplied(args);
+            } else {
+              onTabChange("Programme Builder");
+            }
+          }}
+        />
+      ) : tab === "Week Composer" && weekComposerEnabled ? (
+        <p className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-4 py-6 text-sm text-zinc-400">
+          Week Composer is available for live Supabase athletes.
+        </p>
+      ) : null}
       {tab === "Block Review" && programmeWorkflowInject.livePersistence?.athleteId ? (
         <CoachBlockReviewPanel
           athleteId={programmeWorkflowInject.livePersistence.athleteId}
@@ -227,6 +266,13 @@ export function CoachAthleteDashboard({
           suggestedWeek={
             athlete.programmeBlock && athlete.blockWeek
               ? (athlete.programmeBlock - 1) * 4 + athlete.blockWeek
+              : undefined
+          }
+          onOpenWeekComposer={
+            weekComposerEnabled
+              ? () => {
+                  onTabChange("Week Composer");
+                }
               : undefined
           }
         />
