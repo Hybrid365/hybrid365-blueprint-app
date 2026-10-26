@@ -23,6 +23,7 @@ import type { WeekdayName } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { SandboxTimeOfDay } from "@/app/lib/hyroxProgrammeSandbox";
 import { coachStageShortLabel } from "@/app/lib/hyroxSessionFamilyAthleteCopy";
 import { resolveLibrarySessionFamilyLink } from "@/app/lib/hyroxSessionFamilyLibraryBridge";
+import { SessionFamilyProgressionPreview } from "@/components/admin-hyrox-athletes/SessionFamilyProgressionPreview";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 
 const CATEGORIES = Object.keys(LIBRARY_CATEGORY_LABELS) as LibraryCategory[];
@@ -228,14 +229,16 @@ export function SessionLibraryPanel({
             ? "Replace with a library session or build from scratch"
             : addTarget
               ? `Adding to ${addTarget.day} · ${addTarget.slot}`
-              : "Select day slot, then choose a route"}
+              : "Select day slot · add single · or build progression"}
         </p>
         <div className="mt-3 grid grid-cols-1 gap-2">
           <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2">
             <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">
               Browse session library
             </p>
-            <p className="text-[11px] text-zinc-500">Search, filter, then add a snapshot.</p>
+            <p className="text-[11px] text-zinc-500">
+              Filter Progression Ready · preview path · see anchor vs coach-load.
+            </p>
           </div>
           <button
             type="button"
@@ -337,6 +340,14 @@ export function SessionLibraryPanel({
         ))}
       </div>
       <ul className="flex-1 space-y-2 overflow-y-auto p-2">
+        {quickFilter === "progression_ready" ? (
+          <li className="rounded-lg border border-yellow-500/25 bg-yellow-400/5 px-2.5 py-2 text-[10px] text-yellow-100/80">
+            <span className="font-bold text-yellow-200">Progression Ready</span>
+            {" — "}
+            Canonical Session Families with valid PROGRESS / REPEAT / REDUCE / DELOAD edges.
+            Inspect the preview before adding.
+          </li>
+        ) : null}
         {sessions.map((s) => {
           const guardrails = guardrailContext
             ? getSessionGuardrailWarnings(s, guardrailContext)
@@ -417,8 +428,15 @@ export function SessionLibraryPanel({
                   <PriorityMeta entry={s} />
                   {familyLink ? (
                     <p className="mt-1 text-[9px] font-medium text-violet-200/90">
-                      {coachStageShortLabel(familyLink.stage.key)} of {familyLink.family.name}
+                      {familyLink.family.name} · {coachStageShortLabel(familyLink.stage.key)} ·{" "}
+                      {familyLink.family.modality}
                     </p>
+                  ) : null}
+                  {familyLink && (addChoiceId === s.id || quickFilter === "progression_ready") ? (
+                    <SessionFamilyProgressionPreview
+                      family={familyLink.family}
+                      highlightStageId={familyLink.stage.id}
+                    />
                   ) : null}
                   <ExpandableStandards entry={s} />
                   {guardrails.length > 0 ? (

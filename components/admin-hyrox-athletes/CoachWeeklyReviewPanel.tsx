@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AdaptationVerb } from "@/app/lib/hyroxAdaptationTypes";
 import { deriveLiveGlobalWeek } from "@/app/lib/hyroxProgrammeDates";
 import type {
   HyroxWeeklyCoachNotes,
@@ -10,7 +11,9 @@ import type {
 import { emptyWeeklyCoachNotes, isHighRpeForDisplay } from "@/app/lib/hyroxWeeklyReview";
 import { DashCard, SectionHeading, StatTile } from "@/components/hyrox-team/HyroxDashboardUi";
 
-const COACH_NOTE_FIELDS: { key: keyof HyroxWeeklyCoachNotes; label: string; rows: number }[] = [
+type CoachNoteTextKey = Exclude<keyof HyroxWeeklyCoachNotes, "adaptationDecisions">;
+
+const COACH_NOTE_FIELDS: { key: CoachNoteTextKey; label: string; rows: number }[] = [
   { key: "coachObservations", label: "Coach observations", rows: 3 },
   { key: "adjustmentsForNextWeek", label: "Adjustments for next week", rows: 3 },
   { key: "followUpMessageNeeded", label: "Follow-up message needed", rows: 2 },
@@ -68,11 +71,14 @@ export function CoachWeeklyReviewPanel({
   programmeStartDate = null,
   programmeLengthWeeks = 12,
   suggestedWeek,
+  onOpenWeekComposer,
 }: {
   athleteId: string;
   programmeStartDate?: string | null;
   programmeLengthWeeks?: number;
   suggestedWeek?: number;
+  /** Jump to Week Composer with this review week as source */
+  onOpenWeekComposer?: (sourceWeek: number) => void;
 }) {
   const maxWeeks = programmeLengthWeeks === 16 ? 16 : 12;
   const defaultWeek = useMemo(() => {
@@ -96,6 +102,7 @@ export function CoachWeeklyReviewPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [decisionBusy, setDecisionBusy] = useState<string | null>(null);
 
   const weekOptions = useMemo(() => {
     const publishedMax = review?.availableWeeks.length
@@ -165,6 +172,37 @@ export function CoachWeeklyReviewPanel({
   };
 
   const summary = review?.summary;
+  const adaptation = review?.adaptation;
+
+  async function recordDecision(sessionId: string, coachVerb: AdaptationVerb) {
+    setDecisionBusy(`${sessionId}:${coachVerb}`);
+    setError(null);
+    try {
+      const res = await fetch(`/api/hyrox/athletes/${athleteId}/weekly-review`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          week_number: weekNumber,
+          programme_week_id: review?.summary.programmeWeekId ?? null,
+          action: "record_adaptation_decision",
+          sessionId,
+          coachVerb,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data.error ?? "Could not record decision.");
+        return;
+      }
+      setToast(data.message ?? "Decision recorded — programme unchanged.");
+      setTimeout(() => setToast(null), 4000);
+      await load();
+    } catch {
+      setError("Network error recording decision.");
+    } finally {
+      setDecisionBusy(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -218,11 +256,22 @@ export function CoachWeeklyReviewPanel({
                   <p className="mt-1 text-sm text-zinc-500">Focus: {summary.weeklyFocus}</p>
                 ) : null}
               </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold uppercase ring-1 ${calendarStatusClass(summary.calendarStatus)}`}
-              >
-                {calendarStatusLabel(summary.calendarStatus)}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {onOpenWeekComposer ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenWeekComposer(weekNumber)}
+                    className="rounded-full border border-yellow-500/40 bg-yellow-400/10 px-3 py-1.5 text-xs font-bold text-yellow-100"
+                  >
+                    Compose next week
+                  </button>
+                ) : null}
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-bold uppercase ring-1 ${calendarStatusClass(summary.calendarStatus)}`}
+                >
+                  {calendarStatusLabel(summary.calendarStatus)}
+                </span>
+              </div>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -279,6 +328,178 @@ export function CoachWeeklyReviewPanel({
                   </li>
                 ))}
               </ul>
+            </DashCard>
+          ) : null}
+
+          {adaptation ? (
+            <DashCard>
+              <SectionHeading title="Execution & adaptation" />
+              <p className="mb-3 text-sm text-zinc-500">
+                System recommendations only. Accepting a decision records an audit — it does not
+                change the published programme.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <StatTile
+                  label="Complete / partial / missed"
+                  value={`${adaptation.summary.completed} / ${adaptation.summary.partial} / ${adaptation.summary.missed}`}
+                />
+                <StatTile
+                  label="Unresolved"
+                  value={String(adaptation.summary.unresolved)}
+                />
+                <StatTile
+                  label="Avg session RPE"
+                  value={
+                    adaptation.summary.averageSessionRpe != null
+                      ? String(adaptation.summary.averageSessionRpe)
+                      : "—"
+                  }
+                />
+                <StatTile
+                  label="Quality done"
+                  value={`${adaptation.summary.qualitySessionCompletion.completedOrPartial} / ${adaptation.summary.qualitySessionCompletion.planned}`}
+                />
+              </div>
+              {adaptation.summary.painFlags.length ? (
+                <p className="mt-3 text-sm text-amber-200">
+                  Pain flags:{" "}
+                  {adaptation.summary.painFlags
+                    .map((p) => `${p.sessionName} (${p.pain})`)
+                    .join(" · ")}
+                </p>
+              ) : null}
+              {adaptation.recommendations.length ? (
+                <ul className="mt-4 space-y-3">
+                  {adaptation.recommendations.map((rec) => {
+                    const session = adaptation.sessions.find((s) => s.sessionId === rec.sessionId);
+                    const prior = (adaptation.decisions ?? []).filter(
+                      (d) => d.sessionId === rec.sessionId
+                    );
+                    return (
+                      <li
+                        key={rec.sessionId}
+                        className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                              Recommendation
+                            </p>
+                            <p className="mt-1 text-sm font-bold text-white">
+                              {session?.sessionName ?? rec.sessionId}
+                            </p>
+                            <p className="mt-1 text-lg font-bold text-yellow-300">{rec.verb}</p>
+                            <p className="text-xs text-zinc-500">
+                              Confidence {rec.confidence}
+                              {rec.suggestedNext?.toStageLabel
+                                ? ` · Suggested next: ${rec.suggestedNext.toStageLabel}`
+                                : ""}
+                              {rec.autoApplyForbidden ? " · Auto-apply forbidden" : ""}
+                            </p>
+                            {rec.automationEligibility ? (
+                              <p className="mt-1 text-[11px] text-zinc-500">
+                                Automation:{" "}
+                                <span
+                                  className={
+                                    rec.automationEligibility.allowed
+                                      ? "text-emerald-300"
+                                      : "text-amber-300"
+                                  }
+                                >
+                                  {rec.automationEligibility.class}
+                                </span>
+                                {rec.automationEligibility.allowed
+                                  ? " (Track-ready later — 1-1 still coach decides)"
+                                  : ""}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {rec.executionSummary?.source === "structured" ? (
+                              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">
+                                Structured
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-zinc-700/60 px-2 py-0.5 text-[10px] font-bold uppercase text-zinc-400">
+                                Legacy / missing chips
+                              </span>
+                            )}
+                            {!rec.fitnessPenalty ? (
+                              <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-300">
+                                No fitness penalty
+                              </span>
+                            ) : null}
+                            {rec.escalateToCoach ? (
+                              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-200">
+                                Review
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-400">
+                          {rec.reasons.map((reason) => (
+                            <li key={reason}>{reason}</li>
+                          ))}
+                        </ul>
+                        {rec.athleteExplanation ? (
+                          <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+                              Athlete explanation preview
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-zinc-200">
+                              {rec.athleteExplanation.title}
+                            </p>
+                            <p className="mt-0.5 text-xs text-zinc-400">
+                              {rec.athleteExplanation.summary}
+                            </p>
+                            {rec.athleteExplanation.change ? (
+                              <p className="mt-1 text-xs text-yellow-200/80">
+                                {rec.athleteExplanation.change}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {rec.coachOptions.slice(0, 6).map((verb) => (
+                            <button
+                              key={verb}
+                              type="button"
+                              disabled={Boolean(decisionBusy)}
+                              onClick={() => void recordDecision(rec.sessionId, verb)}
+                              className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                                verb === rec.verb
+                                  ? "border-yellow-500/50 bg-yellow-400/10 text-yellow-100"
+                                  : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                              } disabled:opacity-50`}
+                            >
+                              {decisionBusy === `${rec.sessionId}:${verb}`
+                                ? "Saving…"
+                                : verb === rec.verb
+                                  ? `Accept ${verb}`
+                                  : verb}
+                            </button>
+                          ))}
+                        </div>
+                        {prior.length ? (
+                          <p className="mt-2 text-[11px] text-zinc-600">
+                            Prior decisions:{" "}
+                            {prior
+                              .map(
+                                (d) =>
+                                  `${d.coachVerb} @ ${new Date(d.decidedAt).toLocaleString("en-GB")}`
+                              )
+                              .join(" · ")}
+                          </p>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm text-zinc-500">
+                  No logged sessions with feedback to recommend on yet.
+                </p>
+              )}
             </DashCard>
           ) : null}
 

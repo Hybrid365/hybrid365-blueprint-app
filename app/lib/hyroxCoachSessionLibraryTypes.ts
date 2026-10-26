@@ -30,11 +30,20 @@ export type LibraryQuickFilter =
   | "coach_staples"
   | "kieran_sessions"
   | "easy"
+  | "long"
   | "hard"
   | "threshold"
   | "tempo"
+  | "intervals"
+  | "compromised"
   | "strength"
   | "hyrox"
+  | "sled"
+  | "wall_balls"
+  | "lunges"
+  | "burpees"
+  | "ski"
+  | "row"
   | "volume_builders"
   | "hybrid_engine"
   | "add_ons"
@@ -49,7 +58,11 @@ export type LibraryQuickFilter =
   | "level_2"
   | "advanced_level"
   | "technique"
-  | "race_execution";
+  | "race_execution"
+  | "progression_ready"
+  | "family_linked"
+  | "prescription_ready"
+  | "standalone";
 
 export type CoachSessionSource = "Kieran personal session" | "Hybrid365 library";
 

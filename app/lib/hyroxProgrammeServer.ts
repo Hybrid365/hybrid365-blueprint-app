@@ -665,6 +665,13 @@ export function mapPublishedSessionsToAthleteUi(
             timeOfDay
           )
         : formatProgrammeDayLabel(day, timeOfDay),
+      dateYmd: calendar
+        ? sessionDateYmdFromProgrammeStart(
+            calendar.programmeStartYmd,
+            calendar.globalWeekNumber,
+            day
+          )
+        : null,
       name: displayName,
       type: inferSessionType(s.category, s.session_name),
       focus: hasFamilyPublish
@@ -989,7 +996,8 @@ export function buildSessionInsertRowsFromDraftWeek(
  * Sync approved draft sessions into an already-published week.
  * Matches published rows by metadata.draftId, else day + session_slot.
  * Updates content fields; preserves status / completed_at / athlete_feedback.
- * Does not delete published sessions missing from the draft.
+ * Orphan sessions missing from the draft are deleted when they have no athlete history.
+ * Sessions with logs are kept (history immutable) and warned.
  */
 export async function syncPublishedWeekSessionsFromDraft(
   supabase: SupabaseClient,
@@ -1117,11 +1125,35 @@ export async function syncPublishedWeekSessionsFromDraft(
     sessionSyncDetails.push(detailBase);
   }
 
+  // Remove orphan published sessions that are no longer in the draft and have no athlete history.
+  // Never delete rows with logs — history stays immutable. (No `cancelled` status in DB check.)
+  const orphanIdsToDelete: string[] = [];
   for (const row of existing) {
     if (usedPublishedIds.has(row.id)) continue;
+    const hasHistory =
+      Boolean(row.completed_at) ||
+      row.status === "completed" ||
+      row.status === "missed" ||
+      row.status === "modified" ||
+      Boolean(row.athlete_feedback);
+    if (hasHistory) {
+      warnings.push(
+        `Published session exists but not in draft; kept (has athlete history): "${row.session_name}" (${sessionRowKey(row.day_of_week, row.session_slot)}).`
+      );
+      continue;
+    }
+    orphanIdsToDelete.push(row.id);
     warnings.push(
-      `Published session exists but not in draft; not deleted: "${row.session_name}" (${sessionRowKey(row.day_of_week, row.session_slot)}).`
+      `Removed orphan published session (not in draft, no logs): "${row.session_name}" (${sessionRowKey(row.day_of_week, row.session_slot)}).`
     );
+  }
+  if (orphanIdsToDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("hyrox_programme_sessions")
+      .delete()
+      .in("id", orphanIdsToDelete)
+      .eq("programme_week_id", params.week.id);
+    if (deleteError) throw new Error(deleteError.message);
   }
 
   if (toInsert.length > 0) {

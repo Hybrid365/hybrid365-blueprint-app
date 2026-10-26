@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Structured session feedback — athlete chips</title>
+    <style>
+      body { margin:0; font-family:ui-sans-serif,system-ui,sans-serif; background:#09090b; color:#fafafa; padding:24px; }
+      .card { max-width:420px; border:1px solid #27272a; border-radius:16px; background:#18181b; padding:16px; }
+      .eyebrow { font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:#facc15; }
+      .row { margin-top:14px; }
+      .label { font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#71717a; }
+      .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+      .chip { border:1px solid #3f3f46; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:600; color:#d4d4d8; }
+      .chip.on { border-color:#eab30880; background:#facc1514; color:#fef9c3; }
+      .rpe { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+      .rpe span { width:28px; height:28px; display:grid; place-items:center; border:1px solid #3f3f46; border-radius:8px; font-size:11px; font-weight:700; }
+      .rpe span.on { border-color:#eab30880; background:#facc1514; color:#fef9c3; }
+      .prompt { border:1px solid #0ea5e94d; background:#082f4922; border-radius:12px; padding:12px; margin-bottom:14px; }
+      .prompt .eyebrow { color:#7dd3fc; }
+      button.primary { margin-top:16px; width:100%; border:0; border-radius:12px; background:#facc15; color:#09090b; font-weight:800; padding:12px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="prompt">
+        <p class="eyebrow">Did you do this session?</p>
+        <p style="margin:6px 0 10px;font-size:13px;color:#a1a1aa">Past session with no log yet. No automatic miss.</p>
+        <div class="chips">
+          <span class="chip on">Yes</span>
+          <span class="chip">No</span>
+          <span class="chip">Do later</span>
+        </div>
+      </div>
+      <p class="eyebrow">How did it go?</p>
+      <p style="margin:4px 0 0;font-size:10px;color:#52525b">Threshold / tempo / intervals</p>
+      <div class="row"><div class="label">Outcome</div><div class="chips"><span class="chip on">Complete</span><span class="chip">Partial</span><span class="chip">Missed</span></div></div>
+      <div class="row"><div class="label">Targets</div><div class="chips"><span class="chip on">All</span><span class="chip">Most</span><span class="chip">Some</span><span class="chip">Did not hit</span></div></div>
+      <div class="row"><div class="label">RPE</div><div class="rpe"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span class="on">6</span><span>7</span><span>8</span><span>9</span><span>10</span></div></div>
+      <div class="row"><div class="label">Control</div><div class="chips"><span class="chip">Very controlled</span><span class="chip on">Controlled</span><span class="chip">Appropriate</span><span class="chip">Hard</span><span class="chip">Maximal</span></div></div>
+      <div class="row"><div class="label">Pain</div><div class="chips"><span class="chip on">None</span><span class="chip">Minor</span><span class="chip">Meaningful</span></div></div>
+      <button class="primary">Save feedback</button>
+    </div>
+  </body>
+</html>

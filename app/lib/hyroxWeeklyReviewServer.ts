@@ -17,12 +17,15 @@ import {
   type ProgrammeLengthWeeks,
 } from "@/app/lib/hyroxProgrammeDates";
 import {
+  buildWeeklyAdaptationSessionFact,
+  buildWeeklyAdaptationSlice,
+} from "@/app/lib/hyroxAdaptationWeeklyReview";
+import {
   averageRpeFromSessions,
   buildSessionReviewRow,
   computeWeeklyReviewAlerts,
   emptyWeeklyCoachNotes,
   parseWeeklyCoachNotesJson,
-  sessionCompletedStatus,
   sortWeeklyReviewSessions,
   type HyroxWeeklyCoachNotes,
   type HyroxWeeklyReviewPayload,
@@ -31,10 +34,40 @@ import {
 } from "@/app/lib/hyroxWeeklyReview";
 
 const WEEK_SELECT =
-  "id, athlete_id, block_number, week_number, week_start_date, week_end_date, weekly_focus, status, published_at";
+  "id, athlete_id, source_draft_id, block_number, week_number, week_start_date, week_end_date, weekly_focus, status, published_at";
 
 const SESSION_SELECT =
   "id, programme_week_id, athlete_id, day_of_week, session_slot, session_name, category, prescription, metadata, status, completed_at, athlete_feedback";
+
+function draftIdFromSessionMetadata(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const id = (metadata as Record<string, unknown>).draftId;
+  return typeof id === "string" && id.trim() ? id.trim() : null;
+}
+
+/**
+ * When a week was reshaped and republished, orphan rows with athlete history can remain.
+ * Prefer sessions that still belong to the source draft for adaptation / Composer context.
+ */
+function partitionSessionsBySourceDraft(
+  sessions: HyroxProgrammeSessionRow[],
+  sourceDraftIds: Set<string> | null
+): { active: HyroxProgrammeSessionRow[]; orphans: HyroxProgrammeSessionRow[] } {
+  if (!sourceDraftIds || sourceDraftIds.size === 0) {
+    return { active: sessions, orphans: [] };
+  }
+  const active: HyroxProgrammeSessionRow[] = [];
+  const orphans: HyroxProgrammeSessionRow[] = [];
+  for (const s of sessions) {
+    const draftId = draftIdFromSessionMetadata(s.metadata);
+    if (draftId && sourceDraftIds.has(draftId)) active.push(s);
+    else if (draftId && !sourceDraftIds.has(draftId)) orphans.push(s);
+    else active.push(s); // no draftId — treat as active (legacy)
+  }
+  // If nothing matched (stale draft ids), fall back to all sessions
+  if (active.length === 0) return { active: sessions, orphans: [] };
+  return { active, orphans };
+}
 
 const CHECK_IN_SELECT =
   "id, athlete_id, programme_week_id, submitted_at, week_number, sleep, energy, stress, soreness, motivation, bodyweight, sessions_completed, biggest_win, biggest_struggle, pain_niggles, next_week_availability, raw_answers, status";
@@ -159,6 +192,30 @@ export async function loadWeeklyReviewForCoach(
     sessionRows = (weekSessions as HyroxProgrammeSessionRow[] | null) ?? [];
   }
 
+  let sourceDraftIds: Set<string> | null = null;
+  if (publishedWeek?.source_draft_id) {
+    const { data: sourceDraft } = await supabase
+      .from("hyrox_programme_drafts")
+      .select("id, draft_data")
+      .eq("id", publishedWeek.source_draft_id)
+      .maybeSingle();
+    if (sourceDraft?.draft_data && typeof sourceDraft.draft_data === "object") {
+      const days = (sourceDraft.draft_data as { days?: Array<{ sessions?: Array<{ draftId?: string }> }> })
+        .days;
+      const ids = new Set<string>();
+      for (const day of days ?? []) {
+        for (const s of day.sessions ?? []) {
+          if (s.draftId?.trim()) ids.add(s.draftId.trim());
+        }
+      }
+      sourceDraftIds = ids.size ? ids : null;
+    }
+  }
+  const { active: activeSessionRows, orphans: orphanSessionRows } = partitionSessionsBySourceDraft(
+    sessionRows,
+    sourceDraftIds
+  );
+
   const calendarStatus = publishedWeek
     ? deriveWeekCalendarStatusForAthleteWeek({
         programmeStartYmd: programmeStart,
@@ -174,7 +231,7 @@ export async function loadWeeklyReviewForCoach(
       : null;
 
   const reviewSessions = sortWeeklyReviewSessions(
-    sessionRows.map((s) => {
+    activeSessionRows.map((s) => {
       const detail = resolveAthleteSessionDetailFromPublishedRow(s);
       const feedback = parseHyroxAthleteSessionFeedback(s.athlete_feedback);
       const dateLabel =
@@ -252,6 +309,35 @@ export async function loadWeeklyReviewForCoach(
   });
 
   const saved = reviewRow as HyroxWeeklyCoachReviewRow | null;
+  const coachNotes = saved ? parseWeeklyCoachNotesJson(saved.coach_notes) : emptyWeeklyCoachNotes();
+
+  if (orphanSessionRows.length) {
+    alerts.push({
+      severity: "info",
+      code: "orphan_sessions_after_republish",
+      message: `${orphanSessionRows.length} earlier session(s) on this week have athlete history but are no longer in the current programme draft. Kept for history; excluded from adaptation.`,
+    });
+  }
+
+  const adaptationFacts = activeSessionRows.map((s) => {
+    const detail = resolveAthleteSessionDetailFromPublishedRow(s);
+    return buildWeeklyAdaptationSessionFact({
+      id: s.id,
+      session_name: s.session_name,
+      day_of_week: s.day_of_week,
+      category: s.category,
+      session_slot: s.session_slot,
+      status: s.status,
+      metadata: (s.metadata ?? {}) as Record<string, unknown>,
+      prescription: s.prescription,
+      athlete_feedback: s.athlete_feedback,
+      plannedDurationMinutes: detail.durationMin ?? null,
+    });
+  });
+  const adaptation = buildWeeklyAdaptationSlice({
+    sessions: adaptationFacts,
+    decisions: coachNotes.adaptationDecisions ?? [],
+  });
 
   return {
     weekNumber,
@@ -261,8 +347,9 @@ export async function loadWeeklyReviewForCoach(
     sessions: reviewSessions,
     checkIn,
     alerts,
-    coachNotes: saved ? parseWeeklyCoachNotesJson(saved.coach_notes) : emptyWeeklyCoachNotes(),
+    coachNotes,
     coachReviewUpdatedAt: saved?.updated_at ?? null,
+    adaptation,
   };
 }
 

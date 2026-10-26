@@ -6,7 +6,11 @@ import type { HyroxAthletePerformanceProfile } from "@/app/lib/hyroxBenchmarkPro
 import type { CoachDraftSession, CoachSessionEditConfig } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { applyEditConfigToSession } from "@/app/lib/hyroxCoachProgrammeDraft";
 import type { PrescriptionCoachOverride } from "@/app/lib/hyroxPrescriptionTypes";
-import { structuredWorkoutToCoachEditConfig } from "@/app/lib/hyroxSessionFamilyBuilderAdapter";
+import {
+  coachEditConfigToStructuredWorkout,
+  structuredWorkoutToCoachEditConfig,
+  type FamilyCoachSessionEditConfig,
+} from "@/app/lib/hyroxSessionFamilyBuilderAdapter";
 import type {
   SessionFamilyDraftAttachment,
   SessionFamilyDraftPrescriptionPreview,
@@ -106,9 +110,22 @@ export function createCoachDraftSessionFromFamilyStage(
     throw new Error(`Stage ${input.stageId} not found in family ${input.family.id}`);
   }
 
+  const kindFromModality =
+    input.family.modality === "hyrox" || input.family.modality === "mixed"
+      ? ("compromised" as const)
+      : input.family.modality === "strength"
+        ? ("strength_endurance" as const)
+        : input.family.modality === "ski" ||
+            input.family.modality === "row" ||
+            input.family.modality === "bike"
+          ? ("erg_interval" as const)
+          : input.family.id.includes("easy") || input.family.id.includes("tempo")
+            ? undefined
+            : ("threshold_run" as const);
+
   const adapted = structuredWorkoutToCoachEditConfig(stage.structuredWorkout, {
     sessionName: input.base.title ?? stage.label,
-    kind: "threshold_run",
+    kind: kindFromModality,
     objective: input.family.objective,
     coachNote: stage.internalCoachNotes,
     rpeTarget: "7–8",
@@ -196,16 +213,22 @@ export function refreshFamilyLinkedDraftPreview(
 
 /**
  * After coach saves editConfig: retain or clear family link using structural rules.
+ * Syncs embedded structuredWorkout when UI fields diverge so SoT matches the edit.
  */
 export function applyEditConfigWithFamilyLink(
   session: CoachDraftSession,
   nextEditConfig: CoachSessionEditConfig
 ): CoachDraftSession {
-  const updated = applyEditConfigToSession({ ...session, editConfig: nextEditConfig });
+  const familyCfg = nextEditConfig as FamilyCoachSessionEditConfig;
+  const rebuilt = coachEditConfigToStructuredWorkout(familyCfg);
+  const synced: CoachSessionEditConfig = rebuilt
+    ? { ...familyCfg, structuredWorkout: rebuilt }
+    : nextEditConfig;
+  const updated = applyEditConfigToSession({ ...session, editConfig: synced });
   if (!session.sessionFamily) return updated;
   const decision = shouldRetainSessionFamilyLink({
     attachment: session.sessionFamily,
-    nextEditConfig,
+    nextEditConfig: synced,
   });
   return applySessionFamilyLinkDecision(updated, decision);
 }

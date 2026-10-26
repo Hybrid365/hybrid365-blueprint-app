@@ -17,6 +17,7 @@ import type { HyroxAthleteSessionFeedback } from "@/app/lib/hyroxAthleteSessionF
 import type {
   SessionActivityMetrics,
   SessionActivityType,
+  SessionExecutionFeedbackChips,
   SessionPlannedTargets,
 } from "@/app/lib/hyrox-team/modules/sessionLogging/types";
 import { SESSION_LOG_SCHEMA_VERSION } from "@/app/lib/hyrox-team/modules/sessionLogging/types";
@@ -32,6 +33,7 @@ type SessionLogBody = {
   activityType?: SessionActivityType | null;
   planned?: SessionPlannedTargets | null;
   metrics?: SessionActivityMetrics | null;
+  execution?: SessionExecutionFeedbackChips | null;
   expectedAthleteId?: string | null;
   portalMutationToken?: string | null;
 };
@@ -44,7 +46,8 @@ function feedbackFromBody(body: SessionLogBody): HyroxAthleteSessionFeedback | u
     body.score !== undefined ||
     body.activityType !== undefined ||
     body.planned !== undefined ||
-    body.metrics !== undefined;
+    body.metrics !== undefined ||
+    body.execution !== undefined;
   if (!hasField) return undefined;
   return {
     rpe: body.rpe != null && body.rpe !== "" ? String(body.rpe) : null,
@@ -55,6 +58,7 @@ function feedbackFromBody(body: SessionLogBody): HyroxAthleteSessionFeedback | u
     activityType: body.activityType ?? null,
     planned: body.planned ?? null,
     metrics: body.metrics ?? null,
+    execution: body.execution ?? null,
   };
 }
 

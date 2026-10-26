@@ -38,6 +38,7 @@ const TAB_VALUES: AthleteTab[] = [
   "Performance Profile",
   "Profile Review",
   "Programme Builder",
+  "Week Composer",
   "Block Review",
   "Weekly Review",
   "Check-Ins",
@@ -109,11 +110,13 @@ export default function HyroxAthleteCoachClient({
   commandCentreEnabled = false,
   raceIntelligenceEnabled = false,
   sessionFamiliesEnabled = false,
+  weekComposerEnabled = false,
 }: {
   athleteId: string;
   commandCentreEnabled?: boolean;
   raceIntelligenceEnabled?: boolean;
   sessionFamiliesEnabled?: boolean;
+  weekComposerEnabled?: boolean;
 }) {
   const searchParams = useSearchParams();
   const mockAthlete = getCoachAthleteById(athleteId);
@@ -554,11 +557,20 @@ export default function HyroxAthleteCoachClient({
           assessmentMappingBanner: assessmentBanner,
           onClearAssessmentMappingBanner: clearAssessmentBanner,
           livePersistence,
+          onComposerDraftApplied: ({ draft, draftId }) => {
+            setInjectedDraft(draft);
+            setDraftInjectionKey((k) => k + 1);
+            if (draftId) setLiveDraftId(draftId);
+            setProgrammeStatus("generated_draft");
+            setTab("Programme Builder");
+            void loadLive();
+          },
         }}
         effectiveProfile={effectiveProfile}
         commandCentreEnabled={commandCentreEnabled}
         raceIntelligenceEnabled={raceIntelligenceEnabled}
         sessionFamiliesEnabled={sessionFamiliesEnabled}
+        weekComposerEnabled={weekComposerEnabled}
       />
     </CoachAdminShell>
   );

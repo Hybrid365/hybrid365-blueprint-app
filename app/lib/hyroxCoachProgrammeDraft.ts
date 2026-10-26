@@ -139,6 +139,19 @@ export type CoachSessionEditConfig = {
     type: "walk" | "jog" | "easy_move" | "passive";
     note?: string;
   }>;
+  /**
+   * Full StructuredWorkout AST embedded for lossless family round-trip.
+   * Additive — preferred SoT over kind-specific field reconstruction.
+   */
+  structuredWorkout?: import("@/app/lib/hyroxSessionFamilyTypes").StructuredWorkout;
+  /** Strength exercises when present (additive; coach load authority). */
+  structuredExercises?: Array<{
+    name: string;
+    sets?: number;
+    reps?: number;
+    loadNote?: string;
+    rpe?: string;
+  }>;
 };
 
 export type PerformanceTestSessionMetadata = {

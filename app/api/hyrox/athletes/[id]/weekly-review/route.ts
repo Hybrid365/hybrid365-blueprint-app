@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { applyCoachDecisionOverride } from "@/app/lib/hyroxAdaptationRecommend";
+import { isAdaptationVerb } from "@/app/lib/hyroxAdaptationTypes";
 import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import { fetchHyroxAthleteById } from "@/app/lib/hyroxAthleteCoachDb";
 import type { HyroxWeeklyCoachNotes } from "@/app/lib/hyroxWeeklyReview";
@@ -66,6 +68,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     week_number?: number;
     programme_week_id?: string | null;
     coach_notes?: HyroxWeeklyCoachNotes;
+    action?: string;
+    sessionId?: string;
+    coachVerb?: string;
+    finalToStageId?: string | null;
+    finalToStageLabel?: string | null;
+    note?: string | null;
   };
 
   const weekNumber =
@@ -96,6 +104,53 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
+    // Record a coach adaptation decision (does NOT modify the programme).
+    if (body.action === "record_adaptation_decision") {
+      if (!body.sessionId?.trim() || !isAdaptationVerb(body.coachVerb)) {
+        return NextResponse.json(
+          { success: false, error: "sessionId and a valid coachVerb are required." },
+          { status: 400 }
+        );
+      }
+      const review = await loadWeeklyReviewForCoach(supabase, row, weekNumber);
+      const recommendation = review.adaptation?.recommendations.find(
+        (r) => r.sessionId === body.sessionId
+      );
+      if (!recommendation) {
+        return NextResponse.json(
+          { success: false, error: "No system recommendation found for that session." },
+          { status: 404 }
+        );
+      }
+      const { decision, programmeModified } = applyCoachDecisionOverride({
+        recommendation,
+        coachVerb: body.coachVerb,
+        finalToStageId: body.finalToStageId ?? null,
+        finalToStageLabel: body.finalToStageLabel ?? null,
+        decidedAt: new Date().toISOString(),
+        decidedByUserId: auth.ctx.userId,
+        note: body.note ?? null,
+      });
+      const nextNotes: HyroxWeeklyCoachNotes = {
+        ...review.coachNotes,
+        adaptationDecisions: [...(review.coachNotes.adaptationDecisions ?? []), decision],
+      };
+      const saved = await upsertWeeklyCoachReview(supabase, {
+        athleteId: row.id,
+        weekNumber,
+        programmeWeekId: body.programme_week_id ?? review.summary.programmeWeekId,
+        coachNotes: nextNotes,
+      });
+      return NextResponse.json({
+        success: true,
+        decision,
+        programmeModified,
+        coachNotes: saved.coachNotes,
+        coachReviewUpdatedAt: saved.updatedAt,
+        message: "Coach decision recorded. Programme was not modified automatically.",
+      });
+    }
+
     const saved = await upsertWeeklyCoachReview(supabase, {
       athleteId: row.id,
       weekNumber,

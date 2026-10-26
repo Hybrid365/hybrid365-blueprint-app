@@ -22,6 +22,7 @@ import {
   shouldHideFromSmartSuggestions,
   type CoachLibraryGuardrailContext,
 } from "@/app/lib/hyroxCoachSessionLibraryGuardrails";
+import { isLibrarySessionFamilyEligible } from "@/app/lib/hyroxSessionFamilyLibraryBridge";
 
 export type {
   CoachLibraryEntry,
@@ -102,26 +103,49 @@ export const LIBRARY_QUICK_FILTER_LABELS: Record<LibraryQuickFilter, string> = {
   advanced_level: "Advanced Level",
   technique: "Technique",
   race_execution: "Race Execution",
+  long: "Long",
+  intervals: "Intervals",
+  compromised: "Compromised",
+  sled: "Sled",
+  wall_balls: "Wall Balls",
+  lunges: "Lunges",
+  burpees: "Burpees",
+  ski: "Ski",
+  row: "Row",
+  progression_ready: "Progression Ready",
+  family_linked: "Family Linked",
+  prescription_ready: "Prescription Ready",
+  standalone: "Standalone",
 };
 
 const QUICK_FILTERS: LibraryQuickFilter[] = [
+  "progression_ready",
+  "family_linked",
+  "prescription_ready",
   "coach_staples",
   "kieran_sessions",
   "staples",
   "easy",
+  "long",
   "hard",
   "threshold",
   "tempo",
+  "intervals",
+  "compromised",
   "strength",
   "hyrox",
+  "sled",
+  "wall_balls",
+  "lunges",
+  "burpees",
+  "ski",
+  "row",
   "volume_builders",
   "hybrid_engine",
+  "standalone",
   "low_fatigue",
   "moderate_fatigue",
   "high_fatigue",
-  "level_1",
-  "level_2",
-  "advanced_level",
   "add_ons",
   "testing",
   "race_week",
@@ -142,13 +166,32 @@ function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter
     case "staples":
       return entry.isStaple === true || entry.tags.includes("hybrid365-staple");
     case "easy":
-      return entry.hardEasy === "easy";
+      return entry.hardEasy === "easy" || entry.tags.includes("easy");
+    case "long":
+      return (
+        entry.tags.includes("long") ||
+        entry.tags.includes("long_run") ||
+        /long/i.test(entry.name)
+      );
     case "hard":
       return entry.hardDay || entry.hardEasy === "hard";
     case "threshold":
       return (entry.thresholdMinutes ?? 0) > 0 || entry.tags.includes("threshold");
     case "tempo":
       return entry.category === "tempo_aerobic" || entry.tags.includes("tempo");
+    case "intervals":
+      return (
+        entry.tags.includes("intervals") ||
+        entry.category === "erg_intervals" ||
+        entry.category === "threshold_runs"
+      );
+    case "compromised":
+      return (
+        entry.category === "hyrox_compromised" ||
+        entry.tags.includes("compromised") ||
+        entry.tags.includes("compromised-running") ||
+        entry.progressionFamily === "compromised_running"
+      );
     case "strength":
       return (
         entry.category === "strength_endurance" ||
@@ -163,6 +206,28 @@ function matchesQuickFilter(entry: CoachLibraryEntry, filter: LibraryQuickFilter
         entry.tags.includes("hyrox") ||
         Boolean(entry.hyroxMetadata)
       );
+    case "sled":
+      return entry.tags.includes("sled") || entry.tags.includes("sled_push") || entry.tags.includes("sled_pull");
+    case "wall_balls":
+      return entry.tags.includes("wall_ball") || entry.tags.includes("wall_balls");
+    case "lunges":
+      return entry.tags.includes("lunges") || entry.tags.includes("lunge");
+    case "burpees":
+      return entry.tags.includes("burpee") || entry.tags.includes("bbj");
+    case "ski":
+      return (
+        entry.tags.includes("ski") ||
+        (entry.impactType === "erg" && /ski/i.test(entry.name))
+      );
+    case "row":
+      return entry.tags.includes("row") || /row/i.test(entry.name);
+    case "progression_ready":
+    case "family_linked":
+      return isLibrarySessionFamilyEligible(entry);
+    case "prescription_ready":
+      return isLibrarySessionFamilyEligible(entry);
+    case "standalone":
+      return !isLibrarySessionFamilyEligible(entry) && !entry.progressionFamily;
     case "volume_builders":
       return (
         entry.category === "hyrox_volume_builders" ||
