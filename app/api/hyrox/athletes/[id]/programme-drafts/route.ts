@@ -21,7 +21,11 @@ import type { HyroxProgrammeDraftRow } from "@/app/lib/hyroxDatabaseTypes";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-function buildWeeksMeta(blockNumber: number, rows: HyroxProgrammeDraftRow[]) {
+function buildWeeksMeta(
+  blockNumber: number,
+  rows: HyroxProgrammeDraftRow[],
+  publishedWeekNumbers: Set<number> = new Set()
+) {
   const byWeek = new Map(rows.map((r) => [r.week_number, r]));
 
   return ([1, 2, 3, 4] as const).map((cycle) => {
@@ -29,6 +33,9 @@ function buildWeeksMeta(blockNumber: number, rows: HyroxProgrammeDraftRow[]) {
     const row = byWeek.get(globalWeek) ?? null;
     const draftData = row ? parseCoachDraftWeek(row.draft_data) : null;
     const sessionCount = draftData?.days.reduce((n, d) => n + d.sessions.length, 0) ?? 0;
+    const livePublished = publishedWeekNumbers.has(globalWeek) || row?.status === "published";
+    const draftRevision =
+      livePublished && row != null && row.status !== "published" && row.published_at == null;
 
     return {
       cycle,
@@ -40,10 +47,35 @@ function buildWeeksMeta(blockNumber: number, rows: HyroxProgrammeDraftRow[]) {
       draftData,
       generated: Boolean(row && sessionCount > 0),
       sessionCount,
-      published: row?.status === "published",
-      approved: row?.status === "approved" || row?.status === "published",
+      published: livePublished,
+      /** Unpublished working draft while a published athlete week remains live. */
+      draftRevision,
+      approved:
+        row?.status === "approved" ||
+        row?.status === "published" ||
+        Boolean(draftRevision && row?.status === "edited"),
     };
   });
+}
+
+async function fetchPublishedWeekNumbersForBlock(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  athleteId: string,
+  blockNumber: number
+): Promise<Set<number>> {
+  const { weeksStart, weeksEnd } = blockWeekRange(blockNumber);
+  const { data, error } = await supabase
+    .from("hyrox_programme_weeks")
+    .select("week_number")
+    .eq("athlete_id", athleteId)
+    .eq("status", "published")
+    .gte("week_number", weeksStart)
+    .lte("week_number", weeksEnd);
+  if (error) throw new Error(error.message);
+  return new Set(
+    ((data as Array<{ week_number: number }> | null) ?? []).map((r) => r.week_number)
+  );
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -86,7 +118,12 @@ export async function GET(request: Request, context: RouteContext) {
       const blocks = await Promise.all(
         Array.from({ length: maxBlocks }, (_, i) => i + 1).map(async (b) => {
           const rows = await fetchBlockProgrammeDrafts(supabase, athleteId, b);
-          const weeks = buildWeeksMeta(b, rows);
+          const publishedWeekNumbers = await fetchPublishedWeekNumbersForBlock(
+            supabase,
+            athleteId,
+            b
+          );
+          const weeks = buildWeeksMeta(b, rows, publishedWeekNumbers);
           const publishedWeeksCount = await fetchPublishedWeekCountForBlock(
             supabase,
             athleteId,
@@ -118,7 +155,12 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const rows = await fetchBlockProgrammeDrafts(supabase, athleteId, blockNumber);
-    const weeks = buildWeeksMeta(blockNumber, rows);
+    const publishedWeekNumbers = await fetchPublishedWeekNumbersForBlock(
+      supabase,
+      athleteId,
+      blockNumber
+    );
+    const weeks = buildWeeksMeta(blockNumber, rows, publishedWeekNumbers);
     const publishedWeeksCount = await fetchPublishedWeekCountForBlock(
       supabase,
       athleteId,

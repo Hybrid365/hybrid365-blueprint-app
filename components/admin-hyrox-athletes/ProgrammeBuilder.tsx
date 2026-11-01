@@ -229,10 +229,13 @@ export function ProgrammeBuilder({
   const sessionFamiliesEnabled = isHyroxSessionFamiliesEnabledClient(
     sessionFamiliesEnabledProp
   );
-  const weekIsPublished = Boolean(
-    selectedBlockSummary?.status === "published" ||
-      effectiveBlockWeeks.find((w) => w.cycle === selectedCycle)?.published
+  const selectedWeekPublishedMeta = effectiveBlockWeeks.find(
+    (w) => w.cycle === selectedCycle
   );
+  const weekIsPublished = Boolean(
+    selectedBlockSummary?.status === "published" || selectedWeekPublishedMeta?.published
+  );
+  const weekHasDraftRevision = Boolean(selectedWeekPublishedMeta?.draftRevision);
   const showPerfDetailActions = draftLooksLikePerformanceTestingWeek(draft);
 
   const summary = useMemo(() => computeWeeklySummary(draft, athlete), [draft, athlete]);
@@ -765,6 +768,21 @@ export function ProgrammeBuilder({
           <p className="mt-1 text-xs text-zinc-400">
             Publish uses your generation scope. Default publishes the full 4-week block to the
             athlete.
+          </p>
+        </div>
+      ) : null}
+
+      {isLive && weekIsPublished ? (
+        <div className="rounded-2xl border border-sky-500/30 bg-sky-400/5 px-4 py-3 text-sm">
+          <p className="font-bold text-sky-100">
+            {weekHasDraftRevision
+              ? "Editing draft revision — published week still live"
+              : "This week is published"}
+          </p>
+          <p className="mt-1 text-xs text-zinc-400">
+            {weekHasDraftRevision
+              ? "Athlete continues to see the published snapshot. Save freely; only Republish updates the athlete."
+              : "Saving edits creates an unpublished draft revision. The athlete keeps the live published week until you republish."}
           </p>
         </div>
       ) : null}

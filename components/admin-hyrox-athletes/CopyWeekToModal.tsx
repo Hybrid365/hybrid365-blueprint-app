@@ -60,7 +60,9 @@ export function CopyWeekToModal({
         }
         const list = data.destinations ?? [];
         setDestinations(list);
-        const preferred = list.find((d) => d.week === sourceWeek + 1 && !d.published && !d.athleteHistory);
+        const preferred =
+          list.find((d) => d.week === sourceWeek + 1 && !d.athleteHistory) ??
+          list.find((d) => d.week === sourceWeek + 1);
         if (preferred) setTargetWeek(preferred.week);
       } catch {
         if (!cancelled) setLoadError("Network error loading destination weeks.");
@@ -80,31 +82,42 @@ export function CopyWeekToModal({
 
   if (!open) return null;
 
-  const blocked = Boolean(selected && (selected.athleteHistory || selected.published));
-  const needsConflict = Boolean(selected?.hasProgramming && !blocked);
-  const conflictReady =
-    !needsConflict || conflictChoice === "replace" || conflictChoice === "merge_empty_slots";
+  const isPublishedTarget = Boolean(selected?.published);
+  const needsDraftConflict = Boolean(
+    selected &&
+      !isPublishedTarget &&
+      selected.hasProgramming
+  );
+  const needsPublishedChoice = Boolean(selected && isPublishedTarget);
+  const conflictReady = (() => {
+    if (!selected) return false;
+    if (needsPublishedChoice) {
+      return (
+        conflictChoice === "replace" ||
+        conflictChoice === "merge_empty_slots" ||
+        conflictChoice === "seed_from_published"
+      );
+    }
+    if (needsDraftConflict) {
+      return conflictChoice === "replace" || conflictChoice === "merge_empty_slots";
+    }
+    return true;
+  })();
 
   async function handleSubmit() {
     if (!targetWeek || !selected) return;
     setActionError(null);
-    if (blocked) {
-      setActionError(
-        selected.athleteHistory
-          ? "This week contains athlete activity and cannot be overwritten."
-          : "This week already contains published sessions and cannot be overwritten."
-      );
+    if (needsPublishedChoice && !conflictChoice) {
+      setActionError("Choose how to create the editable Week draft revision.");
       return;
     }
-    if (needsConflict && !conflictChoice) {
+    if (needsDraftConflict && !conflictChoice) {
       setActionError("Choose Cancel, Replace target draft, or Merge into empty slots.");
       return;
     }
-    const result = await onCopy(targetWeek, needsConflict ? conflictChoice : null);
+    const mode = needsPublishedChoice || needsDraftConflict ? conflictChoice : null;
+    const result = await onCopy(targetWeek, mode);
     if (!result.ok) {
-      if (result.code === "TARGET_HAS_PROGRAMMING") {
-        setConflictChoice(null);
-      }
       setActionError(result.error ?? "Duplicate failed.");
     }
   }
@@ -117,10 +130,9 @@ export function CopyWeekToModal({
         </p>
         <h2 className="mt-2 text-lg font-bold text-white">Duplicate week {sourceWeek}</h2>
         <p className="mt-1 text-sm text-zinc-400">
-          {sourceSessionCount} session{sourceSessionCount === 1 ? "" : "s"} will be copied to the
-          target week as an unpublished draft. Same days and slots. Session Family stage stays the
-          same (not progressed). Prescriptions re-resolve against current Programming Anchors.
-          Athlete history is never copied.
+          {sourceSessionCount} session{sourceSessionCount === 1 ? "" : "s"} copy into an unpublished
+          draft. Same days/slots and Session Family stage. Live published weeks stay athlete-visible
+          until you republish.
         </p>
 
         {loading ? <p className="mt-4 text-sm text-zinc-500">Loading weeks…</p> : null}
@@ -132,7 +144,6 @@ export function CopyWeekToModal({
 
         <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
           {destinations.map((d) => {
-            const disabled = d.athleteHistory || d.published;
             const active = targetWeek === d.week;
             const preferred = d.week === sourceWeek + 1;
             return (
@@ -142,7 +153,7 @@ export function CopyWeekToModal({
                   active
                     ? "border-yellow-400/50 bg-yellow-400/10"
                     : "border-zinc-800 bg-zinc-900/60"
-                } ${disabled ? "opacity-55" : "hover:border-zinc-600"}`}
+                } hover:border-zinc-600`}
               >
                 <input
                   type="radio"
@@ -152,7 +163,7 @@ export function CopyWeekToModal({
                   disabled={saving}
                   onChange={() => {
                     setTargetWeek(d.week);
-                    setConflictChoice(null);
+                    setConflictChoice(d.published ? "replace" : null);
                     setActionError(null);
                   }}
                 />
@@ -170,43 +181,95 @@ export function CopyWeekToModal({
                   </span>
                   <span className="mt-0.5 block text-[11px] text-zinc-500">
                     {d.startYmd && d.endYmd ? `${d.startYmd} → ${d.endYmd}` : "Dates follow programme start"}
-                    {d.hasProgramming ? " · contains programming" : " · empty"}
-                    {d.published ? " · published" : ""}
-                    {d.athleteHistory ? " · athlete activity" : ""}
+                    {d.published ? " · published (live)" : d.hasProgramming ? " · draft programming" : " · empty"}
+                    {d.hasUnpublishedDraft ? " · editable draft exists" : ""}
+                    {d.athleteHistory ? " · athlete activity on published" : ""}
                   </span>
-                  {disabled ? (
-                    <span className="mt-1 block text-[11px] text-red-300">
-                      {d.athleteHistory
-                        ? "Athlete activity — protected."
-                        : "Published week — protected."}
-                    </span>
-                  ) : null}
                 </span>
               </label>
             );
           })}
         </div>
 
-        {selected && !blocked ? (
+        {selected && !isPublishedTarget ? (
           <p className="mt-4 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-200">
             <span className="font-semibold text-white">
               {sourceSessionCount} session{sourceSessionCount === 1 ? "" : "s"} will be copied to Week{" "}
               {selected.week}
             </span>
             <span className="mt-0.5 block text-[11px] text-zinc-500">
-              Source Week {sourceWeek} stays unchanged. Result opens as a Week {selected.week} draft —
-              never auto-published.
+              Source Week {sourceWeek} unchanged. Result opens as a Week {selected.week} draft — never
+              auto-published.
             </span>
           </p>
         ) : null}
 
-        {needsConflict ? (
+        {needsPublishedChoice ? (
+          <div className="mt-4 space-y-2 rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-3">
+            <p className="text-sm font-bold text-sky-100">
+              WEEK {targetWeek} IS ALREADY PUBLISHED
+            </p>
+            <p className="text-xs text-sky-100/80">
+              Create an editable draft revision? The currently published week remains live for the
+              athlete until you republish.
+            </p>
+            <div className="flex flex-col gap-2 pt-1">
+              <label className="flex items-start gap-2 text-sm text-sky-50">
+                <input
+                  type="radio"
+                  name="duplicate-published"
+                  className="mt-1"
+                  checked={conflictChoice === "replace"}
+                  onChange={() => setConflictChoice("replace")}
+                  disabled={saving}
+                />
+                <span>
+                  <span className="font-semibold">Replace draft with duplicated Week {sourceWeek}</span>
+                  <span className="block text-[11px] text-sky-200/70">
+                    Preferred — write Week {sourceWeek} into a new unpublished Week {targetWeek} draft.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-sky-50">
+                <input
+                  type="radio"
+                  name="duplicate-published"
+                  className="mt-1"
+                  checked={conflictChoice === "seed_from_published"}
+                  onChange={() => setConflictChoice("seed_from_published")}
+                  disabled={saving}
+                />
+                <span>
+                  <span className="font-semibold">Create draft from current published Week {targetWeek}</span>
+                  <span className="block text-[11px] text-sky-200/70">
+                    Start from what the athlete sees now (no Week {sourceWeek} duplicate).
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-sky-50">
+                <input
+                  type="radio"
+                  name="duplicate-published"
+                  className="mt-1"
+                  checked={conflictChoice === "merge_empty_slots"}
+                  onChange={() => setConflictChoice("merge_empty_slots")}
+                  disabled={saving}
+                />
+                <span>
+                  <span className="font-semibold">Merge duplicated Week {sourceWeek} into empty slots</span>
+                  <span className="block text-[11px] text-sky-200/70">
+                    Seed draft from published, then fill only free AM / Main / PM / Optional slots.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
+        ) : null}
+
+        {needsDraftConflict ? (
           <div className="mt-4 space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-3">
             <p className="text-sm font-bold text-amber-100">
               Week {targetWeek} already has a draft
-            </p>
-            <p className="text-xs text-amber-200/80">
-              Do not silently overwrite. Choose how to continue:
             </p>
             <div className="flex flex-col gap-2 pt-1">
               <label className="flex items-start gap-2 text-sm text-amber-50">
@@ -216,14 +279,9 @@ export function CopyWeekToModal({
                   className="mt-1"
                   checked={conflictChoice === "replace"}
                   onChange={() => setConflictChoice("replace")}
-                  disabled={saving || !selected?.replaceAllowed}
+                  disabled={saving}
                 />
-                <span>
-                  <span className="font-semibold">Replace target draft</span>
-                  <span className="block text-[11px] text-amber-200/70">
-                    Archive the current Week {targetWeek} draft shell and write a fresh duplicate.
-                  </span>
-                </span>
+                <span className="font-semibold">Replace target draft</span>
               </label>
               <label className="flex items-start gap-2 text-sm text-amber-50">
                 <input
@@ -232,14 +290,9 @@ export function CopyWeekToModal({
                   className="mt-1"
                   checked={conflictChoice === "merge_empty_slots"}
                   onChange={() => setConflictChoice("merge_empty_slots")}
-                  disabled={saving || !selected?.mergeEmptySlotsAllowed}
+                  disabled={saving}
                 />
-                <span>
-                  <span className="font-semibold">Merge into empty slots only</span>
-                  <span className="block text-[11px] text-amber-200/70">
-                    Keep existing sessions. Fill only free AM / Main / PM / Optional slots.
-                  </span>
-                </span>
+                <span className="font-semibold">Merge into empty slots only</span>
               </label>
             </div>
           </div>
@@ -262,17 +315,21 @@ export function CopyWeekToModal({
           </button>
           <button
             type="button"
-            disabled={saving || !selected || blocked || !conflictReady}
+            disabled={saving || !selected || !conflictReady}
             onClick={() => void handleSubmit()}
             className="rounded-full border border-yellow-500/40 bg-yellow-400 px-4 py-2 text-xs font-black uppercase tracking-wide text-zinc-950 disabled:opacity-40"
           >
             {saving
-              ? "Duplicating…"
-              : conflictChoice === "replace"
-                ? "Replace draft"
+              ? "Working…"
+              : conflictChoice === "seed_from_published"
+                ? "Create draft revision"
                 : conflictChoice === "merge_empty_slots"
                   ? "Merge empty slots"
-                  : "Duplicate week"}
+                  : conflictChoice === "replace" && isPublishedTarget
+                    ? "Create draft from Week " + sourceWeek
+                    : conflictChoice === "replace"
+                      ? "Replace draft"
+                      : "Duplicate week"}
           </button>
         </div>
       </div>

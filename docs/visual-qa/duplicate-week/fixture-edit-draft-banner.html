@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Programme Builder — draft revision banner</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+    body { margin: 0; background: #09090b; color: #fafafa; padding: 40px; }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    .chrome { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #71717a; margin-bottom: 12px; }
+    h1 { font-size: 22px; margin: 0 0 16px; }
+    .banner { border: 1px solid #0ea5e94d; background: #0ea5e90d; border-radius: 16px; padding: 16px; }
+    .banner strong { display:block; color: #e0f2fe; font-size: 14px; }
+    .banner p { margin: 6px 0 0; font-size: 12px; color: #a1a1aa; }
+    .week { margin-top: 20px; display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .card { border: 1px solid #3f3f46; border-radius: 12px; padding: 12px; background: #18181b; }
+    .card.active { border-color: #eab30866; }
+    .card .w { font-size: 12px; color: #a1a1aa; }
+    .card .t { font-size: 14px; font-weight: 700; margin-top: 4px; }
+    .pill { display:inline-block; margin-top: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: #0ea5e933; color: #7dd3fc; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="chrome">Programme Builder · live athlete</div>
+    <h1>Week 2 · Block 1</h1>
+    <div class="banner">
+      <strong>Editing draft revision — published week still live</strong>
+      <p>Athlete continues to see the published snapshot. Save freely; only Republish updates the athlete.</p>
+    </div>
+    <div class="week">
+      <div class="card"><div class="w">Week 1</div><div class="t">Published</div></div>
+      <div class="card active"><div class="w">Week 2</div><div class="t">Draft revision</div><span class="pill">Live + draft</span></div>
+      <div class="card"><div class="w">Week 3</div><div class="t">Published</div></div>
+      <div class="card"><div class="w">Week 4</div><div class="t">Published</div></div>
+    </div>
+  </div>
+</body>
+</html>

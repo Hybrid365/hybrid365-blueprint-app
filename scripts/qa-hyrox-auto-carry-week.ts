@@ -25,10 +25,30 @@ function ok(name: string) {
   console.log(`✓ ${name}`);
 }
 
-const empty = { hasProgramming: false, published: false, athleteHistory: false };
-const populated = { hasProgramming: true, published: false, athleteHistory: false };
-const published = { hasProgramming: true, published: true, athleteHistory: false };
-const history = { hasProgramming: true, published: true, athleteHistory: true };
+const empty = {
+  hasProgramming: false,
+  published: false,
+  hasUnpublishedDraft: false,
+  athleteHistory: false,
+};
+const populated = {
+  hasProgramming: true,
+  published: false,
+  hasUnpublishedDraft: true,
+  athleteHistory: false,
+};
+const published = {
+  hasProgramming: true,
+  published: true,
+  hasUnpublishedDraft: false,
+  athleteHistory: false,
+};
+const history = {
+  hasProgramming: true,
+  published: true,
+  hasUnpublishedDraft: false,
+  athleteHistory: true,
+};
 
 assert(shouldAutoCarryProgrammeWeek(14, 15), "A: 14 → 15 is consecutive");
 assert(shouldAutoCarryProgrammeWeek(15, 16), "A: 15 → 16 is consecutive");

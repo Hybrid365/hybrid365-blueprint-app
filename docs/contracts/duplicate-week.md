@@ -33,20 +33,35 @@ Default: **same stage** (Stage 2 → Stage 2). Coach may change stage / build pr
 
 ## Target conflicts
 
-Published weeks and athlete-history weeks: **blocked**.
+### Unpublished target draft with programming
 
-Unpublished target draft with programming — coach chooses:
+Coach chooses:
 
 - Cancel
 - Replace target draft (archive prior unpublished draft shell, write fresh duplicate)
 - Merge into empty slots only (keep occupied AM/Main/PM/Optional)
 
+### Already-published target week (future or otherwise)
+
+**Not a hard block.** Offer draft-revision choices instead:
+
+- Cancel
+- Replace draft with duplicated source week (preferred)
+- Create draft from current published target week (`seed_from_published`)
+- Merge duplicated source into empty slots of a seeded draft
+
+Published `hyrox_programme_weeks` (+ published draft snapshot) stay immutable and athlete-visible until explicit republish.
+
+Normal Programme Builder Edit of a published future week uses the same model: fork/open an unpublished working draft revision (`ensureUnpublishedWorkingDraft`); never mutate the live published row in place.
+
 ## Identity
 
-Reuse an empty target draft shell when present. Archive superseded unpublished drafts on replace. Never rewrite published week rows via this action.
+Canonical week identity remains `athlete_id + week_number`.
+
+Multiple draft revision rows may exist; only one canonical published `programme_weeks` row is athlete-visible. Prefer unpublished working drafts for coach edit. Archive superseded unpublished drafts on replace. On publish, use existing `publishProgrammeDraft` + `archiveSupersededPublishedWeeks` — no competing week identity system.
 
 ## API
 
 `GET/POST /api/hyrox/athletes/[id]/programme-drafts/copy-week`
 
-POST body: `source_week`, `target_week`, optional `conflict_mode: "replace" | "merge_empty_slots"` (legacy `replace: true` still maps to replace).
+POST body: `source_week`, `target_week`, optional `conflict_mode: "replace" | "merge_empty_slots" | "seed_from_published"` (legacy `replace: true` still maps to replace).

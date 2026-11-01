@@ -28,9 +28,9 @@ export const COPY_WEEK_ERROR = {
   SOURCE_EMPTY: "Source week has no programmed sessions to copy.",
   SOURCE_MISSING: "No programme draft found for the source week.",
   TARGET_PUBLISHED:
-    "This week already contains published sessions and cannot be overwritten.",
+    "This week is already published. Create an editable draft revision — the live published week stays until you republish.",
   TARGET_ATHLETE_ACTIVITY:
-    "This week contains athlete activity and cannot be overwritten.",
+    "This week contains athlete activity. Create/edit a draft revision only; the published snapshot stays until explicit republish.",
   TARGET_HAS_PROGRAMMING:
     "TARGET WEEK ALREADY CONTAINS PROGRAMMING. Choose Replace draft or Merge into empty slots.",
   TARGET_MERGE_NO_EMPTY: "Target week has no empty day slots to merge into.",
@@ -38,23 +38,34 @@ export const COPY_WEEK_ERROR = {
 
 export type CopyWeekErrorCode = keyof typeof COPY_WEEK_ERROR;
 
-/** Coach conflict choice when the target draft already has sessions. */
-export type CopyWeekConflictMode = "replace" | "merge_empty_slots";
+/**
+ * Coach conflict / published-revision choice.
+ * - replace: write duplicated source into unpublished draft revision
+ * - merge_empty_slots: merge source into empty slots of working draft
+ * - seed_from_published: create unpublished draft seeded from live published week (no source duplicate)
+ */
+export type CopyWeekConflictMode = "replace" | "merge_empty_slots" | "seed_from_published";
 
 export type CopyWeekTargetState = {
+  /** Unpublished working draft has programmed sessions (not the live published snapshot). */
   hasProgramming: boolean;
+  /** Athlete-visible published programme_weeks row exists for this week. */
   published: boolean;
+  /** Unpublished working draft already exists. */
+  hasUnpublishedDraft: boolean;
   athleteHistory: boolean;
 };
 
 export type CopyWeekDecision =
-  | { ok: true; action: "copy" | "replace" | "merge_empty_slots" }
+  | {
+      ok: true;
+      action: "copy" | "replace" | "merge_empty_slots" | "seed_from_published";
+    }
   | { ok: false; code: CopyWeekErrorCode; message: string };
 
 /**
- * Resolve whether a duplicate/copy may proceed.
- * `conflictMode` is only consulted when the target already has programming.
- * Published weeks and athlete history always block.
+ * Resolve whether a duplicate/copy may proceed onto an unpublished draft revision.
+ * Never mutates published programme_weeks. Published targets require an explicit mode.
  */
 export function resolveCopyWeekDecision(
   target: CopyWeekTargetState,
@@ -67,20 +78,33 @@ export function resolveCopyWeekDecision(
         ? null
         : replaceOrMode;
 
-  if (target.athleteHistory) {
-    return {
-      ok: false,
-      code: "TARGET_ATHLETE_ACTIVITY",
-      message: COPY_WEEK_ERROR.TARGET_ATHLETE_ACTIVITY,
-    };
-  }
   if (target.published) {
+    if (mode === "seed_from_published") {
+      return { ok: true, action: "seed_from_published" };
+    }
+    if (mode === "replace") {
+      return { ok: true, action: "replace" };
+    }
+    if (mode === "merge_empty_slots") {
+      return { ok: true, action: "merge_empty_slots" };
+    }
     return {
       ok: false,
       code: "TARGET_PUBLISHED",
       message: COPY_WEEK_ERROR.TARGET_PUBLISHED,
     };
   }
+
+  // Past/current weeks with athlete logs: still allow replace/merge only with explicit mode
+  // (draft revision path). Without a mode, surface the activity warning.
+  if (target.athleteHistory && !mode) {
+    return {
+      ok: false,
+      code: "TARGET_ATHLETE_ACTIVITY",
+      message: COPY_WEEK_ERROR.TARGET_ATHLETE_ACTIVITY,
+    };
+  }
+
   if (!target.hasProgramming) {
     return { ok: true, action: "copy" };
   }
@@ -89,6 +113,10 @@ export function resolveCopyWeekDecision(
   }
   if (mode === "merge_empty_slots") {
     return { ok: true, action: "merge_empty_slots" };
+  }
+  if (mode === "seed_from_published") {
+    // Not published — treat as no-op copy of empty/current draft state
+    return { ok: true, action: "copy" };
   }
   return {
     ok: false,
@@ -221,11 +249,14 @@ export type CopyWeekDestination = {
   endYmd: string | null;
   hasProgramming: boolean;
   published: boolean;
+  hasUnpublishedDraft: boolean;
   athleteHistory: boolean;
   copyAllowed: boolean;
   replaceAllowed: boolean;
   /** True when unpublished draft programming exists and merge is a safe option. */
   mergeEmptySlotsAllowed: boolean;
+  /** Published week may open an editable draft revision (live snapshot untouched). */
+  draftRevisionAllowed: boolean;
 };
 
 export const AUTO_CARRY_COPY = {
@@ -286,9 +317,11 @@ export function destinationMetaForWeek(params: {
   const decision = resolveCopyWeekDecision(params.state, false);
   const replaceDecision = resolveCopyWeekDecision(params.state, "replace");
   const mergeDecision = resolveCopyWeekDecision(params.state, "merge_empty_slots");
+  const seedDecision = resolveCopyWeekDecision(params.state, "seed_from_published");
   const dates = params.programmeStartYmd
     ? weekDateRangeFromProgrammeStart(params.programmeStartYmd, params.week)
     : null;
+  const draftBusy = params.state.hasProgramming || params.state.published;
   return {
     week: params.week,
     block: blockNumberForGlobalWeek(params.week),
@@ -297,9 +330,12 @@ export function destinationMetaForWeek(params: {
     endYmd: dates?.endYmd ?? null,
     hasProgramming: params.state.hasProgramming,
     published: params.state.published,
+    hasUnpublishedDraft: params.state.hasUnpublishedDraft,
     athleteHistory: params.state.athleteHistory,
     copyAllowed: decision.ok,
-    replaceAllowed: replaceDecision.ok && params.state.hasProgramming,
-    mergeEmptySlotsAllowed: mergeDecision.ok && params.state.hasProgramming,
+    replaceAllowed: replaceDecision.ok && draftBusy,
+    mergeEmptySlotsAllowed:
+      mergeDecision.ok && (params.state.hasProgramming || params.state.published),
+    draftRevisionAllowed: seedDecision.ok && params.state.published,
   };
 }

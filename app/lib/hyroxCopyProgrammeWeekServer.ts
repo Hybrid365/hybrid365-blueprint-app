@@ -26,6 +26,11 @@ import {
   type CopyWeekTargetState,
 } from "@/app/lib/hyroxCopyProgrammeWeek";
 import {
+  ensureUnpublishedWorkingDraft,
+  isPublishedDraftRow,
+  isUnpublishedWorkingDraft,
+} from "@/app/lib/hyroxProgrammeDraftRevision";
+import {
   blockNumberForGlobalWeek,
   cycleInBlockForGlobalWeek,
   parseCoachGlobalWeek,
@@ -36,6 +41,7 @@ import {
   fetchHighestProgrammeBlockNumber,
   publishedSessionHasAthleteLogs,
 } from "@/app/lib/hyroxProgrammeServer";
+import { fetchLatestDraftForGlobalWeek as fetchPreferredDraftForGlobalWeek } from "@/app/lib/hyroxSessionFamilyEnsureDraft";
 
 const DRAFT_SELECT =
   "id, athlete_id, mapped_profile_id, created_at, updated_at, block_number, week_number, draft_data, weekly_summary, validation_warnings, coach_note, athlete_facing_note, status, published_at";
@@ -59,17 +65,8 @@ async function fetchLatestDraftForGlobalWeek(
   athleteId: string,
   weekNumber: number
 ): Promise<HyroxProgrammeDraftRow | null> {
-  const { data, error } = await supabase
-    .from("hyrox_programme_drafts")
-    .select(DRAFT_SELECT)
-    .eq("athlete_id", athleteId)
-    .eq("week_number", weekNumber)
-    .neq("status", "archived")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return (data as HyroxProgrammeDraftRow | null) ?? null;
+  // Prefer unpublished working draft over a published draft snapshot.
+  return fetchPreferredDraftForGlobalWeek(supabase, athleteId, weekNumber);
 }
 
 async function fetchPublishedWeekForGlobalWeek(
@@ -97,7 +94,8 @@ async function inspectTargetWeekState(
     fetchLatestDraftForGlobalWeek(supabase, athleteId, weekNumber),
     fetchPublishedWeekForGlobalWeek(supabase, athleteId, weekNumber),
   ]);
-  const draftData = draft ? parseCoachDraftWeekJson(draft.draft_data) : null;
+  const unpublished = draft && isUnpublishedWorkingDraft(draft) ? draft : null;
+  const draftData = unpublished ? parseCoachDraftWeekJson(unpublished.draft_data) : null;
   const hasProgramming = countDraftProgrammingSessions(draftData) > 0;
   let athleteHistory = false;
   if (published) {
@@ -115,6 +113,7 @@ async function inspectTargetWeekState(
   return {
     hasProgramming,
     published: Boolean(published),
+    hasUnpublishedDraft: Boolean(unpublished),
     athleteHistory,
   };
 }
@@ -255,6 +254,8 @@ export async function copyProgrammeWeekDraft(
   sessionCount: number;
   replaced: boolean;
   merged: boolean;
+  seededFromPublished: boolean;
+  draftRevision: boolean;
   skippedSlotCount: number;
 }> {
   const sourceWeek = parseCoachGlobalWeek(params.sourceWeek);
@@ -285,8 +286,13 @@ export async function copyProgrammeWeekDraft(
     throw new CopyProgrammeWeekError(decision.code, decision.message, 409);
   }
 
-  const targetRow = await fetchLatestDraftForGlobalWeek(supabase, params.athleteId, targetWeek);
-  const targetDraft = targetRow ? parseCoachDraftWeekJson(targetRow.draft_data) : null;
+  const draftRevision = targetState.published;
+  const targetBlock = blockNumberForGlobalWeek(targetWeek);
+
+  // Always work on an unpublished draft revision — never mutate published draft / programme_weeks.
+  if (decision.action === "replace") {
+    await archiveUnpublishedDraftsForWeek(supabase, params.athleteId, targetWeek);
+  }
 
   let cloned: CoachDraftWeek = cloneCoachDraftWeekForTarget(sourceDraft, {
     athleteId: params.athleteId,
@@ -301,16 +307,39 @@ export async function copyProgrammeWeekDraft(
 
   let skippedSlotCount = 0;
   let sessionCount = sourceCount;
+  let seededFromPublished = false;
+
+  if (decision.action === "seed_from_published") {
+    const ensured = await ensureUnpublishedWorkingDraft(supabase, {
+      athleteId: params.athleteId,
+      athlete: params.athlete,
+      globalWeek: targetWeek,
+      mappedProfileId: sourceRow.mapped_profile_id,
+    });
+    return {
+      sourceWeek,
+      targetWeek,
+      targetBlock,
+      targetCycle: cycleInBlockForGlobalWeek(targetWeek),
+      draft: ensured.draft,
+      sessionCount: countDraftProgrammingSessions(ensured.draftData),
+      replaced: false,
+      merged: false,
+      seededFromPublished: ensured.forkedFromPublished || targetState.published,
+      draftRevision: true,
+      skippedSlotCount: 0,
+    };
+  }
 
   if (decision.action === "merge_empty_slots") {
-    if (!targetDraft) {
-      throw new CopyProgrammeWeekError(
-        "TARGET_MERGE_NO_EMPTY",
-        COPY_WEEK_ERROR.TARGET_MERGE_NO_EMPTY,
-        409
-      );
-    }
-    const merged = mergeClonedWeekIntoEmptySlots(targetDraft, cloned);
+    const working = await ensureUnpublishedWorkingDraft(supabase, {
+      athleteId: params.athleteId,
+      athlete: params.athlete,
+      globalWeek: targetWeek,
+      mappedProfileId: sourceRow.mapped_profile_id,
+    });
+    const baseDraft = working.draftData;
+    const merged = mergeClonedWeekIntoEmptySlots(baseDraft, cloned);
     if (merged.copiedCount < 1) {
       throw new CopyProgrammeWeekError(
         "TARGET_MERGE_NO_EMPTY",
@@ -321,86 +350,95 @@ export async function copyProgrammeWeekDraft(
     cloned = merged.draft;
     sessionCount = merged.copiedCount;
     skippedSlotCount = merged.skippedCount;
+    seededFromPublished = working.forkedFromPublished;
+
+    const summary = computeWeeklySummary(cloned, params.athlete);
+    const validation = validateCoachDraft(cloned, params.athlete);
+    const { data, error } = await supabase
+      .from("hyrox_programme_drafts")
+      .update({
+        draft_data: cloned as unknown as HyroxJson,
+        weekly_summary: summary as unknown as HyroxJson,
+        validation_warnings: {
+          warnings: validation.warnings,
+          positives: validation.positives,
+          draftRevision,
+        } as unknown as HyroxJson,
+        coach_note: sourceRow.coach_note,
+        athlete_facing_note: sourceRow.athlete_facing_note,
+        status: "draft_generated",
+        published_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", working.draft.id)
+      .select(DRAFT_SELECT)
+      .single();
+    if (error) throw new Error(error.message);
+    if (isPublishedDraftRow(data as HyroxProgrammeDraftRow)) {
+      throw new Error("Refusing to leave published draft row as working revision.");
+    }
+    return {
+      sourceWeek,
+      targetWeek,
+      targetBlock,
+      targetCycle: cycleInBlockForGlobalWeek(targetWeek),
+      draft: data as HyroxProgrammeDraftRow,
+      sessionCount,
+      replaced: false,
+      merged: true,
+      seededFromPublished,
+      draftRevision,
+      skippedSlotCount,
+    };
   }
 
+  // copy | replace → write duplicated source into unpublished revision
+  const ensured = await ensureUnpublishedWorkingDraft(supabase, {
+    athleteId: params.athleteId,
+    athlete: params.athlete,
+    globalWeek: targetWeek,
+    seedDraftData: cloned,
+    mappedProfileId: sourceRow.mapped_profile_id,
+    coachNote: sourceRow.coach_note,
+    athleteFacingNote: sourceRow.athlete_facing_note,
+  });
+
+  // ensure created empty/seeded shell; for replace we archived first so created=true with seed.
+  // If it reused an empty unpublished shell, overwrite with cloned content.
   const summary = computeWeeklySummary(cloned, params.athlete);
   const validation = validateCoachDraft(cloned, params.athlete);
-  const targetBlock = blockNumberForGlobalWeek(targetWeek);
-  const payload = {
-    mapped_profile_id: sourceRow.mapped_profile_id,
-    block_number: targetBlock,
-    week_number: targetWeek,
-    draft_data: cloned as unknown as HyroxJson,
-    weekly_summary: summary as unknown as HyroxJson,
-    validation_warnings: {
-      warnings: validation.warnings,
-      positives: validation.positives,
-    } as unknown as HyroxJson,
-    coach_note: sourceRow.coach_note,
-    athlete_facing_note: sourceRow.athlete_facing_note,
-    status: "draft_generated" as const,
-    published_at: null,
-    updated_at: new Date().toISOString(),
-  };
-
-  let draft: HyroxProgrammeDraftRow;
-
-  if (decision.action === "merge_empty_slots" && targetRow) {
-    const { data, error } = await supabase
-      .from("hyrox_programme_drafts")
-      .update(payload)
-      .eq("id", targetRow.id)
-      .select(DRAFT_SELECT)
-      .single();
-    if (error) throw new Error(error.message);
-    draft = data as HyroxProgrammeDraftRow;
-  } else {
-    if (decision.action === "replace") {
-      await archiveUnpublishedDraftsForWeek(supabase, params.athleteId, targetWeek);
-    } else if (targetRow && countDraftProgrammingSessions(targetDraft) < 1) {
-      // Reuse empty draft shell for the target week (avoids duplicate programme-week identity shells).
-      const { data, error } = await supabase
-        .from("hyrox_programme_drafts")
-        .update(payload)
-        .eq("id", targetRow.id)
-        .select(DRAFT_SELECT)
-        .single();
-      if (error) throw new Error(error.message);
-      draft = data as HyroxProgrammeDraftRow;
-      return {
-        sourceWeek,
-        targetWeek,
-        targetBlock,
-        targetCycle: cycleInBlockForGlobalWeek(targetWeek),
-        draft,
-        sessionCount,
-        replaced: false,
-        merged: false,
-        skippedSlotCount,
-      };
-    }
-
-    const { data, error } = await supabase
-      .from("hyrox_programme_drafts")
-      .insert({
-        athlete_id: params.athleteId,
-        ...payload,
-      })
-      .select(DRAFT_SELECT)
-      .single();
-    if (error) throw new Error(error.message);
-    draft = data as HyroxProgrammeDraftRow;
-  }
+  const { data, error } = await supabase
+    .from("hyrox_programme_drafts")
+    .update({
+      draft_data: cloned as unknown as HyroxJson,
+      weekly_summary: summary as unknown as HyroxJson,
+      validation_warnings: {
+        warnings: validation.warnings,
+        positives: validation.positives,
+        draftRevision,
+      } as unknown as HyroxJson,
+      coach_note: sourceRow.coach_note,
+      athlete_facing_note: sourceRow.athlete_facing_note,
+      status: "draft_generated",
+      published_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", ensured.draft.id)
+    .select(DRAFT_SELECT)
+    .single();
+  if (error) throw new Error(error.message);
 
   return {
     sourceWeek,
     targetWeek,
     targetBlock,
     targetCycle: cycleInBlockForGlobalWeek(targetWeek),
-    draft,
+    draft: data as HyroxProgrammeDraftRow,
     sessionCount,
     replaced: decision.action === "replace",
-    merged: decision.action === "merge_empty_slots",
+    merged: false,
+    seededFromPublished: ensured.forkedFromPublished,
+    draftRevision,
     skippedSlotCount,
   };
 }
@@ -436,6 +474,7 @@ async function inspectTargetWeekForAutoCarry(
   return {
     hasProgramming: state.hasProgramming || sessions.length > 0,
     published: state.published || weeks.some((row) => row.status === "published"),
+    hasUnpublishedDraft: state.hasUnpublishedDraft,
     athleteHistory:
       state.athleteHistory || sessions.some((row) => publishedSessionHasAthleteLogs(row)),
   };
