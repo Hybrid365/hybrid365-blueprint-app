@@ -20,6 +20,7 @@ import {
 export { StaleDraftPublishError } from "@/app/lib/hyroxProgrammePublishAudit";
 export type { PublishWeekAudit, PublishWeekSyncAudit } from "@/app/lib/hyroxProgrammePublishAudit";
 import { coachStatusToDraftDb } from "@/app/lib/hyroxCoachProgrammeStatusMap";
+import { selectPreferredDraftRow } from "@/app/lib/hyroxProgrammeDraftRevision";
 import type {
   HyroxAthleteProfile,
   ProfileReviewOverrides,
@@ -288,15 +289,14 @@ export async function fetchBlockProgrammeDrafts(
 
   if (error) throw new Error(error.message);
   const rows = (data as HyroxProgrammeDraftRow[]) ?? [];
-  const latestByWeek = new Map<number, HyroxProgrammeDraftRow>();
+  const byWeek = new Map<number, HyroxProgrammeDraftRow[]>();
   for (const row of rows) {
-    const prev = latestByWeek.get(row.week_number);
-    if (!prev || row.updated_at > prev.updated_at) {
-      latestByWeek.set(row.week_number, row);
-    }
+    const list = byWeek.get(row.week_number) ?? [];
+    list.push(row);
+    byWeek.set(row.week_number, list);
   }
   return weekNumbers
-    .map((w) => latestByWeek.get(w))
+    .map((w) => selectPreferredDraftRow(byWeek.get(w) ?? []))
     .filter((r): r is HyroxProgrammeDraftRow => Boolean(r));
 }
 

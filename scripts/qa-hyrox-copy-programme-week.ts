@@ -12,6 +12,7 @@ import {
   shouldAutoCarryProgrammeWeek,
 } from "../app/lib/hyroxCopyProgrammeWeek";
 import type { CoachDraftSession, CoachDraftWeek } from "../app/lib/hyroxCoachProgrammeDraft";
+import type { HyroxProgrammeDraftRow } from "../app/lib/hyroxDatabaseTypes";
 import {
   blockNumberForGlobalWeek,
   cycleInBlockForGlobalWeek,
@@ -19,6 +20,11 @@ import {
   weekDateRangeFromProgrammeStart,
 } from "../app/lib/hyroxProgrammeDates";
 import { globalWeekForBlock } from "../app/lib/hyroxCoachProgrammeDraft";
+import {
+  isPublishedDraftRow,
+  isUnpublishedWorkingDraft,
+  selectPreferredDraftRow,
+} from "../app/lib/hyroxProgrammeDraftRevision";
 import { publishedSessionHasAthleteLogs } from "../app/lib/hyroxProgrammeServer";
 
 function assert(cond: unknown, msg: string) {
@@ -140,27 +146,22 @@ assert(stripped.loggedAt == null, "B: loggedAt not copied");
 ok("B source athlete feedback is stripped; programming remains");
 
 const emptyDecision = resolveCopyWeekDecision(
-  { hasProgramming: false, published: false, athleteHistory: false },
+  { hasProgramming: false, published: false, hasUnpublishedDraft: false, athleteHistory: false },
   false
 );
 assert(emptyDecision.ok && emptyDecision.action === "copy", "C: empty target allows copy");
 const populatedNoReplace = resolveCopyWeekDecision(
-  { hasProgramming: true, published: false, athleteHistory: false },
+  { hasProgramming: true, published: false, hasUnpublishedDraft: true, athleteHistory: false },
   false
 );
 assert(!populatedNoReplace.ok && populatedNoReplace.code === "TARGET_HAS_PROGRAMMING", "C: no silent overwrite");
 const populatedReplace = resolveCopyWeekDecision(
-  { hasProgramming: true, published: false, athleteHistory: false },
+  { hasProgramming: true, published: false, hasUnpublishedDraft: true, athleteHistory: false },
   true
 );
 assert(populatedReplace.ok && populatedReplace.action === "replace", "C: explicit replace allowed when unpublished");
 ok("C populated unpublished target requires explicit replace");
 
-const historyBlocked = resolveCopyWeekDecision(
-  { hasProgramming: true, published: true, athleteHistory: true },
-  true
-);
-assert(!historyBlocked.ok && historyBlocked.code === "TARGET_ATHLETE_ACTIVITY", "D: athlete history blocks replace");
 assert(
   publishedSessionHasAthleteLogs({
     status: "completed",
@@ -177,12 +178,44 @@ assert(
   }),
   "D: unused scheduled session is not athlete history"
 );
-const publishedNoHistory = resolveCopyWeekDecision(
-  { hasProgramming: true, published: true, athleteHistory: false },
-  true
+const publishedNeedsChoice = resolveCopyWeekDecision(
+  { hasProgramming: false, published: true, hasUnpublishedDraft: false, athleteHistory: false },
+  null
 );
-assert(!publishedNoHistory.ok && publishedNoHistory.code === "TARGET_PUBLISHED", "D: published week is blocked even without logs");
-ok("D target athlete history / published week cannot be replaced");
+assert(
+  !publishedNeedsChoice.ok && publishedNeedsChoice.code === "TARGET_PUBLISHED",
+  "D: published week requires explicit draft-revision choice"
+);
+const publishedReplace = resolveCopyWeekDecision(
+  { hasProgramming: false, published: true, hasUnpublishedDraft: false, athleteHistory: false },
+  "replace"
+);
+assert(publishedReplace.ok && publishedReplace.action === "replace", "D: published → replace creates draft revision");
+const publishedSeed = resolveCopyWeekDecision(
+  { hasProgramming: false, published: true, hasUnpublishedDraft: false, athleteHistory: false },
+  "seed_from_published"
+);
+assert(
+  publishedSeed.ok && publishedSeed.action === "seed_from_published",
+  "D: published → seed_from_published allowed"
+);
+const historyWarn = resolveCopyWeekDecision(
+  { hasProgramming: true, published: false, hasUnpublishedDraft: true, athleteHistory: true },
+  null
+);
+assert(
+  !historyWarn.ok && historyWarn.code === "TARGET_ATHLETE_ACTIVITY",
+  "D: athlete history still requires explicit mode"
+);
+const historyReplace = resolveCopyWeekDecision(
+  { hasProgramming: true, published: true, hasUnpublishedDraft: false, athleteHistory: true },
+  "replace"
+);
+assert(
+  historyReplace.ok && historyReplace.action === "replace",
+  "D: with explicit mode, published+history opens draft revision (published snapshot untouched)"
+);
+ok("D published weeks open draft revisions; history needs explicit mode");
 
 const w16to17 = cloneCoachDraftWeekForTarget(weekWithSessions(16, [session("w16", "Peak week")]), {
   athleteId: "athlete-1",
@@ -222,26 +255,45 @@ assert(
   resolveAutoCarryForward({
     fromWeek: 14,
     toWeek: 15,
-    target: { hasProgramming: true, published: false, athleteHistory: false },
+    target: {
+      hasProgramming: true,
+      published: false,
+      hasUnpublishedDraft: true,
+      athleteHistory: false,
+    },
     sourceHasProgramming: true,
   }).action === "preserve",
   "auto-carry never replaces a populated target"
+);
+assert(
+  resolveAutoCarryForward({
+    fromWeek: 14,
+    toWeek: 15,
+    target: {
+      hasProgramming: false,
+      published: true,
+      hasUnpublishedDraft: false,
+      athleteHistory: false,
+    },
+    sourceHasProgramming: true,
+  }).action === "preserve",
+  "auto-carry never seeds into a published week"
 );
 ok("auto-carry helpers do not change manual copy-week replace rules");
 
 // --- Duplicate week conflict modes + merge empty slots ---
 const conflictAsk = resolveCopyWeekDecision(
-  { hasProgramming: true, published: false, athleteHistory: false },
+  { hasProgramming: true, published: false, hasUnpublishedDraft: true, athleteHistory: false },
   null
 );
 assert(!conflictAsk.ok && conflictAsk.code === "TARGET_HAS_PROGRAMMING", "G: conflict requires choice");
 const conflictReplace = resolveCopyWeekDecision(
-  { hasProgramming: true, published: false, athleteHistory: false },
+  { hasProgramming: true, published: false, hasUnpublishedDraft: true, athleteHistory: false },
   "replace"
 );
 assert(conflictReplace.ok && conflictReplace.action === "replace", "G: replace allowed");
 const conflictMerge = resolveCopyWeekDecision(
-  { hasProgramming: true, published: false, athleteHistory: false },
+  { hasProgramming: true, published: false, hasUnpublishedDraft: true, athleteHistory: false },
   "merge_empty_slots"
 );
 assert(conflictMerge.ok && conflictMerge.action === "merge_empty_slots", "G: merge empty slots allowed");
@@ -328,5 +380,44 @@ assert(
   "J: AM/Main/PM slot placement preserved"
 );
 ok("J same-day continuity preserves AM / Main / PM slots");
+
+function draftRow(
+  partial: Partial<HyroxProgrammeDraftRow> & { id: string; status: HyroxProgrammeDraftRow["status"] }
+): HyroxProgrammeDraftRow {
+  return {
+    athlete_id: "a",
+    mapped_profile_id: null,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: partial.updated_at ?? "2026-01-01T00:00:00.000Z",
+    block_number: 1,
+    week_number: 2,
+    draft_data: {},
+    weekly_summary: null,
+    validation_warnings: null,
+    coach_note: null,
+    athlete_facing_note: null,
+    published_at: null,
+    ...partial,
+  } as HyroxProgrammeDraftRow;
+}
+
+const publishedSnap = draftRow({
+  id: "pub",
+  status: "published",
+  published_at: "2026-01-02T00:00:00.000Z",
+  updated_at: "2026-01-02T00:00:00.000Z",
+});
+const working = draftRow({
+  id: "work",
+  status: "edited",
+  published_at: null,
+  updated_at: "2026-01-03T00:00:00.000Z",
+});
+assert(isPublishedDraftRow(publishedSnap), "K: published row detected");
+assert(isUnpublishedWorkingDraft(working), "K: working draft detected");
+assert(!isUnpublishedWorkingDraft(publishedSnap), "K: published is not working draft");
+assert(selectPreferredDraftRow([publishedSnap, working])?.id === "work", "K: prefer unpublished");
+assert(selectPreferredDraftRow([publishedSnap])?.id === "pub", "K: fall back to published");
+ok("K draft revision preference: unpublished working draft wins");
 
 console.log(`\n${passed} copy-week / duplicate-week checks passed.`);

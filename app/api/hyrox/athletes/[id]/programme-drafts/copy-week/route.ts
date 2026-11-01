@@ -134,11 +134,13 @@ export async function POST(request: Request, context: RouteContext) {
       conflictMode: parseConflictMode(body),
     });
 
-    const actionLabel = result.merged
-      ? "MERGED INTO"
-      : result.replaced
-        ? "REPLACED DRAFT IN"
-        : "DUPLICATED TO";
+    const actionLabel = result.seededFromPublished && !result.merged && !result.replaced
+      ? "OPENED DRAFT REVISION FOR"
+      : result.merged
+        ? "MERGED INTO DRAFT FOR"
+        : result.replaced
+          ? "WROTE DRAFT REVISION FOR"
+          : "DUPLICATED TO";
 
     return NextResponse.json({
       success: true,
@@ -151,11 +153,15 @@ export async function POST(request: Request, context: RouteContext) {
       skippedSlotCount: result.skippedSlotCount,
       replaced: result.replaced,
       merged: result.merged,
+      seededFromPublished: result.seededFromPublished,
+      draftRevision: result.draftRevision,
       published: false,
       message: `WEEK ${result.sourceWeek} ${actionLabel} WEEK ${result.targetWeek}`,
-      detail: result.merged
-        ? `${result.sessionCount} session${result.sessionCount === 1 ? "" : "s"} merged into empty slots. Review before publishing.`
-        : "Review the sessions before publishing. Same stage preserved — not auto-progressed.",
+      detail: result.draftRevision
+        ? "Published week stays live for the athlete until you republish. Draft is coach-only."
+        : result.merged
+          ? `${result.sessionCount} session${result.sessionCount === 1 ? "" : "s"} merged into empty slots. Review before publishing.`
+          : "Review the sessions before publishing. Same stage preserved — not auto-progressed.",
     });
   } catch (e) {
     return copyWeekErrorResponse(e);

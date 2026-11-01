@@ -1,18 +1,16 @@
 /**
  * Ensure programme draft weeks exist for progression apply.
- * Creates empty draft shells only — never publishes, never mutates current_week.
+ * Creates empty draft shells / unpublished revisions only — never publishes,
+ * never mutates current_week, never mutates published draft rows in place.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CoachAthlete } from "@/app/lib/hyroxCoachMockAthletes";
 import {
-  computeWeeklySummary,
   parseCoachDraftWeekJson,
-  validateCoachDraft,
   type CoachDraftWeek,
 } from "@/app/lib/hyroxCoachProgrammeDraft";
-import type { HyroxJson, HyroxProgrammeDraftRow } from "@/app/lib/hyroxDatabaseTypes";
-import { blockNumberForGlobalWeek } from "@/app/lib/hyroxProgrammeDates";
+import type { HyroxProgrammeDraftRow } from "@/app/lib/hyroxDatabaseTypes";
 import { buildEmptyCoachDraftWeekShell } from "@/app/lib/hyroxSessionFamilyApply";
 
 const DRAFT_SELECT =
@@ -30,6 +28,7 @@ export async function fetchLatestDraftForGlobalWeek(
     .eq("athlete_id", athleteId)
     .eq("week_number", weekNumber)
     .neq("status", "archived")
+    .neq("status", "published")
     .is("published_at", null)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -51,8 +50,8 @@ export async function fetchLatestDraftForGlobalWeek(
 }
 
 /**
- * Idempotent: return existing draft for global week, or insert an empty shell.
- * Does NOT update hyrox_athletes.current_week / current_block.
+ * Idempotent: return unpublished working draft for global week, or insert a shell /
+ * fork from a published draft snapshot. Does NOT update hyrox_athletes.current_week.
  */
 export async function ensureProgrammeDraftWeekExists(
   supabase: SupabaseClient,
@@ -74,7 +73,11 @@ export async function ensureProgrammeDraftWeekExists(
     params.athleteId,
     params.globalWeek
   );
-  if (existing) {
+
+  const { ensureUnpublishedWorkingDraft, isUnpublishedWorkingDraft } = await import(
+    "@/app/lib/hyroxProgrammeDraftRevision"
+  );
+  if (existing && isUnpublishedWorkingDraft(existing)) {
     const parsed =
       parseCoachDraftWeekJson(existing.draft_data) ??
       buildEmptyCoachDraftWeekShell({
@@ -84,41 +87,18 @@ export async function ensureProgrammeDraftWeekExists(
     return { draft: existing, draftData: parsed, created: false };
   }
 
-  const shell = buildEmptyCoachDraftWeekShell({
+  const ensured = await ensureUnpublishedWorkingDraft(supabase, {
     athleteId: params.athleteId,
+    athlete: params.athlete,
     globalWeek: params.globalWeek,
+    mappedProfileId: params.mappedProfileId,
+    coachNote: params.coachNote,
+    athleteFacingNote: params.athleteFacingNote,
   });
-  const summary = computeWeeklySummary(shell, params.athlete);
-  const validation = validateCoachDraft(shell, params.athlete);
-  const block = blockNumberForGlobalWeek(params.globalWeek);
-
-  const { data, error } = await supabase
-    .from("hyrox_programme_drafts")
-    .insert({
-      athlete_id: params.athleteId,
-      mapped_profile_id: params.mappedProfileId ?? null,
-      block_number: block,
-      week_number: params.globalWeek,
-      draft_data: shell as unknown as HyroxJson,
-      weekly_summary: summary as unknown as HyroxJson,
-      validation_warnings: {
-        warnings: validation.warnings,
-        positives: validation.positives,
-        progressionShell: true,
-      } as unknown as HyroxJson,
-      coach_note: params.coachNote || null,
-      athlete_facing_note: params.athleteFacingNote || null,
-      status: "draft_generated",
-      published_at: null,
-    })
-    .select(DRAFT_SELECT)
-    .single();
-
-  if (error) throw new Error(error.message);
   return {
-    draft: data as HyroxProgrammeDraftRow,
-    draftData: shell,
-    created: true,
+    draft: ensured.draft,
+    draftData: ensured.draftData,
+    created: ensured.created,
   };
 }
 

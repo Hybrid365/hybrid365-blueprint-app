@@ -45,6 +45,8 @@ export type BlockWeekMeta = {
   sessionCount: number;
   published: boolean;
   approved: boolean;
+  /** Unpublished working draft while athlete still sees a published week. */
+  draftRevision?: boolean;
 };
 
 export type SaveDraftResult = {
@@ -718,7 +720,12 @@ export function useCoachBlockProgramme(params: {
     async (
       sourceWeek: number,
       targetWeek: number,
-      conflictMode: boolean | "replace" | "merge_empty_slots" | null = null
+      conflictMode:
+        | boolean
+        | "replace"
+        | "merge_empty_slots"
+        | "seed_from_published"
+        | null = null
     ): Promise<{ ok: boolean; error?: string; code?: string }> => {
       if (!isLive || !livePersistence?.athleteId) {
         return { ok: false, error: "Duplicate week is only available for live athlete programmes." };

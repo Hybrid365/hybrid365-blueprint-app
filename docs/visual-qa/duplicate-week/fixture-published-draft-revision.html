@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Duplicate week — published draft revision</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+    body { margin: 0; background: #09090b; color: #fafafa; display:flex; min-height:100vh; align-items:center; justify-content:center; }
+    .panel { width: 560px; border: 1px solid #3f3f46; border-radius: 16px; background: #09090b; padding: 20px; }
+    .eyebrow { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: #facc15; font-weight: 700; }
+    h1 { margin: 8px 0 4px; font-size: 18px; }
+    .muted { color: #a1a1aa; font-size: 14px; }
+    .dest { margin-top: 14px; border: 1px solid #3f3f46; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+    .dest strong { display:block; }
+    .meta { font-size: 11px; color: #71717a; margin-top: 2px; }
+    .published { margin-top: 16px; border: 1px solid #0ea5e966; background: #0ea5e91a; border-radius: 12px; padding: 12px; }
+    .published label { display: flex; gap: 8px; margin-top: 10px; font-size: 14px; align-items:flex-start; color: #e0f2fe; }
+    .small { font-size: 11px; color: #7dd3fcb3; display: block; margin-top: 2px; }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .btn { border-radius: 999px; border: 1px solid #52525b; background: #18181b; color: #f4f4f5; padding: 8px 14px; font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="eyebrow">Week actions</div>
+    <h1>Duplicate week 1</h1>
+    <p class="muted">Copy into a future week as an unpublished draft. Never auto-publishes.</p>
+    <div class="dest">
+      <strong>Week 2 · Block 1</strong>
+      <span class="meta">2026-01-12 → 2026-01-18 · published (live)</span>
+    </div>
+    <div class="published">
+      <strong style="color:#e0f2fe">WEEK 2 IS ALREADY PUBLISHED</strong>
+      <p style="font-size:12px;color:#bae6fdcc;margin:6px 0 0">
+        Create an editable draft revision? The currently published week remains live for the
+        athlete until you republish.
+      </p>
+      <label>
+        <input type="radio" name="c" checked />
+        <span>
+          <strong>Replace draft with duplicated Week 1</strong>
+          <span class="small">Preferred — write Week 1 into a new unpublished Week 2 draft.</span>
+        </span>
+      </label>
+      <label>
+        <input type="radio" name="c" />
+        <span>
+          <strong>Create draft from current published Week 2</strong>
+          <span class="small">Start from what the athlete sees now (no Week 1 duplicate).</span>
+        </span>
+      </label>
+      <label>
+        <input type="radio" name="c" />
+        <span>
+          <strong>Merge duplicated Week 1 into empty slots</strong>
+          <span class="small">Seed draft from published, then fill only free AM / Main / PM / Optional slots.</span>
+        </span>
+      </label>
+    </div>
+    <div class="actions">
+      <button class="btn">Cancel</button>
+      <button class="btn" style="background:#eab308;color:#09090b;border-color:#eab308">Create draft from Week 1</button>
+    </div>
+  </div>
+</body>
+</html>

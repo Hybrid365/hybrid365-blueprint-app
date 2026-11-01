@@ -9,6 +9,7 @@ import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import type { CoachDraftWeek, CoachProgrammeStatus } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { draftDbToCoachStatus } from "@/app/lib/hyroxCoachProgrammeStatusMap";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
+import { ensureUnpublishedWorkingDraft } from "@/app/lib/hyroxProgrammeDraftRevision";
 import {
   fetchProgrammeDraftById,
   logCoachDraftRoute,
@@ -91,7 +92,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  const wasPublished = draftRow.status === "published";
+  const wasPublished =
+    draftRow.status === "published" || draftRow.published_at != null;
 
   const { athlete, error: athleteError } = await fetchHyroxAthleteById(supabase, draftRow.athlete_id);
 
@@ -112,6 +114,38 @@ export async function PATCH(request: Request, context: RouteContext) {
   const coachStatus = body.coach_status;
 
   try {
+    // Published draft rows are immutable snapshots. Fork an unpublished working revision.
+    if (wasPublished) {
+      const ensured = await ensureUnpublishedWorkingDraft(supabase, {
+        athleteId: row.id,
+        athlete: coachAthlete,
+        globalWeek: body.draft.week || draftRow.week_number,
+        seedDraftData: body.draft,
+        mappedProfileId: draftRow.mapped_profile_id,
+        coachNote: body.coach_note ?? draftRow.coach_note,
+        athleteFacingNote: body.athlete_facing_note ?? draftRow.athlete_facing_note,
+      });
+      const saved = await updateProgrammeDraft(supabase, {
+        draftId: ensured.draft.id,
+        athlete: coachAthlete,
+        athleteRow: row,
+        draft: body.draft,
+        coachNote: body.coach_note ?? draftRow.coach_note ?? "",
+        athleteFacingNote: body.athlete_facing_note ?? draftRow.athlete_facing_note ?? "",
+        coachStatus: coachStatus ?? "approved",
+        changedBy: auth.ctx.userId,
+      });
+      return NextResponse.json({
+        success: true,
+        draft: saved,
+        coachStatus: draftDbToCoachStatus(saved.status),
+        republishedPrep: true,
+        draftRevision: true,
+        message:
+          "Editable draft revision created. Athlete still sees the published week until you republish.",
+      });
+    }
+
     const saved = await updateProgrammeDraft(supabase, {
       draftId,
       athlete: coachAthlete,
@@ -119,7 +153,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       draft: body.draft,
       coachNote: body.coach_note ?? draftRow.coach_note ?? "",
       athleteFacingNote: body.athlete_facing_note ?? draftRow.athlete_facing_note ?? "",
-      coachStatus: wasPublished && !coachStatus ? "approved" : coachStatus,
+      coachStatus,
       changedBy: auth.ctx.userId,
     });
 
@@ -127,7 +161,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       success: true,
       draft: saved,
       coachStatus: draftDbToCoachStatus(saved.status),
-      republishedPrep: wasPublished,
+      republishedPrep: false,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Save failed.";
