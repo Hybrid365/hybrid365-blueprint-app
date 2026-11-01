@@ -6,6 +6,7 @@
 import {
   cloneCoachDraftWeekForTarget,
   countDraftProgrammingSessions,
+  mergeClonedWeekIntoEmptySlots,
   resolveAutoCarryForward,
   resolveCopyWeekDecision,
   shouldAutoCarryProgrammeWeek,
@@ -228,4 +229,104 @@ assert(
 );
 ok("auto-carry helpers do not change manual copy-week replace rules");
 
-console.log(`\n${passed} copy-week checks passed.`);
+// --- Duplicate week conflict modes + merge empty slots ---
+const conflictAsk = resolveCopyWeekDecision(
+  { hasProgramming: true, published: false, athleteHistory: false },
+  null
+);
+assert(!conflictAsk.ok && conflictAsk.code === "TARGET_HAS_PROGRAMMING", "G: conflict requires choice");
+const conflictReplace = resolveCopyWeekDecision(
+  { hasProgramming: true, published: false, athleteHistory: false },
+  "replace"
+);
+assert(conflictReplace.ok && conflictReplace.action === "replace", "G: replace allowed");
+const conflictMerge = resolveCopyWeekDecision(
+  { hasProgramming: true, published: false, athleteHistory: false },
+  "merge_empty_slots"
+);
+assert(conflictMerge.ok && conflictMerge.action === "merge_empty_slots", "G: merge empty slots allowed");
+ok("G conflict modes: cancel / replace / merge (no silent overwrite)");
+
+const targetPartial = weekWithSessions(2, [
+  session("keep-mon", "Keep Monday Main", { timeOfDay: "Main" }),
+]);
+// Only Mon has a session in fixture helper; force Tue empty by clearing
+targetPartial.days[1]!.sessions = [];
+const sourceForMerge = weekWithSessions(1, [
+  session("src-mon", "Source Monday", { timeOfDay: "Main" }),
+  session("src-tue", "Source Tuesday", { timeOfDay: "Main" }),
+]);
+const clonedMerge = cloneCoachDraftWeekForTarget(sourceForMerge, {
+  athleteId: "athlete-1",
+  targetWeek: 2,
+});
+const merged = mergeClonedWeekIntoEmptySlots(targetPartial, clonedMerge);
+assert(merged.skippedCount === 1, "H: occupied Monday Main skipped");
+assert(merged.copiedCount === 1, "H: empty Tuesday Main filled");
+assert(
+  merged.draft.days[0]!.sessions.some((s) => s.title === "Keep Monday Main"),
+  "H: existing Monday kept"
+);
+assert(
+  merged.draft.days[1]!.sessions.some((s) => s.title === "Source Tuesday"),
+  "H: Tuesday copied into empty slot"
+);
+assert(merged.draft.days[0]!.day === "Mon" && merged.draft.days[1]!.day === "Tue", "H: weekday continuity");
+ok("H merge into empty slots preserves occupied slots and weekday");
+
+const familySource = weekWithSessions(1, [
+  session("fam1", "Threshold Intervals", {
+    timeOfDay: "Main",
+    sessionFamily: {
+      familyId: "threshold_5_min_repeats",
+      stageId: "stage_2",
+      familyDefinitionVersion: 1,
+      structuredWorkout: { kind: "repeats" },
+      prescriptionSlots: [{ slot: "run", rule: { type: "threshold_offset" } }],
+      prescriptionPreview: {
+        resolvedAt: "2026-01-01T00:00:00.000Z",
+        slots: [
+          {
+            slot: "run",
+            source: "coach_override",
+            resolvedValue: 200,
+            resolvedUnit: "s/km",
+          },
+        ],
+      },
+    },
+  }),
+]);
+const familyCloned = cloneCoachDraftWeekForTarget(familySource, {
+  athleteId: "athlete-1",
+  targetWeek: 2,
+});
+const famSess = familyCloned.days[0]!.sessions[0]!;
+assert(famSess.sessionFamily?.stageId === "stage_2", "I: stage copied not progressed");
+assert(famSess.sessionFamily?.familyId === "threshold_5_min_repeats", "I: family id preserved");
+assert(famSess.sessionFamily?.prescriptionPreview == null, "I: preview cleared for re-resolve");
+assert(JSON.stringify(familySource) !== JSON.stringify(familyCloned), "I: clone is distinct");
+assert(
+  (familySource.days[0]!.sessions[0] as CoachDraftSession & { sessionFamily?: { stageId: string } })
+    .sessionFamily?.stageId === "stage_2",
+  "I: source stage unchanged"
+);
+ok("I Session Family stage copied same-stage; preview cleared for re-resolve");
+
+const amPmSource = weekWithSessions(1, []);
+amPmSource.days[0]!.sessions = [
+  session("am", "Monday AM", { timeOfDay: "AM" }),
+  session("main", "Monday Main", { timeOfDay: "Main" }),
+  session("pm", "Monday PM", { timeOfDay: "PM" }),
+];
+const amPmCloned = cloneCoachDraftWeekForTarget(amPmSource, {
+  athleteId: "athlete-1",
+  targetWeek: 2,
+});
+assert(
+  amPmCloned.days[0]!.sessions.map((s) => s.timeOfDay).join(",") === "AM,Main,PM",
+  "J: AM/Main/PM slot placement preserved"
+);
+ok("J same-day continuity preserves AM / Main / PM slots");
+
+console.log(`\n${passed} copy-week / duplicate-week checks passed.`);

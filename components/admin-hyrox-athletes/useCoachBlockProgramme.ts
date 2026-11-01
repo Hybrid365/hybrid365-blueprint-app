@@ -718,11 +718,17 @@ export function useCoachBlockProgramme(params: {
     async (
       sourceWeek: number,
       targetWeek: number,
-      replace: boolean
+      conflictMode: boolean | "replace" | "merge_empty_slots" | null = null
     ): Promise<{ ok: boolean; error?: string; code?: string }> => {
       if (!isLive || !livePersistence?.athleteId) {
-        return { ok: false, error: "Copy week is only available for live athlete programmes." };
+        return { ok: false, error: "Duplicate week is only available for live athlete programmes." };
       }
+      const mode =
+        conflictMode === true
+          ? "replace"
+          : conflictMode === false || conflictMode == null
+            ? null
+            : conflictMode;
       setSaving(true);
       try {
         const res = await fetch(
@@ -733,7 +739,8 @@ export function useCoachBlockProgramme(params: {
             body: JSON.stringify({
               source_week: sourceWeek,
               target_week: targetWeek,
-              replace,
+              conflict_mode: mode,
+              replace: mode === "replace",
               effective_profile: livePersistence.effectiveProfile ?? undefined,
             }),
           }
@@ -751,13 +758,13 @@ export function useCoachBlockProgramme(params: {
           draftId?: string;
         };
         if (!res.ok || !data.success) {
-          return { ok: false, error: data.error ?? "Copy failed.", code: data.code };
+          return { ok: false, error: data.error ?? "Duplicate failed.", code: data.code };
         }
 
         const targetBlock = data.targetBlock ?? blockNumberForGlobalWeek(targetWeek);
         const targetCycle = data.targetCycle ?? cycleInBlockForGlobalWeek(targetWeek);
         showToast(
-          `${data.message ?? `WEEK ${sourceWeek} COPIED TO WEEK ${targetWeek}`}. ${data.detail ?? "Review the sessions before publishing."}`
+          `${data.message ?? `WEEK ${sourceWeek} DUPLICATED TO WEEK ${targetWeek}`}. ${data.detail ?? "Review the sessions before publishing."}`
         );
 
         if (targetBlock === selectedBlock) {
@@ -773,7 +780,7 @@ export function useCoachBlockProgramme(params: {
         if (data.draftId) livePersistence.onDraftIdChange(data.draftId);
         return { ok: true };
       } catch {
-        return { ok: false, error: "Network error copying week." };
+        return { ok: false, error: "Network error duplicating week." };
       } finally {
         setSaving(false);
       }

@@ -28,14 +28,18 @@ export const COPY_WEEK_ERROR = {
   SOURCE_EMPTY: "Source week has no programmed sessions to copy.",
   SOURCE_MISSING: "No programme draft found for the source week.",
   TARGET_PUBLISHED:
-    "This week already contains published sessions and cannot be replaced.",
+    "This week already contains published sessions and cannot be overwritten.",
   TARGET_ATHLETE_ACTIVITY:
-    "This week contains athlete activity and cannot be replaced.",
+    "This week contains athlete activity and cannot be overwritten.",
   TARGET_HAS_PROGRAMMING:
-    "TARGET WEEK ALREADY CONTAINS PROGRAMMING. Confirm replace to continue.",
+    "TARGET WEEK ALREADY CONTAINS PROGRAMMING. Choose Replace draft or Merge into empty slots.",
+  TARGET_MERGE_NO_EMPTY: "Target week has no empty day slots to merge into.",
 } as const;
 
 export type CopyWeekErrorCode = keyof typeof COPY_WEEK_ERROR;
+
+/** Coach conflict choice when the target draft already has sessions. */
+export type CopyWeekConflictMode = "replace" | "merge_empty_slots";
 
 export type CopyWeekTargetState = {
   hasProgramming: boolean;
@@ -44,13 +48,25 @@ export type CopyWeekTargetState = {
 };
 
 export type CopyWeekDecision =
-  | { ok: true; action: "copy" | "replace" }
+  | { ok: true; action: "copy" | "replace" | "merge_empty_slots" }
   | { ok: false; code: CopyWeekErrorCode; message: string };
 
+/**
+ * Resolve whether a duplicate/copy may proceed.
+ * `conflictMode` is only consulted when the target already has programming.
+ * Published weeks and athlete history always block.
+ */
 export function resolveCopyWeekDecision(
   target: CopyWeekTargetState,
-  replace: boolean
+  replaceOrMode: boolean | CopyWeekConflictMode | null | undefined = false
 ): CopyWeekDecision {
+  const mode: CopyWeekConflictMode | null =
+    replaceOrMode === true
+      ? "replace"
+      : replaceOrMode === false || replaceOrMode == null
+        ? null
+        : replaceOrMode;
+
   if (target.athleteHistory) {
     return {
       ok: false,
@@ -65,14 +81,20 @@ export function resolveCopyWeekDecision(
       message: COPY_WEEK_ERROR.TARGET_PUBLISHED,
     };
   }
-  if (target.hasProgramming && !replace) {
-    return {
-      ok: false,
-      code: "TARGET_HAS_PROGRAMMING",
-      message: COPY_WEEK_ERROR.TARGET_HAS_PROGRAMMING,
-    };
+  if (!target.hasProgramming) {
+    return { ok: true, action: "copy" };
   }
-  return { ok: true, action: target.hasProgramming ? "replace" : "copy" };
+  if (mode === "replace") {
+    return { ok: true, action: "replace" };
+  }
+  if (mode === "merge_empty_slots") {
+    return { ok: true, action: "merge_empty_slots" };
+  }
+  return {
+    ok: false,
+    code: "TARGET_HAS_PROGRAMMING",
+    message: COPY_WEEK_ERROR.TARGET_HAS_PROGRAMMING,
+  };
 }
 
 function stripAthleteHistoryFromSession(session: CoachDraftSession): CoachDraftSession {
@@ -122,6 +144,70 @@ export function cloneCoachDraftWeekForTarget(
   };
 }
 
+/**
+ * Merge cloned source sessions into empty time-of-day slots on an existing target draft.
+ * Same weekday continuity (Mon→Mon). Occupied AM / Main / PM / Optional slots are left untouched.
+ * Does not progress Session Family stages. Does not invent sessions.
+ */
+export function mergeClonedWeekIntoEmptySlots(
+  target: CoachDraftWeek,
+  clonedSource: CoachDraftWeek
+): {
+  draft: CoachDraftWeek;
+  copiedCount: number;
+  skippedCount: number;
+} {
+  let copiedCount = 0;
+  let skippedCount = 0;
+  const targetByDay = new Map(target.days.map((d) => [d.day, d]));
+
+  const days = clonedSource.days.map((sourceDay) => {
+    const existing = targetByDay.get(sourceDay.day);
+    if (!existing) {
+      copiedCount += sourceDay.sessions.length;
+      return {
+        ...sourceDay,
+        sessions: sourceDay.sessions.map((s) => structuredClone(s)),
+      };
+    }
+    const occupied = new Set(existing.sessions.map((s) => s.timeOfDay));
+    const mergedSessions = [...existing.sessions];
+    for (const session of sourceDay.sessions) {
+      if (occupied.has(session.timeOfDay)) {
+        skippedCount += 1;
+        continue;
+      }
+      mergedSessions.push(structuredClone(session));
+      occupied.add(session.timeOfDay);
+      copiedCount += 1;
+    }
+    return {
+      ...existing,
+      sessions: mergedSessions,
+    };
+  });
+
+  // Preserve any target-only days not present in the source clone.
+  for (const day of target.days) {
+    if (!clonedSource.days.some((d) => d.day === day.day)) {
+      days.push(day);
+    }
+  }
+
+  return {
+    draft: {
+      ...target,
+      athleteId: clonedSource.athleteId,
+      block: clonedSource.block,
+      week: clonedSource.week,
+      generatedAt: new Date().toISOString(),
+      days,
+    },
+    copiedCount,
+    skippedCount,
+  };
+}
+
 export function countDraftProgrammingSessions(draft: CoachDraftWeek | null | undefined): number {
   if (!draft) return 0;
   return countCoachDraftSessions(draft).total;
@@ -138,6 +224,8 @@ export type CopyWeekDestination = {
   athleteHistory: boolean;
   copyAllowed: boolean;
   replaceAllowed: boolean;
+  /** True when unpublished draft programming exists and merge is a safe option. */
+  mergeEmptySlotsAllowed: boolean;
 };
 
 export const AUTO_CARRY_COPY = {
@@ -196,7 +284,8 @@ export function destinationMetaForWeek(params: {
   state: CopyWeekTargetState;
 }): CopyWeekDestination {
   const decision = resolveCopyWeekDecision(params.state, false);
-  const replaceDecision = resolveCopyWeekDecision(params.state, true);
+  const replaceDecision = resolveCopyWeekDecision(params.state, "replace");
+  const mergeDecision = resolveCopyWeekDecision(params.state, "merge_empty_slots");
   const dates = params.programmeStartYmd
     ? weekDateRangeFromProgrammeStart(params.programmeStartYmd, params.week)
     : null;
@@ -211,5 +300,6 @@ export function destinationMetaForWeek(params: {
     athleteHistory: params.state.athleteHistory,
     copyAllowed: decision.ok,
     replaceAllowed: replaceDecision.ok && params.state.hasProgramming,
+    mergeEmptySlotsAllowed: mergeDecision.ok && params.state.hasProgramming,
   };
 }

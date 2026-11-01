@@ -200,7 +200,8 @@ export function refreshFamilyLinkedDraftPreview(
   let editConfig = { ...session.editConfig };
   if (runPreview?.resolvedValue != null && runPreview.resolvedUnit === "s/km") {
     const pace = formatPaceLabel(runPreview.resolvedValue);
-    if (pace && runPreview.source === "formula") {
+    // Formula and coach_override both write the live preview pace; source stays on prescriptionPreview.
+    if (pace && (runPreview.source === "formula" || runPreview.source === "coach_override")) {
       editConfig = { ...editConfig, targetPace: pace, targetPaceLoad: pace };
     }
   }

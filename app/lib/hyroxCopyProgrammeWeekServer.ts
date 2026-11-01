@@ -16,10 +16,12 @@ import {
   cloneCoachDraftWeekForTarget,
   countDraftProgrammingSessions,
   destinationMetaForWeek,
+  mergeClonedWeekIntoEmptySlots,
   resolveAutoCarryForward,
   resolveCopyWeekDecision,
   AUTO_CARRY_COPY,
   COPY_WEEK_ERROR,
+  type CopyWeekConflictMode,
   type CopyWeekDestination,
   type CopyWeekTargetState,
 } from "@/app/lib/hyroxCopyProgrammeWeek";
@@ -164,6 +166,75 @@ export async function listCopyWeekDestinations(
   return { source, destinations };
 }
 
+async function archiveUnpublishedDraftsForWeek(
+  supabase: SupabaseClient,
+  athleteId: string,
+  weekNumber: number,
+  exceptDraftId?: string | null
+): Promise<void> {
+  let query = supabase
+    .from("hyrox_programme_drafts")
+    .update({ status: "archived", updated_at: new Date().toISOString() })
+    .eq("athlete_id", athleteId)
+    .eq("week_number", weekNumber)
+    .neq("status", "archived")
+    .is("published_at", null);
+  if (exceptDraftId) {
+    query = query.neq("id", exceptDraftId);
+  }
+  const { error } = await query;
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Same-stage Session Family re-resolve against current Programming Anchors.
+ * Preserves coach_override slots from the source preview; never auto-progresses stage.
+ */
+async function reResolveFamilyLinkedDraftWeek(
+  supabase: SupabaseClient,
+  athleteId: string,
+  sourceDraft: CoachDraftWeek,
+  cloned: CoachDraftWeek
+): Promise<CoachDraftWeek> {
+  try {
+    const { getHyroxAthletePerformanceProfile } = await import(
+      "@/app/lib/hyroxAthleteBenchmarkServer"
+    );
+    const { getSessionFamily } = await import("@/app/lib/hyroxSessionFamilyRegistry");
+    const { overridesFromDraftPreview, refreshFamilyLinkedDraftPreview } = await import(
+      "@/app/lib/hyroxSessionFamilyDraft"
+    );
+    const profileResult = await getHyroxAthletePerformanceProfile(supabase, athleteId);
+    const resolvedAt = new Date().toISOString();
+    return {
+      ...cloned,
+      days: cloned.days.map((day, dayIndex) => ({
+        ...day,
+        sessions: day.sessions.map((session, sessionIndex) => {
+          if (!session.sessionFamily) return session;
+          const family = getSessionFamily(session.sessionFamily.familyId);
+          if (!family) return session;
+          const sourceSession = sourceDraft.days[dayIndex]?.sessions[sessionIndex];
+          const overrides =
+            sourceSession?.sessionFamily != null
+              ? overridesFromDraftPreview(sourceSession.sessionFamily)
+              : [];
+          return refreshFamilyLinkedDraftPreview(
+            session,
+            family,
+            profileResult.profile,
+            resolvedAt,
+            overrides.length > 0 ? overrides : undefined
+          );
+        }),
+      })),
+    };
+  } catch {
+    // Keep stripped preview; coach can refresh by editing. Never fail duplicate.
+    return cloned;
+  }
+}
+
 export async function copyProgrammeWeekDraft(
   supabase: SupabaseClient,
   params: {
@@ -171,7 +242,9 @@ export async function copyProgrammeWeekDraft(
     athlete: CoachAthlete;
     sourceWeek: number;
     targetWeek: number;
-    replace: boolean;
+    /** @deprecated Prefer conflictMode. `true` maps to replace. */
+    replace?: boolean;
+    conflictMode?: CopyWeekConflictMode | null;
   }
 ): Promise<{
   sourceWeek: number;
@@ -181,6 +254,8 @@ export async function copyProgrammeWeekDraft(
   draft: HyroxProgrammeDraftRow;
   sessionCount: number;
   replaced: boolean;
+  merged: boolean;
+  skippedSlotCount: number;
 }> {
   const sourceWeek = parseCoachGlobalWeek(params.sourceWeek);
   const targetWeek = parseCoachGlobalWeek(params.targetWeek);
@@ -190,6 +265,9 @@ export async function copyProgrammeWeekDraft(
   if (sourceWeek === targetWeek) {
     throw new CopyProgrammeWeekError("SAME_WEEK", COPY_WEEK_ERROR.SAME_WEEK, 400);
   }
+
+  const conflictMode: CopyWeekConflictMode | boolean | null =
+    params.conflictMode ?? (params.replace === true ? "replace" : false);
 
   const sourceRow = await fetchLatestDraftForGlobalWeek(supabase, params.athleteId, sourceWeek);
   if (!sourceRow) {
@@ -202,86 +280,128 @@ export async function copyProgrammeWeekDraft(
   }
 
   const targetState = await inspectTargetWeekState(supabase, params.athleteId, targetWeek);
-  const decision = resolveCopyWeekDecision(targetState, params.replace);
+  const decision = resolveCopyWeekDecision(targetState, conflictMode);
   if (!decision.ok) {
     throw new CopyProgrammeWeekError(decision.code, decision.message, 409);
   }
+
+  const targetRow = await fetchLatestDraftForGlobalWeek(supabase, params.athleteId, targetWeek);
+  const targetDraft = targetRow ? parseCoachDraftWeekJson(targetRow.draft_data) : null;
 
   let cloned: CoachDraftWeek = cloneCoachDraftWeekForTarget(sourceDraft, {
     athleteId: params.athleteId,
     targetWeek,
   });
+  cloned = await reResolveFamilyLinkedDraftWeek(
+    supabase,
+    params.athleteId,
+    sourceDraft,
+    cloned
+  );
 
-  // Family-linked sessions: same stage, re-resolve targets against current Performance Profile.
-  try {
-    const { getHyroxAthletePerformanceProfile } = await import(
-      "@/app/lib/hyroxAthleteBenchmarkServer"
-    );
-    const { getSessionFamily } = await import("@/app/lib/hyroxSessionFamilyRegistry");
-    const { refreshFamilyLinkedDraftPreview } = await import(
-      "@/app/lib/hyroxSessionFamilyDraft"
-    );
-    const profileResult = await getHyroxAthletePerformanceProfile(
-      supabase,
-      params.athleteId
-    );
-    const resolvedAt = new Date().toISOString();
-    cloned = {
-      ...cloned,
-      days: cloned.days.map((day) => ({
-        ...day,
-        sessions: day.sessions.map((session) => {
-          if (!session.sessionFamily) return session;
-          const family = getSessionFamily(session.sessionFamily.familyId);
-          if (!family) return session;
-          return refreshFamilyLinkedDraftPreview(
-            session,
-            family,
-            profileResult.profile,
-            resolvedAt
-          );
-        }),
-      })),
-    };
-  } catch {
-    // Keep stripped preview; coach can refresh by editing. Never fail copy.
+  let skippedSlotCount = 0;
+  let sessionCount = sourceCount;
+
+  if (decision.action === "merge_empty_slots") {
+    if (!targetDraft) {
+      throw new CopyProgrammeWeekError(
+        "TARGET_MERGE_NO_EMPTY",
+        COPY_WEEK_ERROR.TARGET_MERGE_NO_EMPTY,
+        409
+      );
+    }
+    const merged = mergeClonedWeekIntoEmptySlots(targetDraft, cloned);
+    if (merged.copiedCount < 1) {
+      throw new CopyProgrammeWeekError(
+        "TARGET_MERGE_NO_EMPTY",
+        COPY_WEEK_ERROR.TARGET_MERGE_NO_EMPTY,
+        409
+      );
+    }
+    cloned = merged.draft;
+    sessionCount = merged.copiedCount;
+    skippedSlotCount = merged.skippedCount;
   }
 
   const summary = computeWeeklySummary(cloned, params.athlete);
   const validation = validateCoachDraft(cloned, params.athlete);
   const targetBlock = blockNumberForGlobalWeek(targetWeek);
+  const payload = {
+    mapped_profile_id: sourceRow.mapped_profile_id,
+    block_number: targetBlock,
+    week_number: targetWeek,
+    draft_data: cloned as unknown as HyroxJson,
+    weekly_summary: summary as unknown as HyroxJson,
+    validation_warnings: {
+      warnings: validation.warnings,
+      positives: validation.positives,
+    } as unknown as HyroxJson,
+    coach_note: sourceRow.coach_note,
+    athlete_facing_note: sourceRow.athlete_facing_note,
+    status: "draft_generated" as const,
+    published_at: null,
+    updated_at: new Date().toISOString(),
+  };
 
-  const { data, error } = await supabase
-    .from("hyrox_programme_drafts")
-    .insert({
-      athlete_id: params.athleteId,
-      mapped_profile_id: sourceRow.mapped_profile_id,
-      block_number: targetBlock,
-      week_number: targetWeek,
-      draft_data: cloned as unknown as HyroxJson,
-      weekly_summary: summary as unknown as HyroxJson,
-      validation_warnings: {
-        warnings: validation.warnings,
-        positives: validation.positives,
-      } as unknown as HyroxJson,
-      coach_note: sourceRow.coach_note,
-      athlete_facing_note: sourceRow.athlete_facing_note,
-      status: "draft_generated",
-      published_at: null,
-    })
-    .select(DRAFT_SELECT)
-    .single();
+  let draft: HyroxProgrammeDraftRow;
 
-  if (error) throw new Error(error.message);
+  if (decision.action === "merge_empty_slots" && targetRow) {
+    const { data, error } = await supabase
+      .from("hyrox_programme_drafts")
+      .update(payload)
+      .eq("id", targetRow.id)
+      .select(DRAFT_SELECT)
+      .single();
+    if (error) throw new Error(error.message);
+    draft = data as HyroxProgrammeDraftRow;
+  } else {
+    if (decision.action === "replace") {
+      await archiveUnpublishedDraftsForWeek(supabase, params.athleteId, targetWeek);
+    } else if (targetRow && countDraftProgrammingSessions(targetDraft) < 1) {
+      // Reuse empty draft shell for the target week (avoids duplicate programme-week identity shells).
+      const { data, error } = await supabase
+        .from("hyrox_programme_drafts")
+        .update(payload)
+        .eq("id", targetRow.id)
+        .select(DRAFT_SELECT)
+        .single();
+      if (error) throw new Error(error.message);
+      draft = data as HyroxProgrammeDraftRow;
+      return {
+        sourceWeek,
+        targetWeek,
+        targetBlock,
+        targetCycle: cycleInBlockForGlobalWeek(targetWeek),
+        draft,
+        sessionCount,
+        replaced: false,
+        merged: false,
+        skippedSlotCount,
+      };
+    }
+
+    const { data, error } = await supabase
+      .from("hyrox_programme_drafts")
+      .insert({
+        athlete_id: params.athleteId,
+        ...payload,
+      })
+      .select(DRAFT_SELECT)
+      .single();
+    if (error) throw new Error(error.message);
+    draft = data as HyroxProgrammeDraftRow;
+  }
 
   return {
     sourceWeek,
     targetWeek,
     targetBlock,
     targetCycle: cycleInBlockForGlobalWeek(targetWeek),
-    draft: data as HyroxProgrammeDraftRow,
-    sessionCount: sourceCount,
+    draft,
+    sessionCount,
     replaced: decision.action === "replace",
+    merged: decision.action === "merge_empty_slots",
+    skippedSlotCount,
   };
 }
 
