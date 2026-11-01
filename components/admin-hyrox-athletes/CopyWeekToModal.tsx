@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { CopyWeekDestination } from "@/app/lib/hyroxCopyProgrammeWeek";
+import type {
+  CopyWeekConflictMode,
+  CopyWeekDestination,
+} from "@/app/lib/hyroxCopyProgrammeWeek";
 
 type Props = {
   open: boolean;
@@ -10,7 +13,10 @@ type Props = {
   athleteId: string;
   saving?: boolean;
   onClose: () => void;
-  onCopy: (targetWeek: number, replace: boolean) => Promise<{ ok: boolean; error?: string; code?: string }>;
+  onCopy: (
+    targetWeek: number,
+    conflictMode: CopyWeekConflictMode | null
+  ) => Promise<{ ok: boolean; error?: string; code?: string }>;
 };
 
 export function CopyWeekToModal({
@@ -26,13 +32,13 @@ export function CopyWeekToModal({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [targetWeek, setTargetWeek] = useState<number | null>(null);
-  const [confirmReplace, setConfirmReplace] = useState(false);
+  const [conflictChoice, setConflictChoice] = useState<CopyWeekConflictMode | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setConfirmReplace(false);
+    setConflictChoice(null);
     setActionError(null);
     setTargetWeek(null);
     setLoading(true);
@@ -52,7 +58,10 @@ export function CopyWeekToModal({
           setLoadError(data.error ?? "Could not load destination weeks.");
           return;
         }
-        setDestinations(data.destinations ?? []);
+        const list = data.destinations ?? [];
+        setDestinations(list);
+        const preferred = list.find((d) => d.week === sourceWeek + 1 && !d.published && !d.athleteHistory);
+        if (preferred) setTargetWeek(preferred.week);
       } catch {
         if (!cancelled) setLoadError("Network error loading destination weeks.");
       } finally {
@@ -72,7 +81,9 @@ export function CopyWeekToModal({
   if (!open) return null;
 
   const blocked = Boolean(selected && (selected.athleteHistory || selected.published));
-  const needsReplace = Boolean(selected?.hasProgramming && selected.replaceAllowed);
+  const needsConflict = Boolean(selected?.hasProgramming && !blocked);
+  const conflictReady =
+    !needsConflict || conflictChoice === "replace" || conflictChoice === "merge_empty_slots";
 
   async function handleSubmit() {
     if (!targetWeek || !selected) return;
@@ -80,21 +91,21 @@ export function CopyWeekToModal({
     if (blocked) {
       setActionError(
         selected.athleteHistory
-          ? "This week contains athlete activity and cannot be replaced."
-          : "This week already contains published sessions and cannot be replaced."
+          ? "This week contains athlete activity and cannot be overwritten."
+          : "This week already contains published sessions and cannot be overwritten."
       );
       return;
     }
-    if (needsReplace && !confirmReplace) {
-      setConfirmReplace(true);
+    if (needsConflict && !conflictChoice) {
+      setActionError("Choose Cancel, Replace target draft, or Merge into empty slots.");
       return;
     }
-    const result = await onCopy(targetWeek, needsReplace);
+    const result = await onCopy(targetWeek, needsConflict ? conflictChoice : null);
     if (!result.ok) {
       if (result.code === "TARGET_HAS_PROGRAMMING") {
-        setConfirmReplace(true);
+        setConflictChoice(null);
       }
-      setActionError(result.error ?? "Copy failed.");
+      setActionError(result.error ?? "Duplicate failed.");
     }
   }
 
@@ -102,14 +113,14 @@ export function CopyWeekToModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-5 shadow-2xl">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400/90">
-          Copy week to…
+          Week actions
         </p>
-        <h2 className="mt-2 text-lg font-bold text-white">
-          Copy week {sourceWeek} to:
-        </h2>
+        <h2 className="mt-2 text-lg font-bold text-white">Duplicate week {sourceWeek}</h2>
         <p className="mt-1 text-sm text-zinc-400">
-          {sourceSessionCount} programmed session{sourceSessionCount === 1 ? "" : "s"} will be
-          copied as a new unpublished draft. The source week is not changed.
+          {sourceSessionCount} session{sourceSessionCount === 1 ? "" : "s"} will be copied to the
+          target week as an unpublished draft. Same days and slots. Session Family stage stays the
+          same (not progressed). Prescriptions re-resolve against current Programming Anchors.
+          Athlete history is never copied.
         </p>
 
         {loading ? <p className="mt-4 text-sm text-zinc-500">Loading weeks…</p> : null}
@@ -123,6 +134,7 @@ export function CopyWeekToModal({
           {destinations.map((d) => {
             const disabled = d.athleteHistory || d.published;
             const active = targetWeek === d.week;
+            const preferred = d.week === sourceWeek + 1;
             return (
               <label
                 key={d.week}
@@ -134,19 +146,24 @@ export function CopyWeekToModal({
               >
                 <input
                   type="radio"
-                  name="copy-target-week"
+                  name="duplicate-target-week"
                   className="mt-1"
                   checked={active}
                   disabled={saving}
                   onChange={() => {
                     setTargetWeek(d.week);
-                    setConfirmReplace(false);
+                    setConflictChoice(null);
                     setActionError(null);
                   }}
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-white">
                     Week {d.week}
+                    {preferred ? (
+                      <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-yellow-300/90">
+                        next
+                      </span>
+                    ) : null}
                     <span className="ml-2 text-xs font-normal text-zinc-500">
                       Block {d.block} · W{d.cycle}
                     </span>
@@ -160,8 +177,8 @@ export function CopyWeekToModal({
                   {disabled ? (
                     <span className="mt-1 block text-[11px] text-red-300">
                       {d.athleteHistory
-                        ? "This week contains athlete activity and cannot be replaced."
-                        : "Published week — copy blocked."}
+                        ? "Athlete activity — protected."
+                        : "Published week — protected."}
                     </span>
                   ) : null}
                 </span>
@@ -170,20 +187,62 @@ export function CopyWeekToModal({
           })}
         </div>
 
-        {needsReplace && confirmReplace ? (
-          <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-3">
-            <p className="text-sm font-bold text-amber-100">
-              REPLACE WEEK {targetWeek} PROGRAMMING?
-            </p>
-            <p className="mt-1 text-xs text-amber-200/80">
-              This will replace the coach-programmed sessions in Week {targetWeek}. Athlete history
-              and completed session data will not be moved.
-            </p>
-          </div>
-        ) : needsReplace ? (
-          <p className="mt-4 text-sm text-amber-200">
-            TARGET WEEK ALREADY CONTAINS PROGRAMMING. Copy requires explicit replace.
+        {selected && !blocked ? (
+          <p className="mt-4 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-200">
+            <span className="font-semibold text-white">
+              {sourceSessionCount} session{sourceSessionCount === 1 ? "" : "s"} will be copied to Week{" "}
+              {selected.week}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-zinc-500">
+              Source Week {sourceWeek} stays unchanged. Result opens as a Week {selected.week} draft —
+              never auto-published.
+            </span>
           </p>
+        ) : null}
+
+        {needsConflict ? (
+          <div className="mt-4 space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-3">
+            <p className="text-sm font-bold text-amber-100">
+              Week {targetWeek} already has a draft
+            </p>
+            <p className="text-xs text-amber-200/80">
+              Do not silently overwrite. Choose how to continue:
+            </p>
+            <div className="flex flex-col gap-2 pt-1">
+              <label className="flex items-start gap-2 text-sm text-amber-50">
+                <input
+                  type="radio"
+                  name="duplicate-conflict"
+                  className="mt-1"
+                  checked={conflictChoice === "replace"}
+                  onChange={() => setConflictChoice("replace")}
+                  disabled={saving || !selected?.replaceAllowed}
+                />
+                <span>
+                  <span className="font-semibold">Replace target draft</span>
+                  <span className="block text-[11px] text-amber-200/70">
+                    Archive the current Week {targetWeek} draft shell and write a fresh duplicate.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-amber-50">
+                <input
+                  type="radio"
+                  name="duplicate-conflict"
+                  className="mt-1"
+                  checked={conflictChoice === "merge_empty_slots"}
+                  onChange={() => setConflictChoice("merge_empty_slots")}
+                  disabled={saving || !selected?.mergeEmptySlotsAllowed}
+                />
+                <span>
+                  <span className="font-semibold">Merge into empty slots only</span>
+                  <span className="block text-[11px] text-amber-200/70">
+                    Keep existing sessions. Fill only free AM / Main / PM / Optional slots.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
         ) : null}
 
         {actionError ? (
@@ -203,15 +262,17 @@ export function CopyWeekToModal({
           </button>
           <button
             type="button"
-            disabled={saving || !selected || blocked}
+            disabled={saving || !selected || blocked || !conflictReady}
             onClick={() => void handleSubmit()}
             className="rounded-full border border-yellow-500/40 bg-yellow-400 px-4 py-2 text-xs font-black uppercase tracking-wide text-zinc-950 disabled:opacity-40"
           >
             {saving
-              ? "Copying…"
-              : needsReplace && confirmReplace
-                ? "Replace week"
-                : "Copy week"}
+              ? "Duplicating…"
+              : conflictChoice === "replace"
+                ? "Replace draft"
+                : conflictChoice === "merge_empty_slots"
+                  ? "Merge empty slots"
+                  : "Duplicate week"}
           </button>
         </div>
       </div>

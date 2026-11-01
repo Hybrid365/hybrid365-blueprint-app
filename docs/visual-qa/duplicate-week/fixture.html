@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Duplicate week — Programme Builder</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+    body { margin: 0; background: #09090b; color: #fafafa; }
+    .bar { display: flex; gap: 8px; padding: 16px 24px; border-bottom: 1px solid #27272a; align-items: center; }
+    .btn { border-radius: 999px; border: 1px solid #52525b; background: #18181b; color: #f4f4f5; padding: 6px 12px; font-size: 12px; font-weight: 700; }
+    .btn-primary { border-color: #eab30866; background: #eab3081a; color: #fef08a; }
+    .btn-dup { border-color: #71717a; background: #18181b; }
+    .panel { max-width: 520px; margin: 48px auto; border: 1px solid #3f3f46; border-radius: 16px; background: #09090b; padding: 20px; box-shadow: 0 20px 60px #000a; }
+    .eyebrow { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: #facc15; font-weight: 700; }
+    h1 { margin: 8px 0 4px; font-size: 18px; }
+    .muted { color: #a1a1aa; font-size: 14px; }
+    .row { display: flex; gap: 12px; align-items: flex-start; border: 1px solid #eab30880; background: #eab30814; border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
+    .summary { margin-top: 16px; border: 1px solid #3f3f46; background: #18181b; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .conflict { margin-top: 16px; border: 1px solid #f59e0b66; background: #f59e0b1a; border-radius: 12px; padding: 12px; }
+    .conflict label { display: flex; gap: 8px; margin-top: 8px; font-size: 14px; }
+    .small { font-size: 11px; color: #fde68a99; display: block; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span style="font-weight:800">Programme Builder · Week 1</span>
+    <span style="flex:1"></span>
+    <button class="btn btn-primary">Publish</button>
+    <button class="btn btn-dup">Duplicate week</button>
+  </div>
+  <div class="panel">
+    <div class="eyebrow">Week actions</div>
+    <h1>Duplicate week 1</h1>
+    <p class="muted">7 sessions will be copied to the target week as an unpublished draft. Same days and slots. Session Family stage stays the same (not progressed).</p>
+    <div class="row">
+      <input type="radio" checked />
+      <div>
+        <div><strong>Week 2</strong> <span style="color:#fde047;font-size:10px;font-weight:700;letter-spacing:.08em">NEXT</span> <span class="muted">Block 1 · W2</span></div>
+        <div class="muted" style="font-size:11px">empty · dates follow programme start</div>
+      </div>
+    </div>
+    <div class="summary">
+      <strong>7 sessions will be copied to Week 2</strong>
+      <div class="muted" style="font-size:11px;margin-top:4px">Source Week 1 stays unchanged. Result opens as a Week 2 draft — never auto-published.</div>
+    </div>
+    <div class="actions">
+      <button class="btn">Cancel</button>
+      <button class="btn" style="background:#eab308;color:#09090b;border-color:#eab308">Duplicate week</button>
+    </div>
+  </div>
+</body>
+</html>

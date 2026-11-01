@@ -8,6 +8,7 @@ import { fetchAthleteProgressFlags } from "@/app/lib/hyroxAthleteServer";
 import { fetchLatestMappedProfile } from "@/app/lib/hyroxProgrammeServer";
 import type { HyroxAthleteRow } from "@/app/lib/hyroxDatabaseTypes";
 import type { HyroxAthleteProfile } from "@/app/lib/hyroxAthleteProfileTypes";
+import type { CopyWeekConflictMode } from "@/app/lib/hyroxCopyProgrammeWeek";
 import {
   parseCoachGlobalWeek,
   type ProgrammeLengthWeeks,
@@ -27,8 +28,18 @@ function copyWeekErrorResponse(e: unknown) {
       { status: e.httpStatus }
     );
   }
-  const message = e instanceof Error ? e.message : "Copy week failed.";
+  const message = e instanceof Error ? e.message : "Duplicate week failed.";
   return NextResponse.json({ success: false, error: message }, { status: 500 });
+}
+
+function parseConflictMode(
+  body: { conflict_mode?: string; replace?: boolean }
+): CopyWeekConflictMode | null {
+  if (body.conflict_mode === "replace" || body.conflict_mode === "merge_empty_slots") {
+    return body.conflict_mode;
+  }
+  if (body.replace === true) return "replace";
+  return null;
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -82,6 +93,7 @@ export async function POST(request: Request, context: RouteContext) {
     source_week?: number;
     target_week?: number;
     replace?: boolean;
+    conflict_mode?: string;
     effective_profile?: HyroxAthleteProfile;
   };
 
@@ -119,8 +131,14 @@ export async function POST(request: Request, context: RouteContext) {
       athlete: coachAthlete,
       sourceWeek,
       targetWeek,
-      replace: body.replace === true,
+      conflictMode: parseConflictMode(body),
     });
+
+    const actionLabel = result.merged
+      ? "MERGED INTO"
+      : result.replaced
+        ? "REPLACED DRAFT IN"
+        : "DUPLICATED TO";
 
     return NextResponse.json({
       success: true,
@@ -130,10 +148,14 @@ export async function POST(request: Request, context: RouteContext) {
       targetCycle: result.targetCycle,
       draftId: result.draft.id,
       sessionCount: result.sessionCount,
+      skippedSlotCount: result.skippedSlotCount,
       replaced: result.replaced,
+      merged: result.merged,
       published: false,
-      message: `WEEK ${result.sourceWeek} COPIED TO WEEK ${result.targetWeek}`,
-      detail: "Review the sessions before publishing.",
+      message: `WEEK ${result.sourceWeek} ${actionLabel} WEEK ${result.targetWeek}`,
+      detail: result.merged
+        ? `${result.sessionCount} session${result.sessionCount === 1 ? "" : "s"} merged into empty slots. Review before publishing.`
+        : "Review the sessions before publishing. Same stage preserved — not auto-progressed.",
     });
   } catch (e) {
     return copyWeekErrorResponse(e);

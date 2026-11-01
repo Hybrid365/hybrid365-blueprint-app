@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Duplicate week — conflict</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+    body { margin: 0; background: #09090b; color: #fafafa; display:flex; min-height:100vh; align-items:center; justify-content:center; }
+    .panel { width: 520px; border: 1px solid #3f3f46; border-radius: 16px; background: #09090b; padding: 20px; }
+    .eyebrow { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: #facc15; font-weight: 700; }
+    h1 { margin: 8px 0 4px; font-size: 18px; }
+    .muted { color: #a1a1aa; font-size: 14px; }
+    .conflict { margin-top: 16px; border: 1px solid #f59e0b66; background: #f59e0b1a; border-radius: 12px; padding: 12px; }
+    .conflict label { display: flex; gap: 8px; margin-top: 10px; font-size: 14px; align-items:flex-start; }
+    .small { font-size: 11px; color: #fde68a99; display: block; margin-top: 2px; }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .btn { border-radius: 999px; border: 1px solid #52525b; background: #18181b; color: #f4f4f5; padding: 6px 12px; font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="eyebrow">Week actions</div>
+    <h1>Duplicate week 1</h1>
+    <p class="muted">Target Week 2 already has a draft.</p>
+    <div class="conflict">
+      <strong>Week 2 already has a draft</strong>
+      <div class="muted" style="font-size:12px;margin-top:4px">Do not silently overwrite. Choose how to continue:</div>
+      <label><input type="radio" name="c" /> <span><strong>Replace target draft</strong><span class="small">Archive the current Week 2 draft shell and write a fresh duplicate.</span></span></label>
+      <label><input type="radio" name="c" checked /> <span><strong>Merge into empty slots only</strong><span class="small">Keep existing sessions. Fill only free AM / Main / PM / Optional slots.</span></span></label>
+    </div>
+    <div class="actions">
+      <button class="btn">Cancel</button>
+      <button class="btn" style="background:#eab308;color:#09090b;border-color:#eab308">Merge empty slots</button>
+    </div>
+  </div>
+</body>
+</html>

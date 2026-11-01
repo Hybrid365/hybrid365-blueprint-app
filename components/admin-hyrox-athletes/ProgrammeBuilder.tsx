@@ -876,8 +876,9 @@ export function ProgrammeBuilder({
               disabled={saving || !draft.days.some((d) => d.sessions.length > 0)}
               onClick={() => setCopyWeekOpen(true)}
               className="rounded-full border border-zinc-500 bg-zinc-900 px-3 py-1.5 text-xs font-bold text-zinc-100 disabled:opacity-50"
+              title="Duplicate this week into another week as an unpublished draft"
             >
-              Copy week to…
+              Duplicate week
             </button>
           ) : null}
           {sessionFamiliesEnabled ? (
@@ -1371,8 +1372,8 @@ export function ProgrammeBuilder({
           athleteId={livePersistence.athleteId}
           saving={saving}
           onClose={() => setCopyWeekOpen(false)}
-          onCopy={async (targetWeek, replace) => {
-            const result = await copyWeekTo(draft.week, targetWeek, replace);
+          onCopy={async (targetWeek, conflictMode) => {
+            const result = await copyWeekTo(draft.week, targetWeek, conflictMode);
             if (result.ok) setCopyWeekOpen(false);
             return result;
           }}
