@@ -72,9 +72,9 @@ function WeekSelector({
   return (
     <div
       data-home-d-week-selector=""
-      className="sticky top-0 z-20 -mx-4 border-b border-zinc-800/80 bg-black/95 px-2 py-2 backdrop-blur-md sm:-mx-6 sm:px-3"
+      className="sticky top-[var(--hybrid365-env-badge-height,0px)] z-20 -mx-4 border-b border-zinc-800/70 bg-black/95 px-1.5 py-1.5 backdrop-blur-md sm:-mx-6 sm:px-2"
     >
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-0">
         {days.map((day) => {
           const selected = day.id === selectedId;
           const count = day.sessions.length;
@@ -84,35 +84,37 @@ function WeekSelector({
               type="button"
               data-home-d-day={day.id}
               onClick={() => onSelect(day.id)}
-              className={`flex min-h-[52px] flex-col items-center justify-center rounded-xl px-0.5 py-1.5 text-center transition ${
+              className={`relative flex min-h-[48px] flex-col items-center justify-center rounded-lg px-0.5 py-1 text-center transition ${
                 selected
-                  ? "bg-yellow-400/15 ring-1 ring-yellow-400/40"
+                  ? "bg-zinc-900"
                   : day.isToday
-                    ? "bg-zinc-900/80"
-                    : "hover:bg-zinc-900/60"
+                    ? "bg-zinc-950"
+                    : "hover:bg-zinc-900/50"
               }`}
             >
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+              <span
+                className={`text-[10px] font-semibold uppercase tracking-wide ${
+                  selected ? "text-zinc-300" : "text-zinc-600"
+                }`}
+              >
                 {day.dow}
               </span>
               <span
-                className={`mt-0.5 text-sm font-bold tabular-nums ${
-                  selected ? "text-yellow-300" : "text-white"
+                className={`mt-0.5 text-[15px] font-bold tabular-nums leading-none ${
+                  selected ? "text-white" : "text-zinc-200"
                 }`}
               >
                 {day.dateNumber}
               </span>
-              <span className="mt-1 flex h-1.5 items-center justify-center gap-0.5">
+              {selected ? (
+                <span className="absolute inset-x-2 bottom-0.5 h-0.5 rounded-full bg-yellow-400" />
+              ) : null}
+              <span className="mt-1.5 flex h-1 items-center justify-center gap-0.5">
                 {count === 0 ? (
                   <span className="h-1 w-1 rounded-full bg-transparent" />
                 ) : (
                   Array.from({ length: Math.min(count, 3) }).map((_, i) => (
-                    <span
-                      key={i}
-                      className={`h-1 w-1 rounded-full ${
-                        selected ? "bg-yellow-400" : "bg-zinc-600"
-                      }`}
-                    />
+                    <span key={i} className="h-1 w-1 rounded-full bg-zinc-500" />
                   ))
                 )}
               </span>
@@ -136,35 +138,36 @@ function SessionCard({
       type="button"
       data-home-d-session={session.id}
       onClick={onOpen}
-      className="w-full rounded-2xl border border-zinc-800 bg-zinc-950/80 px-4 py-3.5 text-left transition hover:border-zinc-600"
+      className="w-full rounded-2xl border border-zinc-800/90 bg-zinc-950 px-4 py-3 text-left transition hover:border-zinc-600"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
             {session.slot}
             <span className="mx-1.5 text-zinc-700">·</span>
             {session.modalityLabel}
           </p>
-          <p className="mt-1 text-base font-semibold tracking-tight text-white">
+          <p className="mt-1 text-[15px] font-semibold leading-snug tracking-tight text-white">
             {session.title}
           </p>
         </div>
-        <span className={`shrink-0 text-[11px] font-semibold ${statusClass(session.status)}`}>
+        <span className={`shrink-0 pt-0.5 text-[11px] font-medium ${statusClass(session.status)}`}>
           {statusLabel(session.status)}
         </span>
       </div>
       {session.primaryTarget ? (
-        <p className="mt-2 text-lg font-bold tabular-nums text-yellow-300/95">
+        <p className="mt-2 text-xl font-bold tabular-nums tracking-tight text-white">
           {session.primaryTarget}
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-2 text-sm text-zinc-500">Target set in session detail</p>
+      )}
       {session.primaryDetail ? (
         <p className="mt-0.5 text-sm text-zinc-400">{session.primaryDetail}</p>
       ) : null}
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">
-        {session.duration ? <span>{session.duration}</span> : null}
-        {session.intent ? <span className="line-clamp-1">{session.intent}</span> : null}
-      </div>
+      {session.duration ? (
+        <p className="mt-2 text-xs text-zinc-500">{session.duration}</p>
+      ) : null}
     </button>
   );
 }
@@ -259,18 +262,21 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
   }
 
   return (
-    <div data-home-d-live="" className="mx-auto max-w-6xl px-4 pb-28 pt-4 sm:px-6 lg:pb-10 lg:pt-6">
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-10">
+    <div
+      data-home-d-live=""
+      className="mx-auto max-w-5xl px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-3 sm:px-6 lg:pb-10 lg:pt-5"
+    >
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-8 lg:items-start">
         <div className="min-w-0">
-          <header className="mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-500/80">
+          <header className="mb-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
               Home
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-[1.65rem]">
+            <h1 className="mt-1 text-[1.35rem] font-semibold tracking-tight text-white sm:text-2xl">
               {vm.athleteName}
             </h1>
             {vm.programmeContext ? (
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-[13px] text-zinc-400">
                 Week {vm.programmeContext.weekNumber}
                 <span className="mx-1.5 text-zinc-700">·</span>
                 {vm.programmeContext.blockLabel}
@@ -339,28 +345,28 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
           </section>
 
           {/* Mobile secondary stack */}
-          <div className="mt-8 space-y-4 lg:hidden">
+          <div className="mt-7 space-y-3 lg:hidden">
             {vm.coachContext ? (
-              <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+              <aside className="rounded-xl border border-zinc-800/80 px-3.5 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                   {vm.coachContext.title}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-200">
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-300">
                   {vm.coachContext.body}
                 </p>
               </aside>
             ) : null}
             {vm.performanceInsight ? (
-              <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+              <aside className="rounded-xl border border-zinc-800/80 px-3.5 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                   Insight
                 </p>
-                <p className="mt-1 text-xs text-zinc-400">{vm.performanceInsight.label}</p>
-                <p className="mt-0.5 text-xl font-bold tabular-nums text-white">
+                <p className="mt-1 text-xs text-zinc-500">{vm.performanceInsight.label}</p>
+                <p className="mt-0.5 text-lg font-bold tabular-nums text-white">
                   {vm.performanceInsight.value}
                 </p>
                 {vm.performanceInsight.detail ? (
-                  <p className="mt-1 text-xs text-yellow-400/90">{vm.performanceInsight.detail}</p>
+                  <p className="mt-1 text-xs text-zinc-400">{vm.performanceInsight.detail}</p>
                 ) : null}
               </aside>
             ) : null}
