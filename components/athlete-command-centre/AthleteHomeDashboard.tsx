@@ -57,7 +57,9 @@ import { useAthletePortalOptional } from "./athletePortalContext";
 import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 import { isHyroxTodayV2EnabledClient } from "@/app/lib/hyrox-team/modules/today/featureFlag";
 import { isHyroxHomeV2EnabledClient } from "@/app/lib/hyrox-team/modules/home/featureFlag";
+import { isHyroxHomeDEnabledClient } from "@/app/lib/hyroxHomeDFlag";
 import { AthleteHomeDashboardV2 } from "./home-v2/AthleteHomeDashboardV2";
+import { AthleteHomeDDashboard } from "./home-d/AthleteHomeDDashboard";
 
 function HomePriorityTile({
   label,
@@ -137,6 +139,7 @@ export function AthleteHomeDashboard({
     liveProgramme,
     todayV2Enabled: todayV2Seed,
     homeV2Enabled: homeV2Seed,
+    homeDEnabled: homeDSeed,
   } = adminPreview
     ? {
         portalAthlete: adminPreview.portalAthlete,
@@ -147,6 +150,7 @@ export function AthleteHomeDashboard({
         liveProgramme: adminPreview.liveProgramme,
         todayV2Enabled: adminPreview.todayV2Enabled,
         homeV2Enabled: adminPreview.homeV2Enabled,
+        homeDEnabled: adminPreview.homeDEnabled,
       }
     : portal ?? {
         portalAthlete: null,
@@ -157,7 +161,9 @@ export function AthleteHomeDashboard({
         liveProgramme: null,
         todayV2Enabled: false,
         homeV2Enabled: false,
+        homeDEnabled: false,
       };
+  const homeD = isHyroxHomeDEnabledClient(homeDSeed);
   const homeV2 = isHyroxHomeV2EnabledClient(homeV2Seed);
   const todayV2 = isHyroxTodayV2EnabledClient(todayV2Seed);
   const { dashboardLive, readOnly: dashboardReadOnly } = useAthleteDashboardLive();
@@ -299,6 +305,11 @@ export function AthleteHomeDashboard({
     },
     [programmePublishedLive, useMockPreview, reloadLiveProgramme, isReadOnly]
   );
+
+  // Home D supersedes Home V2 when allow-listed (distinct rollout path).
+  if (homeD) {
+    return <AthleteHomeDDashboard readOnly={readOnly} />;
+  }
 
   if (homeV2) {
     return <AthleteHomeDashboardV2 useLiveProgramme={useLiveProgramme} readOnly={readOnly} />;

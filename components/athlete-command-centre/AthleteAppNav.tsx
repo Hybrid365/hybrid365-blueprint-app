@@ -4,9 +4,14 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { MoreHorizontal, X } from "lucide-react";
 import { AthletePortalNavLink } from "./AthletePortalNavLink";
-import { visibleAthleteNavItems, type AthleteNavItem } from "./athleteNav";
+import {
+  visibleAthleteNavItems,
+  visibleHomeDNavItems,
+  type AthleteNavItem,
+} from "./athleteNav";
 import { useAthletePortalOptional } from "./athletePortalContext";
 import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
+import { isHyroxHomeDEnabledClient } from "@/app/lib/hyroxHomeDFlag";
 
 function isActive(pathname: string, href: string) {
   if (href === "/athlete/dashboard") return pathname === href;
@@ -40,10 +45,14 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const portal = useAthletePortalOptional();
   const preview = useAthleteAdminPreview();
-  const items = visibleAthleteNavItems({
-    raceIntelligenceEnabled:
-      preview?.raceIntelligenceEnabled ?? portal?.raceIntelligenceEnabled ?? false,
-  });
+  const homeD = isHyroxHomeDEnabledClient(
+    preview?.homeDEnabled ?? portal?.homeDEnabled ?? false
+  );
+  const raceIntelligenceEnabled =
+    preview?.raceIntelligenceEnabled ?? portal?.raceIntelligenceEnabled ?? false;
+  const items = homeD
+    ? visibleHomeDNavItems({ raceIntelligenceEnabled })
+    : visibleAthleteNavItems({ raceIntelligenceEnabled });
   const desktop = items;
   const mobilePrimary = items.filter((item) => item.mobilePrimary);
   const mobileMore = items.filter((item) => item.mobileMore);

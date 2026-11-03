@@ -79,6 +79,6 @@ Lab reference: `/dev/visual-system` → Home D (foundation) · Coached Session /
 
 ## Live product gate
 
-Home D stays visual-lab until a **named human rollout task**. Do not reuse `HYROX_HOME_V2_*`, `HYROX_TODAY_V2_*`, or `HYROX_PERFORMANCE_HUB_*` for that rollout without an explicit task. Demo fixtures must never appear as live athlete results.
+**Athlete Experience Phase 1** implements live Home D behind `HYROX_HOME_D_ATHLETE_IDS` (allow-list only; optional local `HYROX_HOME_D_DEV_ALL`). Contract: `docs/contracts/athlete-home-d.md`.
 
-**STOP.** Documentation only in this pass — no live implementation.
+Do **not** reuse `HYROX_HOME_V2_*`, `HYROX_TODAY_V2_*`, or `HYROX_PERFORMANCE_HUB_*` for Home D. Demo fixtures must never appear as live athlete results. Globals stay off until a separate human rollout expands the allow-list.

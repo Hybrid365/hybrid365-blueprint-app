@@ -22,6 +22,7 @@ import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
 import { isHyroxPerformanceHubEnabled } from "@/app/lib/hyrox-team/modules/performanceHub/featureFlag";
 import { isHyroxTodayV2Enabled } from "@/app/lib/hyrox-team/modules/today/featureFlag";
 import { isHyroxHomeV2Enabled } from "@/app/lib/hyrox-team/modules/home/featureFlag";
+import { isHyroxHomeDEnabled } from "@/app/lib/hyroxHomeDFlag";
 import { isHyroxPerformanceProfileEnabled } from "@/app/lib/hyrox-team/modules/performanceProfile/featureFlag";
 import { isHyroxAthleteAnalyticsEnabled } from "@/app/lib/hyroxAthleteAnalyticsFlag";
 import { getHyroxAthleteAnalytics } from "@/app/lib/hyroxAthleteAnalytics";
@@ -131,6 +132,7 @@ export default async function HyroxAthletePreviewPage({ params }: PreviewPagePro
       todayV2Enabled={isHyroxTodayV2Enabled(athlete)}
       performanceHubEnabled={isHyroxPerformanceHubEnabled(athlete)}
       homeV2Enabled={isHyroxHomeV2Enabled(athlete)}
+      homeDEnabled={isHyroxHomeDEnabled(athlete)}
       performanceProfileEnabled={isHyroxPerformanceProfileEnabled(athlete)}
       raceIntelligenceEnabled={isHyroxRaceIntelligenceEnabled(athlete)}
       athleteAnalyticsEnabled={isHyroxAthleteAnalyticsEnabled(athlete)}

@@ -73,6 +73,8 @@ type AthletePortalContextValue = {
   performanceHubEnabled: boolean;
   /** Server-seeded Home V2 allow-list flag (HYROX Team only). */
   homeV2Enabled: boolean;
+  /** Server-seeded Home D allow-list flag (canonical athlete Home). Default off. */
+  homeDEnabled: boolean;
   /** Server-seeded performance profile allow-list. Default off. */
   performanceProfileEnabled: boolean;
   /** Server-seeded Race Intelligence allow-list. Default off. */
@@ -124,6 +126,7 @@ export function AthletePortalProvider({
   todayV2Enabled = false,
   performanceHubEnabled = false,
   homeV2Enabled = false,
+  homeDEnabled = false,
   performanceProfileEnabled = false,
   raceIntelligenceEnabled = false,
   sessionExecutionChipsEnabled = false,
@@ -143,6 +146,7 @@ export function AthletePortalProvider({
   todayV2Enabled?: boolean;
   performanceHubEnabled?: boolean;
   homeV2Enabled?: boolean;
+  homeDEnabled?: boolean;
   performanceProfileEnabled?: boolean;
   raceIntelligenceEnabled?: boolean;
   sessionExecutionChipsEnabled?: boolean;
@@ -257,6 +261,7 @@ export function AthletePortalProvider({
       todayV2Enabled,
       performanceHubEnabled,
       homeV2Enabled,
+      homeDEnabled,
       performanceProfileEnabled,
       raceIntelligenceEnabled,
       sessionExecutionChipsEnabled,
@@ -287,6 +292,7 @@ export function AthletePortalProvider({
       todayV2Enabled,
       performanceHubEnabled,
       homeV2Enabled,
+      homeDEnabled,
       performanceProfileEnabled,
       raceIntelligenceEnabled,
       sessionExecutionChipsEnabled,

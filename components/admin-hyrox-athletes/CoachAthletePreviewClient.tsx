@@ -51,6 +51,7 @@ export default function CoachAthletePreviewClient({
   todayV2Enabled,
   performanceHubEnabled,
   homeV2Enabled,
+  homeDEnabled = false,
   performanceProfileEnabled,
   raceIntelligenceEnabled = false,
   athleteAnalyticsEnabled = false,
@@ -66,6 +67,7 @@ export default function CoachAthletePreviewClient({
   todayV2Enabled: boolean;
   performanceHubEnabled: boolean;
   homeV2Enabled: boolean;
+  homeDEnabled?: boolean;
   performanceProfileEnabled: boolean;
   raceIntelligenceEnabled?: boolean;
   athleteAnalyticsEnabled?: boolean;
@@ -193,6 +195,7 @@ export default function CoachAthletePreviewClient({
       todayV2Enabled={todayV2Enabled}
       performanceHubEnabled={performanceHubEnabled}
       homeV2Enabled={homeV2Enabled}
+      homeDEnabled={homeDEnabled}
       performanceProfileEnabled={performanceProfileEnabled}
       raceIntelligenceEnabled={raceIntelligenceEnabled}
       athleteTimezone={athleteTimezone}

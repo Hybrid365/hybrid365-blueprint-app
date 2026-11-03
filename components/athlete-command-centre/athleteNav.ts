@@ -61,6 +61,32 @@ export function visibleAthleteNavItems(opts?: { raceIntelligenceEnabled?: boolea
   return ATHLETE_NAV_ITEMS.filter((item) => item.id !== "race-prep" || Boolean(opts?.raceIntelligenceEnabled));
 }
 
+/**
+ * Home D navigation: Home · Programme · Progress · Performance · More.
+ * Progress/Performance remain existing routes for Phase 1.
+ */
+export const HOME_D_NAV_ITEMS: AthleteNavItem[] = [
+  { id: "home", label: "Home", href: "/athlete/dashboard", icon: Home, mobilePrimary: true },
+  { id: "programme", label: "Programme", href: ATHLETE_PROGRAMME_HREF, icon: CalendarDays, mobilePrimary: true },
+  { id: "progress", label: "Progress", href: "/athlete/progress", icon: Activity, mobilePrimary: true },
+  { id: "benchmarks", label: "Performance", href: "/athlete/benchmarks", icon: Target, mobilePrimary: true },
+  { id: "checkin", label: "Check-In", href: "/athlete/check-in", icon: ClipboardCheck, mobileMore: true },
+  {
+    id: "performance-testing",
+    label: "Performance Testing",
+    href: "/athlete/performance-testing",
+    icon: FlaskConical,
+    mobileMore: true,
+  },
+  { id: "race-prep", label: "Races", href: "/athlete/race-prep", icon: Flag, mobileMore: true },
+];
+
+export function visibleHomeDNavItems(opts?: { raceIntelligenceEnabled?: boolean }): AthleteNavItem[] {
+  return HOME_D_NAV_ITEMS.filter(
+    (item) => item.id !== "race-prep" || Boolean(opts?.raceIntelligenceEnabled)
+  );
+}
+
 export const ATHLETE_DESKTOP_NAV = ATHLETE_NAV_ITEMS;
 export const ATHLETE_MOBILE_PRIMARY = ATHLETE_NAV_ITEMS.filter((i) => i.mobilePrimary);
 export const ATHLETE_MOBILE_MORE = ATHLETE_NAV_ITEMS.filter((i) => i.mobileMore);

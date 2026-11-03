@@ -10,6 +10,7 @@ import { createHyroxPortalMutationToken } from "@/app/lib/hyroxPortalMutationTok
 import { isHyroxTodayV2Enabled } from "@/app/lib/hyrox-team/modules/today/featureFlag";
 import { isHyroxPerformanceHubEnabled } from "@/app/lib/hyrox-team/modules/performanceHub/featureFlag";
 import { isHyroxHomeV2Enabled } from "@/app/lib/hyrox-team/modules/home/featureFlag";
+import { isHyroxHomeDEnabled } from "@/app/lib/hyroxHomeDFlag";
 import { isHyroxPerformanceProfileEnabled } from "@/app/lib/hyrox-team/modules/performanceProfile/featureFlag";
 import { isHyroxRaceIntelligenceEnabled } from "@/app/lib/hyroxRaceIntelligenceFlag";
 import { isHyroxSessionExecutionChipsEnabled } from "@/app/lib/hyroxSessionExecutionFlag";
@@ -180,6 +181,9 @@ export default async function AthleteLayout({ children }: { children: React.Reac
     id: resolvedAthlete.id,
     email: resolvedAthlete.email ?? user.email ?? null,
   });
+  const homeDEnabled = isHyroxHomeDEnabled({
+    id: resolvedAthlete.id,
+  });
   const performanceProfileEnabled = isHyroxPerformanceProfileEnabled({
     id: resolvedAthlete.id,
     email: resolvedAthlete.email ?? user.email ?? null,
@@ -207,6 +211,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       todayV2Enabled={todayV2Enabled}
       performanceHubEnabled={performanceHubEnabled}
       homeV2Enabled={homeV2Enabled}
+      homeDEnabled={homeDEnabled}
       performanceProfileEnabled={performanceProfileEnabled}
       raceIntelligenceEnabled={raceIntelligenceEnabled}
       sessionExecutionChipsEnabled={sessionExecutionChipsEnabled}

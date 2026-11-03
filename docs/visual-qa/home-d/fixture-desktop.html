@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Home D — desktop</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+    body { margin: 0; background: #000; color: #fff; padding: 32px; }
+    .wrap { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 280px; gap: 40px; }
+    .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #eab308cc; }
+    h1 { font-size: 28px; margin: 4px 0 0; }
+    .meta { color: #a1a1aa; font-size: 14px; }
+    .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 20px; }
+    .day { text-align: center; padding: 10px 4px; border-radius: 12px; font-size: 11px; color: #71717a; border: 1px solid transparent; }
+    .day strong { display:block; color:#fff; font-size:15px; margin-top:2px; }
+    .day.on { background: #eab30822; border-color: #eab30855; }
+    .card { margin-top: 16px; border: 1px solid #27272a; border-radius: 16px; padding: 16px; background: #09090b; }
+    .side { border: 1px solid #27272a; border-radius: 16px; padding: 16px; background: #09090b; margin-bottom: 16px; }
+    .nav { display:flex; gap:8px; margin-bottom: 24px; }
+    .nav span { padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #a1a1aa; }
+    .nav .a { background: #eab30826; color: #fde047; }
+  </style>
+</head>
+<body>
+  <div class="nav"><span class="a">Home</span><span>Programme</span><span>Progress</span><span>Performance</span><span>More</span></div>
+  <div class="wrap" data-home-d-live>
+    <div>
+      <div class="eyebrow">Home</div>
+      <h1>Staging Athlete</h1>
+      <p class="meta">Week 2 · Build the Base · Threshold</p>
+      <div class="week">
+        <div class="day"><span>Mon</span><strong>2</strong></div>
+        <div class="day"><span>Tue</span><strong>3</strong></div>
+        <div class="day on"><span>Wed</span><strong>4</strong></div>
+        <div class="day"><span>Thu</span><strong>5</strong></div>
+        <div class="day"><span>Fri</span><strong>6</strong></div>
+        <div class="day"><span>Sat</span><strong>7</strong></div>
+        <div class="day"><span>Sun</span><strong>8</strong></div>
+      </div>
+      <h2 style="margin:24px 0 0;font-size:18px">Wednesday</h2>
+      <p style="color:#71717a;font-size:12px;margin:4px 0 0">Rest / recovery</p>
+      <div class="card">
+        <p style="margin:0;font-size:14px;font-weight:500">No training scheduled today.</p>
+        <p style="margin:6px 0 0;font-size:12px;color:#71717a">Use the week strip to check another day.</p>
+      </div>
+    </div>
+    <aside>
+      <div class="side">
+        <div class="eyebrow" style="color:#71717a">From your coach</div>
+        <p style="margin:8px 0 0;font-size:14px;line-height:1.45;color:#e4e4e7">Hold threshold controlled this week.</p>
+      </div>
+      <div class="side">
+        <div class="eyebrow" style="color:#71717a">Insight</div>
+        <p style="margin:4px 0 0;font-size:12px;color:#a1a1aa">5K</p>
+        <p style="margin:2px 0 0;font-size:24px;font-weight:700">17:41</p>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>
