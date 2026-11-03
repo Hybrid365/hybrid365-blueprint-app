@@ -9,13 +9,8 @@ import { ensureProgrammeDraftWeeksExist } from "../app/lib/hyroxSessionFamilyEns
 import type { HyroxAthleteRow } from "../app/lib/hyroxDatabaseTypes";
 
 async function main() {
-  if (process.env.HYROX_ENV !== "staging") {
-    throw new Error("Refusing: HYROX_ENV must be staging");
-  }
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  if (!url.includes("uluapwqohujavhlpucta")) {
-    throw new Error("Refusing: not hybrid365-staging URL");
-  }
+  const { assertStagingTarget } = await import("./staging/lib/stagingGuard.mjs");
+  const { url } = assertStagingTarget(process.env, { needServiceRole: true });
 
   const sb = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },

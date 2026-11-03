@@ -127,11 +127,9 @@ function check(name: string, cond: boolean, detail?: string) {
   return true;
 }
 
-function assertStaging() {
-  if (process.env.HYROX_ENV !== "staging") throw new Error("HYROX_ENV=staging required");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  if (!url.includes("uluapwqohujavhlpucta")) throw new Error("staging URL required");
-  if (url.includes("uuqdgbsntdjhojjkjkgd")) throw new Error("refusing production URL");
+async function assertStaging() {
+  const { assertStagingTarget } = await import("./staging/lib/stagingGuard.mjs");
+  assertStagingTarget(process.env, { needServiceRole: true });
 }
 
 function familySession(args: {
@@ -365,7 +363,7 @@ function summaryChips(
 }
 
 async function main() {
-  assertStaging();
+  await assertStaging();
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

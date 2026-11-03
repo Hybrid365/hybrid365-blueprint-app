@@ -1,14 +1,18 @@
 /**
  * Target guards for staging scripts. Every staging write goes through assertStagingTarget.
  * Production is only ever read, and only through assertProductionSchemaRead.
+ *
+ * Staging project ref is NOT hard-coded to a single historical project.
+ * Declare it via HYROX_STAGING_SUPABASE_REF (preferred) or derive from NEXT_PUBLIC_SUPABASE_URL
+ * when HYROX_ENV=staging. Production ref is always refused.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const STAGING_PROJECT_REF = "uluapwqohujavhlpucta";
+/** Historical dead project — kept for docs/tests only; not the sole accepted staging target. */
+export const LEGACY_STAGING_PROJECT_REF = "uluapwqohujavhlpucta";
 export const PRODUCTION_PROJECT_REF = "uuqdgbsntdjhojjkjkgd";
-export const STAGING_SUPABASE_URL = `https://${STAGING_PROJECT_REF}.supabase.co`;
 
 export class GuardError extends Error {}
 
@@ -39,6 +43,19 @@ function normaliseUrl(value) {
   return (value ?? "").trim().replace(/\/+$/, "");
 }
 
+/** Project ref from https://<ref>.supabase.co */
+export function supabaseUrlProjectRef(url) {
+  const normalised = normaliseUrl(url);
+  if (!normalised) return null;
+  try {
+    const host = new URL(normalised).hostname;
+    const m = /^([a-z0-9]{20})\.supabase\.co$/i.exec(host);
+    return m?.[1]?.toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Project ref from a Supabase Postgres URL: direct `db.<ref>.supabase.co` or pooler user `postgres.<ref>`. */
 export function databaseProjectRef(databaseUrl) {
   let parsed;
@@ -59,8 +76,30 @@ export function databaseProjectRef(databaseUrl) {
 }
 
 /**
- * Proves the env targets hybrid365-staging. Throws GuardError otherwise.
- * `needDatabase` also requires HYROX_STAGING_DATABASE_URL to resolve to the staging project.
+ * Resolve the declared staging project ref.
+ * Prefer HYROX_STAGING_SUPABASE_REF; else derive from NEXT_PUBLIC_SUPABASE_URL.
+ */
+export function resolveStagingProjectRef(env) {
+  const declared = (env.HYROX_STAGING_SUPABASE_REF ?? "").trim().toLowerCase();
+  if (declared) {
+    if (!/^[a-z0-9]{20}$/.test(declared)) {
+      throw new GuardError("HYROX_STAGING_SUPABASE_REF must be a 20-character Supabase project ref.");
+    }
+    if (declared === PRODUCTION_PROJECT_REF) {
+      throw new GuardError("HYROX_STAGING_SUPABASE_REF must not be the production project.");
+    }
+    return declared;
+  }
+  const fromUrl = supabaseUrlProjectRef(env.NEXT_PUBLIC_SUPABASE_URL);
+  if (fromUrl && fromUrl !== PRODUCTION_PROJECT_REF) return fromUrl;
+  throw new GuardError(
+    "Staging project ref is not declared. Set HYROX_STAGING_SUPABASE_REF to the new staging project ref."
+  );
+}
+
+/**
+ * Proves the env targets the declared staging project. Throws GuardError otherwise.
+ * `needDatabase` also requires HYROX_STAGING_DATABASE_URL to resolve to that staging project.
  */
 export function assertStagingTarget(env, { needDatabase = false, needServiceRole = false } = {}) {
   const problems = [];
@@ -69,10 +108,30 @@ export function assertStagingTarget(env, { needDatabase = false, needServiceRole
 
   if (env.HYROX_ENV !== "staging") problems.push("HYROX_ENV must be exactly 'staging'.");
   if (!url) problems.push("NEXT_PUBLIC_SUPABASE_URL is not set.");
-  if (url && url !== STAGING_SUPABASE_URL) problems.push("NEXT_PUBLIC_SUPABASE_URL is not the hybrid365-staging project.");
-  if (url.includes(PRODUCTION_PROJECT_REF)) problems.push("NEXT_PUBLIC_SUPABASE_URL is the production project.");
-  if (productionUrl && url === productionUrl) problems.push("NEXT_PUBLIC_SUPABASE_URL matches HYROX_PRODUCTION_SUPABASE_URL.");
-  if (needServiceRole && !env.SUPABASE_SERVICE_ROLE_KEY) problems.push("SUPABASE_SERVICE_ROLE_KEY is not set.");
+
+  let stagingRef = null;
+  try {
+    stagingRef = resolveStagingProjectRef(env);
+  } catch (error) {
+    problems.push(error.message);
+  }
+
+  const urlRef = supabaseUrlProjectRef(url);
+  if (url && stagingRef && urlRef !== stagingRef) {
+    problems.push("NEXT_PUBLIC_SUPABASE_URL does not match HYROX_STAGING_SUPABASE_REF / declared staging project.");
+  }
+  if (url.includes(PRODUCTION_PROJECT_REF) || urlRef === PRODUCTION_PROJECT_REF) {
+    problems.push("NEXT_PUBLIC_SUPABASE_URL is the production project.");
+  }
+  if (productionUrl && url === productionUrl) {
+    problems.push("NEXT_PUBLIC_SUPABASE_URL matches HYROX_PRODUCTION_SUPABASE_URL.");
+  }
+  if (stagingRef === PRODUCTION_PROJECT_REF) {
+    problems.push("Declared staging ref is the production project.");
+  }
+  if (needServiceRole && !env.SUPABASE_SERVICE_ROLE_KEY) {
+    problems.push("SUPABASE_SERVICE_ROLE_KEY is not set.");
+  }
 
   if (needDatabase) {
     const databaseUrl = env.HYROX_STAGING_DATABASE_URL ?? "";
@@ -80,10 +139,10 @@ export function assertStagingTarget(env, { needDatabase = false, needServiceRole
       problems.push("HYROX_STAGING_DATABASE_URL is not set.");
     } else if (databaseUrl.includes(PRODUCTION_PROJECT_REF)) {
       problems.push("HYROX_STAGING_DATABASE_URL points at the production project.");
-    } else {
+    } else if (stagingRef) {
       try {
-        if (databaseProjectRef(databaseUrl) !== STAGING_PROJECT_REF) {
-          problems.push("HYROX_STAGING_DATABASE_URL is not the hybrid365-staging project.");
+        if (databaseProjectRef(databaseUrl) !== stagingRef) {
+          problems.push("HYROX_STAGING_DATABASE_URL is not the declared staging project.");
         }
       } catch (error) {
         problems.push(error.message);
@@ -91,8 +150,10 @@ export function assertStagingTarget(env, { needDatabase = false, needServiceRole
     }
   }
 
-  if (problems.length) throw new GuardError(`Refusing: target is not proven to be hybrid365-staging.\n- ${problems.join("\n- ")}`);
-  return { url, projectRef: STAGING_PROJECT_REF, databaseUrl: env.HYROX_STAGING_DATABASE_URL };
+  if (problems.length) {
+    throw new GuardError(`Refusing: target is not proven to be hybrid365-staging.\n- ${problems.join("\n- ")}`);
+  }
+  return { url, projectRef: stagingRef, databaseUrl: env.HYROX_STAGING_DATABASE_URL };
 }
 
 /** Live proof: the service-role key is accepted by the staging project's auth admin API. */
@@ -124,3 +185,8 @@ export function redactDatabaseUrl(databaseUrl) {
     return "<unparseable>";
   }
 }
+
+/** @deprecated Use resolveStagingProjectRef / LEGACY_STAGING_PROJECT_REF. */
+export const STAGING_PROJECT_REF = LEGACY_STAGING_PROJECT_REF;
+/** @deprecated Prefer constructing from resolveStagingProjectRef(env). */
+export const STAGING_SUPABASE_URL = `https://${LEGACY_STAGING_PROJECT_REF}.supabase.co`;

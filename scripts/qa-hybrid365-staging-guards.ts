@@ -18,11 +18,22 @@ import { resolveAthleteFacingSessionCoachNote } from "../app/lib/hyroxAthleteSes
 import { stagingMigrationPlan, renderBaseline } from "./staging/lib/schemaCatalog.mjs";
 import { assertStagingTarget, assertProductionSchemaRead, databaseProjectRef, GuardError } from "./staging/lib/stagingGuard.mjs";
 
-const STAGING = "https://uluapwqohujavhlpucta.supabase.co";
+const STAGING_REF = "uluapwqohujavhlpucta"; // fixture ref for offline tests (may be dead in DNS)
+const STAGING = `https://${STAGING_REF}.supabase.co`;
 const PRODUCTION = "https://uuqdgbsntdjhojjkjkgd.supabase.co";
-const STAGING_POOLER = "postgresql://postgres.uluapwqohujavhlpucta:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres";
+const STAGING_POOLER = `postgresql://postgres.${STAGING_REF}:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres`;
 const PRODUCTION_POOLER = "postgresql://postgres.uuqdgbsntdjhojjkjkgd:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres";
-const good = { HYROX_ENV: "staging", NEXT_PUBLIC_SUPABASE_URL: STAGING, HYROX_PRODUCTION_SUPABASE_URL: PRODUCTION, HYROX_STAGING_DATABASE_URL: STAGING_POOLER, SUPABASE_SERVICE_ROLE_KEY: "x" };
+const NEW_STAGING_REF = "abcdefghij1234567890";
+const NEW_STAGING = `https://${NEW_STAGING_REF}.supabase.co`;
+const NEW_STAGING_POOLER = `postgresql://postgres.${NEW_STAGING_REF}:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres`;
+const good = {
+  HYROX_ENV: "staging",
+  HYROX_STAGING_SUPABASE_REF: STAGING_REF,
+  NEXT_PUBLIC_SUPABASE_URL: STAGING,
+  HYROX_PRODUCTION_SUPABASE_URL: PRODUCTION,
+  HYROX_STAGING_DATABASE_URL: STAGING_POOLER,
+  SUPABASE_SERVICE_ROLE_KEY: "x",
+};
 
 let passed = 0;
 function check(name: string, fn: () => void) {
@@ -34,7 +45,21 @@ const refuses = (env: Record<string, string | undefined>, opts = { needDatabase:
   assert.throws(() => assertStagingTarget(env, opts), GuardError);
 
 check("accepts proven staging env", () => {
-  assert.equal(assertStagingTarget(good, { needDatabase: true, needServiceRole: true }).projectRef, "uluapwqohujavhlpucta");
+  assert.equal(assertStagingTarget(good, { needDatabase: true, needServiceRole: true }).projectRef, STAGING_REF);
+});
+check("accepts a newly declared staging project ref", () => {
+  assert.equal(
+    assertStagingTarget(
+      {
+        ...good,
+        HYROX_STAGING_SUPABASE_REF: NEW_STAGING_REF,
+        NEXT_PUBLIC_SUPABASE_URL: NEW_STAGING,
+        HYROX_STAGING_DATABASE_URL: NEW_STAGING_POOLER,
+      },
+      { needDatabase: true, needServiceRole: true }
+    ).projectRef,
+    NEW_STAGING_REF
+  );
 });
 check("refuses when HYROX_ENV is not staging", () => {
   refuses({ ...good, HYROX_ENV: undefined });
@@ -42,8 +67,12 @@ check("refuses when HYROX_ENV is not staging", () => {
   refuses({ ...good, HYROX_ENV: "Staging" });
 });
 check("refuses production Supabase URL", () => refuses({ ...good, NEXT_PUBLIC_SUPABASE_URL: PRODUCTION }));
-check("refuses URL equal to HYROX_PRODUCTION_SUPABASE_URL", () => refuses({ ...good, HYROX_PRODUCTION_SUPABASE_URL: STAGING }));
-check("refuses an unknown Supabase project", () => refuses({ ...good, NEXT_PUBLIC_SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co" }));
+check("refuses URL equal to HYROX_PRODUCTION_SUPABASE_URL", () =>
+  refuses({ ...good, HYROX_PRODUCTION_SUPABASE_URL: STAGING }));
+check("refuses URL that does not match declared staging ref", () =>
+  refuses({ ...good, NEXT_PUBLIC_SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co" }));
+check("refuses production as declared staging ref", () =>
+  refuses({ ...good, HYROX_STAGING_SUPABASE_REF: "uuqdgbsntdjhojjkjkgd", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION }));
 check("refuses production database URL", () => refuses({ ...good, HYROX_STAGING_DATABASE_URL: PRODUCTION_POOLER }));
 check("refuses direct production database host", () =>
   refuses({ ...good, HYROX_STAGING_DATABASE_URL: "postgresql://postgres:pw@db.uuqdgbsntdjhojjkjkgd.supabase.co:5432/postgres" }));
@@ -52,8 +81,8 @@ check("refuses missing database URL when needed", () => refuses({ ...good, HYROX
 check("refuses missing service role when needed", () =>
   assert.throws(() => assertStagingTarget({ ...good, SUPABASE_SERVICE_ROLE_KEY: "" }, { needServiceRole: true }), GuardError));
 check("reads project ref from direct and pooler URLs", () => {
-  assert.equal(databaseProjectRef("postgresql://postgres:pw@db.uluapwqohujavhlpucta.supabase.co:5432/postgres"), "uluapwqohujavhlpucta");
-  assert.equal(databaseProjectRef(STAGING_POOLER), "uluapwqohujavhlpucta");
+  assert.equal(databaseProjectRef(`postgresql://postgres:pw@db.${STAGING_REF}.supabase.co:5432/postgres`), STAGING_REF);
+  assert.equal(databaseProjectRef(STAGING_POOLER), STAGING_REF);
 });
 check("production schema read only accepts the production project", () => {
   assert.equal(assertProductionSchemaRead(PRODUCTION_POOLER), PRODUCTION_POOLER);

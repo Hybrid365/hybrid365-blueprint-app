@@ -2,21 +2,68 @@
 
 ## Status (2026-11-03)
 
-**Documented staging project is currently unreachable.**
+**Previous staging project is gone. A new authorised project must be supplied before any staging canary.**
 
-- Historical project: `hybrid365-staging`, ref `uluapwqohujavhlpucta`
-- Hostname `uluapwqohujavhlpucta.supabase.co` resolves **NXDOMAIN** (checked via public DNS)
-- Production (`uuqdgbsntdjhojjkjkgd`) remains healthy
-- No alternate authorised staging project was found in repo env files or docs
-- **Do not** set `HYROX_ENV=staging` against Production credentials
-- **Do not** treat Vercel Preview as a staging canary until Preview has its own staging Supabase URL + keys and `HYROX_ENV=staging`
-- Recreate or restore staging only via an explicit human-approved Supabase task (this doc does not authorise creating a new project)
+- Historical project: `hybrid365-staging`, ref `uluapwqohujavhlpucta` → **NXDOMAIN**
+- Production (`uuqdgbsntdjhojjkjkgd`) remains healthy and must never receive staging writes
+- Staging target is declared by `HYROX_STAGING_SUPABASE_REF` (20-char ref) + matching `NEXT_PUBLIC_SUPABASE_URL`
+- **Do not** set `HYROX_ENV=staging` against Production credentials (runtime hard-fails)
+- **Do not** treat Vercel Preview as staging until Preview env is split
 
-Until staging is restored, local `.env.local` files that still point at `uluapwqohujavhlpucta` are stale and cannot seed or log in.
+### Restore checklist (human creates Supabase project; agent resumes after)
+
+1. In Supabase dashboard, create an empty project (suggested name `hybrid365-staging`). Region match production if practical.
+2. Copy project **ref** (20 chars) and keys. Put into local `.env.local` only:
+
+```
+HYROX_ENV=staging
+HYROX_STAGING_SUPABASE_REF=<new-ref>
+NEXT_PUBLIC_SUPABASE_URL=https://<new-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<staging anon / publishable>
+SUPABASE_SERVICE_ROLE_KEY=<staging service / secret>
+HYROX_PRODUCTION_SUPABASE_URL=https://uuqdgbsntdjhojjkjkgd.supabase.co
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+HYROX_STAGING_DATABASE_URL=<staging session pooler URL>
+HYROX_COACH_EMAILS=demo-coach@staging.hybrid365.local
+```
+
+3. Never put Production service role in `.env.local`.
+4. Schema bootstrap (structure from Production read-only + migrations `001`..`021`; **refuse `022`**):
+
+```
+# untracked file, delete after:
+# .env.production-schema-read → HYROX_PRODUCTION_SCHEMA_READ_URL=<prod pooler read-only>
+npm run staging:schema:read-production
+rm .env.production-schema-read
+npm run staging:schema:apply          # dry run
+npm run staging:schema:apply -- --apply
+npm run staging:schema:compare
+```
+
+5. Seed synthetic demos only:
+
+```
+npm run staging:seed -- --apply
+npm run staging:seed -- --login demo-competitive
+```
+
+6. Staging Auth → URL Configuration (staging project only):
+
+- Site URL: `http://localhost:3000`
+- Redirects: `http://localhost:3000/auth/callback`, `http://localhost:3000/**`, `https://*-vr4sq6hwsv-8436s-projects.vercel.app/**`
+
+7. Vercel `project-ih4h1` → **Preview only** (do not edit Production values):
+
+- Untick Preview on shared Production Supabase URL/anon/service-role rows; leave Production ticked
+- Add Preview-only: staging URL, anon, service role, `HYROX_ENV=staging`, `HYROX_STAGING_SUPABASE_REF`, `HYROX_PRODUCTION_SUPABASE_URL`
+- Preview-only: `HYROX_HOME_D_ATHLETE_IDS=<Demo Competitive UUID after seed>`
+
+8. Redeploy Preview. Expect **STAGING** badge (not PRODUCTION DATA).
+9. Re-run the Home D staging canary agent task.
 
 ---
 
-Staging project (when available): `hybrid365-staging`, `https://uluapwqohujavhlpucta.supabase.co`. Production (`uuqdgbsntdjhojjkjkgd`) is never written by any script here.
+Staging project (when available): declared by `HYROX_STAGING_SUPABASE_REF`. Production (`uuqdgbsntdjhojjkjkgd`) is never written by any script here.
 
 ## Runbook
 
@@ -26,7 +73,8 @@ All commands run from the repo root. Each one refuses unless `HYROX_ENV=staging`
 
 ```
 HYROX_ENV=staging
-NEXT_PUBLIC_SUPABASE_URL=https://uluapwqohujavhlpucta.supabase.co
+HYROX_STAGING_SUPABASE_REF=           # 20-char ref of the authorised staging project
+NEXT_PUBLIC_SUPABASE_URL=https://<HYROX_STAGING_SUPABASE_REF>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=        # staging publishable key, sb_publishable_...
 SUPABASE_SERVICE_ROLE_KEY=            # staging secret key, sb_secret_... (or legacy service_role eyJ...)
 HYROX_PRODUCTION_SUPABASE_URL=https://uuqdgbsntdjhojjkjkgd.supabase.co
@@ -81,10 +129,11 @@ Do the split by hand in Vercel -> project `project-ih4h1` -> Settings -> Environ
 
 1. For each of the three variables: open the row menu -> Edit, untick **Preview** only, leave **Production** ticked and the value untouched, Save.
 2. Add Environment Variable, environment **Preview** only, for each:
-   - `NEXT_PUBLIC_SUPABASE_URL` = `https://uluapwqohujavhlpucta.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://<HYROX_STAGING_SUPABASE_REF>.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = staging publishable key
    - `SUPABASE_SERVICE_ROLE_KEY` = staging secret key (mark Sensitive)
    - `HYROX_ENV` = `staging`
+   - `HYROX_STAGING_SUPABASE_REF` = `<new staging ref>`
    - `HYROX_PRODUCTION_SUPABASE_URL` = `https://uuqdgbsntdjhojjkjkgd.supabase.co`
 3. Re-open Production's three variables and confirm they still show Production with the original values.
 4. Redeploy one preview. It should show the STAGING badge. A red `PRODUCTION DATA` badge means Preview still reads production.

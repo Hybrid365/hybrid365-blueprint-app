@@ -10,9 +10,8 @@ import type { HyroxProgrammeWeekRow } from "../app/lib/hyroxDatabaseTypes";
 const ATHLETE_ID = "77b9be0c-81c0-4209-902d-2330e33ae4f0";
 
 async function main() {
-  if (process.env.HYROX_ENV !== "staging") throw new Error("HYROX_ENV=staging required");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  if (!url.includes("uluapwqohujavhlpucta")) throw new Error("staging URL required");
+  const { assertStagingTarget } = await import("./staging/lib/stagingGuard.mjs");
+  const { url } = assertStagingTarget(process.env, { needServiceRole: true });
 
   const sb = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
