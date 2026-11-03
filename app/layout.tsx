@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { EnvironmentBadge } from "@/app/components/EnvironmentBadge";
+import { assertHyroxRuntimeEnvironment } from "@/app/lib/hyroxRuntimeEnvironmentGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  assertHyroxRuntimeEnvironment();
+
   return (
     <html lang="en" className="dark">
       <body

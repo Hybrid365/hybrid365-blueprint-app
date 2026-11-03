@@ -192,6 +192,7 @@ function cardFromSession(
 function buildCoachContext(
   programme: AthleteLiveProgrammePayload
 ): AthleteHomeDCoachContext | null {
+  // Never programme.week.coach_note — internal only.
   const weekNote = programme.week?.athlete_facing_note?.trim() ?? "";
   if (weekNote) {
     return { title: "From your coach", body: weekNote };

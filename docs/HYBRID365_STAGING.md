@@ -1,6 +1,22 @@
 # Staging Supabase and environments
 
-Staging project: `hybrid365-staging`, `https://uluapwqohujavhlpucta.supabase.co`. Production (`uuqdgbsntdjhojjkjkgd`) is never written by any script here.
+## Status (2026-11-03)
+
+**Documented staging project is currently unreachable.**
+
+- Historical project: `hybrid365-staging`, ref `uluapwqohujavhlpucta`
+- Hostname `uluapwqohujavhlpucta.supabase.co` resolves **NXDOMAIN** (checked via public DNS)
+- Production (`uuqdgbsntdjhojjkjkgd`) remains healthy
+- No alternate authorised staging project was found in repo env files or docs
+- **Do not** set `HYROX_ENV=staging` against Production credentials
+- **Do not** treat Vercel Preview as a staging canary until Preview has its own staging Supabase URL + keys and `HYROX_ENV=staging`
+- Recreate or restore staging only via an explicit human-approved Supabase task (this doc does not authorise creating a new project)
+
+Until staging is restored, local `.env.local` files that still point at `uluapwqohujavhlpucta` are stale and cannot seed or log in.
+
+---
+
+Staging project (when available): `hybrid365-staging`, `https://uluapwqohujavhlpucta.supabase.co`. Production (`uuqdgbsntdjhojjkjkgd`) is never written by any script here.
 
 ## Runbook
 
@@ -57,7 +73,11 @@ The app sends `/auth/callback?portal=athlete&next=/athlete/dashboard` and `/auth
 
 ### Vercel Preview
 
-Not done yet. Previews still read production. `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are single variables targeting both Preview and Production, so separating them edits records Production uses. Do it by hand in Vercel -> project `project-ih4h1` -> Settings -> Environment Variables:
+**Still not done (as of 2026-11-03).** Previews still share Production Supabase credentials. `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are single variables targeting both Preview and Production, so separating them edits records Production uses.
+
+Runtime guard: if `HYROX_ENV=staging` while the Supabase URL is production, the app refuses to boot (`assertHyroxRuntimeEnvironment`). That prevents a false “staging” badge over production data. It does **not** by itself give Preview a staging database — restore staging first, then split Preview env as below.
+
+Do the split by hand in Vercel -> project `project-ih4h1` -> Settings -> Environment Variables (only after a live staging project exists):
 
 1. For each of the three variables: open the row menu -> Edit, untick **Preview** only, leave **Production** ticked and the value untouched, Save.
 2. Add Environment Variable, environment **Preview** only, for each:

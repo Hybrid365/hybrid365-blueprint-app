@@ -64,6 +64,71 @@ function cfgAsEditConfig(cfg: PrescriptionLike): CoachSessionEditConfig {
   return cfg as unknown as CoachSessionEditConfig;
 }
 
+function firstTrimmedString(...candidates: unknown[]): string | null {
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function objectHasAthleteFacingCoachField(obj: PrescriptionLike): boolean {
+  return (
+    "athleteFacingNote" in obj ||
+    "athlete_facing_note" in obj ||
+    "athleteFacingCoachNote" in obj
+  );
+}
+
+/**
+ * Athlete-visible session coach copy only.
+ * Prefers explicit athlete-facing fields. Never returns internal-only notes.
+ * Family publishes always blank. Legacy single `coachNote` remains athlete-facing
+ * only when no athlete-facing / internal split fields are present on the same object.
+ */
+export function resolveAthleteFacingSessionCoachNote(params: {
+  hasFamilyPublish: boolean;
+  prescription?: PrescriptionLike | null;
+  meta?: PrescriptionLike | null;
+  editConfig?: PrescriptionLike | null;
+}): string {
+  if (params.hasFamilyPublish) return "";
+  const prescription = params.prescription ?? {};
+  const meta = params.meta ?? {};
+  const cfg = params.editConfig ?? {};
+
+  const explicitFacing = firstTrimmedString(
+    cfg.athleteFacingNote,
+    cfg.athleteFacingCoachNote,
+    cfg.athlete_facing_note,
+    prescription.athleteFacingNote,
+    prescription.athleteFacingCoachNote,
+    prescription.athlete_facing_note,
+    meta.athleteFacingNote,
+    meta.athleteFacingCoachNote,
+    meta.athlete_facing_note
+  );
+  if (explicitFacing) return explicitFacing;
+
+  const splitDeclared =
+    objectHasAthleteFacingCoachField(cfg) ||
+    objectHasAthleteFacingCoachField(prescription) ||
+    objectHasAthleteFacingCoachField(meta);
+  if (splitDeclared) {
+    // Facing field present but empty → hide; do not fall back to internal coachNote/coach_note.
+    return "";
+  }
+
+  // Legacy single coachNote on session prescription/detail is athlete-facing library copy.
+  // Never read week-level coach_note here (not passed in).
+  return (
+    firstTrimmedString(
+      cfg.coachNote,
+      prescription.coachNote,
+      meta.coachNote
+    ) ?? ""
+  );
+}
+
 /** Resolve athlete-facing session detail from a published DB row. */
 export function resolveAthleteSessionDetailFromPublishedRow(
   row: HyroxProgrammeSessionRow
@@ -118,12 +183,12 @@ export function resolveAthleteSessionDetailFromPublishedRow(
       typeof prescription.sessionFamily === "object" &&
       !Array.isArray(prescription.sessionFamily)
   );
-  // Internal family coach notes must never leak to athlete session detail.
-  const coachNote = hasFamilyPublish
-    ? ""
-    : (typeof cfg.coachNote === "string" && cfg.coachNote.trim()) ||
-      (typeof prescription.coachNote === "string" && prescription.coachNote) ||
-      "";
+  const coachNote = resolveAthleteFacingSessionCoachNote({
+    hasFamilyPublish,
+    prescription,
+    meta,
+    editConfig: cfg,
+  });
 
   const stationFocus = resolveStationFocus(edit, coachNote);
   const fullPrescription = resolveFullPrescriptionText(prescription, edit, overrideMainSet);

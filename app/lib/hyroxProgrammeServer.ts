@@ -621,13 +621,8 @@ export function mapPublishedSessionsToAthleteUi(
       prescription.sessionFamily &&
         typeof prescription.sessionFamily === "object"
     );
-    // Family internal coach notes must never surface to athletes.
-    const coachNote = hasFamilyPublish
-      ? ""
-      : (meta.coachNote as string) ??
-        (prescription.coachNote as string) ??
-        (prescription.coach_note as string) ??
-        "";
+    // Athlete-facing session note only (never week coach_note / internal-only fields).
+    const coachNote = detail.coachNote?.trim() || "";
     const feedback = parseHyroxAthleteSessionFeedback(s.athlete_feedback);
     const displayName = resolveAthleteSessionDisplayName(s);
     const plannedTargets =
@@ -697,10 +692,8 @@ export function mapPublishedSessionsToAthleteUi(
         ? detail.objective || displayName
         : detail.objective || (meta.intent as string) || s.session_name,
       timeOfDay,
-      coachNote: hasFamilyPublish
-        ? undefined
-        : detail.coachNote || coachNote || undefined,
-      detail: hasFamilyPublish ? { ...detail, coachNote: "" } : detail,
+      coachNote: coachNote || undefined,
+      detail: hasFamilyPublish ? { ...detail, coachNote: "" } : { ...detail, coachNote },
     };
   });
 

@@ -8,6 +8,13 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { environmentBadge } from "../app/lib/hybrid365EnvironmentBadge";
+import {
+  assertHyroxRuntimeEnvironment,
+  hyroxStagingProductionMismatchMessage,
+  previewReadsProductionWithoutStagingClaim,
+  supabaseProjectRefFromUrl,
+} from "../app/lib/hyroxRuntimeEnvironmentGuard";
+import { resolveAthleteFacingSessionCoachNote } from "../app/lib/hyroxAthleteSessionDetail";
 import { stagingMigrationPlan, renderBaseline } from "./staging/lib/schemaCatalog.mjs";
 import { assertStagingTarget, assertProductionSchemaRead, databaseProjectRef, GuardError } from "./staging/lib/stagingGuard.mjs";
 
@@ -108,6 +115,93 @@ check("badge: STAGING on Vercel Preview with staging env", () => {
 check("badge: PRODUCTION DATA when preview or local reads production", () => {
   assert.equal(environmentBadge({ VERCEL_ENV: "preview", NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION })?.tone, "danger");
   assert.equal(environmentBadge({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION })?.label, "PRODUCTION DATA");
+});
+
+check("runtime: staging + production URL is a hard mismatch", () => {
+  const msg = hyroxStagingProductionMismatchMessage({
+    HYROX_ENV: "staging",
+    NEXT_PUBLIC_SUPABASE_URL: PRODUCTION,
+  });
+  assert.ok(msg && /production/i.test(msg));
+  assert.equal(
+    hyroxStagingProductionMismatchMessage({
+      HYROX_ENV: "staging",
+      NEXT_PUBLIC_SUPABASE_URL: STAGING,
+      HYROX_PRODUCTION_SUPABASE_URL: PRODUCTION,
+    }),
+    null
+  );
+  assert.doesNotThrow(() =>
+    assertHyroxRuntimeEnvironment({
+      VERCEL_ENV: "production",
+      HYROX_ENV: "staging",
+      NEXT_PUBLIC_SUPABASE_URL: PRODUCTION,
+    })
+  );
+  assert.throws(() =>
+    assertHyroxRuntimeEnvironment({
+      VERCEL_ENV: "preview",
+      HYROX_ENV: "staging",
+      NEXT_PUBLIC_SUPABASE_URL: PRODUCTION,
+    })
+  );
+});
+
+check("runtime: preview without HYROX_ENV on production is flagged, not claimed staging", () => {
+  assert.equal(
+    previewReadsProductionWithoutStagingClaim({
+      VERCEL_ENV: "preview",
+      NEXT_PUBLIC_SUPABASE_URL: PRODUCTION,
+    }),
+    true
+  );
+  assert.equal(
+    previewReadsProductionWithoutStagingClaim({
+      VERCEL_ENV: "preview",
+      HYROX_ENV: "staging",
+      NEXT_PUBLIC_SUPABASE_URL: STAGING,
+    }),
+    false
+  );
+  assert.equal(supabaseProjectRefFromUrl(PRODUCTION), "uuqdgbsntdjhojjkjkgd");
+});
+
+check("athlete coach note: never leaks internal when facing split exists", () => {
+  assert.equal(
+    resolveAthleteFacingSessionCoachNote({
+      hasFamilyPublish: false,
+      prescription: {
+        athlete_facing_note: "Hold threshold controlled.",
+        coachNote: "INTERNAL — do not show athlete",
+        coach_note: "INTERNAL week-style",
+      },
+    }),
+    "Hold threshold controlled."
+  );
+  assert.equal(
+    resolveAthleteFacingSessionCoachNote({
+      hasFamilyPublish: false,
+      prescription: {
+        athleteFacingNote: "",
+        coachNote: "INTERNAL — empty facing must not fall back",
+      },
+    }),
+    ""
+  );
+  assert.equal(
+    resolveAthleteFacingSessionCoachNote({
+      hasFamilyPublish: true,
+      prescription: { coachNote: "family internal" },
+    }),
+    ""
+  );
+  assert.equal(
+    resolveAthleteFacingSessionCoachNote({
+      hasFamilyPublish: false,
+      prescription: { coachNote: "Legacy athlete cue" },
+    }),
+    "Legacy athlete cue"
+  );
 });
 
 console.log(`\n${passed} staging guard checks passed`);
