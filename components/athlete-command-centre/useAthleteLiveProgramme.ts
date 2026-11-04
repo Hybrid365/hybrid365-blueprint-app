@@ -16,7 +16,6 @@ export type AthleteLiveProgrammeWeek = {
   block_number: number;
   week_number: number;
   weekly_focus: string | null;
-  coach_note: string | null;
   athlete_facing_note: string | null;
 };
 

@@ -418,7 +418,7 @@ async function main() {
     athlete_facing_note: "for athlete",
     coach_note: "internal only",
   });
-  assert(stripped?.coach_note === null, "stripped");
+  assert(stripped != null && !("coach_note" in stripped), "stripped");
   assert(athleteFacingWeeklyNote(null) === "", "empty");
   ok("internal coach note never falls into athlete copy");
 }

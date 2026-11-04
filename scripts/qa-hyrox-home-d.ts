@@ -92,7 +92,6 @@ const programme: AthleteLiveProgrammePayload = {
     block_number: 1,
     week_number: 2,
     weekly_focus: "Threshold",
-    coach_note: "INTERNAL NEVER SHOW",
     athlete_facing_note: "Hold threshold controlled this week.",
   },
   sessions: [

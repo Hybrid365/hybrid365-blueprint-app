@@ -118,8 +118,13 @@ export function resolveAthleteProgrammeApiState(params: {
   return "coach_reviewing";
 }
 
+/** Athlete-facing week row — internal coach_note is never selected or serialised. */
+export type AthleteFacingProgrammeWeekRow = Omit<HyroxProgrammeWeekRow, "coach_note"> & {
+  coach_note?: never;
+};
+
 export type PublishedProgrammeWeekBundle = {
-  week: HyroxProgrammeWeekRow | null;
+  week: AthleteFacingProgrammeWeekRow | null;
   sessions: HyroxProgrammeSessionRow[];
   generated: boolean;
   weekNumber: number;
@@ -133,7 +138,7 @@ export type AthletePublishedProgramme = {
   published: boolean;
   programmeStatus: string;
   athleteStatus: string;
-  week: HyroxProgrammeWeekRow | null;
+  week: AthleteFacingProgrammeWeekRow | null;
   sessions: HyroxProgrammeSessionRow[];
   weeks: PublishedProgrammeWeekBundle[];
   programmeStartDate: string | null;
@@ -789,6 +794,13 @@ export async function fetchAthletePublishedProgramme(
     ? deriveLiveGlobalWeek(programmeStartDate)
     : 1;
 
+  // Athlete-facing payload: omit internal week coach_note entirely (no null stub in RSC).
+  const redactWeek = (w: HyroxProgrammeWeekRow | null): AthleteFacingProgrammeWeekRow | null => {
+    if (!w) return null;
+    const { coach_note: _omit, ...rest } = w;
+    return rest;
+  };
+
   const weeks: PublishedProgrammeWeekBundle[] = weekRows.map((week) => {
     const globalWeek = week.week_number;
     const sessionsForWeek = allSessions.filter((s) => s.programme_week_id === week.id);
@@ -803,8 +815,9 @@ export async function fetchAthletePublishedProgramme(
     });
     const weekStartDate = resolvedDates?.startYmd ?? dbWeekStart;
     const weekEndDate = resolvedDates?.endYmd ?? dbWeekEnd;
+    const facingWeek = redactWeek(week)!;
     const base: PublishedProgrammeWeekBundle = {
-      week,
+      week: facingWeek,
       sessions: sessionsForWeek,
       generated,
       weekNumber: globalWeek,
@@ -821,43 +834,32 @@ export async function fetchAthletePublishedProgramme(
   const activeWeekNumber = programmeStartDate
     ? liveGlobalWeek
     : athlete.current_week ?? weekRows[weekRows.length - 1]?.week_number ?? 1;
-  const publishedWeek =
+  const publishedWeekRaw =
     weekRows.find((w) => w.week_number === activeWeekNumber) ??
     weekRows.filter((w) => w.week_number <= activeWeekNumber).pop() ??
     weekRows[0] ??
     null;
+  const publishedWeek = redactWeek(publishedWeekRaw);
   const sessions = publishedWeek
     ? allSessions.filter((s) => s.programme_week_id === publishedWeek.id)
     : [];
 
   const latestDraftStatus = (draft?.status as HyroxProgrammeDraftStatus | undefined) ?? null;
   const visibility = resolveAthleteProgrammeVisibility({
-    publishedWeek,
+    publishedWeek: publishedWeekRaw,
     latestDraftStatus,
     hasAssessment: flags.hasAssessment,
     hasTesting: flags.hasTesting,
   });
-
-  // Athlete-facing payload: omit internal week coach_note entirely (no null stub in RSC).
-  const redactWeek = (
-    w: HyroxProgrammeWeekRow | null
-  ): (Omit<HyroxProgrammeWeekRow, "coach_note"> & { coach_note?: never }) | null => {
-    if (!w) return null;
-    const { coach_note: _omit, ...rest } = w;
-    return rest;
-  };
 
   return {
     visibility,
     published: weekRows.length > 0,
     programmeStatus: athlete.programme_status,
     athleteStatus: athlete.status,
-    week: redactWeek(publishedWeek),
+    week: publishedWeek,
     sessions,
-    weeks: weeks.map((bundle) => ({
-      ...bundle,
-      week: redactWeek(bundle.week)!,
-    })),
+    weeks,
     programmeStartDate,
     programmeLengthWeeks,
     liveGlobalWeek,
