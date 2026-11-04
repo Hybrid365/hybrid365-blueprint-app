@@ -92,7 +92,6 @@ export async function GET(request: NextRequest) {
               week_start_date: bundle.week.week_start_date,
               week_end_date: bundle.week.week_end_date,
               weekly_focus: bundle.week.weekly_focus,
-              coach_note: null,
               athlete_facing_note: bundle.week.athlete_facing_note,
             }
           : null,

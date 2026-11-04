@@ -86,6 +86,10 @@ export { sessionRowKey } from "@/app/lib/hyroxProgrammeSessionSync";
 const PROGRAMME_WEEK_SELECT =
   "id, athlete_id, source_draft_id, created_at, updated_at, block_number, week_number, week_start_date, week_end_date, weekly_focus, coach_note, athlete_facing_note, weekly_summary, status, published_at";
 
+/** Athlete-facing select — omits internal coach_note so it cannot appear in client RSC payloads. */
+const ATHLETE_PROGRAMME_WEEK_SELECT =
+  "id, athlete_id, source_draft_id, created_at, updated_at, block_number, week_number, week_start_date, week_end_date, weekly_focus, athlete_facing_note, weekly_summary, status, published_at";
+
 const MAPPED_PROFILE_SELECT =
   "id, athlete_id, created_at, updated_at, mapped_profile, coach_overrides, effective_profile, athlete_level, main_limiter, secondary_limiter, recovery_risk, double_session_readiness, first_block_focus, coach_review_flags, status";
 
@@ -745,7 +749,7 @@ export async function fetchAthletePublishedProgramme(
   const [{ data: publishedWeeks }, { data: draft }] = await Promise.all([
     supabase
       .from("hyrox_programme_weeks")
-      .select(PROGRAMME_WEEK_SELECT)
+      .select(ATHLETE_PROGRAMME_WEEK_SELECT)
       .eq("athlete_id", athlete.id)
       .eq("status", "published")
       .order("week_number", { ascending: true }),
@@ -834,14 +838,26 @@ export async function fetchAthletePublishedProgramme(
     hasTesting: flags.hasTesting,
   });
 
+  // Athlete-facing payload: omit internal week coach_note entirely (no null stub in RSC).
+  const redactWeek = (
+    w: HyroxProgrammeWeekRow | null
+  ): (Omit<HyroxProgrammeWeekRow, "coach_note"> & { coach_note?: never }) | null => {
+    if (!w) return null;
+    const { coach_note: _omit, ...rest } = w;
+    return rest;
+  };
+
   return {
     visibility,
     published: weekRows.length > 0,
     programmeStatus: athlete.programme_status,
     athleteStatus: athlete.status,
-    week: publishedWeek,
+    week: redactWeek(publishedWeek),
     sessions,
-    weeks,
+    weeks: weeks.map((bundle) => ({
+      ...bundle,
+      week: redactWeek(bundle.week)!,
+    })),
     programmeStartDate,
     programmeLengthWeeks,
     liveGlobalWeek,

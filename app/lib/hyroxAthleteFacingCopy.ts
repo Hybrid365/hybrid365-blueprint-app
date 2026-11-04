@@ -6,7 +6,8 @@ export function athleteFacingWeeklyNote(value: string | null | undefined): strin
 /** Drop the internal weekly coach note before an athlete payload leaves the server. */
 export function withoutInternalWeekCoachNote<T extends { coach_note?: string | null }>(
   week: T | null | undefined
-): T | null | undefined {
+): (Omit<T, "coach_note"> & { coach_note?: never }) | null | undefined {
   if (!week) return week;
-  return { ...week, coach_note: null };
+  const { coach_note: _omit, ...rest } = week;
+  return rest;
 }

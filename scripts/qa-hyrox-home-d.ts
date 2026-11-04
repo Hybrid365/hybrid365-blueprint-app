@@ -135,6 +135,7 @@ assert(vm.programmePublished, "published programme");
 assert(vm.weekDays.length === 7, "seven week days");
 assert(vm.coachContext?.body.includes("Hold threshold"), "athlete-facing coach note");
 assert(!JSON.stringify(vm).includes("INTERNAL NEVER SHOW"), "internal coach note excluded");
+assert(vm.coachContext?.body === "Hold threshold controlled this week.", "facing note only");
 assert(!JSON.stringify(vm.weekDays).includes("Stage 2"), "stage stripped from titles");
 assert(vm.adjustmentMessage === null, "L no adaptation message without chain");
 assert(vm.adjustmentGap === "no_accepted_published_adaptation_chain", "L gap recorded");
