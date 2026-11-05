@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { EnvironmentBadge } from "@/app/components/EnvironmentBadge";
 import { assertHyroxRuntimeEnvironment } from "@/app/lib/hyroxRuntimeEnvironmentGuard";
@@ -12,6 +12,14 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+/** Display / metric type for athlete visual system — not forced into coach/admin UI. */
+const barlowCondensed = Barlow_Condensed({
+  variable: "--font-barlow",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -46,7 +54,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${barlowCondensed.variable} antialiased`}
       >
         {children}
         <EnvironmentBadge />

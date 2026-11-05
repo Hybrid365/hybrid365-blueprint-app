@@ -9,6 +9,19 @@
   --h365-motion-base: 160ms;
   --h365-motion-enter: 180ms;
   --h365-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* v0-derived athlete visual system (Batch 0) — prefer these over raw hex */
+  --h365-background: #101113;
+  --h365-surface: #17181b;
+  --h365-surface-raised: #1e1f23;
+  --h365-border: #26272c;
+  --h365-hairline: #1f2024;
+  --h365-text: #f4f4f2;
+  --h365-text-muted: #8b8c93;
+  --h365-accent: #e7b83d;
+  --h365-recovery: #45464d;
+  --h365-danger: #e5484d;
+
   --background: oklch(0.13 0.005 285);
   --foreground: oklch(0.98 0 0);
   --card: oklch(0.17 0.005 285);
@@ -54,8 +67,9 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback", sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+  --font-sans: var(--font-geist-sans), "Geist", "Geist Fallback", sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", "Geist Mono Fallback", monospace;
+  --font-display: var(--font-barlow), "Barlow Condensed", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -110,4 +124,21 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Athlete visual-system typography utilities (Batch 0) */
+@utility label-caps {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility font-display {
+  font-family: var(--font-display);
 }

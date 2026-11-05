@@ -15,6 +15,7 @@ import { WeekInReviewCard } from "./social/WeekInReviewCard";
 import { SOCIAL_PROTOTYPE_DEMO } from "./social/demoProps";
 import { ConceptsLab } from "./concepts/ConceptsLab";
 import { visualBody, visualEyebrow } from "./tokens";
+import { V0VisualSystemLab } from "../visual-system/lab/V0VisualSystemLab";
 
 /** Staging / development gallery. Every sample value is labelled as a prototype. */
 export function VisualSystemLab() {
@@ -23,6 +24,8 @@ export function VisualSystemLab() {
   return (
     <div className="space-y-12 pb-16">
       <ConceptsLab />
+
+      <V0VisualSystemLab />
 
       <header className="border-b border-zinc-800 pb-6">
         <p className={visualEyebrow}>Visual system</p>
