@@ -182,6 +182,47 @@ function card(
   ok("Home D → card VM maps athlete-safe fields + run modality from type");
 }
 
+// --- Presentation polish: dedupe objective wall + drop placeholder targets ---
+{
+  const longIntent =
+    "Build upper-body pulling/pushing strength endurance with short, dense EMOM work.";
+  const homeCard = card({
+    id: "s-dup",
+    slot: "Main",
+    title: "Upper Body Density EMOM",
+    modalityLabel: "Strength",
+    intent: longIntent,
+    primaryDetail: longIntent,
+    primaryTarget: "See session prescription",
+    duration: "35–55 min",
+    status: "unresolved",
+  });
+  const vm = homeDSessionToCardViewModel(homeCard);
+  assert.equal(vm.prescriptionLine, null);
+  assert.equal(vm.objective, longIntent);
+  assert.equal(vm.durationLabel, "35–55 min");
+  assert.equal(vm.primaryTarget, null);
+  ok("card VM dedupes objective into single row and hides placeholder target");
+}
+
+{
+  const homeCard = card({
+    id: "s-distinct",
+    slot: "Main",
+    title: "Threshold 5s",
+    primaryDetail: "5 × 5:00 @ 3:55 /km · 1:30 jog",
+    intent: "Accumulate quality threshold work.",
+    primaryTarget: "3:55 /km",
+    duration: "~45 min",
+  });
+  const vm = homeDSessionToCardViewModel(homeCard);
+  assert.equal(vm.prescriptionLine, "5 × 5:00 @ 3:55 /km · 1:30 jog");
+  assert.equal(vm.objective, "Accumulate quality threshold work.");
+  assert.equal(vm.primaryTarget, "3:55 /km");
+  assert.equal(vm.durationLabel, "~45 min");
+  ok("card VM keeps distinct prescription + objective + real target");
+}
+
 {
   const homeCard = card({
     id: "s2",

@@ -58,9 +58,14 @@ export function SecondarySessionRow({
           <Icon className="size-[18px]" aria-hidden />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="label-caps text-[var(--h365-text-muted)]">
-            {session.categoryLabel}
-            {session.durationLabel ? ` · ${session.durationLabel}` : ""}
+          <span className="flex items-center justify-between gap-2">
+            <span className="label-caps truncate text-[var(--h365-text-muted)]">
+              {session.categoryLabel}
+              {session.durationLabel ? ` · ${session.durationLabel}` : ""}
+            </span>
+            <span className="shrink-0 sm:hidden">
+              <SessionStatusPill status={session.status} />
+            </span>
           </span>
           <span className="truncate font-display text-lg font-semibold uppercase leading-tight tracking-wide text-[var(--h365-text)]">
             {session.title}
@@ -71,7 +76,7 @@ export function SecondarySessionRow({
             </span>
           ) : null}
         </span>
-        <span className="hidden sm:block">
+        <span className="hidden shrink-0 sm:block">
           <SessionStatusPill status={session.status} />
         </span>
         {opensDrawer ? (

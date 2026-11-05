@@ -74,6 +74,35 @@ function fixtureDays(): AthleteHomeDDay[] {
     status: "partial",
   };
 
+  /** Mirrors production density failure: objective duplicated + placeholder target. */
+  const densityDup: AthleteHomeDSessionCard = {
+    id: "lab-h6",
+    slot: "Main",
+    modalityLabel: "Strength",
+    title: "Upper Body Density EMOM",
+    primaryTarget: "See session prescription",
+    primaryDetail:
+      "Build upper-body pulling/pushing strength endurance with short, dense EMOM work.",
+    duration: "35–55 min",
+    intent:
+      "Build upper-body pulling/pushing strength endurance with short, dense EMOM work.",
+    coachNote: "Keep RPE honest — density without grinding.",
+    status: "unresolved",
+  };
+
+  const densitySecondary: AthleteHomeDSessionCard = {
+    id: "lab-h7",
+    slot: "PM",
+    modalityLabel: "Aerobic",
+    title: "Easy run",
+    primaryTarget: null,
+    primaryDetail: "Add aerobic minutes with minimal impact",
+    duration: "30–45 min",
+    intent: null,
+    coachNote: null,
+    status: "unresolved",
+  };
+
   return [
     {
       id: "d0",
@@ -130,7 +159,7 @@ function fixtureDays(): AthleteHomeDDay[] {
       iso: "2026-11-08",
       isToday: false,
       isPast: false,
-      sessions: [{ ...primary, id: "lab-h5", title: "Long aerobic", status: "upcoming" }],
+      sessions: [densityDup, densitySecondary],
     },
     {
       id: "d6",

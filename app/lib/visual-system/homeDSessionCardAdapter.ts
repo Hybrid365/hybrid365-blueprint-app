@@ -11,6 +11,7 @@ import type {
   AthleteHomeDSessionCard,
 } from "@/app/lib/hyroxAthleteHomeDViewModel";
 import type { HyroxSession } from "@/app/lib/hyroxTeamDashboardMock";
+import { isPopulatedTargetValue } from "@/app/lib/hyrox-team/modules/home/resolveCompactSessionTargets";
 import { buildWorkoutTimelineViewModel } from "@/app/lib/visual-system/workoutTimelineViewModel";
 import { inferTimelineModality } from "@/app/lib/visual-system/timelineModality";
 import type { AthleteSessionCardViewModel } from "@/components/athlete-command-centre/visual-system/sessions/sessionCardTypes";
@@ -41,9 +42,25 @@ export function homeDDaysToWeekDateNav(days: AthleteHomeDDay[]): WeekDateNavDay[
   }));
 }
 
+function normCopy(value: string | null | undefined): string {
+  return (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Compact line under the title — distinct prescription detail only.
+ * When primaryDetail duplicates intent/objective, omit it so Objective is
+ * the single copy. Duration stays in the meta grid (never duplicated here).
+ */
 function prescriptionLine(card: AthleteHomeDSessionCard): string | null {
-  const bits = [card.primaryDetail, card.duration].filter(Boolean);
-  return bits.length ? bits.join(" · ") : null;
+  const detail = card.primaryDetail?.trim() || null;
+  if (!detail) return null;
+  const intent = card.intent?.trim() || null;
+  if (intent && normCopy(detail) === normCopy(intent)) return null;
+  return detail;
+}
+
+function displayPrimaryTarget(card: AthleteHomeDSessionCard): string | null {
+  return isPopulatedTargetValue(card.primaryTarget) ? card.primaryTarget!.trim() : null;
 }
 
 function workTargetFromCard(card: AthleteHomeDSessionCard, live?: HyroxSession | null) {
@@ -98,7 +115,7 @@ export function homeDSessionToCardViewModel(
     status: card.status,
     prescriptionLine: prescriptionLine(card),
     objective: card.intent,
-    primaryTarget: card.primaryTarget,
+    primaryTarget: displayPrimaryTarget(card),
     durationLabel: card.duration,
     coachNote: card.coachNote,
     timeline: showTimeline ? timeline : null,

@@ -233,6 +233,12 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
     );
   }
 
+  const hasSideContext = Boolean(
+    vm.coachContext ||
+      vm.performanceInsight ||
+      (vm.progressSnapshot && vm.progressSnapshot.length > 0)
+  );
+
   return (
     <div
       data-home-d-live=""
@@ -240,7 +246,13 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
       className="mx-auto max-w-5xl px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-3 sm:px-6 lg:pb-10 lg:pt-5"
       style={{ color: "var(--h365-text)" }}
     >
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start lg:gap-8">
+      <div
+        className={
+          hasSideContext
+            ? "lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start lg:gap-8"
+            : undefined
+        }
+      >
         <div className="min-w-0">
           <header className="mb-2">
             <p className="label-caps text-[var(--h365-text-muted)]">Home</p>
@@ -248,7 +260,7 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
               {vm.athleteName}
             </h1>
             {vm.programmeContext ? (
-              <p className="mt-2 text-[13px] text-[var(--h365-text-muted)]">
+              <p className="mt-2 line-clamp-2 text-[13px] leading-snug text-[var(--h365-text-muted)]">
                 Week {vm.programmeContext.weekNumber}
                 <span className="mx-1.5 text-[var(--h365-border)]">·</span>
                 {vm.programmeContext.blockLabel}
@@ -258,7 +270,8 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
                     {vm.programmeContext.weekRole}
                   </>
                 ) : null}
-                {vm.programmeContext.raceLabel ? (
+                {vm.programmeContext.raceLabel &&
+                vm.programmeContext.raceLabel.trim().length <= 42 ? (
                   <>
                     <span className="mx-1.5 text-[var(--h365-border)]">·</span>
                     {vm.programmeContext.raceLabel}
@@ -338,22 +351,26 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
             )}
           </section>
 
-          <div className="mt-7 space-y-3 lg:hidden">
+          {hasSideContext ? (
+            <div className="mt-7 space-y-3 lg:hidden">
+              <SideContext
+                coachContext={vm.coachContext}
+                performanceInsight={vm.performanceInsight}
+                progressSnapshot={vm.progressSnapshot}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        {hasSideContext ? (
+          <aside className="mt-8 hidden space-y-4 lg:mt-0 lg:block">
             <SideContext
               coachContext={vm.coachContext}
               performanceInsight={vm.performanceInsight}
               progressSnapshot={vm.progressSnapshot}
             />
-          </div>
-        </div>
-
-        <aside className="mt-8 hidden space-y-4 lg:mt-0 lg:block">
-          <SideContext
-            coachContext={vm.coachContext}
-            performanceInsight={vm.performanceInsight}
-            progressSnapshot={vm.progressSnapshot}
-          />
-        </aside>
+          </aside>
+        ) : null}
       </div>
 
       <SessionDrawer

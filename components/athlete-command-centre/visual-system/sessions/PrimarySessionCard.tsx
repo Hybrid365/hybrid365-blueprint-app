@@ -34,7 +34,7 @@ export function PrimarySessionCard({
         </div>
 
         <div className="flex flex-col gap-2">
-          <h3 className="font-display text-[28px] font-bold uppercase leading-[0.95] tracking-tight text-balance text-[var(--h365-text)] sm:text-[34px]">
+          <h3 className="font-display text-[24px] font-bold uppercase leading-[0.95] tracking-tight text-balance text-[var(--h365-text)] sm:text-[30px]">
             {session.title}
           </h3>
           {session.prescriptionLine ? (
@@ -51,14 +51,6 @@ export function PrimarySessionCard({
 
       <div className="flex flex-col gap-4 border-t border-[var(--h365-border)] p-5">
         <dl className="flex flex-col gap-3 text-sm">
-          {session.objective ? (
-            <div className="grid grid-cols-[7.5rem_1fr] gap-3">
-              <dt className="label-caps pt-0.5 text-[var(--h365-text-muted)]">Objective</dt>
-              <dd className="text-pretty leading-relaxed text-[var(--h365-text)]/85">
-                {session.objective}
-              </dd>
-            </div>
-          ) : null}
           {session.primaryTarget ? (
             <div className="grid grid-cols-[7.5rem_1fr] gap-3">
               <dt className="label-caps pt-0.5 text-[var(--h365-text-muted)]">
@@ -73,6 +65,14 @@ export function PrimarySessionCard({
             <div className="grid grid-cols-[7.5rem_1fr] gap-3">
               <dt className="label-caps pt-0.5 text-[var(--h365-text-muted)]">Duration</dt>
               <dd className="text-[var(--h365-text)]/85 num">{session.durationLabel}</dd>
+            </div>
+          ) : null}
+          {session.objective ? (
+            <div className="grid grid-cols-[7.5rem_1fr] gap-3">
+              <dt className="label-caps pt-0.5 text-[var(--h365-text-muted)]">Objective</dt>
+              <dd className="text-pretty leading-relaxed text-[var(--h365-text)]/85">
+                {session.objective}
+              </dd>
             </div>
           ) : null}
         </dl>
