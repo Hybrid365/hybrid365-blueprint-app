@@ -34,7 +34,12 @@ export function CompactWorkoutPreview({
   const equalFlex = !timeline.canProportionByDuration;
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div
+      data-compact-workout-preview=""
+      data-timeline-support={timeline.support}
+      data-timeline-segments={segs.length}
+      className={cn("flex flex-col gap-2", className)}
+    >
       <div className="flex items-baseline justify-between gap-3 text-[11px] text-[var(--h365-text-muted)]">
         <span className="flex items-center gap-2 num">
           {lead?.targetPace ? (
@@ -63,6 +68,9 @@ export function CompactWorkoutPreview({
           {segs.map((s, i) => (
             <motion.div
               key={s.id}
+              data-timeline-segment=""
+              data-segment-kind={s.kind}
+              data-segment-modality={s.modality}
               className={cn("origin-bottom rounded-[2px]", blockTone(s.kind, s.modality))}
               style={{
                 flexGrow: equalFlex ? 1 : s.durationSec ?? 1,

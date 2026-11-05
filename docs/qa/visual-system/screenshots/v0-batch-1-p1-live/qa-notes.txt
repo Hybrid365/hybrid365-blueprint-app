@@ -1,0 +1,12 @@
+url=http://127.0.0.1:3460/athlete/dashboard
+homeD=1 visual=1
+dayButtons=7
+tuesday_snip=HOME |  | DEMO COMPETITIVE |  | Week 1·Build the Base·Threshold·HYROX Birmingham (staging) · 2026-12-12 |  | MON | 2 | TUE | 3 | WED | 4 | TODAY | 5 | FRI | 6 | SAT | 7 | SUN | 8 | TUESDAY |  | 2 sessions |  | RUN | PARTIAL | THRESHOLD INTERVALS |  | Controlled threshold repeats · 60 min |  | 3:50–3:55/km | 6 × 5:00 | OBJECTIVE | Controlled threshold repeats | PRIMARY TARGET | 3:50–3:55/km | DURATION | 60 min | Open session | STRENGTH · 30 MIN | ACCESSORY STRENGTH | Quality sets only · 30 min | FROM
+timeline_roots=1 timeline_segments=11
+drawer_from_timeline dialogs=1 close=1
+friday_before=HOME |  | DEMO COMPETITIVE |  | Week 1·Build the Base·Threshold·HYROX Birmingham (staging) · 2026-12-12 |  | MON | 2 | TUE | 3 | WED | 4 | TODAY | 5 | FRI | 6 | SAT | 7 | SUN | 8 | FRIDAY |  | 1 session |  | HYBRID | UPCOMING | HYBRID ENGINE |  | Even transitions · 55 min |  | OBJECTIVE | Even transitions | PRIMARY TARGET | 4:10/km + stations | DURATION | 55 min | FROM YOUR COACH | “Quality over heroics on the last run.” | Open sess
+mark_complete_enabled=true
+friday_after=HOME |  | DEMO COMPETITIVE |  | Week 1·Build the Base·Threshold·HYROX Birmingham (staging) · 2026-12-12 |  | MON | 2 | TUE | 3 | WED | 4 | TODAY | 5 | FRI | 6 | SAT | 7 | SUN | 8 | FRIDAY |  | 1 session |  | HYBRID | COMPLETED | HYBRID ENGINE |  | Even transitions · 55 min |  | OBJECTIVE | Even transitions | PRIMARY TARGET | 4:10/km + stations | DURATION | 55 min | FROM YOUR COACH | “Quality over heroics on the last run.” | Review session | FROM YOUR COACH | “Hold threshold controlled this week.
+friday_completed_visible=true still_upcoming=false
+saturday_after_save_log=HOME |  | DEMO COMPETITIVE |  | Week 1·Build the Base·Threshold·HYROX Birmingham (staging) · 2026-12-12 |  | MON | 2 | TUE | 3 | WED | 4 | TODAY | 5 | FRI | 6 | SAT | 7 | SUN | 8 | SATURDAY |  | 1 session |  | RUN | PARTIAL | LONG RUN |  | Aerobic volume · 75 min |  | OBJECTIVE | Aerobic volume | PRIMARY TARGET | 5:30–5:50/km | DURATION | 75 min | Open session | FROM YOUR COACH | “Hold threshold controlled this week. Quality over he
+saturday_partial=true

@@ -179,6 +179,15 @@ export function SessionDrawer({
     clearMessages();
   }, [open, sessionId, clearMessages]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   const canSave =
     useLiveApi &&
     loggingEnabled &&
@@ -624,6 +633,12 @@ export function SessionDrawer({
                   {saving ? "Saving…" : "Save log"}
                 </button>
               </div>
+              {showLogForm ? (
+                <p className="text-[11px] leading-snug text-zinc-500">
+                  Save log stores feedback only. Use Mark complete (or tick Mark as completed) to
+                  change session status.
+                </p>
+              ) : null}
             </>
           )}
         </footer>

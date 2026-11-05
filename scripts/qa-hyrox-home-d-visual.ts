@@ -15,6 +15,8 @@ import {
 import { inferTimelineModality } from "../app/lib/visual-system/timelineModality";
 import { extractAthleteStructuredWorkout } from "../app/lib/visual-system/extractStructuredWorkout";
 import { buildWorkoutTimelineViewModel } from "../app/lib/visual-system/workoutTimelineViewModel";
+import { buildHyroxAthleteSessionFeedback } from "../app/lib/hyroxAthleteSessionFeedback";
+import { programmeStatusForCompletion } from "../app/lib/hyroxSessionExecutionSummary";
 import type { AthleteHomeDDay, AthleteHomeDSessionCard } from "../app/lib/hyroxAthleteHomeDViewModel";
 import type { HyroxSession } from "../app/lib/hyroxTeamDashboardMock";
 import type { StructuredWorkout } from "../app/lib/hyroxSessionFamilyTypes";
@@ -265,6 +267,110 @@ function card(
   assert.doesNotMatch(src, /modality:\s*"run"/);
   assert.match(src, /workModality \?\? "other"/);
   ok("timeline VM no longer hardcodes run modality");
+}
+
+// --- Completion contract + Home D refresh ---
+{
+  const drawer = read("components/athlete-command-centre/SessionDrawer.tsx");
+  assert.match(drawer, /handleMarkComplete/);
+  assert.match(drawer, /completed:\s*true/);
+  assert.match(drawer, /handleSaveLog/);
+  assert.match(drawer, /completed:\s*form\.completed/);
+  assert.match(
+    drawer,
+    /Save log stores feedback only|Mark complete \(or tick Mark as completed\)/
+  );
+  ok("explicit completion contract — Mark complete vs Save log");
+}
+
+{
+  const server = read("app/lib/hyroxAthleteSessionLogServer.ts");
+  assert.match(server, /programmeStatusForCompletion/);
+  assert.match(server, /completed === true/);
+  assert.match(server, /modifications\?\.trim\(\)/);
+  assert.match(server, /existing\.status/);
+  ok("status persistence — complete / modified-from-mods / keep scheduled");
+}
+
+{
+  assert.equal(programmeStatusForCompletion("complete"), "completed");
+  assert.equal(programmeStatusForCompletion("partial"), "modified");
+  assert.equal(programmeStatusForCompletion("missed"), "missed");
+  ok("feedback + status consistency mapping (complete/partial/missed)");
+}
+
+{
+  const first = buildHyroxAthleteSessionFeedback(null, {
+    rpe: "6",
+    notes: "ok",
+    activityType: "run",
+  });
+  const second = buildHyroxAthleteSessionFeedback(first, {
+    rpe: "6",
+    notes: "ok",
+    activityType: "run",
+  });
+  assert.equal((first as { rpe?: string }).rpe, "6");
+  assert.equal((second as { rpe?: string }).rpe, "6");
+  assert.ok(typeof (second as { loggedAt?: string }).loggedAt === "string");
+  ok("no duplicate write — feedback upsert merges into same jsonb object");
+}
+
+{
+  const dash = read("components/athlete-command-centre/home-d/AthleteHomeDDashboard.tsx");
+  assert.match(dash, /handleSessionUpdated/);
+  assert.match(dash, /setDrawerSession\(updated\)/);
+  assert.match(dash, /reloadLiveProgramme/);
+  assert.match(dash, /onSessionUpdated=\{\(updated\)/);
+  ok("Home D refresh after status update syncs drawer + reloads programme");
+}
+
+{
+  const homeD = read("app/lib/hyroxAthleteHomeDViewModel.ts");
+  assert.match(homeD, /unresolved/);
+  assert.doesNotMatch(homeD, /auto.?miss|forceMiss|status:\s*"missed".*today/i);
+  ok("unknown/unresolved not auto-missed in Home D mapping source");
+}
+
+{
+  const seed = read("scripts/staging/seed-home-d-canary-programme.mjs");
+  assert.match(seed, /structuredWorkout/);
+  assert.match(seed, /type:\s*"repeat"/);
+  assert.match(seed, /reps:\s*6/);
+  assert.match(seed, /STAGING SYNTHETIC STRUCTURED WORKOUT/);
+  const workout = {
+    warmup: ["10 min easy jog"],
+    blocks: [
+      {
+        type: "repeat" as const,
+        reps: 6,
+        work: { kind: "time" as const, value: 300, unit: "sec" as const },
+        recoveries: [{ durationSeconds: 90, type: "jog" as const }],
+      },
+    ],
+    cooldown: ["10 min easy"],
+    guidance: ["STAGING SYNTHETIC STRUCTURED WORKOUT"],
+  };
+  const extracted = extractAthleteStructuredWorkout({
+    editConfig: { structuredWorkout: workout },
+    sessionFamily: { modality: "run", structuredWorkout: workout },
+  });
+  assert.ok(extracted);
+  const tl = buildWorkoutTimelineViewModel(extracted!, { workModality: "run" });
+  assert.ok(tl.segments.length > 0);
+  assert.ok(tl.segments.some((s) => s.kind === "work" && s.modality === "run"));
+  assert.ok(tl.segments.some((s) => s.kind === "recovery"));
+  ok("real supported StructuredWorkout renders timeline (seed shape)");
+}
+
+{
+  assert.equal(
+    extractAthleteStructuredWorkout({
+      editConfig: { objective: "no sw" },
+    }),
+    null
+  );
+  ok("timeline no-data honesty — missing SW extracts null");
 }
 
 console.log(`\nqa-hyrox-home-d-visual: ${passed} passed`);

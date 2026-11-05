@@ -86,6 +86,25 @@ async function main() {
         modifications: "Dropped final interval",
       },
       coachFacing: "Hold threshold controlled.",
+      // Staging-only synthetic StructuredWorkout (canonical repeat) for live Home D timeline canary.
+      structuredWorkout: {
+        warmup: ["10 min easy jog", "Drills"],
+        blocks: [
+          {
+            type: "repeat",
+            reps: 6,
+            work: { kind: "time", value: 300, unit: "sec" },
+            recoveries: [
+              { durationSeconds: 90, type: "jog", note: "Easy jog between reps (staging SW)" },
+            ],
+          },
+        ],
+        cooldown: ["10 min easy"],
+        guidance: [
+          "STAGING SYNTHETIC STRUCTURED WORKOUT — 6 × 5 min threshold with recovery.",
+          "Hold threshold — do not chase the first rep.",
+        ],
+      },
     },
     {
       day: "Tuesday",
@@ -228,13 +247,24 @@ async function main() {
         targetPace: p.target,
         coachNote: p.coachFacing || "",
         athleteFacingNote: p.coachFacing || "",
+        ...(p.structuredWorkout ? { structuredWorkout: p.structuredWorkout } : {}),
       },
+      ...(p.structuredWorkout
+        ? {
+            sessionFamily: {
+              modality: "run",
+              structuredWorkout: p.structuredWorkout,
+              stagingSynthetic: true,
+            },
+          }
+        : {}),
     },
     metadata: {
       duration: p.duration,
       focus: p.objective,
       intent: p.objective,
       coachNote: p.coachFacing || "",
+      ...(p.structuredWorkout ? { stagingStructuredWorkout: true } : {}),
     },
     status: p.status,
     completed_at: p.completed ? publishedAt : null,

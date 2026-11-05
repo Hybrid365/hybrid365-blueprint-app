@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   buildAthleteHomeDViewModel,
   type AthleteHomeDDay,
@@ -156,6 +156,19 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
     adminPreview?.programmePublishedLive ?? portal?.programmePublishedLive
   );
   const useMockPreview = adminPreview ? false : Boolean(portal?.useMockPreview);
+
+  const handleSessionUpdated = useCallback(
+    async (updated: HyroxSession | null) => {
+      if (updated) {
+        setDrawerSession(updated);
+        setSessionDetailOverride(sessionDetailFromHyroxSession(updated));
+      }
+      if (programmePublishedLive && !useMockPreview && !isReadOnly) {
+        await reloadLiveProgramme();
+      }
+    },
+    [programmePublishedLive, useMockPreview, isReadOnly, reloadLiveProgramme]
+  );
 
   const split = selectedDay
     ? splitPrimarySecondarySessions(selectedDay.sessions)
@@ -353,14 +366,16 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
           isReadOnly ? "Session logging is disabled in admin preview mode." : undefined
         }
         useLiveApi={programmePublishedLive && !useMockPreview && !isReadOnly}
-        onSessionUpdated={() => {
-          void reloadLiveProgramme();
+        onSessionUpdated={(updated) => {
+          void handleSessionUpdated(updated);
         }}
         onClose={() => {
           setSessionId(null);
           setDrawerSession(null);
           setSessionDetailOverride(null);
-          void reloadLiveProgramme();
+          if (programmePublishedLive && !useMockPreview && !isReadOnly) {
+            void reloadLiveProgramme();
+          }
         }}
       />
     </div>
