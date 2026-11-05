@@ -3,7 +3,7 @@
     {
       "id": "demo-developing",
       "name": "Demo Developing",
-      "email": "demo-developing@staging.hybrid365.local",
+      "email": "demo.developing@hybrid365.test",
       "level": "developing",
       "benchmarks": [
         {
@@ -46,7 +46,7 @@
     {
       "id": "demo-competitive",
       "name": "Demo Competitive",
-      "email": "demo-competitive@staging.hybrid365.local",
+      "email": "demo.competitive@hybrid365.test",
       "level": "competitive",
       "benchmarks": [
         {
@@ -124,7 +124,7 @@
     {
       "id": "demo-high-performance",
       "name": "Demo High Performance",
-      "email": "demo-high-performance@staging.hybrid365.local",
+      "email": "demo.high-performance@hybrid365.test",
       "level": "high_performance",
       "benchmarks": [
         {

@@ -10,7 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { assertStagingTarget, GuardError, loadLocalEnv, proveStagingServiceRole } from "./lib/stagingGuard.mjs";
 
 const apply = process.argv.includes("--apply");
-const DEMO_EMAIL = "demo-competitive@staging.hybrid365.local";
+const DEMO_EMAIL = "demo.competitive@hybrid365.test";
 
 function mondayOf(d = new Date()) {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());

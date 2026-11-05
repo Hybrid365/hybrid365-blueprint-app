@@ -1,6 +1,6 @@
 /**
  * Seeds, resets, or signs in the HYROX demo athletes on hybrid365-staging ONLY.
- * Every row it touches belongs to an @staging.hybrid365.local user.
+ * Every row it touches belongs to an @hybrid365.test user (valid Auth email domain).
  *
  *   npm run staging:seed                       dry run (no writes)
  *   npm run staging:seed -- --apply            create or refresh demo users and rows
@@ -22,10 +22,10 @@ import { createClient } from "@supabase/supabase-js";
 import { normalizeBenchmarkInput } from "../../app/lib/hyroxBenchmarkTypes.ts";
 import { assertStagingTarget, GuardError, loadLocalEnv, proveStagingServiceRole } from "./lib/stagingGuard.mjs";
 
-const DEMO_DOMAIN = "@staging.hybrid365.local";
+const DEMO_DOMAIN = "@hybrid365.test";
 const TEST_WEEK_ID = "test-week-1";
 const TEST_TYPE_FOR_BENCHMARK = { run_5k: "five_k_run", ski_2k: "ski_2k", row_2k: "row_2k" };
-const COACH = { id: "demo-coach", name: "Demo Coach", email: `demo-coach${DEMO_DOMAIN}`, role: "coach" };
+const COACH = { id: "demo-coach", name: "Demo Coach", email: `demo.coach${DEMO_DOMAIN}`, role: "coach" };
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { athletes } = JSON.parse(readFileSync(join(here, "hyrox-demo-athletes.json"), "utf8"));

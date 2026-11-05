@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { assertStagingTarget, GuardError, loadLocalEnv, proveStagingServiceRole } from "./lib/stagingGuard.mjs";
 
-const DEMO_DOMAIN = "@staging.hybrid365.local";
+const DEMO_DOMAIN = "@hybrid365.test";
 const QA_PREFIX = "qa-permissions:";
 
 const env = loadLocalEnv();
@@ -96,10 +96,10 @@ function activate(client, athleteId, benchmarkId, actorUserId, approve = false) 
   });
 }
 
-const competitive = await athleteRow(`demo-competitive${DEMO_DOMAIN}`);
-const developing = await athleteRow(`demo-developing${DEMO_DOMAIN}`);
-const athlete = await signedIn(`demo-competitive${DEMO_DOMAIN}`);
-const coach = await signedIn(`demo-coach${DEMO_DOMAIN}`);
+const competitive = await athleteRow(`demo.competitive${DEMO_DOMAIN}`);
+const developing = await athleteRow(`demo.developing${DEMO_DOMAIN}`);
+const athlete = await signedIn(`demo.competitive${DEMO_DOMAIN}`);
+const coach = await signedIn(`demo.coach${DEMO_DOMAIN}`);
 const anon = createClient(url, anonKey, options);
 assert.equal(athlete.userId, competitive.user_id, "athlete session is the linked user");
 const originalActive = await activeIds(competitive.id);

@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { AuthOtpForm, AuthOtpFormFallback } from "@/components/auth/AuthOtpForm";
+import { StagingDemoPasswordLogin } from "@/components/auth/StagingDemoPasswordLogin";
 import {
   AUTH_ATHLETE_DEFAULT_NEXT,
   sanitizeAthleteAuthNextPath,
@@ -58,6 +59,7 @@ export default function AthleteLoginPage() {
             }
             footerHelp="Code expires after a short time. Request a new one if needed."
           />
+          <StagingDemoPasswordLogin />
         </Suspense>
 
         <p className="mt-6 text-center text-[11px] leading-relaxed text-zinc-500">
