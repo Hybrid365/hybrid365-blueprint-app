@@ -91,6 +91,7 @@ export const LAB_MIXED_UNSUPPORTED_WORKOUT: StructuredWorkout = {
 
 export function labRepeatTimeline() {
   return buildWorkoutTimelineViewModel(LAB_REPEAT_WORKOUT, {
+    workModality: "run",
     workTarget: { pace: "3:55 /km" },
     cuesBySegmentId: {
       "b0-w1": "Settle into rhythm — first rep is a feeler.",
@@ -102,6 +103,7 @@ export function labRepeatTimeline() {
 
 export function labContinuousTimeline() {
   return buildWorkoutTimelineViewModel(LAB_CONTINUOUS_WORKOUT, {
+    workModality: "run",
     workTarget: { pace: "4:20 /km" },
   });
 }

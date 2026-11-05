@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LabFixtureBadge } from "./LabFixtureBadge";
+import { HomeDVisualPreview } from "./HomeDVisualPreview";
 import {
   LAB_DISTANCE_REPEAT_WORKOUT,
   LAB_MIXED_UNSUPPORTED_WORKOUT,
@@ -81,10 +82,13 @@ export function V0VisualSystemLab() {
           Athlete foundations
         </h2>
         <p className="max-w-2xl text-sm leading-relaxed text-[var(--h365-text-muted)]">
-          Batch 0 lab gallery. Presentation primitives and StructuredWorkout →
-          timeline adapters only. Fixture content is never production data.
+          Batch 0–1 lab gallery. Presentation primitives, StructuredWorkout →
+          timeline adapters, and Home D chrome preview. Fixture content is never
+          production data.
         </p>
       </header>
+
+      <HomeDVisualPreview />
 
       <LabBlock title="Typography" id="vs-typography">
         <div className="space-y-4">

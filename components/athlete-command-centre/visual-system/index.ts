@@ -17,6 +17,7 @@ export { VsSectionHeader } from "./primitives/SectionHeader";
 export { SessionStatusPill } from "./primitives/StatusPill";
 export { VsStat } from "./primitives/Stat";
 export { AthleteCoachNote } from "./primitives/CoachNote";
+export { BenchmarkMicro } from "./primitives/BenchmarkMicro";
 export { WeekDateNav, type WeekDateNavDay } from "./navigation/WeekDateNav";
 export { PrimarySessionCard } from "./sessions/PrimarySessionCard";
 export { SecondarySessionRow } from "./sessions/SecondarySessionRow";

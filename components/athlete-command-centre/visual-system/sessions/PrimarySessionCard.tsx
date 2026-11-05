@@ -18,12 +18,13 @@ export function PrimarySessionCard({
 }) {
   return (
     <article
+      data-home-d-session={session.id}
       className={cn(
         "overflow-hidden rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)]",
         className
       )}
     >
-      <div className="flex flex-col gap-5 p-5">
+      <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <span className="label-caps text-[var(--h365-text-muted)]">
             <span className="text-[var(--h365-accent)]">{session.categoryLabel}</span>
@@ -33,7 +34,7 @@ export function PrimarySessionCard({
         </div>
 
         <div className="flex flex-col gap-2">
-          <h3 className="font-display text-[34px] font-bold uppercase leading-[0.95] tracking-tight text-balance text-[var(--h365-text)] sm:text-4xl">
+          <h3 className="font-display text-[28px] font-bold uppercase leading-[0.95] tracking-tight text-balance text-[var(--h365-text)] sm:text-[34px]">
             {session.title}
           </h3>
           {session.prescriptionLine ? (

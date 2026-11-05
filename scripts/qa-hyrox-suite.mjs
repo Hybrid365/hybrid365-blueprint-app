@@ -21,6 +21,7 @@ const groups = {
   athlete: [
     "scripts/qa-hyrox-home-v2.ts",
     "scripts/qa-hyrox-home-d.ts",
+    "scripts/qa-hyrox-home-d-visual.ts",
     "scripts/qa-hyrox-performance-hub.ts",
     "scripts/qa-hyrox-visual-system.ts",
     "scripts/qa-hyrox-visual-system-v0.ts",

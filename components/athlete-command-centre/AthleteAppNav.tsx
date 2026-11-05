@@ -18,17 +18,35 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function NavLink({ item, active, onClick }: { item: AthleteNavItem; active: boolean; onClick?: () => void }) {
+function NavLink({
+  item,
+  active,
+  onClick,
+  homeD,
+}: {
+  item: AthleteNavItem;
+  active: boolean;
+  onClick?: () => void;
+  homeD?: boolean;
+}) {
   const Icon = item.icon;
   return (
     <AthletePortalNavLink
       href={item.href}
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition ${
-        active
-          ? "bg-yellow-400/15 text-yellow-300 ring-1 ring-yellow-400/30"
-          : "text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200"
-      }`}
+      className={
+        homeD
+          ? `inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              active
+                ? "bg-[var(--h365-surface-raised)] text-[var(--h365-accent)] ring-1 ring-[var(--h365-border)]"
+                : "text-[var(--h365-text-muted)] hover:bg-[var(--h365-surface)] hover:text-[var(--h365-text)]"
+            }`
+          : `inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition ${
+              active
+                ? "bg-yellow-400/15 text-yellow-300 ring-1 ring-yellow-400/30"
+                : "text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200"
+            }`
+      }
     >
       <Icon className="h-4 w-4 shrink-0" />
       {item.label}
@@ -64,12 +82,19 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
     <>
       {showDesktop ? (
         <nav
-          className="hidden border-t border-zinc-800/60 lg:block"
+          className={`hidden border-t lg:block ${
+            homeD ? "border-[var(--h365-border)]" : "border-zinc-800/60"
+          }`}
           aria-label="Athlete portal"
         >
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 px-4 py-2.5 sm:px-6">
             {desktop.map((item) => (
-              <NavLink key={item.id} item={item} active={isActive(pathname, item.href)} />
+              <NavLink
+                key={item.id}
+                item={item}
+                homeD={homeD}
+                active={isActive(pathname, item.href)}
+              />
             ))}
           </div>
         </nav>
@@ -77,7 +102,11 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
 
       {showMobile ? (
         <nav
-          className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-800 bg-black/95 backdrop-blur-md lg:hidden"
+          className={`fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-md lg:hidden ${
+            homeD
+              ? "border-[var(--h365-border)] bg-[var(--h365-background)]/95"
+              : "border-zinc-800 bg-black/95"
+          }`}
           aria-label="Athlete portal mobile"
         >
           <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] pt-1">
@@ -88,11 +117,27 @@ export function AthleteAppNav({ variant = "all" }: AthleteAppNavProps) {
                 <AthletePortalNavLink
                   key={item.id}
                   href={item.href}
-                  className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-semibold ${
-                    active ? "text-yellow-400" : "text-zinc-500"
+                  className={`flex min-h-11 min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-semibold ${
+                    homeD
+                      ? active
+                        ? "text-[var(--h365-accent)]"
+                        : "text-[var(--h365-text-muted)]"
+                      : active
+                        ? "text-yellow-400"
+                        : "text-zinc-500"
                   }`}
                 >
-                  <Icon className={`h-5 w-5 ${active ? "text-yellow-400" : ""}`} />
+                  <Icon
+                    className={`h-5 w-5 ${
+                      homeD
+                        ? active
+                          ? "text-[var(--h365-accent)]"
+                          : ""
+                        : active
+                          ? "text-yellow-400"
+                          : ""
+                    }`}
+                  />
                   <span className="truncate">{item.label}</span>
                 </AthletePortalNavLink>
               );

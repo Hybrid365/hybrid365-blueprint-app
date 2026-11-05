@@ -47,6 +47,7 @@
     "qa:hyrox-coach-dry-run-staging": "npx --yes tsx scripts/qa-hyrox-coach-dry-run-staging.ts",
     "qa:hyrox-visual-system": "npx --yes tsx scripts/qa-hyrox-visual-system.ts",
     "qa:hyrox-visual-system-v0": "npx --yes tsx scripts/qa-hyrox-visual-system-v0.ts",
+    "qa:hyrox-home-d-visual": "npx --yes tsx scripts/qa-hyrox-home-d-visual.ts",
     "qa:hyrox-race-intelligence": "npx --yes tsx scripts/qa-hyrox-race-intelligence.ts",
     "qa:hyrox-batch-1-integration": "npx --yes tsx scripts/qa-hyrox-batch-1-integration.ts",
     "qa:hyrox-data": "node scripts/qa-hyrox-suite.mjs data",

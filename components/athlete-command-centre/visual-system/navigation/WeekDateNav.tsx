@@ -44,6 +44,7 @@ export function WeekDateNav({
           <button
             key={d.id}
             type="button"
+            data-home-d-day={d.id}
             onClick={() => onSelect(d.id)}
             aria-current={isSel ? "date" : undefined}
             aria-label={`${d.dow} ${d.dateNumber}${isToday ? ", today" : ""}${

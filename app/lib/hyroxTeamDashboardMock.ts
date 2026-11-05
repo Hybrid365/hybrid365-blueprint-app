@@ -38,6 +38,11 @@ export type HyroxSession = {
   coachNote?: string;
   /** Resolved from published prescription — drives session detail drawer. */
   detail?: AthleteSessionDetailContent;
+  /**
+   * Athlete-safe StructuredWorkout AST extracted from published prescription.
+   * Presentation only — never includes familyId / Stage N.
+   */
+  structuredWorkout?: import("@/app/lib/hyroxSessionFamilyTypes").StructuredWorkout | null;
 };
 
 export const HYROX_BLOCKS = [

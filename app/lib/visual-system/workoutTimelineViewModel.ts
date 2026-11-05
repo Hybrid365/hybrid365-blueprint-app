@@ -70,6 +70,11 @@ export type WorkoutTimelineOptions = {
     watts?: string | null;
     split?: string | null;
   };
+  /**
+   * Work-segment modality. Required for honest presentation — callers must infer
+   * from real session/family data. Defaults to "other" (never invents "run").
+   */
+  workModality?: TimelineModality;
 };
 
 function workDurationSec(work: WorkSpec): number | null {
@@ -122,13 +127,14 @@ function expandRepeat(
   const segments: WorkoutTimelineSegment[] = [];
   const workDur = workDurationSec(block.work);
   const dist = workDistanceLabel(block.work);
+  const workModality = opts.workModality ?? "other";
 
   for (let i = 0; i < block.reps; i++) {
     const id = `b${blockIndex}-w${i + 1}`;
     segments.push({
       id,
       kind: "work",
-      modality: "run",
+      modality: workModality,
       durationSec: workDur,
       startOffsetSec: null,
       label: `R${String(i + 1).padStart(2, "0")}`,
@@ -177,7 +183,7 @@ function expandContinuous(
   return {
     id,
     kind: "work",
-    modality: "run",
+    modality: opts.workModality ?? "other",
     durationSec: workDurationSec(block.work),
     startOffsetSec: null,
     label: "Work",

@@ -46,6 +46,7 @@ import { parseHyroxAthleteSessionFeedback } from "@/app/lib/hyroxAthleteSessionF
 import { inferSessionActivityType } from "@/app/lib/hyrox-team/modules/sessionLogging/inferActivityType";
 import { extractPlannedTargets } from "@/app/lib/hyrox-team/modules/sessionLogging/plannedTargets";
 import type { HyroxSession, SessionStatus } from "@/app/lib/hyroxTeamDashboardMock";
+import { extractAthleteStructuredWorkout } from "@/app/lib/visual-system/extractStructuredWorkout";
 import {
   derivePublishedSessionName,
   diffSessionSyncFields,
@@ -653,6 +654,8 @@ export function mapPublishedSessionsToAthleteUi(
           typeof prescription.category === "string" ? prescription.category : null,
       });
 
+    const structuredWorkout = extractAthleteStructuredWorkout(s.prescription);
+
     return {
       id: s.id,
       programmeWeekId: s.programme_week_id,
@@ -703,6 +706,7 @@ export function mapPublishedSessionsToAthleteUi(
       timeOfDay,
       coachNote: coachNote || undefined,
       detail: hasFamilyPublish ? { ...detail, coachNote: "" } : { ...detail, coachNote },
+      structuredWorkout,
     };
   });
 

@@ -18,6 +18,7 @@ Presentation-only building blocks ported from the v0 Hybrid365 prototype.
 
 - `lab/labFixtures.ts`
 - `lab/V0VisualSystemLab.tsx`
+- `lab/HomeDVisualPreview.tsx`
 
 Label every fixture surface: **LAB / FIXTURE**.
 
@@ -35,6 +36,17 @@ Adapter: `app/lib/visual-system/workoutTimelineViewModel.ts`
 
 Never invents zones, intensity, pace, distance, recovery, or loads. Missing → `null` / omit.
 
-## Batch 1 (not this PR)
+## Home D integration (Batch 1)
 
-Wire presentation components into Home D with athlete-safe VMs only. Keep adapters as the boundary. Do not import `lab/*` from Home D.
+Adapters (production-safe):
+
+- `app/lib/visual-system/homeDSessionCardAdapter.ts`
+- `app/lib/visual-system/timelineModality.ts`
+- `app/lib/visual-system/extractStructuredWorkout.ts`
+
+**Primary session rule:** first session after programme slot order  
+`AM → Main → PM → Optional`. No invented coaching importance.
+
+**Modality:** `inferTimelineModality` — unknown → `"other"`. Never invents `"run"`.
+
+Lab fixtures (`lab/*`) must never be imported by Home D / resolvers.

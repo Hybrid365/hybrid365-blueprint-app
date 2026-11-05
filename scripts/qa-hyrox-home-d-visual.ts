@@ -1,0 +1,270 @@
+/**
+ * QA: Home D → visual-system adapters (Batch 1).
+ * Run: npx tsx scripts/qa-hyrox-home-d-visual.ts
+ */
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  homeDDaysToWeekDateNav,
+  homeDSessionToCardViewModel,
+  sortHomeDSessionsBySlot,
+  splitPrimarySecondarySessions,
+} from "../app/lib/visual-system/homeDSessionCardAdapter";
+import { inferTimelineModality } from "../app/lib/visual-system/timelineModality";
+import { extractAthleteStructuredWorkout } from "../app/lib/visual-system/extractStructuredWorkout";
+import { buildWorkoutTimelineViewModel } from "../app/lib/visual-system/workoutTimelineViewModel";
+import type { AthleteHomeDDay, AthleteHomeDSessionCard } from "../app/lib/hyroxAthleteHomeDViewModel";
+import type { HyroxSession } from "../app/lib/hyroxTeamDashboardMock";
+import type { StructuredWorkout } from "../app/lib/hyroxSessionFamilyTypes";
+
+let passed = 0;
+function ok(name: string) {
+  passed += 1;
+  console.log(`✓ ${name}`);
+}
+
+function read(rel: string) {
+  return readFileSync(join(process.cwd(), rel), "utf8");
+}
+
+function card(
+  partial: Partial<AthleteHomeDSessionCard> & Pick<AthleteHomeDSessionCard, "id" | "slot">
+): AthleteHomeDSessionCard {
+  return {
+    modalityLabel: "Run",
+    title: "Session",
+    primaryTarget: null,
+    primaryDetail: null,
+    duration: "40 min",
+    intent: null,
+    coachNote: null,
+    status: "upcoming",
+    ...partial,
+  };
+}
+
+// --- Modality inference ---
+{
+  assert.equal(inferTimelineModality({ sessionType: "Run" }), "run");
+  assert.equal(inferTimelineModality({ sessionType: "Strength" }), "strength");
+  assert.equal(inferTimelineModality({ sessionName: "Ski intervals" }), "ski");
+  assert.equal(inferTimelineModality({ sessionName: "Row 2k" }), "row");
+  assert.equal(inferTimelineModality({ focus: "Bike FTP" }), "bike");
+  assert.equal(inferTimelineModality({ sessionName: "Sled push density" }), "station");
+  assert.equal(inferTimelineModality({ familyModality: "hyrox" }), "station");
+  assert.equal(inferTimelineModality({ sessionType: "Hybrid", sessionName: "Mixed" }), "other");
+  assert.equal(inferTimelineModality({}), "other");
+  assert.notEqual(inferTimelineModality({ sessionName: "Mystery session" }), "run");
+  ok("modality inference — unknown is other, never invents run");
+}
+
+{
+  const workout: StructuredWorkout = {
+    warmup: [],
+    blocks: [
+      {
+        type: "repeat",
+        reps: 2,
+        work: { kind: "time", value: 60, unit: "sec" },
+        recoveries: [{ durationSeconds: 30, type: "walk" }],
+      },
+    ],
+    cooldown: [],
+    guidance: [],
+  };
+  const bare = buildWorkoutTimelineViewModel(workout);
+  assert.ok(bare.segments.every((s) => s.kind === "recovery" || s.modality === "other"));
+  const ski = buildWorkoutTimelineViewModel(workout, { workModality: "ski" });
+  assert.ok(ski.segments.filter((s) => s.kind === "work").every((s) => s.modality === "ski"));
+  ok("timeline work modality defaults to other; explicit ski preserved");
+}
+
+// --- StructuredWorkout extract (no family IDs) ---
+{
+  const prescription = {
+    sessionFamily: {
+      familyId: "fam_secret",
+      stageId: "stage_3",
+      stageLabel: "Stage 3",
+      structuredWorkout: {
+        warmup: [],
+        blocks: [
+          {
+            type: "continuous",
+            work: { kind: "time", value: 1200, unit: "sec" },
+          },
+        ],
+        cooldown: [],
+        guidance: [],
+      },
+    },
+  };
+  const sw = extractAthleteStructuredWorkout(prescription);
+  assert.ok(sw);
+  assert.equal(sw!.blocks.length, 1);
+  const json = JSON.stringify(sw);
+  assert.doesNotMatch(json, /fam_secret|stage_3|Stage 3|familyId|stageId/);
+  ok("extract StructuredWorkout strips family metadata");
+}
+
+// --- Slot order primary ---
+{
+  const sessions = [
+    card({ id: "pm", slot: "PM", title: "PM run" }),
+    card({ id: "am", slot: "AM", title: "AM strength", modalityLabel: "Strength" }),
+    card({ id: "main", slot: "Main", title: "Threshold" }),
+  ];
+  const ordered = sortHomeDSessionsBySlot(sessions);
+  assert.deepEqual(
+    ordered.map((s) => s.id),
+    ["am", "main", "pm"]
+  );
+  const split = splitPrimarySecondarySessions(sessions);
+  assert.equal(split.primary?.id, "am");
+  assert.deepEqual(
+    split.secondary.map((s) => s.id),
+    ["main", "pm"]
+  );
+  assert.equal(split.rule, "slot_order_first");
+  ok("primary = first by AM→Main→PM→Optional slot order");
+}
+
+// --- Card adapter honesty ---
+{
+  const homeCard = card({
+    id: "s1",
+    slot: "Main",
+    title: "Threshold 5s",
+    primaryTarget: "3:55 /km",
+    coachNote: "Hold effort",
+    status: "upcoming",
+  });
+  const live: HyroxSession = {
+    id: "s1",
+    day: "Monday",
+    dayShort: "Mon",
+    dateLabel: "Mon",
+    name: "Threshold 5s",
+    type: "Run",
+    focus: "Threshold",
+    duration: "45 min",
+    rpeTarget: "RPE 7",
+    status: "upcoming",
+    priority: "Key",
+    intent: "Quality",
+    structuredWorkout: {
+      warmup: [],
+      blocks: [
+        {
+          type: "repeat",
+          reps: 2,
+          work: { kind: "time", value: 300, unit: "sec" },
+          recoveries: [{ durationSeconds: 90, type: "jog" }],
+        },
+      ],
+      cooldown: [],
+      guidance: [],
+    },
+  };
+  const vm = homeDSessionToCardViewModel(homeCard, live);
+  assert.equal(vm.title, "Threshold 5s");
+  assert.equal(vm.primaryTarget, "3:55 /km");
+  assert.equal(vm.coachNote, "Hold effort");
+  assert.ok(vm.timeline);
+  assert.equal(vm.timeline!.support, "supported");
+  assert.ok(vm.timeline!.segments.every((s) => s.kind === "recovery" || s.modality === "run"));
+  const serialized = JSON.stringify(vm);
+  assert.doesNotMatch(serialized, /familyId|stageId|Stage\s*\d|automationEligibility/);
+  ok("Home D → card VM maps athlete-safe fields + run modality from type");
+}
+
+{
+  const homeCard = card({
+    id: "s2",
+    slot: "Main",
+    title: "Station density",
+    modalityLabel: "Hybrid",
+  });
+  const live: HyroxSession = {
+    id: "s2",
+    day: "Tue",
+    dayShort: "Tue",
+    dateLabel: "Tue",
+    name: "Station density",
+    type: "Hybrid",
+    focus: "Hyrox",
+    duration: "50 min",
+    rpeTarget: "RPE 7",
+    status: "upcoming",
+    priority: "Key",
+    intent: "Stations",
+    structuredWorkout: {
+      warmup: [],
+      blocks: [
+        {
+          type: "station_round",
+          rounds: 4,
+          station: { name: "Sled" },
+        },
+      ],
+      cooldown: [],
+      guidance: [],
+    },
+  };
+  const vm = homeDSessionToCardViewModel(homeCard, live);
+  assert.equal(vm.timeline, null);
+  ok("unsupported StructuredWorkout omits timeline (no fabricate)");
+}
+
+{
+  const days: AthleteHomeDDay[] = [
+    {
+      id: "2026-11-03",
+      dow: "Mon",
+      dateNumber: 3,
+      iso: "2026-11-03",
+      isToday: false,
+      isPast: true,
+      sessions: [card({ id: "a", slot: "Main", status: "completed" })],
+    },
+    {
+      id: "2026-11-04",
+      dow: "Tue",
+      dateNumber: 4,
+      iso: "2026-11-04",
+      isToday: true,
+      isPast: false,
+      sessions: [],
+    },
+  ];
+  const nav = homeDDaysToWeekDateNav(days);
+  assert.equal(nav[0]!.sessionStatuses?.[0], "completed");
+  assert.equal(nav[1]!.isToday, true);
+  assert.deepEqual(nav[1]!.sessionStatuses, []);
+  ok("WeekDateNav VM maps real Home D day statuses");
+}
+
+// --- Production wiring guards ---
+{
+  const dash = read("components/athlete-command-centre/home-d/AthleteHomeDDashboard.tsx");
+  assert.match(dash, /WeekDateNav/);
+  assert.match(dash, /PrimarySessionCard/);
+  assert.match(dash, /SecondarySessionRow/);
+  assert.match(dash, /SessionDrawer/);
+  assert.match(dash, /openSession/);
+  assert.match(dash, /AthleteCoachNote|BenchmarkMicro/);
+  assert.doesNotMatch(dash, /labFixtures|LAB_REPEAT|from ['"].*\/lab\//);
+  assert.match(dash, /data-home-d-visual=["']v0-batch-1["']/);
+  ok("Home D dashboard wires visual system + SessionDrawer; no lab fixtures");
+}
+
+{
+  const src = read("app/lib/visual-system/workoutTimelineViewModel.ts");
+  assert.doesNotMatch(src, /modality:\s*"run"/);
+  assert.match(src, /workModality \?\? "other"/);
+  ok("timeline VM no longer hardcodes run modality");
+}
+
+console.log(`\nqa-hyrox-home-d-visual: ${passed} passed`);

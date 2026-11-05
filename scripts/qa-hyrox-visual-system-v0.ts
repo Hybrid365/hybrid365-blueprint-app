@@ -10,6 +10,7 @@ import {
   buildWorkoutTimelineViewModel,
 } from "../app/lib/visual-system/workoutTimelineViewModel";
 import type { StructuredWorkout } from "../app/lib/hyroxSessionFamilyTypes";
+// StructuredWorkout used by adapter cases below
 import {
   SESSION_STATUS_LABELS,
   type SessionStatusKey,
@@ -123,6 +124,7 @@ function walkTsFiles(dir: string, out: string[] = []): string[] {
     guidance: [],
   };
   const vm = buildWorkoutTimelineViewModel(workout, {
+    workModality: "run",
     workTarget: { pace: "3:55 /km" },
   });
   assert.equal(vm.support, "supported");
@@ -133,10 +135,30 @@ function walkTsFiles(dir: string, out: string[] = []): string[] {
   assert.equal(work.length, 3);
   assert.equal(work[0].targetPace, "3:55 /km");
   assert.equal(work[0].durationSec, 300);
+  assert.equal(work[0].modality, "run");
   assert.equal(work[0].startOffsetSec, 0);
   assert.equal(vm.segments[1].kind, "recovery");
   assert.equal(vm.segments[1].durationSec, 90);
   ok("repeat → WorkoutTimelineViewModel");
+}
+
+{
+  const workout: StructuredWorkout = {
+    warmup: [],
+    blocks: [
+      {
+        type: "repeat",
+        reps: 1,
+        work: { kind: "time", value: 60, unit: "sec" },
+        recoveries: [],
+      },
+    ],
+    cooldown: [],
+    guidance: [],
+  };
+  const bare = buildWorkoutTimelineViewModel(workout);
+  assert.equal(bare.segments[0]?.modality, "other");
+  ok("missing workModality defaults to other (not run)");
 }
 
 // --- Continuous → timeline ---
