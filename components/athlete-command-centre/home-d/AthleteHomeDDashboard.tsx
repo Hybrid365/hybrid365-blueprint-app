@@ -243,7 +243,7 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
     <div
       data-home-d-live=""
       data-home-d-visual="v0-batch-1"
-      className="mx-auto max-w-5xl px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-3 sm:px-6 lg:pb-10 lg:pt-5"
+      className="mx-auto max-w-5xl px-0 pb-2 pt-1 sm:px-0 lg:pb-4 lg:pt-2"
       style={{ color: "var(--h365-text)" }}
     >
       <div

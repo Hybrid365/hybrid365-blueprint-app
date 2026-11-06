@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { athleteHrefToPreviewSection } from "@/app/lib/hyroxAdminAthletePreviewPaths";
 import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 import { athleteProgrammePrefetchDisabled } from "./athleteNav";
@@ -45,12 +46,13 @@ export function AthletePortalNavLink({
   className,
   onClick,
   children,
+  ...rest
 }: {
   href: string;
   className?: string;
   onClick?: () => void;
-  children: React.ReactNode;
-}) {
+  children: ReactNode;
+} & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "className" | "onClick" | "children">) {
   const pathname = usePathname();
   const adminPreview = useAthleteAdminPreview();
   const resolvedHref = mapAthleteHrefForAdminPreview(href, adminPreview?.previewBasePath);
@@ -59,7 +61,7 @@ export function AthletePortalNavLink({
 
   if (fullPage) {
     return (
-      <a href={resolvedHref} className={className} onClick={onClick}>
+      <a href={resolvedHref} className={className} onClick={onClick} {...rest}>
         {children}
       </a>
     );
@@ -71,6 +73,7 @@ export function AthletePortalNavLink({
       prefetch={athleteProgrammePrefetchDisabled(href) ? false : undefined}
       className={className}
       onClick={onClick}
+      {...rest}
     >
       {children}
     </Link>
