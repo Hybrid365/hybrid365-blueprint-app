@@ -14,7 +14,10 @@ import {
 } from "../app/lib/visual-system/homeDSessionCardAdapter";
 import { inferTimelineModality } from "../app/lib/visual-system/timelineModality";
 import { extractAthleteStructuredWorkout } from "../app/lib/visual-system/extractStructuredWorkout";
-import { buildWorkoutTimelineViewModel } from "../app/lib/visual-system/workoutTimelineViewModel";
+import {
+  buildWorkoutTimelineViewModel,
+  summarizeWorkoutLoad,
+} from "../app/lib/visual-system/workoutTimelineViewModel";
 import { buildHyroxAthleteSessionFeedback } from "../app/lib/hyroxAthleteSessionFeedback";
 import { programmeStatusForCompletion } from "../app/lib/hyroxSessionExecutionSummary";
 import type { AthleteHomeDDay, AthleteHomeDSessionCard } from "../app/lib/hyroxAthleteHomeDViewModel";
@@ -297,9 +300,10 @@ function card(
   assert.match(dash, /SecondarySessionRow/);
   assert.match(dash, /SessionDrawer/);
   assert.match(dash, /openSession/);
-  assert.match(dash, /AthleteCoachNote|BenchmarkMicro/);
+  assert.match(dash, /HomeInsightsPanel/);
   assert.doesNotMatch(dash, /labFixtures|LAB_REPEAT|from ['"].*\/lab\//);
-  assert.match(dash, /data-home-d-visual=["']v0-batch-1["']/);
+  assert.match(dash, /data-home-d-visual=["']v0-home-parity["']/);
+  assert.match(dash, /320px/);
   ok("Home D dashboard wires visual system + SessionDrawer; no lab fixtures");
 }
 
@@ -307,7 +311,33 @@ function card(
   const src = read("app/lib/visual-system/workoutTimelineViewModel.ts");
   assert.doesNotMatch(src, /modality:\s*"run"/);
   assert.match(src, /workModality \?\? "other"/);
+  assert.match(src, /summarizeWorkoutLoad/);
   ok("timeline VM no longer hardcodes run modality");
+}
+
+{
+  const workout: StructuredWorkout = {
+    warmup: [],
+    blocks: [
+      {
+        type: "repeat",
+        reps: 2,
+        work: { kind: "time", value: 300, unit: "sec" },
+        recoveries: [{ durationSeconds: 60, type: "walk" }],
+      },
+    ],
+    cooldown: [],
+    guidance: [],
+  };
+  const tl = buildWorkoutTimelineViewModel(workout, { workModality: "run" });
+  const load = summarizeWorkoutLoad(tl);
+  assert.ok(load);
+  // 2×300s work + 1×60s recovery between reps (Batch 0 expand rule)
+  assert.equal(load!.workSec, 600);
+  assert.equal(load!.recoverySec, 60);
+  assert.equal(load!.totalSec, 660);
+  assert.equal(summarizeWorkoutLoad({ ...tl, canProportionByDuration: false }), null);
+  ok("Work/Recovery/Total only when durations are complete");
 }
 
 // --- Completion contract + Home D refresh ---

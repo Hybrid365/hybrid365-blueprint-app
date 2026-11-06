@@ -63,6 +63,16 @@ export type AthleteHomeDProgrammeContext = {
   raceLabel: string | null;
 };
 
+/** Honest weekly summary derived only from published programme sessions. */
+export type AthleteHomeDWeekContext = {
+  plannedSessions: number;
+  completedSessions: number;
+  /** Sum of parseable planned durations only; null when none parse. */
+  plannedDurationMinutes: number | null;
+  sessionsWithDuration: number;
+  modalityCounts: { label: string; count: number }[];
+};
+
 export type AthleteHomeDViewModel = {
   athleteName: string;
   programmePublished: boolean;
@@ -81,6 +91,8 @@ export type AthleteHomeDViewModel = {
     | null;
   performanceInsight: AthleteHomeDInsight | null;
   progressSnapshot: AthleteHomeDProgressMetric[] | null;
+  /** Planned-week context for insights rail — omit when empty. */
+  weekContext: AthleteHomeDWeekContext | null;
 };
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -208,6 +220,58 @@ function buildCoachContext(
   return null;
 }
 
+/** Parse athlete-facing duration strings like "55 min", "1h 10m", "90min". */
+export function parsePlannedDurationMinutes(raw: string | null | undefined): number | null {
+  const s = (raw ?? "").trim().toLowerCase();
+  if (!s) return null;
+  const hm = s.match(/^(\d+)\s*h(?:ours?)?(?:\s*(\d+)\s*m(?:in(?:utes?)?)?)?$/);
+  if (hm) {
+    const h = Number(hm[1]);
+    const m = hm[2] ? Number(hm[2]) : 0;
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+  }
+  const min = s.match(/^(\d+(?:\.\d+)?)\s*m(?:in(?:utes?)?)?$/);
+  if (min) {
+    const n = Number(min[1]);
+    return Number.isFinite(n) ? Math.round(n) : null;
+  }
+  return null;
+}
+
+function buildWeekContext(days: AthleteHomeDDay[]): AthleteHomeDWeekContext | null {
+  const sessions = days.flatMap((d) => d.sessions);
+  if (!sessions.length) return null;
+
+  let completedSessions = 0;
+  let plannedDurationMinutes = 0;
+  let sessionsWithDuration = 0;
+  const modalityMap = new Map<string, number>();
+
+  for (const s of sessions) {
+    if (s.status === "completed") completedSessions += 1;
+    const mins = parsePlannedDurationMinutes(s.duration);
+    if (mins != null) {
+      plannedDurationMinutes += mins;
+      sessionsWithDuration += 1;
+    }
+    const label = s.modalityLabel.trim() || "Other";
+    modalityMap.set(label, (modalityMap.get(label) ?? 0) + 1);
+  }
+
+  const modalityCounts = [...modalityMap.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+  return {
+    plannedSessions: sessions.length,
+    completedSessions,
+    plannedDurationMinutes: sessionsWithDuration > 0 ? plannedDurationMinutes : null,
+    sessionsWithDuration,
+    modalityCounts,
+  };
+}
+
 function buildPerformanceInsight(
   snapshot: BenchmarkSnapshotItem[] | null | undefined
 ): AthleteHomeDInsight | null {
@@ -279,6 +343,7 @@ export function buildAthleteHomeDViewModel(params: {
       adjustmentGap: "no_accepted_published_adaptation_chain",
       performanceInsight: null,
       progressSnapshot: null,
+      weekContext: null,
     };
   }
 
@@ -337,5 +402,6 @@ export function buildAthleteHomeDViewModel(params: {
     adjustmentGap: "no_accepted_published_adaptation_chain",
     performanceInsight: buildPerformanceInsight(params.benchmarkSnapshot),
     progressSnapshot: buildProgressSnapshot(params.benchmarkSnapshot),
+    weekContext: buildWeekContext(days),
   };
 }

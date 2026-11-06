@@ -123,7 +123,8 @@ export function AthletePortalShell({
         </aside>
       ) : null}
 
-      {/* Mobile top strip only when nav is off (waiting hub) — keep minimal account access */}
+      {/* Mobile top strip only when bottom nav is off (waiting hub).
+          When nav is visible, v0 has no mobile top wordmark/sign-out — shelf is canonical. */}
       {!navVisible ? (
         <div className="sticky top-[var(--hybrid365-env-badge-height,0px)] z-40 border-b border-zinc-800 bg-black/95 px-4 py-3 backdrop-blur-md sm:px-6">
           <div className="flex items-center justify-between gap-3">
@@ -141,22 +142,7 @@ export function AthletePortalShell({
             </Link>
           </div>
         </div>
-      ) : (
-        /* Mobile: compact top account strip without destination tabs */
-        <div className="sticky top-[var(--hybrid365-env-badge-height,0px)] z-30 border-b border-zinc-800/80 bg-black/95 px-4 py-2.5 backdrop-blur-md lg:hidden">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-400/90">
-              Hybrid365
-            </p>
-            <Link
-              href="/logout?next=/athlete/login"
-              className="text-xs font-semibold text-zinc-400"
-            >
-              Sign out
-            </Link>
-          </div>
-        </div>
-      )}
+      ) : null}
 
       <div
         className={

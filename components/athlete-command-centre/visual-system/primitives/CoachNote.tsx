@@ -1,32 +1,34 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Athlete-facing coach note only.
+ * Athlete-facing coach note — v0 CoachMark treatment.
  * Callers must pass published athlete-safe text — never internal coach_note.
  */
 export function AthleteCoachNote({
   note,
   label = "From your coach",
   className,
+  quoted = false,
 }: {
   note: string;
   label?: string;
   className?: string;
+  /** Prefer false for Home parity (v0 CoachMark has no quote marks). */
+  quoted?: boolean;
 }) {
   const body = note.trim();
   if (!body) return null;
   return (
-    <figure className={cn("relative flex flex-col gap-3 py-1 pl-5", className)}>
-      <span
-        aria-hidden
-        className="absolute inset-y-0 left-0 w-0.5 rounded-full bg-[var(--h365-accent)]"
-      />
-      <figcaption>
-        <span className="label-caps text-[var(--h365-text-muted)]">{label}</span>
-      </figcaption>
-      <blockquote className="text-pretty text-[15px] leading-relaxed text-[var(--h365-text)]">
-        &ldquo;{body}&rdquo;
-      </blockquote>
-    </figure>
+    <aside
+      data-coach-mark=""
+      className={cn("border-l-2 border-[var(--h365-accent)]/80 pl-4", className)}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--h365-accent)]/90">
+        {label}
+      </p>
+      <div className="mt-2 text-pretty text-sm leading-relaxed text-[var(--h365-text)]">
+        {quoted ? <>&ldquo;{body}&rdquo;</> : body}
+      </div>
+    </aside>
   );
 }

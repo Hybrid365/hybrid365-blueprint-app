@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
+import { motion } from "motion/react";
 import {
   buildAthleteHomeDViewModel,
   type AthleteHomeDDay,
@@ -21,8 +21,15 @@ import { AthletePortalNavLink } from "@/components/athlete-command-centre/Athlet
 import { WeekDateNav } from "@/components/athlete-command-centre/visual-system/navigation/WeekDateNav";
 import { PrimarySessionCard } from "@/components/athlete-command-centre/visual-system/sessions/PrimarySessionCard";
 import { SecondarySessionRow } from "@/components/athlete-command-centre/visual-system/sessions/SecondarySessionRow";
-import { AthleteCoachNote } from "@/components/athlete-command-centre/visual-system/primitives/CoachNote";
-import { BenchmarkMicro } from "@/components/athlete-command-centre/visual-system/primitives/BenchmarkMicro";
+import {
+  HomeInsightsPanel,
+  homeInsightsHasContent,
+} from "@/components/athlete-command-centre/visual-system/home/HomeInsightsPanel";
+import {
+  usePrefersReducedMotion,
+  vsTransition,
+  VS_DURATION,
+} from "@/components/athlete-command-centre/visual-system/motion";
 import { vsSurface } from "@/components/athlete-command-centre/visual-system/tokens";
 
 function dayHeading(day: AthleteHomeDDay): string {
@@ -37,6 +44,12 @@ function dayHeading(day: AthleteHomeDDay): string {
   };
   const name = names[day.dow] ?? day.dow;
   return day.isToday ? `Today · ${name}` : name;
+}
+
+function dayContext(day: AthleteHomeDDay): string {
+  if (day.sessions.length === 0) return "Rest / Recovery";
+  if (day.sessions.length === 1) return "1 session planned";
+  return `${day.sessions.length} sessions planned`;
 }
 
 function HomeDWeekStrip({
@@ -63,57 +76,6 @@ function HomeDWeekStrip({
   );
 }
 
-function SideContext({
-  coachContext,
-  performanceInsight,
-  progressSnapshot,
-}: {
-  coachContext: ReturnType<typeof buildAthleteHomeDViewModel>["coachContext"];
-  performanceInsight: ReturnType<typeof buildAthleteHomeDViewModel>["performanceInsight"];
-  progressSnapshot: ReturnType<typeof buildAthleteHomeDViewModel>["progressSnapshot"];
-}) {
-  return (
-    <>
-      {coachContext ? (
-        <div className={`${vsSurface} px-4 py-4`}>
-          <AthleteCoachNote note={coachContext.body} label={coachContext.title || "Coach note"} />
-        </div>
-      ) : null}
-      {performanceInsight ? (
-        <BenchmarkMicro
-          label={performanceInsight.label}
-          value={performanceInsight.value}
-          detail={performanceInsight.detail}
-          href="/athlete/benchmarks"
-        />
-      ) : null}
-      {progressSnapshot?.length ? (
-        <div className={`${vsSurface} px-4 py-4`}>
-          <div className="flex items-center justify-between">
-            <p className="label-caps text-[var(--h365-text-muted)]">Progress</p>
-            <Link
-              href="/athlete/progress"
-              className="text-[11px] font-semibold text-[var(--h365-accent)]"
-            >
-              View
-            </Link>
-          </div>
-          <ul className="mt-3 space-y-2">
-            {progressSnapshot.map((m) => (
-              <li key={m.label}>
-                <p className="text-xs text-[var(--h365-text-muted)]">{m.label}</p>
-                <p className="text-sm font-semibold tabular-nums num text-[var(--h365-text)]">
-                  {m.from} → {m.to}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </>
-  );
-}
-
 export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean }) {
   const adminPreview = useAthleteAdminPreview();
   const portal = useAthletePortalOptional();
@@ -123,6 +85,7 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
   const { benchmarkSnapshot, reloadLiveProgramme, readOnly: dashReadOnly } =
     useAthleteDashboardLive();
   const isReadOnly = readOnly || dashReadOnly;
+  const reduced = usePrefersReducedMotion();
 
   const vm = useMemo(
     () =>
@@ -176,6 +139,13 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
 
   const liveById = (id: string) =>
     liveProgramme?.sessions.find((s) => s.id === id) ?? null;
+
+  const hasInsights = homeInsightsHasContent({
+    coachContext: vm.coachContext,
+    weekContext: vm.weekContext,
+    performanceInsight: vm.performanceInsight,
+    progressSnapshot: vm.progressSnapshot,
+  });
 
   if (liveLoading && !liveProgramme) {
     return (
@@ -233,29 +203,25 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
     );
   }
 
-  const hasSideContext = Boolean(
-    vm.coachContext ||
-      vm.performanceInsight ||
-      (vm.progressSnapshot && vm.progressSnapshot.length > 0)
-  );
-
   return (
     <div
       data-home-d-live=""
-      data-home-d-visual="v0-batch-1"
-      className="mx-auto max-w-5xl px-0 pb-2 pt-1 sm:px-0 lg:pb-4 lg:pt-2"
+      data-home-d-visual="v0-home-parity"
+      className="mx-auto max-w-6xl px-0 pb-2 pt-1 sm:px-0 lg:pb-4 lg:pt-2"
       style={{ color: "var(--h365-text)" }}
     >
       <div
         className={
-          hasSideContext
-            ? "lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start lg:gap-8"
+          hasInsights
+            ? "lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-0"
             : undefined
         }
       >
-        <div className="min-w-0">
+        <div className={`min-w-0 ${hasInsights ? "lg:border-r lg:border-[var(--h365-border)] lg:pr-8" : ""}`}>
           <header className="mb-2">
-            <p className="label-caps text-[var(--h365-text-muted)]">Home</p>
+            <p className="text-[11px] font-semibold tracking-tight text-[var(--h365-text)]">
+              Hybrid365
+            </p>
             <h1 className="mt-1 font-display text-[1.65rem] font-bold uppercase leading-none tracking-tight text-[var(--h365-text)] sm:text-3xl">
               {vm.athleteName}
             </h1>
@@ -289,32 +255,35 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
             />
           ) : null}
 
-          <section className="mt-5">
+          <motion.section
+            key={selectedId}
+            className="mt-5"
+            initial={reduced ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={vsTransition(reduced, VS_DURATION.normal)}
+            data-h365-motion=""
+          >
             {selectedDay ? (
               <>
                 <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="font-display text-lg font-semibold uppercase tracking-wide text-[var(--h365-text)]">
+                  <h2 className="text-lg font-semibold tracking-tight text-[var(--h365-text)]">
                     {dayHeading(selectedDay)}
                   </h2>
                   <p className="text-xs text-[var(--h365-text-muted)]">
-                    {selectedDay.sessions.length === 0
-                      ? "No session"
-                      : selectedDay.sessions.length === 1
-                        ? "1 session"
-                        : `${selectedDay.sessions.length} sessions`}
+                    {dayContext(selectedDay)}
                   </p>
                 </div>
 
                 {selectedDay.sessions.length === 0 ? (
                   <div
-                    className={`${vsSurface} mt-4 px-4 py-6`}
+                    className={`${vsSurface} mt-5 px-4 py-6`}
                     data-home-d-rest-day=""
                   >
-                    <p className="font-display text-base font-semibold uppercase tracking-wide text-[var(--h365-text)]">
-                      No training scheduled
+                    <p className="text-sm text-[var(--h365-text)]">
+                      No programmed training today.
                     </p>
-                    <p className="mt-1 text-xs text-[var(--h365-text-muted)]">
-                      Use the week strip to check another day, or open Programme for the full week.
+                    <p className="mt-2 text-xs text-[var(--h365-text-muted)]">
+                      Rest / Recovery. Nothing extra was prescribed.
                     </p>
                     <AthletePortalNavLink
                       href="/athlete/programme"
@@ -324,24 +293,61 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
                     </AthletePortalNavLink>
                   </div>
                 ) : (
-                  <div className="mt-3 space-y-3">
+                  <ol
+                    className={`mt-5 ${
+                      selectedDay.sessions.length > 1
+                        ? "relative space-y-0"
+                        : "space-y-4"
+                    }`}
+                  >
                     {split.primary ? (
-                      <PrimarySessionCard
-                        session={homeDSessionToCardViewModel(
-                          split.primary,
-                          liveById(split.primary.id)
-                        )}
-                        onOpen={() => openSession(split.primary!.id)}
-                      />
+                      <li className="relative">
+                        {selectedDay.sessions.length > 1 ? (
+                          <>
+                            <span
+                              aria-hidden
+                              className="absolute bottom-0 left-[3px] top-0 w-px bg-[var(--h365-border)]"
+                            />
+                            <span
+                              aria-hidden
+                              className="absolute left-0 top-4 h-[7px] w-[7px] rounded-full bg-[var(--h365-accent)]"
+                            />
+                          </>
+                        ) : null}
+                        <div
+                          className={
+                            selectedDay.sessions.length > 1 ? "pl-5" : undefined
+                          }
+                        >
+                          <PrimarySessionCard
+                            session={homeDSessionToCardViewModel(
+                              split.primary,
+                              liveById(split.primary.id)
+                            )}
+                            onOpen={() => openSession(split.primary!.id)}
+                          />
+                        </div>
+                      </li>
                     ) : null}
                     {split.secondary.map((s) => (
-                      <SecondarySessionRow
-                        key={s.id}
-                        session={homeDSessionToCardViewModel(s, liveById(s.id))}
-                        onOpen={() => openSession(s.id)}
-                      />
+                      <li key={s.id} className="relative">
+                        <span
+                          aria-hidden
+                          className="absolute bottom-0 left-[3px] top-0 w-px bg-[var(--h365-border)]"
+                        />
+                        <span
+                          aria-hidden
+                          className="absolute left-0 top-4 h-[7px] w-[7px] rounded-full bg-[var(--h365-accent)]"
+                        />
+                        <div className="border-t border-[var(--h365-border)] pl-5">
+                          <SecondarySessionRow
+                            session={homeDSessionToCardViewModel(s, liveById(s.id))}
+                            onOpen={() => openSession(s.id)}
+                          />
+                        </div>
+                      </li>
                     ))}
-                  </div>
+                  </ol>
                 )}
               </>
             ) : (
@@ -349,12 +355,13 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
                 No days available for this week.
               </p>
             )}
-          </section>
+          </motion.section>
 
-          {hasSideContext ? (
-            <div className="mt-7 space-y-3 lg:hidden">
-              <SideContext
+          {hasInsights ? (
+            <div className="mt-10 border-t border-[var(--h365-border)] pt-8 lg:hidden">
+              <HomeInsightsPanel
                 coachContext={vm.coachContext}
+                weekContext={vm.weekContext}
                 performanceInsight={vm.performanceInsight}
                 progressSnapshot={vm.progressSnapshot}
               />
@@ -362,12 +369,14 @@ export function AthleteHomeDDashboard({ readOnly = false }: { readOnly?: boolean
           ) : null}
         </div>
 
-        {hasSideContext ? (
-          <aside className="mt-8 hidden space-y-4 lg:mt-0 lg:block">
-            <SideContext
+        {hasInsights ? (
+          <aside className="mt-8 hidden px-6 py-1 lg:mt-0 lg:block">
+            <HomeInsightsPanel
               coachContext={vm.coachContext}
+              weekContext={vm.weekContext}
               performanceInsight={vm.performanceInsight}
               progressSnapshot={vm.progressSnapshot}
+              compact
             />
           </aside>
         ) : null}

@@ -26,6 +26,8 @@ function read(rel: string) {
   assert.match(shell, /AthleteMobileBottomNav/);
   assert.doesNotMatch(shell, /AthleteAppNav variant="desktop"/);
   assert.doesNotMatch(shell, /max-w-7xl flex-wrap.*AthleteAppNav/);
+  // When bottom nav is visible, v0 has no mobile top wordmark/sign-out strip.
+  assert.match(shell, /v0 has no mobile top wordmark/);
   ok("shell uses 220px left rail + mobile bottom nav (no legacy top tabs)");
 }
 

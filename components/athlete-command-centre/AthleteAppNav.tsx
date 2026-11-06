@@ -62,7 +62,7 @@ export function AthleteDesktopRailNav() {
             {active ? (
               <motion.span
                 layoutId={reduced ? undefined : "athlete-rail-active"}
-                className="absolute inset-0 rounded-lg bg-zinc-900/90 ring-1 ring-zinc-800"
+                className="absolute inset-0 rounded-lg bg-zinc-900/50"
                 transition={vsTransition(reduced, VS_DURATION.normal)}
                 aria-hidden
               />
@@ -145,6 +145,13 @@ export function AthleteMobileBottomNav() {
                     </AthletePortalNavLink>
                   );
                 })}
+                <a
+                  href="/logout?next=/athlete/login"
+                  className="flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-zinc-400"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  Sign out
+                </a>
               </div>
             </motion.div>
           ) : null}
@@ -169,7 +176,7 @@ export function AthleteMobileBottomNav() {
                     {active ? (
                       <motion.span
                         layoutId={reduced ? undefined : "athlete-mobile-active"}
-                        className="absolute inset-x-2 inset-y-1 rounded-lg bg-zinc-900/80"
+                        className="absolute inset-x-2 inset-y-1 rounded-lg bg-zinc-900/40"
                         transition={vsTransition(reduced, VS_DURATION.normal)}
                         aria-hidden
                       />
@@ -202,13 +209,13 @@ export function AthleteMobileBottomNav() {
                 {(moreActive || moreOpen) && !reduced ? (
                   <motion.span
                     layoutId="athlete-mobile-active"
-                    className="absolute inset-x-2 inset-y-1 rounded-lg bg-zinc-900/80"
+                    className="absolute inset-x-2 inset-y-1 rounded-lg bg-zinc-900/40"
                     transition={vsTransition(reduced, VS_DURATION.normal)}
                     aria-hidden
                   />
                 ) : moreActive || moreOpen ? (
                   <span
-                    className="absolute inset-x-2 inset-y-1 rounded-lg bg-zinc-900/80"
+                    className="absolute inset-x-2 inset-y-1 rounded-lg bg-zinc-900/40"
                     aria-hidden
                   />
                 ) : null}

@@ -269,3 +269,30 @@ export function buildWorkoutTimelineViewModel(
     canProportionByDuration: allHaveDuration && withOffsets.length > 0,
   };
 }
+
+/** Work / Recovery / Total only when every segment has a real duration. */
+export type WorkoutLoadSummary = {
+  workSec: number;
+  recoverySec: number;
+  totalSec: number;
+};
+
+export function summarizeWorkoutLoad(
+  timeline: WorkoutTimelineViewModel | null | undefined
+): WorkoutLoadSummary | null {
+  if (!timeline?.canProportionByDuration || timeline.totalDurationSec == null) {
+    return null;
+  }
+  let workSec = 0;
+  let recoverySec = 0;
+  for (const s of timeline.segments) {
+    const d = s.durationSec ?? 0;
+    if (s.kind === "work") workSec += d;
+    else recoverySec += d;
+  }
+  return {
+    workSec,
+    recoverySec,
+    totalSec: timeline.totalDurationSec,
+  };
+}

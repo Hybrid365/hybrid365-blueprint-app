@@ -140,9 +140,16 @@ assert(vm.adjustmentMessage === null, "L no adaptation message without chain");
 assert(vm.adjustmentGap === "no_accepted_published_adaptation_chain", "L gap recorded");
 assert(vm.performanceInsight?.label === "5K", "M insight from snapshot");
 assert(vm.progressSnapshot?.[0]?.from === "18:02", "progress snapshot from change");
+assert(vm.weekContext?.plannedSessions === 1, "weekContext planned from published sessions");
+assert(vm.weekContext?.completedSessions === 0, "weekContext completed honest");
+assert(
+  (vm.weekContext?.modalityCounts?.length ?? 0) >= 1,
+  "weekContext modality counts from real session types"
+);
 
 const empty = buildAthleteHomeDViewModel({ programme: null });
 assert(!empty.programmePublished && empty.weekDays.length === 0, "P no-programme empty");
+assert(empty.weekContext == null, "P no weekContext when unpublished");
 
 const noInsight = buildAthleteHomeDViewModel({
   programme,

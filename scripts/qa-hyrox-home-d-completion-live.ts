@@ -56,7 +56,7 @@ async function main() {
 
   log(`url=${page.url()}`);
   const homeD = await page.locator("[data-home-d-live]").count();
-  const visual = await page.locator('[data-home-d-visual="v0-batch-1"]').count();
+  const visual = await page.locator('[data-home-d-visual="v0-home-parity"], [data-home-d-visual="v0-batch-1"]').count();
   log(`homeD=${homeD} visual=${visual}`);
   if (!homeD) throw new Error("Home D not active for this athlete");
 
