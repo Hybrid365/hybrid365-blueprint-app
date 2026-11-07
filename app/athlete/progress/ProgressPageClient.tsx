@@ -28,7 +28,7 @@ export default function ProgressPageClient({
   const meta = ATHLETE_PAGE_META.progress;
 
   return (
-    <ActiveAthletePage allowLinkedProgrammeAccess>
+    <ActiveAthletePage gate="none">
       <PageContent width="wide">
         <PageHeader eyebrow={meta.eyebrow} title={meta.title} subtitle={meta.subtitle} />
         {analyticsEnabled ? (

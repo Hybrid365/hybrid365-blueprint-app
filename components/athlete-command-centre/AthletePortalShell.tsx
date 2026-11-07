@@ -32,12 +32,15 @@ export function AthletePortalShell({
   children,
   showNav = true,
   showNavWhenLinked = false,
+  forceShowNav = false,
   adminPreviewMode = false,
 }: {
   children: React.ReactNode;
   showNav?: boolean;
   /** Show portal nav for linked athletes on programme page before client programme API resolves. */
   showNavWhenLinked?: boolean;
+  /** Progress / Performance: always show rail/shelf for signed-in athletes. */
+  forceShowNav?: boolean;
   /** Hide sign-out / mock toggles when embedded in coach admin preview. */
   adminPreviewMode?: boolean;
 }) {
@@ -53,14 +56,18 @@ export function AthletePortalShell({
     serverProgrammePublishedSeed = false,
     serverAuthConfirmed = false,
     portalAthlete = null,
+    layoutAuth = { hasSession: false, email: null, userId: null, hasSupabaseAuthCookie: false },
   } = portal ?? {};
   const isAdminPreview = adminPreviewMode || Boolean(adminPreview);
+  const signedIn = Boolean(layoutAuth.hasSession || portalAthlete || hasLinkedAthlete);
   const navVisible =
     !isAdminPreview &&
     showNav &&
-    (programmeHubLive ||
-      (showNavWhenLinked && hasLinkedAthlete) ||
-      (serverAuthConfirmed && serverProgrammePublishedSeed));
+    (forceShowNav
+      ? signedIn
+      : programmeHubLive ||
+        (showNavWhenLinked && hasLinkedAthlete) ||
+        (serverAuthConfirmed && serverProgrammePublishedSeed));
 
   const athleteLabel =
     portalAthlete?.name?.trim() ||

@@ -6,11 +6,16 @@ import { readFileSync } from "node:fs";
 
 const gate = readFileSync("components/athlete-command-centre/AthletePortalGate.tsx", "utf8");
 assert.match(gate, /allowLinkedProgrammeAccess && hasLinkedAthlete/);
-assert.match(gate, /allowLinkedProgrammeAccess pages/);
+
+const active = readFileSync("components/athlete-command-centre/ActiveAthletePage.tsx", "utf8");
+assert.match(active, /gate\?: GateMode/);
+assert.match(active, /resolvedGate === "none"/);
 
 const progress = readFileSync("app/athlete/progress/ProgressPageClient.tsx", "utf8");
 const performance = readFileSync("app/athlete/benchmarks/BenchmarksPageClient.tsx", "utf8");
-assert.match(progress, /allowLinkedProgrammeAccess/);
-assert.match(performance, /allowLinkedProgrammeAccess/);
+assert.match(progress, /gate="none"/);
+assert.match(performance, /gate="none"/);
+assert.doesNotMatch(progress, /ProgrammeWaitingCard/);
+assert.doesNotMatch(performance, /ProgrammeWaitingCard/);
 
 console.log("qa-hyrox-portal-gate: ok");

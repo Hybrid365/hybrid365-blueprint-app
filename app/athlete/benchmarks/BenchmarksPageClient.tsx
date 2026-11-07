@@ -13,7 +13,7 @@ export default function BenchmarksPageClient() {
   /** Performance page always uses Performance meta — never confuse with Performance Testing. */
   const meta = ATHLETE_PAGE_META.benchmarks;
   return (
-    <ActiveAthletePage allowLinkedProgrammeAccess>
+    <ActiveAthletePage gate="none">
       <PageContent width="wide">
         <PageHeader eyebrow={meta.eyebrow} title={meta.title} subtitle={meta.subtitle} />
         {!enabled ? (
