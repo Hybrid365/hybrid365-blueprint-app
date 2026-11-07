@@ -20,28 +20,31 @@ function resolveGateBlockReason(input: {
     return "allowed: server programme seed";
   }
   if (input.allowLinkedProgrammeAccess && input.hasLinkedAthlete) {
-    return "allowed: linked programme access";
+    return "allowed: linked athlete access";
   }
   if (!input.hasLinkedAthlete) return "blocked: not linked";
   if (!input.serverAuthConfirmed) return "blocked: server auth not confirmed";
   if (!input.serverProgrammePublishedSeed) {
-    return "blocked: serverProgrammePublishedSeed false (client published=" +
+    return (
+      "blocked: serverProgrammePublishedSeed false (client published=" +
       (input.clientLiveProgrammePublished ? "yes" : "no") +
-      ")";
+      ")"
+    );
   }
   return "blocked: programme hub not live";
 }
 
 /**
- * Unlocks athlete tab content when server confirms a published programme.
- * Does not require client /api/hyrox/athlete/programme to succeed first.
+ * Unlocks athlete tab content when server confirms a published programme,
+ * or when the page opts into linked-athlete access (Progress / Performance /
+ * Programme / testing) so sparse real UI can render before seed catches up.
  */
 export function AthletePortalGate({
   children,
   allowLinkedProgrammeAccess = false,
 }: {
   children: React.ReactNode;
-  /** Programme page: allow linked athlete before client programme API resolves. */
+  /** Linked paid athletes may enter without waiting on published-seed race. */
   allowLinkedProgrammeAccess?: boolean;
 }) {
   const pathname = usePathname();
@@ -58,16 +61,17 @@ export function AthletePortalGate({
   } = useAthletePortal();
 
   const clientLiveProgrammePublished = Boolean(liveProgramme?.published);
-  const serverProgrammeGate =
-    allowLinkedProgrammeAccess &&
-    (serverProgrammePublishedSeed || Boolean(liveProgramme?.programmeWeeks?.length));
 
+  /**
+   * allowLinkedProgrammeAccess pages (Programme / Progress / Performance / testing)
+   * unlock for any linked paid athlete. Sparse empty UI is preferred over a hard
+   * "programme not live" wall when seed/API lag or Preview auth is flaky.
+   */
   const allowed =
     programmePublishedLive ||
     programmeHubLive ||
     (serverAuthConfirmed && serverProgrammePublishedSeed) ||
-    (allowLinkedProgrammeAccess && hasLinkedAthlete && serverProgrammePublishedSeed) ||
-    serverProgrammeGate;
+    (allowLinkedProgrammeAccess && hasLinkedAthlete);
 
   const reasonBlocked = resolveGateBlockReason({
     programmePublishedLive,
@@ -96,6 +100,7 @@ export function AthletePortalGate({
         <p>clientLiveProgrammePublished: {clientLiveProgrammePublished ? "yes" : "no"}</p>
         <p>serverAuthConfirmed: {serverAuthConfirmed ? "yes" : "no"}</p>
         <p>hasLinkedAthlete: {hasLinkedAthlete ? "yes" : "no"}</p>
+        <p>allowLinkedProgrammeAccess: {allowLinkedProgrammeAccess ? "yes" : "no"}</p>
         <p>reasonBlocked: {reasonBlocked}</p>
       </div>
     ) : null;
