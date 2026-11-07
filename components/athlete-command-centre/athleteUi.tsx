@@ -362,8 +362,8 @@ export const ATHLETE_PAGE_META = {
   },
   progress: {
     eyebrow: "Progress",
-    title: "Training load & performance",
-    subtitle: "Logged sessions and benchmarks. Trends appear as more data is recorded.",
+    title: "Progress",
+    subtitle: "Longitudinal change from stored benchmarks and logged training — are you getting better?",
   },
   benchmarks: {
     eyebrow: "Performance",

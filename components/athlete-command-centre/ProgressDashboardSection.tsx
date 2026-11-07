@@ -1,8 +1,12 @@
 "use client";
 
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
-import { BenchmarkCard, ProgressChartCard, SectionHeader, TrainingSummary } from "./visual";
+import { BenchmarkCard, SectionHeader, TrainingSummary, visualEyebrow, visualMeta } from "./visual";
 
+/**
+ * Sparse Progress fallback when athlete analytics flag is off.
+ * Honest empty chart — no invented trend lines.
+ */
 export function ProgressDashboardSection() {
   const { useLive, dashboardLive } = useAthleteDashboardLive();
   const completion =
@@ -18,11 +22,15 @@ export function ProgressDashboardSection() {
   );
 
   return (
-    <div className="space-y-8">
-      <ProgressChartCard
-        title="Progress"
-        empty="Your performance trends will appear here as more sessions and testing data are logged."
-      />
+    <div className="space-y-8" data-h365-progress-fallback="">
+      <section>
+        <p className={visualEyebrow}>Now · are you getting better?</p>
+        <p className={`mt-2 max-w-xl text-sm leading-relaxed text-zinc-400`}>
+          Benchmark progression unlocks when athlete analytics is enabled for your account. Until
+          then, only logged completion and approved benchmark snapshots appear here — no sample
+          charts.
+        </p>
+      </section>
 
       {completion ? (
         <TrainingSummary
@@ -54,8 +62,19 @@ export function ProgressDashboardSection() {
               />
             ))}
           </div>
+          {benchmarks.every((item) => !item.change?.trim()) ? (
+            <p className={`mt-3 ${visualMeta}`}>
+              Complete another result for a metric to unlock progression.
+            </p>
+          ) : null}
         </section>
-      ) : null}
+      ) : (
+        <TrainingSummary
+          title="Benchmarks"
+          items={[]}
+          empty="No approved benchmarks yet. Each logged result will appear as its own point — nothing is interpolated."
+        />
+      )}
     </div>
   );
 }
