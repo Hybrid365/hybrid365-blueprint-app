@@ -10,11 +10,18 @@ export default function BenchmarksPageClient() {
   const portal = useAthletePortalOptional();
   const preview = useAthleteAdminPreview();
   const enabled = Boolean(preview?.performanceProfileEnabled || portal?.performanceProfileEnabled);
-  const meta = enabled ? ATHLETE_PAGE_META.benchmarks : ATHLETE_PAGE_META.performanceTesting;
+  /** Performance page always uses Performance meta — never confuse with Performance Testing. */
+  const meta = ATHLETE_PAGE_META.benchmarks;
   return (
     <ActiveAthletePage>
-      <PageContent>
+      <PageContent width="wide">
         <PageHeader eyebrow={meta.eyebrow} title={meta.title} subtitle={meta.subtitle} />
+        {!enabled ? (
+          <p className="mb-4 text-xs text-zinc-500">
+            Programming-anchor profile is not enabled for this account yet — showing the sparse
+            testing snapshot fallback.
+          </p>
+        ) : null}
         <AthleteBenchmarksBody />
       </PageContent>
     </ActiveAthletePage>

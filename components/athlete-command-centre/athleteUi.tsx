@@ -368,7 +368,7 @@ export const ATHLETE_PAGE_META = {
   benchmarks: {
     eyebrow: "Performance",
     title: "Performance",
-    subtitle: "Current benchmarks, history, and results waiting for coach review.",
+    subtitle: "Current programming anchors and latest validated tests — what can I do right now?",
   },
   performanceTesting: {
     eyebrow: "Performance testing",
