@@ -29,6 +29,11 @@ import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
 import { SessionActivityLogFields } from "./SessionActivityLogFields";
 import { SessionCompleteConfirm } from "./visual/SessionCompleteConfirm";
 import { SessionTarget, SessionTargetRow } from "./visual/SessionTarget";
+import { SessionStatusPill } from "./visual-system/primitives/StatusPill";
+import { AthleteCoachNote } from "./visual-system/primitives/CoachNote";
+import { CompactWorkoutPreview } from "./visual-system/workout/CompactWorkoutPreview";
+import { hyroxSessionToProgrammeCardViewModel } from "@/app/lib/visual-system/programmeSessionCardAdapter";
+import type { SessionStatusKey } from "./visual-system/tokens";
 
 function todayYmdLocal(): string {
   const d = new Date();
@@ -320,6 +325,27 @@ export function SessionDrawer({
     !successMessage;
   const structuredReady = executionChipsReady(form.execution ?? null, feedbackProfile);
 
+  const cardVm = session ? hyroxSessionToProgrammeCardViewModel(session) : null;
+  const statusKey: SessionStatusKey =
+    cardVm?.status ??
+    (session?.status === "complete" || form.completed
+      ? "completed"
+      : session?.status === "modified"
+        ? "partial"
+        : session?.status === "missed"
+          ? "missed"
+          : "upcoming");
+  const categoryLabel = (d.categoryTag || session?.type || "Session").trim();
+  const title = sessionTitle ?? session?.name ?? d.categoryTag;
+  const primaryTarget =
+    cardVm?.primaryTarget?.trim() ||
+    d.targetPaceLoad?.trim() ||
+    null;
+  const durationLabel =
+    cardVm?.durationLabel?.trim() ||
+    (d.durationMin ? `${d.durationMin} min` : null);
+  const timeline = cardVm?.timeline;
+
   return (
     <>
       <button
@@ -331,107 +357,159 @@ export function SessionDrawer({
       <aside
         role="dialog"
         aria-modal="true"
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col overflow-hidden border-l border-zinc-800 bg-zinc-950 shadow-2xl motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-150 motion-reduce:animate-none"
+        data-session-drawer="v0"
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col overflow-hidden border-l border-[var(--h365-border)] bg-[var(--h365-background)] shadow-2xl motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-150 motion-reduce:animate-none"
       >
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-yellow-400">{d.weekLabel}</p>
-            <h2 className="mt-1 text-xl font-bold text-white">{sessionTitle ?? session?.name ?? d.categoryTag}</h2>
-            {isComplete ? (
-              <p className="mt-1 text-xs font-semibold text-emerald-400">Completed</p>
-            ) : null}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {d.tags.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] font-medium text-zinc-400"
-                >
-                  {t}
-                </span>
-              ))}
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--h365-border)] px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--h365-text-muted)]">
+                {[categoryLabel, d.weekLabel].filter(Boolean).join(" · ")}
+              </p>
+              <SessionStatusPill status={statusKey} />
             </div>
+            <h2 className="mt-2 font-display text-[1.35rem] font-bold uppercase leading-tight tracking-tight text-[var(--h365-text)] sm:text-2xl">
+              {title}
+            </h2>
+            {primaryTarget ? (
+              <p className="mt-2 text-[22px] font-bold tabular-nums leading-none tracking-tight text-[var(--h365-text)] num">
+                {primaryTarget}
+              </p>
+            ) : null}
+            <p className="mt-2 text-xs text-[var(--h365-text-muted)] num">
+              {[durationLabel, d.rpeTarget ? `RPE ${d.rpeTarget}` : null, d.hrZone]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 hover:text-white"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--h365-border)] text-[var(--h365-text-muted)] transition-colors hover:text-[var(--h365-text)]"
           >
             <X className="h-5 w-5" />
           </button>
         </header>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          {timeline?.segments.length ? (
+            <section data-session-drawer-timeline="">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--h365-text-muted)]">
+                Structure
+              </p>
+              <div className="mt-3">
+                <CompactWorkoutPreview timeline={timeline} />
+              </div>
+            </section>
+          ) : null}
+
           <SessionTargetRow>
             <SessionTarget label="Duration" value={`${d.durationMin} min`} />
             <SessionTarget label="RPE" value={d.rpeTarget} />
             <SessionTarget label="HR zone" value={d.hrZone} />
           </SessionTargetRow>
-          <SessionTarget label="Pace / load" value={d.targetPaceLoad} />
 
-          <Block title="Objective" accent>
-            <p className="text-sm leading-relaxed text-zinc-300">{d.objective}</p>
-          </Block>
-
-          <Block title="Target pace / load">
-            <p className="text-sm text-zinc-300">{d.targetPaceLoad}</p>
-          </Block>
-
-          <Block title="Warm-up">
-            <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-zinc-300">
-              {d.warmUp.map((l) => (
-                <li key={l}>{l}</li>
-              ))}
-            </ul>
-          </Block>
-
-          <MainSetDisplay
-            mainSet={d.mainSet}
-            blocks={d.mainSetBlocks ?? parseMainSetBlocks(d.mainSet)}
-          />
-
-          {d.stationFocus ? (
-            <Block title="Station focus" accent>
-              <p className="text-sm leading-relaxed text-zinc-300">{d.stationFocus}</p>
+          {d.objective ? (
+            <Block title="Objective" accent>
+              <p className="text-sm leading-relaxed text-[var(--h365-text)]/90">{d.objective}</p>
             </Block>
           ) : null}
 
-          <Block title="Cool-down">
-            <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-zinc-300">
-              {d.coolDown.map((l) => (
-                <li key={l}>{l}</li>
-              ))}
-            </ul>
-          </Block>
+          {!timeline?.segments.length ? (
+            <>
+              <Block title="Warm-up">
+                <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-[var(--h365-text-muted)]">
+                  {d.warmUp.map((l) => (
+                    <li key={l}>{l}</li>
+                  ))}
+                </ul>
+              </Block>
+
+              <MainSetDisplay
+                mainSet={d.mainSet}
+                blocks={d.mainSetBlocks ?? parseMainSetBlocks(d.mainSet)}
+              />
+
+              {d.stationFocus ? (
+                <Block title="Station focus" accent>
+                  <p className="text-sm leading-relaxed text-[var(--h365-text)]/90">
+                    {d.stationFocus}
+                  </p>
+                </Block>
+              ) : null}
+
+              <Block title="Cool-down">
+                <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-[var(--h365-text-muted)]">
+                  {d.coolDown.map((l) => (
+                    <li key={l}>{l}</li>
+                  ))}
+                </ul>
+              </Block>
+            </>
+          ) : (
+            <>
+              {d.stationFocus ? (
+                <Block title="Station focus" accent>
+                  <p className="text-sm leading-relaxed text-[var(--h365-text)]/90">
+                    {d.stationFocus}
+                  </p>
+                </Block>
+              ) : null}
+              <details className="rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)]/60 p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-[var(--h365-text-muted)]">
+                  Full prescription
+                </summary>
+                <div className="mt-3 space-y-4">
+                  <Block title="Warm-up">
+                    <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-[var(--h365-text-muted)]">
+                      {d.warmUp.map((l) => (
+                        <li key={l}>{l}</li>
+                      ))}
+                    </ul>
+                  </Block>
+                  <MainSetDisplay
+                    mainSet={d.mainSet}
+                    blocks={d.mainSetBlocks ?? parseMainSetBlocks(d.mainSet)}
+                  />
+                  <Block title="Cool-down">
+                    <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-[var(--h365-text-muted)]">
+                      {d.coolDown.map((l) => (
+                        <li key={l}>{l}</li>
+                      ))}
+                    </ul>
+                  </Block>
+                </div>
+              </details>
+            </>
+          )}
 
           {d.coachNote ? (
-            <Block title="Coach note">
-              <p className="text-sm leading-relaxed text-zinc-300">{d.coachNote}</p>
-            </Block>
+            <AthleteCoachNote note={d.coachNote} label="Session cue" />
           ) : null}
 
           {d.coachPacingNote ? (
-            <Block title="Coach pacing note">
-              <p className="text-sm leading-relaxed text-zinc-300">{d.coachPacingNote}</p>
-            </Block>
+            <AthleteCoachNote note={d.coachPacingNote} label="Pacing cue" />
           ) : null}
 
           {d.filmPrompt ? (
-            <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 p-3">
-              <p className="text-[10px] font-bold uppercase text-blue-300">Film prompt</p>
-              <p className="mt-1 text-sm text-zinc-300">{d.filmPrompt}</p>
+            <div className="rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)] px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--h365-accent)]/90">
+                Film prompt
+              </p>
+              <p className="mt-1.5 text-sm text-[var(--h365-text)]/90">{d.filmPrompt}</p>
             </div>
           ) : null}
 
-          {d.fullPrescription ? (
+          {d.fullPrescription && !timeline?.segments.length ? (
             <Block title="Full session prescription">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--h365-text-muted)]">
                 {d.fullPrescription}
               </p>
             </Block>
           ) : null}
 
           <Block title="What to record">
-            <ul className="m-0 space-y-1 text-sm text-zinc-400">
+            <ul className="m-0 space-y-1 text-sm text-[var(--h365-text-muted)]">
               {recordFields.map((f) => (
                 <li key={f}>· {f}</li>
               ))}
@@ -477,15 +555,17 @@ export function SessionDrawer({
           ) : null}
 
           {showLogForm && !chipsEnabled ? (
-            <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-4 space-y-3">
-              <p className="text-xs font-bold uppercase text-yellow-400">Log session</p>
-              <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <div className="space-y-3 rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)] p-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--h365-accent)]/90">
+                Log session
+              </p>
+              <label className="flex min-h-11 items-center gap-2 text-sm text-[var(--h365-text)]">
                 <input
                   type="checkbox"
                   checked={form.completed}
                   disabled={!canSave}
                   onChange={(e) => setForm((f) => ({ ...f, completed: e.target.checked }))}
-                  className="rounded border-zinc-600"
+                  className="rounded border-[var(--h365-border)]"
                 />
                 Mark as completed
               </label>
@@ -532,8 +612,8 @@ export function SessionDrawer({
           ) : null}
 
           {showLogForm && chipsEnabled ? (
-            <details className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
-              <summary className="cursor-pointer text-xs font-semibold text-zinc-400">
+            <details className="rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)]/60 p-3">
+              <summary className="cursor-pointer text-xs font-semibold text-[var(--h365-text-muted)]">
                 Extra metrics (optional)
               </summary>
               <div className="mt-3">
@@ -554,14 +634,14 @@ export function SessionDrawer({
           ) : null}
         </div>
 
-        <footer className="shrink-0 space-y-2 border-t border-zinc-800 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <footer className="shrink-0 space-y-2 border-t border-[var(--h365-border)] bg-[var(--h365-background)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {blockedReason ? (
             <p className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-200/90">
               {blockedReason}
             </p>
           ) : null}
           {error ? (
-            <p className="rounded-lg border border-red-500/35 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+            <p className="rounded-lg border border-[var(--h365-danger)]/35 bg-red-950/40 px-3 py-2 text-xs text-red-200">
               {error}
             </p>
           ) : null}
@@ -580,7 +660,7 @@ export function SessionDrawer({
                 type="button"
                 disabled={!canSave || alreadyLogged || showForgotten || !structuredReady}
                 onClick={() => void handleSaveStructured()}
-                className="min-h-11 w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 w-full rounded-lg bg-[var(--h365-accent)] py-3 text-sm font-semibold text-[var(--h365-background)] transition-transform duration-150 active:scale-[0.99] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving
                   ? "Saving…"
@@ -597,7 +677,7 @@ export function SessionDrawer({
                   clearMessages();
                   setShowLogForm((v) => !v);
                 }}
-                className="min-h-11 w-full rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 w-full rounded-lg border border-[var(--h365-border)] py-2.5 text-sm font-semibold text-[var(--h365-text)] transition-colors hover:bg-[var(--h365-surface)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {showLogForm ? "Hide extra metrics" : "Add extra metrics"}
               </button>
@@ -608,7 +688,7 @@ export function SessionDrawer({
                 type="button"
                 disabled={!canSave || isComplete}
                 onClick={() => void handleMarkComplete()}
-                className="min-h-11 w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 w-full rounded-lg bg-[var(--h365-accent)] py-3 text-sm font-semibold text-[var(--h365-background)] transition-transform duration-150 active:scale-[0.99] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? "Saving…" : isComplete ? "Already complete" : "Mark complete"}
               </button>
@@ -620,7 +700,7 @@ export function SessionDrawer({
                     clearMessages();
                     setShowLogForm((v) => !v);
                   }}
-                  className="min-h-11 rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-11 rounded-lg border border-[var(--h365-border)] py-2.5 text-sm font-semibold text-[var(--h365-text)] transition-colors hover:bg-[var(--h365-surface)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {showLogForm ? "Hide log" : "Log session"}
                 </button>
@@ -628,13 +708,13 @@ export function SessionDrawer({
                   type="button"
                   disabled={!canSave || !showLogForm}
                   onClick={() => void handleSaveLog()}
-                  className="min-h-11 rounded-xl border border-yellow-400/40 py-2.5 text-sm font-semibold text-yellow-300 hover:bg-yellow-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-11 rounded-lg border border-[var(--h365-accent)]/40 py-2.5 text-sm font-semibold text-[var(--h365-accent)] transition-colors hover:bg-[var(--h365-accent)]/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving ? "Saving…" : "Save log"}
                 </button>
               </div>
               {showLogForm ? (
-                <p className="text-[11px] leading-snug text-zinc-500">
+                <p className="text-[11px] leading-snug text-[var(--h365-text-muted)]">
                   Save log stores feedback only. Use Mark complete (or tick Mark as completed) to
                   change session status.
                 </p>
@@ -648,11 +728,11 @@ export function SessionDrawer({
 }
 
 const inputClass =
-  "mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400/50 focus:outline-none disabled:opacity-50";
+  "mt-1 w-full rounded-lg border border-[var(--h365-border)] bg-[var(--h365-surface)] px-3 py-2 text-sm text-[var(--h365-text)] placeholder:text-[var(--h365-text-muted)] focus:border-[var(--h365-accent)]/50 focus:outline-none disabled:opacity-50";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-xs font-semibold text-zinc-400">
+    <label className="block text-xs font-semibold text-[var(--h365-text-muted)]">
       {label}
       {children}
     </label>
@@ -672,13 +752,18 @@ function MainSetDisplay({
         {blocks.map((block) => (
           <div
             key={block.title}
-            className="rounded-xl border border-yellow-500/30 bg-yellow-400/5 p-4"
+            className="rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)] p-4"
           >
-            <p className="text-xs font-bold uppercase text-yellow-400">{block.title}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--h365-accent)]/90">
+              {block.title}
+            </p>
             {block.lines.length > 0 ? (
               <ul className="mt-2 space-y-2">
                 {block.lines.map((line) => (
-                  <li key={`${block.title}-${line}`} className="text-sm leading-relaxed text-zinc-300">
+                  <li
+                    key={`${block.title}-${line}`}
+                    className="text-sm leading-relaxed text-[var(--h365-text)]/90"
+                  >
                     {line}
                   </li>
                 ))}
@@ -691,16 +776,18 @@ function MainSetDisplay({
   }
 
   return (
-    <div className="rounded-xl border border-yellow-500/30 bg-yellow-400/5 p-4">
-      <p className="text-xs font-bold uppercase text-yellow-400">Main set</p>
+    <div className="rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)] p-4">
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--h365-accent)]/90">
+        Main set
+      </p>
       <ul className="mt-2 space-y-2">
         {mainSet.map((l, i) => (
           <li
             key={l}
             className={
               i === 0 && mainSet.length === 1
-                ? "text-base font-bold text-white"
-                : "text-sm leading-relaxed text-zinc-300"
+                ? "text-base font-bold text-[var(--h365-text)]"
+                : "text-sm leading-relaxed text-[var(--h365-text)]/90"
             }
           >
             {l}
@@ -721,8 +808,20 @@ function Block({
   accent?: boolean;
 }) {
   return (
-    <div className={accent ? "rounded-xl border border-zinc-800 bg-zinc-900/60 p-4" : ""}>
-      <p className={`text-xs font-bold uppercase ${accent ? "text-yellow-400" : "text-zinc-500"}`}>{title}</p>
+    <div
+      className={
+        accent
+          ? "rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)] p-4"
+          : ""
+      }
+    >
+      <p
+        className={`text-[10px] font-bold uppercase tracking-[0.18em] ${
+          accent ? "text-[var(--h365-accent)]/90" : "text-[var(--h365-text-muted)]"
+        }`}
+      >
+        {title}
+      </p>
       <div className="mt-2">{children}</div>
     </div>
   );
