@@ -1,6 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BLOCK_WEEK_FOCUS_LABELS } from "@/app/lib/hyroxCoachProgrammeDraft";
 import { sessionDetailFromHyroxSession } from "@/app/lib/hyroxAthleteDashboardLive";
@@ -11,19 +12,7 @@ import {
   resolveHyroxBlockMeta,
   type HyroxSession,
 } from "@/app/lib/hyroxTeamDashboardMock";
-import {
-  ATHLETE_PAGE_META,
-  PageContent,
-  PageHeader,
-  SectionTitle,
-  ProgressBar,
-  eyebrowClass,
-  athleteCard,
-  athleteCardHighlight,
-  athleteCardPadding,
-} from "./athleteUi";
 import { SessionDrawer } from "./SessionDrawer";
-import { WeekSessionCard } from "./WeekSessionCard";
 import { useAthleteDashboardLive } from "./useAthleteDashboardLive";
 import { portalAthleteDisplayName } from "@/app/lib/hyroxAthletePortalDisplay";
 import { useAthleteAdminPreview } from "./athletePortalAdminPreview";
@@ -36,6 +25,17 @@ import {
 } from "@/app/lib/hyroxAthleteProgrammeWeekChip";
 import type { AthleteWeekCalendarStatus } from "@/app/lib/hyroxAthleteProgrammeTypes";
 import type { AthleteLiveProgrammePayload } from "./useAthleteLiveProgramme";
+import {
+  groupProgrammeSessionsByDay,
+  hyroxSessionToProgrammeCardViewModel,
+} from "@/app/lib/visual-system/programmeSessionCardAdapter";
+import { ProgrammeSessionRow } from "./visual-system/sessions/ProgrammeSessionRow";
+import { AthleteCoachNote } from "./visual-system/primitives/CoachNote";
+import {
+  usePrefersReducedMotion,
+  vsTransition,
+  VS_DURATION,
+} from "./visual-system/motion";
 
 type WeekTabMode = "active" | "upcoming" | "past" | "not_generated" | "locked";
 
@@ -68,15 +68,23 @@ function chipLabelForMode(mode: WeekTabMode): string {
   return "Upcoming";
 }
 
-function upcomingSubcopy(mode: WeekTabMode): string {
-  if (mode === "upcoming") return UPCOMING_COPY;
-  if (mode === "active") return "";
-  return PLANNED_COPY;
-}
-
 function countProgrammeSessions(programme: AthleteLiveProgrammePayload | null | undefined): number {
   if (!programme?.programmeWeeks?.length) return programme?.sessions?.length ?? 0;
   return programme.programmeWeeks.reduce((n, w) => n + (w.sessions?.length ?? 0), 0);
+}
+
+function dayHeading(day: { dow: string; dateLabel: string; isToday: boolean }): string {
+  const names: Record<string, string> = {
+    Mon: "Monday",
+    Tue: "Tuesday",
+    Wed: "Wednesday",
+    Thu: "Thursday",
+    Fri: "Friday",
+    Sat: "Saturday",
+    Sun: "Sunday",
+  };
+  const name = names[day.dow] ?? day.dow;
+  return day.isToday ? `Today · ${name}` : name;
 }
 
 export function ProgrammePageView({
@@ -106,6 +114,7 @@ export function ProgrammePageView({
     serverProgrammePublishedSeed = false,
   } = portal ?? {};
   const { dashboardLive } = useAthleteDashboardLive();
+  const reduced = usePrefersReducedMotion();
 
   const previewMode = isAdminPreview || Boolean(adminPreview) || readOnly;
 
@@ -126,12 +135,6 @@ export function ProgrammePageView({
     ReturnType<typeof sessionDetailFromHyroxSession> | null
   >(null);
   const [invalidSessionMessage, setInvalidSessionMessage] = useState<string | null>(null);
-
-  const programmeSource: "server" | "client" | "none" = liveProgramme
-    ? "client"
-    : serverProgramme
-      ? "server"
-      : "none";
 
   const blockId = useLive && dashboardLive ? dashboardLive.blockId : MOCK_ATHLETE.blockId;
   const block = resolveHyroxBlockMeta(blockId);
@@ -213,39 +216,38 @@ export function ProgrammePageView({
     ? effectiveProgramme?.programmeWeeks?.find((b) => b.weekNumber === selectedWeek)
     : null;
 
-  const sessions = useLive && selectedBundle?.generated
-    ? selectedBundle.sessions.map((s) => ({
-        ...s,
-        status:
-          selectedTab?.mode === "past"
-            ? ("complete" as const)
-            : selectedTab?.mode === "active"
-              ? s.status
-              : ("upcoming" as const),
-      }))
-    : useMock
-      ? MOCK_WEEK_SESSIONS
-      : [];
+  // Honest statuses — never remap past → complete or upcoming → upcoming.
+  const sessions: HyroxSession[] =
+    useLive && selectedBundle?.generated
+      ? selectedBundle.sessions
+      : useMock
+        ? MOCK_WEEK_SESSIONS
+        : [];
+
+  const weekStartYmd =
+    selectedBundle?.weekStartDate?.trim() ||
+    selectedBundle?.week?.week_start_date?.trim() ||
+    null;
+
+  const dayGroups = useMemo(
+    () => groupProgrammeSessionsByDay(sessions, { weekStartYmd }),
+    [sessions, weekStartYmd]
+  );
 
   const rationale =
     useLive && selectedBundle
       ? {
           weekRole: selectedBundle.weekRole ?? "",
           whyMatters: selectedBundle.week?.athlete_facing_note?.trim() ?? "",
-          prioritise: [] as string[],
-          coachNote: "",
         }
       : useMock
-        ? MOCK_WEEK_RATIONALE
-        : {
-            weekRole: "",
-            whyMatters: "",
-            prioritise: [] as string[],
-            coachNote: "",
-          };
+        ? {
+            weekRole: MOCK_WEEK_RATIONALE.weekRole,
+            whyMatters: MOCK_WEEK_RATIONALE.whyMatters,
+          }
+        : { weekRole: "", whyMatters: "" };
 
   const completed = sessions.filter((s) => s.status === "complete").length;
-  const meta = ATHLETE_PAGE_META.programme;
   const athleteName = useLive
     ? effectiveProgramme?.athlete.name?.trim() || portalAthleteDisplayName(portalAthlete)
     : useMock
@@ -328,7 +330,11 @@ export function ProgrammePageView({
     !liveProgrammeLoading;
 
   return (
-    <PageContent width="wide">
+    <div
+      data-programme-visual="v0-parity"
+      className="mx-auto max-w-6xl pb-2 pt-1 lg:pb-4 lg:pt-2"
+      style={{ color: "var(--h365-text)" }}
+    >
       {serverLoadVariant !== "ready" && process.env.NODE_ENV === "development" ? (
         <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
           Server load variant was <span className="font-mono">{serverLoadVariant}</span> — rendering
@@ -350,77 +356,59 @@ export function ProgrammePageView({
         </p>
       ) : null}
 
-      <PageHeader
-        eyebrow={meta.eyebrow}
-        title={meta.title}
-        subtitle={
-          useLive
-            ? `Block ${blockId} · Week ${liveGlobalWeek}${programmeStartDate ? ` · starts ${programmeStartDate}` : ""} · ${athleteName}`
-            : `${meta.subtitle} · Week ${MOCK_ATHLETE.currentWeek} of ${MOCK_ATHLETE.totalWeeks}`
-        }
-      />
-
-      {useLive ? (
-        <p className="-mt-4 text-xs text-zinc-500">
-          Future weeks may be adjusted after check-ins. {PLANNED_COPY}
+      <header className="mb-4">
+        <p className="text-[11px] font-semibold tracking-tight text-[var(--h365-text)]">
+          Hybrid365
         </p>
-      ) : null}
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--h365-accent)]/90">
+          Programme
+        </p>
+        <h1 className="mt-1 font-display text-[1.65rem] font-bold uppercase leading-none tracking-tight text-[var(--h365-text)] sm:text-3xl">
+          Your training week
+        </h1>
+        <p className="mt-2 line-clamp-2 text-[13px] leading-snug text-[var(--h365-text-muted)]">
+          {useLive
+            ? `Block ${blockId} · Week ${liveGlobalWeek}${
+                programmeStartDate ? ` · starts ${programmeStartDate}` : ""
+              } · ${athleteName}`
+            : `Week ${MOCK_ATHLETE.currentWeek} of ${MOCK_ATHLETE.totalWeeks} · ${athleteName}`}
+        </p>
+        {useLive ? (
+          <p className="mt-1.5 text-xs text-[var(--h365-text-muted)]">{PLANNED_COPY}</p>
+        ) : null}
+      </header>
 
       {missingStartDateWarning && process.env.NODE_ENV === "development" ? (
-        <p className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
+        <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
           Programme start date missing — week status may be inaccurate. Coach should set a start
           date and re-publish the block.
         </p>
       ) : null}
 
       {liveProgrammeLoading && useLive && !effectiveProgramme ? (
-        <p className="text-sm text-zinc-500">Loading programme…</p>
+        <p className="text-sm text-[var(--h365-text-muted)]">Loading programme…</p>
       ) : null}
 
       {publishedNoSessions ? (
-        <div className={`${athleteCard} ${athleteCardPadding} mb-6`}>
-          <p className={eyebrowClass}>Programme</p>
-          <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+        <div className="mb-6 rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)] px-4 py-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--h365-accent)]/90">
+            Programme
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--h365-text-muted)]">
             Your programme is live, but no sessions are showing yet. Check back shortly or contact
             your coach if this persists.
           </p>
         </div>
       ) : null}
 
-      <div className={`${athleteCardHighlight} ${athleteCardPadding}`}>
-        <p className={eyebrowClass}>
-          Block {blockId} · {block.name}
-          {selectedTab ? ` · ${selectedTab.subtitle}` : ""}
-        </p>
-        {rationale.whyMatters ? (
-          <p className="mt-3 text-sm leading-relaxed text-zinc-300">{rationale.whyMatters}</p>
-        ) : null}
-        {showWeekSessions ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="text-sm text-zinc-400">
-              {completed} of {sessions.length} sessions complete
-            </span>
-            <ProgressBar
-              value={sessions.length ? Math.round((completed / sessions.length) * 100) : 0}
-              className="h-2 max-w-xs flex-1"
-            />
-          </div>
-        ) : null}
-        {rationale.prioritise?.length ? (
-          <ul className="mt-4 space-y-1.5">
-            {rationale.prioritise.map((item) => (
-              <li key={item} className="flex gap-2 text-sm text-zinc-400">
-                <span className="text-yellow-400">›</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-
       {programmeVisible ? (
         <>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div
+            className="flex gap-2 overflow-x-auto pb-1"
+            role="tablist"
+            aria-label="Programme weeks"
+            data-programme-week-chips=""
+          >
             {weekTabs.map((tab) => {
               const active = selectedWeek === tab.globalWeek;
               const chipLabel = chipLabelForMode(tab.mode);
@@ -428,96 +416,181 @@ export function ProgrammePageView({
                 <button
                   key={tab.globalWeek}
                   type="button"
+                  role="tab"
+                  aria-selected={active}
                   onClick={() => setSelectedWeek(tab.globalWeek)}
-                  className={`flex min-h-11 min-w-[116px] shrink-0 flex-col justify-center rounded-xl border px-4 py-2.5 text-left motion-safe:transition-colors motion-safe:duration-150 ${
+                  className={`flex min-h-11 min-w-[7.25rem] shrink-0 flex-col justify-center rounded-xl border px-3.5 py-2.5 text-left transition-colors duration-150 ${
                     active
-                      ? "border-yellow-400/50 bg-yellow-400/10"
-                      : "border-zinc-800 bg-zinc-950/80 hover:border-zinc-700"
+                      ? "border-[var(--h365-accent)]/45 bg-[var(--h365-accent)]/10"
+                      : "border-[var(--h365-border)] bg-[var(--h365-surface)] hover:border-[var(--h365-text-muted)]/40"
                   }`}
                 >
-                  <span className="text-sm font-bold text-white">{tab.label}</span>
-                  <span className="text-[10px] text-zinc-500">{tab.subtitle}</span>
+                  <span className="text-sm font-bold text-[var(--h365-text)]">{tab.label}</span>
+                  <span className="truncate text-[10px] text-[var(--h365-text-muted)]">
+                    {tab.subtitle}
+                  </span>
                   {tab.dateRangeLabel ? (
-                    <span className="text-[10px] text-zinc-600">{tab.dateRangeLabel}</span>
+                    <span className="truncate text-[10px] text-[var(--h365-text-muted)]/80">
+                      {tab.dateRangeLabel}
+                    </span>
                   ) : null}
                   <span
                     className={`mt-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                       tab.mode === "active"
-                        ? "text-emerald-400"
+                        ? "text-[var(--h365-accent)]"
                         : tab.mode === "past"
-                          ? "text-zinc-500"
+                          ? "text-[var(--h365-text-muted)]"
                           : tab.generated
-                            ? "text-yellow-400/80"
-                            : "text-zinc-600"
+                            ? "text-[var(--h365-accent)]/80"
+                            : "text-[var(--h365-text-muted)]/70"
                     }`}
                   >
                     {chipLabel}
                   </span>
-                  {tab.generated && tab.sessionCount > 0 ? (
-                    <span className="mt-0.5 text-[10px] text-zinc-500">
-                      {tab.sessionCount} sessions
-                    </span>
-                  ) : null}
                 </button>
               );
             })}
           </div>
 
-          {showWeekSessions ? (
-            <section>
-              <SectionTitle
-                title={`${selectedTab?.subtitle ?? "Week"} · Week ${selectedWeek}`}
-                description={`${completed} of ${sessions.length} complete${
-                  selectedTab?.mode === "upcoming"
-                    ? ` · ${UPCOMING_COPY}`
-                    : selectedTab?.mode === "active"
-                      ? " · live this week"
-                      : selectedTab?.mode === "past"
-                        ? " · past week"
-                        : ""
-                }`}
-              />
-              {selectedTab?.mode === "upcoming" ? (
-                <p className="mb-3 text-xs text-zinc-500">{upcomingSubcopy(selectedTab.mode)}</p>
-              ) : null}
-              <div className="space-y-4">
-                {sessions.map((session) => (
-                  <WeekSessionCard
-                    key={session.id}
-                    session={session}
-                    onView={() => openSession(session.id, session.name)}
-                    onLog={
-                      weekLoggingEnabled
-                        ? () => openSession(session.id, session.name, { showLogForm: true })
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
-            </section>
-          ) : (
-            <div className={`${athleteCard} ${athleteCardPadding}`}>
-              <div className="flex items-start gap-3">
-                <Lock className="h-5 w-5 shrink-0 text-zinc-500" />
-                <div>
-                  <p className={eyebrowClass}>
-                    {selectedTab?.mode === "locked" ? "Block not yet available" : "Week not generated yet"}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-                    {selectedTab?.mode === "locked"
-                      ? `Weeks ${selectedTab.globalWeek}+ will unlock when your coach publishes the next 4-week block after your Block ${blockId} review.`
-                      : `Your coach has not published sessions for ${selectedTab?.label ?? "this week"} (${selectedTab?.subtitle}) yet.`}
-                  </p>
-                  <p className="mt-3 text-xs text-zinc-500">{PLANNED_COPY}</p>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedWeek}
+              initial={reduced ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduced ? undefined : { opacity: 0 }}
+              transition={vsTransition(reduced, VS_DURATION.normal)}
+              className="mt-5"
+            >
+              {showWeekSessions ? (
+                <>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div>
+                      <h2 className="text-lg font-semibold tracking-tight text-[var(--h365-text)]">
+                        {selectedTab?.subtitle ?? "Week"} · Week {selectedWeek}
+                      </h2>
+                      <p className="mt-0.5 text-xs text-[var(--h365-text-muted)]">
+                        {completed} of {sessions.length} complete
+                        {selectedTab?.mode === "upcoming"
+                          ? ` · ${UPCOMING_COPY}`
+                          : selectedTab?.mode === "active"
+                            ? " · live this week"
+                            : selectedTab?.mode === "past"
+                              ? " · past week"
+                              : ""}
+                      </p>
+                    </div>
+                    {sessions.length > 0 ? (
+                      <p className="text-xs tabular-nums text-[var(--h365-text-muted)] num">
+                        {Math.round((completed / sessions.length) * 100)}%
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {sessions.length > 0 ? (
+                    <div className="mt-3 h-1 overflow-hidden rounded-full bg-[var(--h365-surface-raised)]">
+                      <div
+                        className="h-full rounded-full bg-[var(--h365-accent)] transition-[width] duration-200"
+                        style={{
+                          width: `${sessions.length ? Math.round((completed / sessions.length) * 100) : 0}%`,
+                        }}
+                      />
+                    </div>
+                  ) : null}
+
+                  {rationale.whyMatters ? (
+                    <div className="mt-5">
+                      <AthleteCoachNote
+                        note={rationale.whyMatters}
+                        label={
+                          rationale.weekRole
+                            ? `Week strategy · ${rationale.weekRole}`
+                            : "Week strategy"
+                        }
+                      />
+                    </div>
+                  ) : null}
+
+                  {selectedTab?.mode === "upcoming" ? (
+                    <p className="mt-3 text-xs text-[var(--h365-text-muted)]">{UPCOMING_COPY}</p>
+                  ) : null}
+
+                  <div className="mt-6 space-y-6">
+                    {dayGroups.map((day) => (
+                      <section key={day.id} data-programme-day={day.id}>
+                        <div className="mb-2.5 flex items-baseline justify-between gap-3">
+                          <h3 className="text-sm font-semibold tracking-tight text-[var(--h365-text)]">
+                            {dayHeading(day)}
+                          </h3>
+                          <p className="text-[11px] text-[var(--h365-text-muted)]">
+                            {day.sessions.length === 0
+                              ? "Rest"
+                              : day.sessions.length === 1
+                                ? "1 session"
+                                : `${day.sessions.length} sessions`}
+                          </p>
+                        </div>
+                        {day.sessions.length === 0 ? (
+                          <p
+                            className="rounded-xl border border-[var(--h365-border)]/70 bg-transparent px-3.5 py-3 text-sm text-[var(--h365-text-muted)]"
+                            data-programme-rest-day=""
+                          >
+                            No training scheduled
+                          </p>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {day.sessions.map((session) => {
+                              const card = hyroxSessionToProgrammeCardViewModel(session);
+                              return (
+                                <ProgrammeSessionRow
+                                  key={session.id}
+                                  session={card}
+                                  onOpen={() => openSession(session.id, session.name)}
+                                  onLog={
+                                    weekLoggingEnabled
+                                      ? () =>
+                                          openSession(session.id, session.name, {
+                                            showLogForm: true,
+                                          })
+                                      : undefined
+                                  }
+                                />
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)] px-4 py-5">
+                  <div className="flex items-start gap-3">
+                    <Lock className="h-5 w-5 shrink-0 text-[var(--h365-text-muted)]" />
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--h365-accent)]/90">
+                        {selectedTab?.mode === "locked"
+                          ? "Block not yet available"
+                          : "Week not generated yet"}
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--h365-text-muted)]">
+                        {selectedTab?.mode === "locked"
+                          ? `Weeks ${selectedTab.globalWeek}+ will unlock when your coach publishes the next 4-week block after your Block ${blockId} review.`
+                          : `Your coach has not published sessions for ${selectedTab?.label ?? "this week"} (${selectedTab?.subtitle}) yet.`}
+                      </p>
+                      <p className="mt-3 text-xs text-[var(--h365-text-muted)]">{PLANNED_COPY}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
+            </motion.div>
+          </AnimatePresence>
         </>
       ) : (
-        <div className={`${athleteCard} ${athleteCardPadding}`}>
-          <p className={eyebrowClass}>Programme</p>
-          <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+        <div className="rounded-xl border border-[var(--h365-border)] bg-[var(--h365-surface)] px-4 py-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--h365-accent)]/90">
+            Programme
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--h365-text-muted)]">
             Your programme is being built. You&apos;ll see your first block here once your coach
             publishes it.
           </p>
@@ -542,6 +615,6 @@ export function ProgrammePageView({
           setInvalidSessionMessage(null);
         }}
       />
-    </PageContent>
+    </div>
   );
 }
