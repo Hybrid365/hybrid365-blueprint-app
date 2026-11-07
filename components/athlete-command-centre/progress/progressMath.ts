@@ -221,3 +221,160 @@ export function pickPrimarySeries(
   const ranked = [...seriesList].sort((a, b) => b.points.length - a.points.length);
   return ranked[0] ?? null;
 }
+
+export type BestImprovement = {
+  type: string;
+  label: string;
+  headline: string;
+  meta: string;
+  magnitudePct: number;
+};
+
+/**
+ * Strongest latest-vs-previous improvement only.
+ * Ranked by percent change vs previous mark — no cross-metric composite score.
+ */
+export function pickBestImprovement(
+  seriesList: HyroxAnalyticsBenchmarkSeries[]
+): BestImprovement | null {
+  const candidates: BestImprovement[] = [];
+  for (const series of seriesList) {
+    const delta = computeBenchmarkDelta(series);
+    if (!delta?.previous || delta.improved !== true || !delta.absoluteLabel) continue;
+    const mag = Math.abs(delta.absolute ?? 0);
+    if (mag === 0) continue;
+    const magnitudePct =
+      delta.previous.normalizedValue !== 0
+        ? Math.abs(delta.absolute ?? 0) / Math.abs(delta.previous.normalizedValue)
+        : 0;
+    candidates.push({
+      type: series.type,
+      label: series.label,
+      headline: formatImprovementHeadline(series.label, series.type, delta.absoluteLabel),
+      meta: `${delta.previous.display} → ${delta.latest.display} · ${formatPointDate(delta.latest.date)}`,
+      magnitudePct,
+    });
+  }
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.magnitudePct - a.magnitudePct);
+  return candidates[0] ?? null;
+}
+
+function formatImprovementHeadline(label: string, type: string, absoluteLabel: string): string {
+  const cleaned = absoluteLabel.replace(/^[+−-]/, "");
+  if (isLowerBetter(type)) {
+    return `${label} improved ${cleaned}`;
+  }
+  if (type === "ftp") {
+    return `${label} +${cleaned.replace(/\s*W$/, "")} W`;
+  }
+  return `${label} ${absoluteLabel.startsWith("+") ? absoluteLabel : `+${cleaned}`}`;
+}
+
+export type WeekCompareRow = {
+  id: string;
+  label: string;
+  current: number;
+  previous: number;
+  currentDisplay: string;
+  previousDisplay: string;
+  deltaLabel: string | null;
+  higherIsBetter: boolean | null;
+};
+
+export function buildWeekCompareRows(
+  current: {
+    plannedSessions: number;
+    completedSessions: number;
+    completionPct: number | null;
+    averageRpe: number | null;
+    runDistanceKm: number | null;
+    trainingDurationMinutes: number | null;
+  },
+  previous: {
+    plannedSessions: number;
+    completedSessions: number;
+    completionPct: number | null;
+    averageRpe: number | null;
+    runDistanceKm: number | null;
+    trainingDurationMinutes: number | null;
+  } | null
+): WeekCompareRow[] {
+  if (!previous || previous.plannedSessions <= 0 || current.plannedSessions <= 0) return [];
+
+  const rows: WeekCompareRow[] = [];
+
+  rows.push({
+    id: "completed",
+    label: "Completed sessions",
+    current: current.completedSessions,
+    previous: previous.completedSessions,
+    currentDisplay: String(current.completedSessions),
+    previousDisplay: String(previous.completedSessions),
+    deltaLabel: signedIntDelta(current.completedSessions - previous.completedSessions),
+    higherIsBetter: true,
+  });
+
+  if (current.completionPct != null && previous.completionPct != null) {
+    const d = current.completionPct - previous.completionPct;
+    rows.push({
+      id: "completion",
+      label: "Completion",
+      current: current.completionPct,
+      previous: previous.completionPct,
+      currentDisplay: `${current.completionPct}%`,
+      previousDisplay: `${previous.completionPct}%`,
+      deltaLabel: d === 0 ? "Same" : `${d > 0 ? "+" : ""}${d} pts`,
+      higherIsBetter: true,
+    });
+  }
+
+  if (current.averageRpe != null && previous.averageRpe != null) {
+    const d = round1(current.averageRpe - previous.averageRpe);
+    rows.push({
+      id: "rpe",
+      label: "Average RPE",
+      current: current.averageRpe,
+      previous: previous.averageRpe,
+      currentDisplay: String(current.averageRpe),
+      previousDisplay: String(previous.averageRpe),
+      deltaLabel: d === 0 ? "Same" : `${d > 0 ? "+" : ""}${d}`,
+      higherIsBetter: null,
+    });
+  }
+
+  if (current.runDistanceKm != null && previous.runDistanceKm != null) {
+    const d = round1(current.runDistanceKm - previous.runDistanceKm);
+    rows.push({
+      id: "run",
+      label: "Run distance",
+      current: current.runDistanceKm,
+      previous: previous.runDistanceKm,
+      currentDisplay: formatKm(current.runDistanceKm),
+      previousDisplay: formatKm(previous.runDistanceKm),
+      deltaLabel: d === 0 ? "Same" : `${d > 0 ? "+" : ""}${d} km`,
+      higherIsBetter: null,
+    });
+  }
+
+  if (current.trainingDurationMinutes != null && previous.trainingDurationMinutes != null) {
+    const d = Math.round(current.trainingDurationMinutes - previous.trainingDurationMinutes);
+    rows.push({
+      id: "duration",
+      label: "Training duration",
+      current: current.trainingDurationMinutes,
+      previous: previous.trainingDurationMinutes,
+      currentDisplay: formatMinutes(current.trainingDurationMinutes),
+      previousDisplay: formatMinutes(previous.trainingDurationMinutes),
+      deltaLabel: d === 0 ? "Same" : `${d > 0 ? "+" : ""}${d} min`,
+      higherIsBetter: null,
+    });
+  }
+
+  return rows;
+}
+
+function signedIntDelta(delta: number): string {
+  if (delta === 0) return "Same";
+  return `${delta > 0 ? "+" : ""}${delta}`;
+}

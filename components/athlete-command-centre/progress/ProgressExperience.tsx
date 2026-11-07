@@ -15,10 +15,12 @@ import {
   visualMeta,
   visualNumber,
 } from "@/components/athlete-command-centre/visual";
-import { ModalityBar } from "@/components/athlete-command-centre/visual/concepts/viz";
+import { ModalityMix } from "./ModalityMix";
 import { ProgressBenchmarkChart } from "./ProgressBenchmarkChart";
+import { WeekCompareBars } from "./WeekCompareBars";
 import {
   PROGRESS_PERIODS,
+  buildWeekCompareRows,
   computeBenchmarkDelta,
   deriveMilestones,
   filterSeriesByPeriod,
@@ -26,6 +28,7 @@ import {
   formatMinutes,
   formatPct,
   formatPointDate,
+  pickBestImprovement,
   pickPrimarySeries,
   type ProgressPeriod,
 } from "./progressMath";
@@ -55,7 +58,9 @@ export function ProgressExperience({ analytics }: { analytics: HyroxAthleteAnaly
   const selected =
     selectable.find((series) => series.type === selectedType) ?? primary ?? null;
   const delta = selected ? computeBenchmarkDelta(selected) : null;
+  const bestImprovement = pickBestImprovement(periodSeries);
   const milestones = deriveMilestones(periodSeries);
+  const weekRows = buildWeekCompareRows(analytics.currentWeek, analytics.previousWeek);
 
   const hasBenchmarkHistory = analytics.benchmarks.length > 0;
   const hasWeekSignal =
@@ -63,32 +68,40 @@ export function ProgressExperience({ analytics }: { analytics: HyroxAthleteAnaly
   const modalitySlices = analytics.distribution
     .map((row) => ({
       label: MODALITY_LABEL[row.modality],
-      minutes: row.durationMinutes ?? 0,
+      minutes: row.durationMinutes,
       sessionCount: row.sessionCount,
-      hasDuration: row.durationMinutes != null,
     }))
     .filter((row) => row.sessionCount > 0);
-  const modalityWithDuration = modalitySlices.filter((row) => row.hasDuration && row.minutes > 0);
 
-  const completionDelta = weekCompletionDelta(analytics.currentWeek, analytics.previousWeek);
   const periodLabel = PROGRESS_PERIODS.find((row) => row.id === period)?.label ?? "All";
+  const isRegression = delta?.previous != null && delta.improved === false;
+  const isImprovement = delta?.previous != null && delta.improved === true;
+  const showBestElsewhere =
+    bestImprovement != null &&
+    selected != null &&
+    bestImprovement.type !== selected.type;
+  const milestoneInSideCard = !showBestElsewhere ? milestones[0] ?? null : null;
+  const remainingMilestones = milestoneInSideCard ? milestones.slice(1) : milestones;
 
   return (
-    <div className="space-y-10" data-h365-progress-experience="">
+    <div className="space-y-8 lg:space-y-9" data-h365-progress-experience="">
       <MotionEnter>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className={visualEyebrow}>Now · are you getting better?</p>
-            <p className={`mt-2 ${visualMeta}`}>
+            <p className={`mt-1.5 ${visualMeta}`}>
               {hasBenchmarkHistory
-                ? `Benchmark history · ${periodLabel}`
+                ? `Benchmark window · ${periodLabel}`
                 : hasWeekSignal
                   ? "Training execution this week vs last"
-                  : "Progress appears from stored sessions and approved benchmarks"}
+                  : "Stored sessions and approved benchmarks only"}
             </p>
           </div>
           {hasBenchmarkHistory ? (
-            <PeriodFilter value={period} onChange={setPeriod} />
+            <div className="space-y-1.5 sm:text-right">
+              <PeriodFilter value={period} onChange={setPeriod} />
+              <p className="text-[10px] tracking-wide text-zinc-600">Filters benchmark history only</p>
+            </div>
           ) : null}
         </div>
       </MotionEnter>
@@ -96,32 +109,52 @@ export function ProgressExperience({ analytics }: { analytics: HyroxAthleteAnaly
       <MotionEnter>
         <section className={`${visualCard} ${visualCardPad}`}>
           {!selected || !delta ? (
-            <SparseHero
-              hasWeekSignal={hasWeekSignal}
-              current={analytics.currentWeek}
-              previous={analytics.previousWeek}
-              completionDelta={completionDelta}
-            />
+            <SparseHero hasWeekSignal={hasWeekSignal} current={analytics.currentWeek} />
           ) : (
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.2fr)] lg:gap-8">
               <div>
-                <p className="text-xs text-zinc-400">{selected.label}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">
+                  {isRegression
+                    ? "Latest result"
+                    : isImprovement
+                      ? "Latest mark"
+                      : delta.previous
+                        ? "Latest mark"
+                        : "First stored mark"}
+                </p>
+                <p className="mt-1 text-xs text-zinc-400">{selected.label}</p>
                 <p className={`mt-2 ${visualNumber}`}>{delta.latest.display}</p>
-                <div className="mt-3 space-y-1">
+
+                <div className="mt-3 space-y-1.5">
                   {delta.previous ? (
                     <>
                       <p className="text-sm text-zinc-300">
                         {delta.absoluteLabel ? (
                           <>
-                            <span className="font-semibold tabular-nums text-white">
+                            <span
+                              className={`font-semibold tabular-nums ${
+                                isRegression ? "text-zinc-200" : "text-white"
+                              }`}
+                            >
                               {delta.absoluteLabel}
                             </span>
-                            <span className="text-zinc-400"> vs previous mark</span>
+                            <span className="text-zinc-500">
+                              {isRegression
+                                ? " vs previous mark"
+                                : isImprovement
+                                  ? " vs previous mark"
+                                  : " vs previous mark"}
+                            </span>
                           </>
                         ) : (
-                          <span className="text-zinc-400">Same as previous mark</span>
+                          <span className="text-zinc-500">Same as previous mark</span>
                         )}
                       </p>
+                      {isRegression ? (
+                        <p className={visualMeta}>
+                          Below previous mark — shown as recorded, not softened.
+                        </p>
+                      ) : null}
                       {delta.percentLabel ? (
                         <p className={visualMeta}>{delta.percentLabel}</p>
                       ) : null}
@@ -138,7 +171,11 @@ export function ProgressExperience({ analytics }: { analytics: HyroxAthleteAnaly
                 </div>
 
                 {selectable.length > 1 ? (
-                  <div className="mt-6 flex flex-wrap gap-2" role="tablist" aria-label="Benchmark metrics">
+                  <div
+                    className="mt-5 flex flex-wrap gap-1.5"
+                    role="tablist"
+                    aria-label="Benchmark metrics"
+                  >
                     {selectable.map((series) => {
                       const active = series.type === selected.type;
                       return (
@@ -148,10 +185,10 @@ export function ProgressExperience({ analytics }: { analytics: HyroxAthleteAnaly
                           role="tab"
                           aria-selected={active}
                           onClick={() => setSelectedType(series.type)}
-                          className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                          className={`min-h-9 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
                             active
-                              ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-300"
-                              : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                              ? "border-yellow-400/55 bg-yellow-400/10 text-yellow-300"
+                              : "border-zinc-800/90 bg-zinc-950/80 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
                           }`}
                         >
                           {series.label}
@@ -167,7 +204,7 @@ export function ProgressExperience({ analytics }: { analytics: HyroxAthleteAnaly
                   label={selected.label}
                   type={selected.type}
                   points={selected.points}
-                  empty="No measured points in this window."
+                  empty="No measured points in this benchmark window."
                 />
               </FadeIn>
             </div>
@@ -175,13 +212,68 @@ export function ProgressExperience({ analytics }: { analytics: HyroxAthleteAnaly
         </section>
       </MotionEnter>
 
-      {milestones.length > 0 ? (
+      {(showBestElsewhere || weekRows.length > 0 || hasWeekSignal) && (
+        <MotionEnter>
+          <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
+            {showBestElsewhere && bestImprovement ? (
+              <aside className={`${visualCard} ${visualCardPad}`} data-h365-best-improvement="">
+                <p className={visualEyebrow}>Best recent improvement</p>
+                <p className="mt-3 text-lg font-semibold tracking-tight text-white">
+                  {bestImprovement.headline}
+                </p>
+                <p className={`mt-1.5 ${visualMeta}`}>{bestImprovement.meta}</p>
+                <button
+                  type="button"
+                  className="mt-4 text-xs font-semibold text-yellow-400/90 hover:text-yellow-300"
+                  onClick={() => setSelectedType(bestImprovement.type)}
+                >
+                  View {bestImprovement.label} →
+                </button>
+              </aside>
+            ) : milestoneInSideCard ? (
+              <aside className={`${visualCard} ${visualCardPad}`}>
+                <p className={visualEyebrow}>Milestone</p>
+                <p className="mt-3 text-lg font-semibold tracking-tight text-white">
+                  {milestoneInSideCard.label}
+                </p>
+                <p className={`mt-1.5 ${visualMeta}`}>{milestoneInSideCard.meta}</p>
+              </aside>
+            ) : (
+              <aside className={`${visualCard} ${visualCardPad}`}>
+                <p className={visualEyebrow}>Recent improvement</p>
+                <div className="mt-3 h-px w-16 bg-zinc-800" />
+                <p className={`mt-3 max-w-sm text-sm leading-relaxed text-zinc-400`}>
+                  No latest-vs-previous improvement in this benchmark window. Regressions stay
+                  visible on the selected metric.
+                </p>
+              </aside>
+            )}
+
+            <aside className={`${visualCard} ${visualCardPad}`}>
+              <p className={visualEyebrow}>This week vs last</p>
+              <p className={`mt-1 ${visualMeta}`}>Two real Monday–Sunday windows only</p>
+              <div className="mt-4">
+                {weekRows.length > 0 ? (
+                  <WeekCompareBars rows={weekRows} />
+                ) : (
+                  <CurrentWeekSparse
+                    current={analytics.currentWeek}
+                    previous={analytics.previousWeek}
+                  />
+                )}
+              </div>
+            </aside>
+          </div>
+        </MotionEnter>
+      )}
+
+      {remainingMilestones.length > 0 ? (
         <MotionEnter>
           <section>
             <p className={visualEyebrow}>Milestones</p>
-            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-              {milestones.map((item) => (
-                <li key={item.id} className={`${visualCard} ${visualCardPad}`}>
+            <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+              {remainingMilestones.map((item) => (
+                <li key={item.id} className={`${visualCard} px-4 py-4`}>
                   <p className="text-sm font-semibold text-white">{item.label}</p>
                   <p className={`mt-1 ${visualMeta}`}>{item.meta}</p>
                 </li>
@@ -192,92 +284,62 @@ export function ProgressExperience({ analytics }: { analytics: HyroxAthleteAnaly
       ) : null}
 
       <MotionEnter>
-        <section className="border-t border-zinc-800 pt-8">
-          <p className={visualEyebrow}>This week vs last</p>
-          <p className={`mt-1 ${visualMeta}`}>
-            Planned sessions from published programme · actual from logged completion
-          </p>
-          {!hasWeekSignal ? (
-            <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-              No published sessions in the current or previous Monday–Sunday window yet.
-            </p>
-          ) : (
-            <div className="mt-5 grid gap-6 sm:grid-cols-2">
-              <WeekPanel title="This week" week={analytics.currentWeek} />
-              <WeekPanel
-                title="Previous week"
-                week={analytics.previousWeek}
-                empty="No published sessions in the previous Monday–Sunday window."
-              />
+        <section className="border-t border-zinc-800 pt-7">
+          <div className="grid gap-8 lg:grid-cols-2">
+            <div>
+              <p className={visualEyebrow}>Training volume · last 4 weeks</p>
+              <p className={`mt-1 ${visualMeta}`}>
+                Rolling totals · incomplete current week is not filled in
+              </p>
+              <dl className="mt-4 grid grid-cols-2 gap-3">
+                <Stat
+                  label="Run distance"
+                  value={formatKm(analytics.rolling4.runDistanceKm)}
+                  sub="Logged run distance"
+                />
+                <Stat
+                  label="Duration"
+                  value={formatMinutes(analytics.rolling4.trainingDurationMinutes)}
+                  sub="Logged duration (actual)"
+                />
+                <Stat
+                  label="Completion"
+                  value={formatPct(analytics.rolling4.completionPct)}
+                  sub="Completed of planned"
+                />
+                <Stat
+                  label="Average RPE"
+                  value={
+                    analytics.rolling4.averageRpe == null
+                      ? "—"
+                      : String(analytics.rolling4.averageRpe)
+                  }
+                  sub={
+                    analytics.rolling4.averageRpe == null ? "No logged RPE" : "Mean of logged RPE"
+                  }
+                />
+              </dl>
+              {analytics.rolling4.runDistanceKm == null &&
+              analytics.rolling4.trainingDurationMinutes == null ? (
+                <div className="mt-4 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-3">
+                  <p className={`text-sm text-zinc-400`}>
+                    Volume needs logged run distance or session duration. Completion and RPE still
+                    report when present.
+                  </p>
+                </div>
+              ) : null}
             </div>
-          )}
-          {completionDelta ? (
-            <p className={`mt-4 ${visualMeta}`}>{completionDelta}</p>
-          ) : null}
-        </section>
-      </MotionEnter>
 
-      <MotionEnter>
-        <section className="border-t border-zinc-800 pt-8">
-          <p className={visualEyebrow}>Training volume · last 4 weeks</p>
-          <p className={`mt-1 ${visualMeta}`}>
-            Rolling totals only · incomplete current week is not filled in
-          </p>
-          <dl className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat label="Run distance" value={formatKm(analytics.rolling4.runDistanceKm)} sub="Logged run distance" />
-            <Stat
-              label="Duration"
-              value={formatMinutes(analytics.rolling4.trainingDurationMinutes)}
-              sub="Logged duration (actual)"
-            />
-            <Stat label="Completion" value={formatPct(analytics.rolling4.completionPct)} sub="Completed of planned" />
-            <Stat
-              label="Average RPE"
-              value={analytics.rolling4.averageRpe == null ? "—" : String(analytics.rolling4.averageRpe)}
-              sub={analytics.rolling4.averageRpe == null ? "No logged RPE" : "Mean of logged RPE"}
-            />
-          </dl>
-          {analytics.rolling4.runDistanceKm == null &&
-          analytics.rolling4.trainingDurationMinutes == null ? (
-            <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-              Volume trends need logged run distance or session duration on completed sessions.
-            </p>
-          ) : null}
-        </section>
-      </MotionEnter>
-
-      <MotionEnter>
-        <section className="border-t border-zinc-800 pt-8">
-          <p className={visualEyebrow}>Modality · this week</p>
-          <p className={`mt-1 ${visualMeta}`}>
-            Published sessions in the current Monday–Sunday window up to today
-          </p>
-          {modalitySlices.length === 0 ? (
-            <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-              No published sessions this week up to today, so there is no modality mix to show.
-            </p>
-          ) : modalityWithDuration.length > 0 ? (
-            <div className="mt-5 max-w-xl">
-              <ModalityBar
-                slices={modalityWithDuration.map((row) => ({
-                  label: row.label,
-                  minutes: row.minutes,
-                }))}
-              />
+            <div>
+              <p className={visualEyebrow}>Modality · this week</p>
+              <p className={`mt-1 ${visualMeta}`}>
+                Published sessions in the current Monday–Sunday window up to today
+              </p>
+              <div className="mt-4">
+                <ModalityMix slices={modalitySlices} />
+              </div>
             </div>
-          ) : (
-            <ul className="mt-5 space-y-2">
-              {modalitySlices.map((row) => (
-                <li key={row.label} className="flex justify-between text-sm text-zinc-300">
-                  <span>{row.label}</span>
-                  <span className="tabular-nums text-zinc-200">
-                    {row.sessionCount} session{row.sessionCount === 1 ? "" : "s"}
-                    <span className="ml-2 text-xs text-zinc-500">duration not logged</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          </div>
         </section>
       </MotionEnter>
     </div>
@@ -293,9 +355,9 @@ function PeriodFilter({
 }) {
   return (
     <div
-      className="flex flex-wrap gap-1 rounded-xl border border-zinc-800 bg-zinc-950/80 p-1"
+      className="inline-flex flex-wrap gap-0.5 rounded-lg border border-zinc-800 bg-zinc-950 p-0.5"
       role="group"
-      aria-label="Benchmark period"
+      aria-label="Benchmark history window"
     >
       {PROGRESS_PERIODS.map((row) => {
         const active = row.id === value;
@@ -304,8 +366,10 @@ function PeriodFilter({
             key={row.id}
             type="button"
             onClick={() => onChange(row.id)}
-            className={`min-h-9 rounded-lg px-3 text-xs font-semibold transition-colors ${
-              active ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
+            className={`min-h-8 rounded-md px-2.5 text-[11px] font-semibold transition-colors ${
+              active
+                ? "bg-zinc-800 text-white shadow-sm shadow-black/40"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             {row.label}
@@ -319,19 +383,24 @@ function PeriodFilter({
 function SparseHero({
   hasWeekSignal,
   current,
-  previous,
-  completionDelta,
 }: {
   hasWeekSignal: boolean;
   current: HyroxAnalyticsWeekSummary;
-  previous: HyroxAnalyticsWeekSummary | null;
-  completionDelta: string | null;
 }) {
   if (!hasWeekSignal) {
     return (
-      <div>
-        <p className={visualEyebrow}>No logged progress yet</p>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400">
+      <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-6 sm:px-5">
+        <div className="flex items-end gap-2">
+          {[18, 28, 22, 36, 24, 40].map((h, i) => (
+            <div
+              key={i}
+              className="w-4 rounded-sm bg-zinc-900 sm:w-5"
+              style={{ height: h }}
+            />
+          ))}
+        </div>
+        <p className={`mt-4 ${visualEyebrow}`}>No logged progress yet</p>
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-400">
           Progress appears from stored session logs and approved benchmarks. Missing weeks stay
           empty — nothing is invented to fill the chart.
         </p>
@@ -340,7 +409,7 @@ function SparseHero({
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
+    <div className="grid gap-6 sm:grid-cols-2">
       <div>
         <p className="text-xs text-zinc-400">This week · completion</p>
         <p className={`mt-2 ${visualNumber}`}>
@@ -351,67 +420,49 @@ function SparseHero({
             ? "No published sessions this week"
             : `${current.completedSessions} of ${current.plannedSessions} sessions`}
         </p>
-        {completionDelta ? <p className={`mt-2 ${visualMeta}`}>{completionDelta}</p> : null}
       </div>
-      <div>
-        <p className="text-xs text-zinc-400">Key sessions</p>
-        <p className={`mt-2 ${visualNumber}`}>
-          {current.keySessionsCompleted}/{current.keySessionsPlanned}
-        </p>
-        <p className={`mt-2 ${visualMeta}`}>
-          {previous
-            ? `Last week ${previous.keySessionsCompleted}/${previous.keySessionsPlanned}`
-            : "No previous week"}
-        </p>
-        <p className={`mt-4 ${visualMeta}`}>
-          Log another approved benchmark to unlock longitudinal progression.
+      <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-4">
+        <p className={visualEyebrow}>Benchmarks</p>
+        <p className={`mt-2 text-sm leading-relaxed text-zinc-400`}>
+          Log an approved benchmark to unlock longitudinal progression on this page.
         </p>
       </div>
     </div>
   );
 }
 
-function WeekPanel({
-  title,
-  week,
-  empty,
+function CurrentWeekSparse({
+  current,
+  previous,
 }: {
-  title: string;
-  week: HyroxAnalyticsWeekSummary | null;
-  empty?: string;
+  current: HyroxAnalyticsWeekSummary;
+  previous: HyroxAnalyticsWeekSummary | null;
 }) {
-  if (!week || week.plannedSessions === 0) {
-    return (
-      <div className={`${visualCard} ${visualCardPad}`}>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{title}</p>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-          {empty ?? "No published sessions in this window."}
-        </p>
-      </div>
-    );
-  }
-
+  const prevEmpty = !previous || previous.plannedSessions <= 0;
   return (
-    <div className={`${visualCard} ${visualCardPad}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{title}</p>
-      <p className={`mt-1 ${visualMeta}`}>
-        {formatDateRange(week.startDate, week.endDate)}
-        {week.complete ? "" : " · In progress"}
-      </p>
-      <dl className="mt-4 grid grid-cols-2 gap-3">
-        <Stat label="Completion" value={formatPct(week.completionPct)} sub={`${week.completedSessions}/${week.plannedSessions} sessions`} />
-        <Stat label="Run" value={formatKm(week.runDistanceKm)} sub={week.runDistanceKm == null ? "Not logged" : "Actual"} />
-        <Stat
-          label="Duration"
-          value={formatMinutes(week.trainingDurationMinutes)}
-          sub={week.trainingDurationMinutes == null ? "Not logged" : "Actual"}
-        />
-        <Stat
-          label="Key"
-          value={`${week.keySessionsCompleted}/${week.keySessionsPlanned}`}
-          sub="Key sessions"
-        />
-      </dl>
+    <div>
+      <WeekCompareBars
+        rows={[]}
+        empty={
+          prevEmpty
+            ? "Previous Monday–Sunday window has no published sessions — comparison waits for two real weeks."
+            : "Not enough overlapping metrics to compare yet."
+        }
+      />
+      {current.plannedSessions > 0 ? (
+        <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-zinc-800/80 pt-4">
+          <Stat
+            label="This week"
+            value={formatPct(current.completionPct)}
+            sub={`${current.completedSessions}/${current.plannedSessions} sessions`}
+          />
+          <Stat
+            label="Key"
+            value={`${current.keySessionsCompleted}/${current.keySessionsPlanned}`}
+            sub="Key sessions"
+          />
+        </dl>
+      ) : null}
     </div>
   );
 }
@@ -420,26 +471,8 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
   return (
     <div>
       <dt className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">{label}</dt>
-      <dd className="mt-1 text-2xl font-bold tabular-nums text-white">{value}</dd>
+      <dd className="mt-1 text-xl font-bold tabular-nums text-white sm:text-2xl">{value}</dd>
       <dd className={`mt-1 ${visualMeta}`}>{sub}</dd>
     </div>
   );
-}
-
-function formatDateRange(start: string, end: string): string {
-  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
-  const a = new Date(`${start}T12:00:00`).toLocaleDateString("en-GB", opts);
-  const b = new Date(`${end}T12:00:00`).toLocaleDateString("en-GB", opts);
-  return `${a} – ${b}`;
-}
-
-function weekCompletionDelta(
-  current: HyroxAnalyticsWeekSummary,
-  previous: HyroxAnalyticsWeekSummary | null
-): string | null {
-  if (current.completionPct == null || previous?.completionPct == null) return null;
-  const delta = current.completionPct - previous.completionPct;
-  if (delta === 0) return "Same completion as last week";
-  const sign = delta > 0 ? "+" : "";
-  return `${sign}${delta} pts vs previous week`;
 }
