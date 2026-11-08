@@ -297,16 +297,22 @@ async function main() {
       let targetBlock = 0;
       let preview: Awaited<ReturnType<typeof previewProgrammeBlueprintImport>>["preview"] | null =
         null;
-      for (const candidate of [9, 10, 11, 12]) {
-        const { preview: p } = await previewProgrammeBlueprintImport(sb, {
-          athleteId: row.id,
-          targetBlock: candidate,
-          blueprintRaw: revised,
-        });
-        if (p.canApplyWithoutReplace) {
-          targetBlock = candidate;
-          preview = p;
-          break;
+      const emptyCandidates = Array.from({ length: 16 }, (_, i) => i + 9); // blocks 9–24
+      for (const candidate of emptyCandidates) {
+        try {
+          const { preview: p } = await previewProgrammeBlueprintImport(sb, {
+            athleteId: row.id,
+            targetBlock: candidate,
+            blueprintRaw: revised,
+            programmeLengthWeeks: row.programme_length_weeks,
+          });
+          if (p.canApplyWithoutReplace) {
+            targetBlock = candidate;
+            preview = p;
+            break;
+          }
+        } catch {
+          // Beyond visible next-block window for this athlete — keep searching via assert path
         }
       }
       if (!preview || !targetBlock) {
@@ -390,8 +396,85 @@ async function main() {
           confirmApply: true,
         });
         assert.equal(replaced.weeks.length, 4);
-        ok("confirmed replace archives prior unpublished and inserts new drafts");
+        assert.ok(
+          replaced.weeks.every(
+            (w) => w.action === "replaced_in_place" || w.action === "updated" || w.action === "inserted"
+          )
+        );
+        ok("confirmed replace updates unpublished drafts in place");
         void conflictWeeks;
+
+        // Concurrent import race on a fresh empty block
+        let raceBlock = 0;
+        for (const candidate of emptyCandidates) {
+          if (candidate === targetBlock) continue;
+          try {
+            const { preview: p } = await previewProgrammeBlueprintImport(sb, {
+              athleteId: row.id,
+              targetBlock: candidate,
+              blueprintRaw: revised,
+              programmeLengthWeeks: row.programme_length_weeks,
+            });
+            if (p.canApplyWithoutReplace) {
+              raceBlock = candidate;
+              break;
+            }
+          } catch {
+            // skip disallowed blocks
+          }
+        }
+        if (!raceBlock) {
+          console.log("⊘ no empty block for concurrency race — skipped");
+        } else {
+          const args = {
+            athleteId: row.id,
+            athlete: stub,
+            athleteRow: row,
+            mappedProfileId: null as string | null,
+            targetBlock: raceBlock,
+            blueprintRaw: revised,
+            conflictStrategy: "abort" as const,
+            confirmApply: true,
+          };
+          const settled = await Promise.allSettled([
+            applyProgrammeBlueprintImport(sb, args),
+            applyProgrammeBlueprintImport(sb, args),
+          ]);
+          const wins = settled.filter((s) => s.status === "fulfilled");
+          const losses = settled.filter((s) => s.status === "rejected");
+          // Unique index forbids two full winners. Interleaved empty-block races may
+          // leave wins=0 (both compensate) or wins=1; never sibling unpublished drafts.
+          assert.ok(wins.length <= 1, `expected at most one concurrent winner, got ${wins.length}`);
+          assert.ok(losses.length >= 1, `expected at least one concurrent loser, got ${losses.length}`);
+          for (const loss of losses) {
+            const lossMsg = String((loss as PromiseRejectedResult).reason?.message ?? "");
+            assert.ok(
+              /Concurrent|unique|duplicate|retry|unpublished|replace|Compensated/i.test(lossMsg),
+              `loser message should mention conflict/concurrency, got: ${lossMsg}`
+            );
+          }
+          const { data: active } = await sb
+            .from("hyrox_programme_drafts")
+            .select("id, week_number, status, published_at")
+            .eq("athlete_id", row.id)
+            .eq("block_number", raceBlock)
+            .is("published_at", null)
+            .not("status", "in", '("archived","published")');
+          const byWeek = new Map<number, number>();
+          for (const r of active ?? []) {
+            byWeek.set(r.week_number, (byWeek.get(r.week_number) ?? 0) + 1);
+          }
+          for (const [week, count] of byWeek) {
+            assert.equal(count, 1, `week ${week} has ${count} unpublished drafts`);
+          }
+          if (wins.length === 1) {
+            assert.equal(
+              (wins[0] as PromiseFulfilledResult<{ draftIds: string[] }>).value.draftIds.length,
+              4
+            );
+          }
+          ok("concurrent imports: ≤1 winner, ≥1 loser, no sibling unpublished drafts");
+        }
       } else {
         console.log("⊘ selected block not empty after race — skip apply/replace");
       }

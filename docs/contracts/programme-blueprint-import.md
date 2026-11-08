@@ -9,9 +9,10 @@ Contract for importing a validated `CoachDraftWeek[]` blueprint into unpublished
 3. Never mutate published draft rows or `hyrox_programme_weeks` published snapshots.
 4. Default conflict policy: **abort** if any target week has existing unpublished content.
 5. Replace of unpublished weeks requires explicit `conflictStrategy: "replace_unpublished_confirmed"` plus the exact week numbers listed in the preview.
-6. Multi-week import is all-or-nothing at the application layer: validate all weeks first; on mid-apply failure, archive any newly created import rows and report partial rollback.
+6. Multi-week import is all-or-nothing at the application layer: validate all weeks first; on mid-apply failure, compensate (restore updates / unarchive / archive inserts).
 7. Does not call the frozen deterministic generator.
 8. After import, drafts are editable via existing Programme Builder PATCH save path.
+9. At most one active unpublished draft per `(athlete_id, week_number)` once migration `023_hyrox_programme_drafts_one_unpublished_week.sql` is applied. Concurrent second inserts fail with unique_violation; import catches this and aborts. Replace uses optimistic `updated_at` in-place updates.
 
 ## Blueprint shape
 

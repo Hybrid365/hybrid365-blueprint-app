@@ -76,7 +76,7 @@ export type BlueprintImportApplyResult = {
     cycle: 1 | 2 | 3 | 4;
     globalWeek: number;
     draftId: string;
-    action: "inserted" | "updated" | "replaced_via_archive_insert";
+    action: "inserted" | "updated" | "replaced_in_place" | "replaced_via_archive_insert";
   }>;
   rolledBack?: boolean;
   message: string;

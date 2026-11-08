@@ -4,11 +4,16 @@
  *
  * Integrity model (v1 hardened):
  * - Validate all weeks before any write.
- * - Prefer insert-then-archive for replace (never leave a week without an active draft).
- * - Compensation journal restores: unarchive replaced rows, restore in-place updates,
+ * - Replace / empty-shell paths UPDATE the preferred unpublished row in place
+ *   (optimistic `updated_at`) so they cooperate with
+ *   `hyrox_programme_drafts_one_unpublished_week_idx`.
+ * - Fresh empty weeks INSERT; unique_violation → concurrent-write error.
+ * - Compensation journal restores: unarchive siblings, restore in-place updates,
  *   archive newly inserted rows — on any mid-apply failure.
- * - Not a Postgres multi-statement transaction (no existing import RPC); compensation is
+ * - Not a Postgres multi-statement transaction (no import RPC); compensation is
  *   the architecture-consistent safety net used elsewhere for draft revisions.
+ * - Concurrent empty-block imports may both fail (retry); they cannot leave
+ *   sibling active unpublished drafts once the unique index is applied.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -55,6 +60,12 @@ const DRAFT_SELECT =
 /** Max serialized blueprint JSON accepted on apply/preview (~1.5MB). */
 export const BLUEPRINT_JSON_MAX_CHARS = 1_500_000;
 
+export function isPostgresUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const e = error as { code?: string; message?: string };
+  return e.code === "23505" || Boolean(e.message?.includes("duplicate key"));
+}
+
 type CompensationEntry =
   | { kind: "inserted"; draftId: string }
   | {
@@ -72,6 +83,7 @@ type CompensationEntry =
       priorCoachNote: string | null;
       priorAthleteFacingNote: string | null;
       priorStatus: HyroxProgrammeDraftStatus;
+      priorUpdatedAt: string;
     };
 
 async function fetchPublishedWeekNumbers(
@@ -283,7 +295,14 @@ async function insertUnpublishedDraft(
     })
     .select(DRAFT_SELECT)
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isPostgresUniqueViolation(error)) {
+      throw new Error(
+        `Concurrent programme draft write detected for week ${params.draft.week}. Another import or editor created an unpublished draft first — retry after refresh.`
+      );
+    }
+    throw new Error(error.message);
+  }
   return data as HyroxProgrammeDraftRow;
 }
 
@@ -291,6 +310,7 @@ async function updateUnpublishedDraftContent(
   supabase: SupabaseClient,
   params: {
     draftId: string;
+    expectedUpdatedAt: string;
     athlete: CoachAthlete;
     draft: CoachDraftWeek;
     coachNote: string;
@@ -318,13 +338,59 @@ async function updateUnpublishedDraftContent(
       published_at: null,
     })
     .eq("id", params.draftId)
+    .eq("updated_at", params.expectedUpdatedAt)
     .is("published_at", null)
     .neq("status", "published")
     .neq("status", "archived")
     .select(DRAFT_SELECT)
-    .single();
+    .maybeSingle();
   if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error(
+      `Concurrent edit detected for draft ${params.draftId} (week ${params.draft.week}). Refresh Programme Builder and retry the import.`
+    );
+  }
   return data as HyroxProgrammeDraftRow;
+}
+
+/**
+ * Archive any unpublished sibling drafts for the target weeks except the preferred
+ * row. Defensive against pre-index duplicates; with the unique index this is usually a no-op.
+ */
+async function archiveUnpublishedSiblings(
+  supabase: SupabaseClient,
+  athleteId: string,
+  blockNumber: number,
+  preferredByWeek: Map<number, HyroxProgrammeDraftRow | null>,
+  journal: CompensationEntry[]
+): Promise<void> {
+  const weekNumbers = ([1, 2, 3, 4] as const).map((c) => globalWeekForBlock(blockNumber, c));
+  const { data, error } = await supabase
+    .from("hyrox_programme_drafts")
+    .select(DRAFT_SELECT)
+    .eq("athlete_id", athleteId)
+    .eq("block_number", blockNumber)
+    .in("week_number", weekNumbers)
+    .is("published_at", null)
+    .not("status", "in", '("archived","published")');
+  if (error) throw new Error(error.message);
+
+  for (const row of (data as HyroxProgrammeDraftRow[]) ?? []) {
+    const preferred = preferredByWeek.get(row.week_number);
+    if (preferred && preferred.id === row.id) continue;
+    if (!isUnpublishedWorkingDraft(row)) continue;
+    const archived = await archiveDraftChecked(
+      supabase,
+      row.id,
+      "Archived sibling unpublished draft before blueprint import"
+    );
+    journal.push({
+      kind: "archived",
+      draftId: row.id,
+      priorStatus: archived.priorStatus,
+      priorValidation: archived.priorValidation,
+    });
+  }
 }
 
 async function reResolveImportedWeek(
@@ -479,6 +545,15 @@ export async function applyProgrammeBlueprintImport(
       params.targetBlock
     );
 
+    // Drop any unexpected unpublished siblings before writing (safe with/without unique index).
+    await archiveUnpublishedSiblings(
+      supabase,
+      params.athleteId,
+      params.targetBlock,
+      existingMap,
+      journal
+    );
+
     for (const item of remapped) {
       if (publishedNow.has(item.globalWeek)) {
         throw new Error(
@@ -502,45 +577,18 @@ export async function applyProgrammeBlueprintImport(
       const weekPreview = preview.weeks.find((w) => w.globalWeek === item.globalWeek);
       const needsReplace = weekPreview?.conflict === "unpublished_content";
 
-      if (needsReplace && existing && isUnpublishedWorkingDraft(existing)) {
-        // Insert first so the week always has an active unpublished draft, then archive old.
-        const inserted = await insertUnpublishedDraft(supabase, {
-          athleteId: params.athleteId,
-          athlete: params.athlete,
-          mappedProfileId: params.mappedProfileId,
-          draft: item.draft,
-          coachNote,
-          athleteFacingNote,
-          importMeta: { ...importMeta, replacedDraftId: existing.id },
-        });
-        journal.push({ kind: "inserted", draftId: inserted.id });
-
-        const archived = await archiveDraftChecked(
-          supabase,
-          existing.id,
-          `Replaced by blueprint import ${blueprint.id}@${blueprint.version}`
-        );
-        journal.push({
-          kind: "archived",
-          draftId: existing.id,
-          priorStatus: archived.priorStatus,
-          priorValidation: archived.priorValidation,
-        });
-
-        results.push({
-          cycle: item.cycle,
-          globalWeek: item.globalWeek,
-          draftId: inserted.id,
-          action: "replaced_via_archive_insert",
-        });
-        continue;
-      }
-
+      // Replace and empty-shell paths UPDATE the preferred unpublished row in place.
+      // This cooperates with hyrox_programme_drafts_one_unpublished_week_idx (no second active row).
       if (
         existing &&
         isUnpublishedWorkingDraft(existing) &&
-        (weekPreview?.existingSessionCount ?? 0) === 0
+        (needsReplace || (weekPreview?.existingSessionCount ?? 0) === 0)
       ) {
+        if (needsReplace && params.conflictStrategy !== "replace_unpublished_confirmed") {
+          throw new Error(
+            `Unexpected unpublished content on week ${item.globalWeek} without replace confirmation.`
+          );
+        }
         journal.push({
           kind: "updated",
           draftId: existing.id,
@@ -550,20 +598,24 @@ export async function applyProgrammeBlueprintImport(
           priorCoachNote: existing.coach_note,
           priorAthleteFacingNote: existing.athlete_facing_note,
           priorStatus: existing.status,
+          priorUpdatedAt: existing.updated_at,
         });
         const updated = await updateUnpublishedDraftContent(supabase, {
           draftId: existing.id,
+          expectedUpdatedAt: existing.updated_at,
           athlete: params.athlete,
           draft: item.draft,
           coachNote,
           athleteFacingNote,
-          importMeta,
+          importMeta: needsReplace
+            ? { ...importMeta, replacedInPlace: true }
+            : importMeta,
         });
         results.push({
           cycle: item.cycle,
           globalWeek: item.globalWeek,
           draftId: updated.id,
-          action: "updated",
+          action: needsReplace ? "replaced_in_place" : "updated",
         });
         continue;
       }
