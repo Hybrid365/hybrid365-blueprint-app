@@ -135,7 +135,35 @@ export async function ensureUnpublishedWorkingDraft(
     .select(DRAFT_SELECT)
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Partial unique index on unpublished (athlete_id, week_number): a concurrent ensure
+    // may win the insert — re-read the working draft instead of surfacing 23505.
+    const code = (error as { code?: string }).code;
+    const isUnique =
+      code === "23505" || Boolean(error.message?.includes("duplicate key"));
+    if (isUnique) {
+      const raced = await fetchLatestDraftForGlobalWeek(
+        supabase,
+        params.athleteId,
+        params.globalWeek
+      );
+      if (raced && isUnpublishedWorkingDraft(raced)) {
+        const parsed =
+          parseCoachDraftWeekJson(raced.draft_data) ??
+          buildEmptyCoachDraftWeekShell({
+            athleteId: params.athleteId,
+            globalWeek: params.globalWeek,
+          });
+        return {
+          draft: raced,
+          draftData: parsed,
+          created: false,
+          forkedFromPublished: false,
+        };
+      }
+    }
+    throw new Error(error.message);
+  }
 
   return {
     draft: data as HyroxProgrammeDraftRow,

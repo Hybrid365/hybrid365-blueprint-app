@@ -51,6 +51,7 @@ import { CopyWeekToModal } from "@/components/admin-hyrox-athletes/CopyWeekToMod
 import { CoachBlockReviewPanel } from "@/components/admin-hyrox-athletes/CoachBlockReviewPanel";
 import { CoachPublishPanel } from "@/components/admin-hyrox-athletes/CoachPublishPanel";
 import { CoachWeekSessionPreviewList } from "@/components/admin-hyrox-athletes/CoachWeekSessionPreviewList";
+import { ProgrammeBlueprintImportModal } from "@/components/admin-hyrox-athletes/ProgrammeBlueprintImportModal";
 import { useCoachBlockProgramme } from "@/components/admin-hyrox-athletes/useCoachBlockProgramme";
 import {
   CoachProgrammeDraftDebugPanel,
@@ -166,6 +167,7 @@ export function ProgrammeBuilder({
     saveDraft,
     persistDraft,
     applyDraftMutation,
+    loadBlockMeta,
     unsavedChanges,
     draftDirty,
     lastSavedAt,
@@ -210,6 +212,7 @@ export function ProgrammeBuilder({
   const [perfWeekConfirmOpen, setPerfWeekConfirmOpen] = useState(false);
   const [hydrateDetailsConfirmOpen, setHydrateDetailsConfirmOpen] = useState(false);
   const [copyWeekOpen, setCopyWeekOpen] = useState(false);
+  const [blueprintImportOpen, setBlueprintImportOpen] = useState(false);
   const [progressionOpen, setProgressionOpen] = useState(false);
   const [progressionSeed, setProgressionSeed] = useState<ProgressionAssignmentSeed | null>(
     null
@@ -788,6 +791,21 @@ export function ProgrammeBuilder({
       ) : null}
 
       <CoachGenerationScopeControl value={generationScope} onChange={setGenerationScope} />
+
+      {isLive && livePersistence?.athleteId && effectiveProfile ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setBlueprintImportOpen(true)}
+            className="rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 hover:bg-violet-500/20"
+          >
+            Import blueprint
+          </button>
+          <p className="text-[11px] text-zinc-500">
+            Preview a validated 4-week blueprint, then save as unpublished drafts only.
+          </p>
+        </div>
+      ) : null}
 
       {isLive ? (
         <CoachBlockSelector
@@ -1394,6 +1412,22 @@ export function ProgrammeBuilder({
             const result = await copyWeekTo(draft.week, targetWeek, conflictMode);
             if (result.ok) setCopyWeekOpen(false);
             return result;
+          }}
+        />
+      ) : null}
+
+      {isLive && livePersistence?.athleteId && effectiveProfile ? (
+        <ProgrammeBlueprintImportModal
+          open={blueprintImportOpen}
+          onClose={() => setBlueprintImportOpen(false)}
+          athleteId={livePersistence.athleteId}
+          selectedBlock={selectedBlock}
+          effectiveProfile={effectiveProfile}
+          onImported={(blockNum) => {
+            showToast(`Blueprint imported into Block ${blockNum} (unpublished).`);
+            void selectBlock(blockNum);
+            void loadBlockMeta();
+            void livePersistence.onReload();
           }}
         />
       ) : null}
