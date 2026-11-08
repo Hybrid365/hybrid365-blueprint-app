@@ -28,18 +28,45 @@ import { cycleInBlockForGlobalWeek } from "@/app/lib/hyroxProgrammeDates";
 export const PROGRAMME_BLUEPRINT_EXPORT_FORMAT = "hybrid365.programme_blueprint_export" as const;
 export const PROGRAMME_BLUEPRINT_EXPORT_FORMAT_VERSION = "1" as const;
 
+/** Mirror import payload guard — refuse oversized export responses. */
+export const BLUEPRINT_EXPORT_JSON_MAX_CHARS = 1_500_000;
+
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
-/** Opaque stable ref — not reversible to UUID without the original id. Portable (no node:crypto). */
-export function athleteRefFromId(athleteId: string): string {
-  const input = `hybrid365:athlete:${athleteId}`;
-  // FNV-1a 64-bit style mix → hex (stable, non-PII)
+/** Opaque stable ref — portable FNV-1a 64-bit mix (no node:crypto). */
+function opaqueRef(prefix: string, value: string): string {
+  const input = `hybrid365:${prefix}:${value}`;
   let h = 0xcbf29ce484222325n;
   for (let i = 0; i < input.length; i++) {
     h ^= BigInt(input.charCodeAt(i));
     h = BigInt.asUintN(64, h * 0x100000001b3n);
   }
-  return `ath_${h.toString(16).padStart(16, "0")}`;
+  return `${prefix}_${h.toString(16).padStart(16, "0")}`;
+}
+
+/** Opaque stable athlete ref — not reversible to UUID without the original id. */
+export function athleteRefFromId(athleteId: string): string {
+  return opaqueRef("ath", athleteId);
+}
+
+/** Opaque draft ref for provenance — real draft UUID is not exported. */
+export function draftRefFromId(draftId: string): string {
+  return opaqueRef("dft", draftId);
+}
+
+function safeSessionCount(draft: CoachDraftWeek | null): number {
+  if (!draft?.days) return 0;
+  try {
+    return countCoachDraftSessions({
+      ...draft,
+      days: draft.days.map((day) => ({
+        ...day,
+        sessions: Array.isArray(day.sessions) ? day.sessions : [],
+      })),
+    }).total;
+  } catch {
+    return 0;
+  }
 }
 
 export function sanitizeWeekForExport(
@@ -60,7 +87,13 @@ export function resolveExportGlobalWeeks(args: {
   const blockWeeks = ([1, 2, 3, 4] as const).map((c) => globalWeekForBlock(args.block, c));
   if (args.selection === "entire_block") return [...blockWeeks];
 
-  const requested = [...new Set(args.globalWeeks ?? [])].sort((a, b) => a - b);
+  const raw = args.globalWeeks ?? [];
+  for (const w of raw) {
+    if (!Number.isInteger(w) || w < 1) {
+      throw new Error("global_weeks must be positive integers.");
+    }
+  }
+  const requested = [...new Set(raw)].sort((a, b) => a - b);
   if (requested.length === 0) {
     throw new Error("global_weeks is required for current_week / selected_weeks.");
   }
@@ -91,17 +124,18 @@ export function buildWeekProvenance(args: {
   globalWeek: number;
   preferredRow: HyroxProgrammeDraftRow | null;
   athleteWeekPublished: boolean;
+  parsedWeek: CoachDraftWeek | null;
+  parseFailed: boolean;
 }): ProgrammeBlueprintExportWeekProvenance {
   const cycle = cycleInBlockForGlobalWeek(args.globalWeek);
   const row = args.preferredRow;
-  const draftData = row ? parseCoachDraftWeekJson(row.draft_data) : null;
-  const sessionCount = draftData ? countCoachDraftSessions(draftData) : 0;
-  const contentSource = classifyContentSource(row);
+  let contentSource = classifyContentSource(row);
+  if (row && args.parseFailed) contentSource = "unparseable";
 
   return {
     cycle,
     globalWeek: args.globalWeek,
-    draftId: row?.id ?? null,
+    draftRef: row?.id ? draftRefFromId(row.id) : null,
     dbStatus: row?.status ?? null,
     coachStatus: row ? draftDbToCoachStatus(row.status) : null,
     athleteWeekPublished: args.athleteWeekPublished,
@@ -109,7 +143,9 @@ export function buildWeekProvenance(args: {
     createdAt: row?.created_at ?? null,
     updatedAt: row?.updated_at ?? null,
     publishedAt: row?.published_at ?? null,
-    sessionCount,
+    sessionCount: safeSessionCount(args.parsedWeek),
+    coachNote: row?.coach_note ?? null,
+    athleteFacingNote: row?.athlete_facing_note ?? null,
   };
 }
 
@@ -132,17 +168,21 @@ export function buildProgrammeBlueprintExportDocument(args: {
     const row = args.preferredByWeek.get(globalWeek) ?? null;
     const athleteWeekPublished =
       args.publishedWeekNumbers.has(globalWeek) || Boolean(row && isPublishedDraftRow(row));
+    const parsed = row ? parseCoachDraftWeekJson(row.draft_data) : null;
+    const parseFailed = Boolean(row && !parsed);
     const provenance = buildWeekProvenance({
       block: args.block,
       globalWeek,
       preferredRow: row,
       athleteWeekPublished,
+      parsedWeek: parsed,
+      parseFailed,
     });
     weekProvenance.push(provenance);
 
-    if (provenance.contentSource === "missing" || !row) continue;
-    const parsed = parseCoachDraftWeekJson(row.draft_data);
-    if (!parsed) continue;
+    if (!parsed || provenance.contentSource === "missing" || provenance.contentSource === "unparseable") {
+      continue;
+    }
     weeks.push(sanitizeWeekForExport(parsed, athleteRef));
   }
 
@@ -162,6 +202,7 @@ export function buildProgrammeBlueprintExportDocument(args: {
     weekProvenance,
   };
 
+  const importCompatibleWhenFourWeeks = weeks.length === 4;
   return {
     format: PROGRAMME_BLUEPRINT_EXPORT_FORMAT,
     formatVersion: PROGRAMME_BLUEPRINT_EXPORT_FORMAT_VERSION,
@@ -171,11 +212,19 @@ export function buildProgrammeBlueprintExportDocument(args: {
       : `Programme export — ${selectionLabel}`,
     version: "1.0.0",
     weeks,
+    // Prefer first selected week's row notes when present (analysis aid; per-week notes in provenance).
+    coachNote: weekProvenance.find((w) => w.coachNote)?.coachNote ?? undefined,
+    athleteFacingNote:
+      weekProvenance.find((w) => w.athleteFacingNote)?.athleteFacingNote ?? undefined,
     export: provenance,
     meta: {
       purpose: "coach_programme_export",
-      importCompatibleWhenFourWeeks: weeks.length === 4,
-      note: "Provenance lives under export.*; weeks[] are full CoachDraftWeek payloads.",
+      importCompatibleWhenFourWeeks,
+      requestedWeekCount: args.selectedGlobalWeeks.length,
+      exportedWeekCount: weeks.length,
+      sparseSelection: weeks.length < args.selectedGlobalWeeks.length,
+      note:
+        "Provenance lives under export.* (incl. weekly coachNote). weeks[] are full CoachDraftWeek payloads. Session coachNotes remain inside sessions. Re-import may sanitize resolved non-override prescription values.",
     },
   };
 }

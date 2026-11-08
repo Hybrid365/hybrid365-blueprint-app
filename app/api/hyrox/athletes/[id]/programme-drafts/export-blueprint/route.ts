@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireHyroxCoachApi } from "@/app/lib/hyroxApiAuth";
 import { fetchHyroxAthleteById } from "@/app/lib/hyroxAthleteCoachDb";
 import { createCoachServerClient } from "@/app/lib/hyroxCoachSupabase";
+import { BLUEPRINT_EXPORT_JSON_MAX_CHARS } from "@/app/lib/hyroxProgrammeBlueprintExport";
 import { exportProgrammeBlueprint } from "@/app/lib/hyroxProgrammeBlueprintExportServer";
 import type { ProgrammeBlueprintExportSelection } from "@/app/lib/hyroxProgrammeBlueprintTypes";
 
@@ -70,6 +71,23 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
+    if (body.global_weeks != null) {
+      if (!Array.isArray(body.global_weeks)) {
+        return NextResponse.json(
+          { success: false, error: "global_weeks must be an array of integers." },
+          { status: 400 }
+        );
+      }
+      for (const w of body.global_weeks) {
+        if (!Number.isInteger(w)) {
+          return NextResponse.json(
+            { success: false, error: "global_weeks must be an array of integers." },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const { document, filename } = await exportProgrammeBlueprint(supabase, {
       athleteId,
       block: block as number,
@@ -78,6 +96,17 @@ export async function POST(request: Request, context: RouteContext) {
       athleteLabel: label,
       programmeLengthWeeks: athlete.programme_length_weeks,
     });
+
+    const serialized = JSON.stringify(document);
+    if (serialized.length > BLUEPRINT_EXPORT_JSON_MAX_CHARS) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Export exceeds ${BLUEPRINT_EXPORT_JSON_MAX_CHARS} characters (${serialized.length}). Narrow the week selection.`,
+        },
+        { status: 413 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

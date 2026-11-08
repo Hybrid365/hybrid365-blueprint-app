@@ -10,8 +10,10 @@ Contract for exporting selected 1-1 programme weeks from Programme Builder as st
 4. Workout payload stays full `CoachDraftWeek` (editConfig, StructuredWorkout, sessionFamily, notes).
 5. Provenance (`export` envelope) is separate from workout weeks — do not invent a second programme format.
 6. Published snapshots vs unpublished / edited working drafts are labelled explicitly per week; never silently mixed without provenance.
-7. Minimise PII: opaque `athleteRef` + optional display label; no email, phone, or auth tokens.
+7. Minimise PII: opaque `athleteRef` + opaque `draftRef`; optional display label; no email, phone, real athlete/draft UUIDs, or auth tokens.
 8. Partial exports (1–3 weeks) are valid for analysis; full-block (4 weeks) is also valid as an import-compatible `ProgrammeBlueprintDocument` when unwrapped.
+9. Weekly row `coach_note` / `athlete_facing_note` are copied into per-week provenance (and document-level when present). Session-level coach notes remain inside `weeks[]`.
+10. Serialized export responses are capped (`BLUEPRINT_EXPORT_JSON_MAX_CHARS`, same order as import).
 
 ## Document shape
 

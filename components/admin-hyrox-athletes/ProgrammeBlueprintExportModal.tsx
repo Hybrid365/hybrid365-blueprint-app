@@ -106,8 +106,21 @@ export function ProgrammeBlueprintExportModal({
             `W${p.globalWeek}: ${p.contentSource} (${p.sessionCount} sessions)`
         )
         .join(" · ");
+      const importOk = data.document?.meta?.importCompatibleWhenFourWeeks === true;
+      const sparse = data.document?.meta?.sparseSelection === true;
       setInfo(
-        `Downloaded ${data.document?.weeks?.length ?? 0} week(s). ${sources || "No session content in selection."}`
+        [
+          `Downloaded ${data.document?.weeks?.length ?? 0} week(s).`,
+          sources || "No session content in selection.",
+          sparse
+            ? "Some selected weeks had no exportable draft content — check provenance."
+            : null,
+          importOk
+            ? "Import-compatible (4 weeks)."
+            : "Partial export — for analysis in Cursor; not a full-block import file.",
+        ]
+          .filter(Boolean)
+          .join(" ")
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Export failed.");

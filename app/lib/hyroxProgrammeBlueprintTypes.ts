@@ -95,7 +95,8 @@ export type ProgrammeBlueprintExportSelection =
 export type ProgrammeBlueprintExportWeekProvenance = {
   cycle: 1 | 2 | 3 | 4;
   globalWeek: number;
-  draftId: string | null;
+  /** Opaque draft reference — real draft UUID is not exported. */
+  draftRef: string | null;
   dbStatus: HyroxProgrammeDraftStatus | null;
   coachStatus: CoachProgrammeStatus | null;
   /** True when an athlete-visible published week exists for this global week. */
@@ -105,12 +106,20 @@ export type ProgrammeBlueprintExportWeekProvenance = {
    * - unpublished_working_draft — preferred Builder working draft (incl. edited)
    * - published_snapshot — published draft row (no unpublished fork)
    * - missing — no draft row / empty week
+   * - unparseable — draft row existed but draft_data could not be parsed
    */
-  contentSource: "unpublished_working_draft" | "published_snapshot" | "missing";
+  contentSource:
+    | "unpublished_working_draft"
+    | "published_snapshot"
+    | "missing"
+    | "unparseable";
   createdAt: string | null;
   updatedAt: string | null;
   publishedAt: string | null;
   sessionCount: number;
+  /** Weekly row notes from hyrox_programme_drafts (not inside CoachDraftWeek JSON). */
+  coachNote: string | null;
+  athleteFacingNote: string | null;
 };
 
 export type ProgrammeBlueprintExportProvenance = {

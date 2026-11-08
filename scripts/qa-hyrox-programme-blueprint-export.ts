@@ -68,20 +68,28 @@ function sampleWeek(athleteId: string, block: number, week: number) {
                       {
                         type: "intervals",
                         name: "Main",
-                        steps: [{ type: "work", durationSec: 300, paceTarget: "T" }],
+                        steps: [
+                          { type: "work", durationSec: 300, paceTarget: "T" },
+                          { type: "rest", durationSec: 90 },
+                        ],
                       },
                     ],
                   },
                 },
+                coachNote: `Session cue W${week}`,
+                structuredExercises: [
+                  { name: "Back squat", sets: 3, reps: "5", load: "70% 1RM" },
+                ],
                 sessionFamily: {
                   familyId: "threshold_5min_repeats",
                   stageKey: "s1",
+                  stageId: "s1",
                   structuredWorkout: {
                     sections: [
                       {
                         type: "intervals",
                         name: "Main",
-                        steps: [{ type: "work", durationSec: 300 }],
+                        steps: [{ type: "work", durationSec: 300, targetPace: "threshold" }],
                       },
                     ],
                   },
@@ -162,13 +170,24 @@ async function main() {
   assert.equal(doc.format, "hybrid365.programme_blueprint_export");
   assert.equal(doc.weeks.length, 2);
   assert.equal(doc.weeks[0]!.athleteId, ref);
-  assert.equal(doc.weeks[0]!.days[1]!.sessions[0]!.editConfig.kind, "generic");
-  assert.ok(doc.weeks[0]!.days[1]!.sessions[0]!.sessionFamily?.structuredWorkout);
+  const tue = doc.weeks[0]!.days[1]!.sessions[0]!;
+  assert.equal(tue.editConfig.kind, "generic");
+  assert.ok(tue.sessionFamily?.structuredWorkout);
+  assert.equal(tue.coachNote, "Session cue W1");
+  assert.equal((tue as { structuredExercises?: Array<{ name: string }> }).structuredExercises?.[0]?.name, "Back squat");
+  const steps = (
+    tue.editConfig as { structuredWorkout?: { sections?: Array<{ steps?: unknown[] }> } }
+  ).structuredWorkout?.sections?.[0]?.steps;
+  assert.equal(steps?.length, 2);
   assert.equal(doc.export.weekProvenance[0]!.contentSource, "unpublished_working_draft");
   assert.equal(doc.export.weekProvenance[0]!.dbStatus, "edited");
+  assert.equal(doc.export.weekProvenance[0]!.coachNote, "internal");
+  assert.equal(doc.export.weekProvenance[0]!.athleteFacingNote, "face");
+  assert.ok(doc.export.weekProvenance[0]!.draftRef?.startsWith("dft_"));
   assert.equal(JSON.stringify(doc).includes("@"), false);
   assert.equal(JSON.stringify(doc).includes(athleteId), false);
-  ok("export preserves StructuredWorkout / editConfig and strips real athlete id");
+  assert.equal(JSON.stringify(doc).includes("draft-1-edited"), false);
+  ok("export preserves StructuredWorkout / editConfig / notes and strips athlete+draft UUIDs");
 
   const parsed = parseProgrammeBlueprintExportDocument(doc);
   assert.equal(parsed.ok, true);

@@ -15,11 +15,7 @@ import type {
   ProgrammeBlueprintExportDocument,
   ProgrammeBlueprintExportSelection,
 } from "@/app/lib/hyroxProgrammeBlueprintTypes";
-import {
-  isPublishedDraftRow,
-  isUnpublishedWorkingDraft,
-  selectPreferredDraftRow,
-} from "@/app/lib/hyroxProgrammeDraftRevision";
+import { selectPreferredDraftRow } from "@/app/lib/hyroxProgrammeDraftRevision";
 import type { HyroxProgrammeDraftRow } from "@/app/lib/hyroxDatabaseTypes";
 
 const DRAFT_SELECT =
@@ -73,19 +69,8 @@ async function fetchPreferredDraftsForWeeks(
 
   const preferred = new Map<number, HyroxProgrammeDraftRow | null>();
   for (const w of globalWeeks) {
-    const rows = byWeek.get(w) ?? [];
-    // Explicit preference: unpublished working draft, else published snapshot via selectPreferred
-    const unpublished = rows
-      .filter((r) => isUnpublishedWorkingDraft(r))
-      .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
-    if (unpublished[0]) {
-      preferred.set(w, unpublished[0]);
-      continue;
-    }
-    const published = rows
-      .filter((r) => isPublishedDraftRow(r))
-      .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
-    preferred.set(w, published[0] ?? selectPreferredDraftRow(rows));
+    // Same preference as Programme Builder / revision model.
+    preferred.set(w, selectPreferredDraftRow(byWeek.get(w) ?? []));
   }
   return preferred;
 }
