@@ -81,3 +81,63 @@ export type BlueprintImportApplyResult = {
   rolledBack?: boolean;
   message: string;
 };
+
+/** Coach export selection mode in Programme Builder. */
+export type ProgrammeBlueprintExportSelection =
+  | "current_week"
+  | "selected_weeks"
+  | "entire_block";
+
+/**
+ * Per-week provenance for an export. Separate from CoachDraftWeek workout payload.
+ * contentSource describes which row's draft_data was copied into `weeks[]`.
+ */
+export type ProgrammeBlueprintExportWeekProvenance = {
+  cycle: 1 | 2 | 3 | 4;
+  globalWeek: number;
+  draftId: string | null;
+  dbStatus: HyroxProgrammeDraftStatus | null;
+  coachStatus: CoachProgrammeStatus | null;
+  /** True when an athlete-visible published week exists for this global week. */
+  athleteWeekPublished: boolean;
+  /**
+   * Which content was exported:
+   * - unpublished_working_draft — preferred Builder working draft (incl. edited)
+   * - published_snapshot — published draft row (no unpublished fork)
+   * - missing — no draft row / empty week
+   */
+  contentSource: "unpublished_working_draft" | "published_snapshot" | "missing";
+  createdAt: string | null;
+  updatedAt: string | null;
+  publishedAt: string | null;
+  sessionCount: number;
+};
+
+export type ProgrammeBlueprintExportProvenance = {
+  exportedAt: string;
+  /** Opaque stable athlete reference — not email / not raw UUID. */
+  athleteRef: string;
+  /** Optional coach-supplied display label (never auto-filled from email). */
+  athleteLabel: string | null;
+  sourceBlock: number;
+  selection: ProgrammeBlueprintExportSelection;
+  selectedGlobalWeeks: number[];
+  weekProvenance: ProgrammeBlueprintExportWeekProvenance[];
+};
+
+/**
+ * Export document: import-compatible id/name/version/weeks core + separate provenance.
+ * Partial exports may have 1–3 weeks; full block has 4.
+ */
+export type ProgrammeBlueprintExportDocument = {
+  format: "hybrid365.programme_blueprint_export";
+  formatVersion: "1";
+  id: string;
+  name: string;
+  version: string;
+  weeks: CoachDraftWeek[];
+  coachNote?: string;
+  athleteFacingNote?: string;
+  export: ProgrammeBlueprintExportProvenance;
+  meta?: Record<string, unknown>;
+};
