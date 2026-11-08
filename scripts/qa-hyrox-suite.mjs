@@ -18,6 +18,7 @@ const groups = {
     "scripts/qa-hyrox-copy-programme-week.ts",
     "scripts/qa-hyrox-auto-carry-week.ts",
     "scripts/qa-hyrox-programme-blueprint-import.ts",
+    "scripts/qa-hyrox-programme-blueprint-export.ts",
   ],
   athlete: [
     "scripts/qa-hyrox-home-v2.ts",
