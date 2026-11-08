@@ -33,13 +33,15 @@ export const BLUEPRINT_EXPORT_JSON_MAX_CHARS = 1_500_000;
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
-/** Opaque stable ref — portable FNV-1a 64-bit mix (no node:crypto). */
+/** Opaque stable ref — portable FNV-1a 64-bit mix (no BigInt literals; ES2017-safe). */
 function opaqueRef(prefix: string, value: string): string {
   const input = `hybrid365:${prefix}:${value}`;
-  let h = 0xcbf29ce484222325n;
+  let h = BigInt("0xcbf29ce484222325");
+  const prime = BigInt("0x100000001b3");
+  const mask = BigInt("0xffffffffffffffff");
   for (let i = 0; i < input.length; i++) {
     h ^= BigInt(input.charCodeAt(i));
-    h = BigInt.asUintN(64, h * 0x100000001b3n);
+    h = (h * prime) & mask;
   }
   return `${prefix}_${h.toString(16).padStart(16, "0")}`;
 }
