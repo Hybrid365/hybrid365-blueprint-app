@@ -1,4 +1,5 @@
 import type { HyroxApplicationInsert, HyroxJson } from "@/app/lib/hyroxDatabaseTypes";
+import { ATTRIBUTION_QUERY_KEYS } from "@/app/lib/start/attribution";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -75,6 +76,11 @@ export function mapApplyFormFieldsToSubmitBody(
   for (const [k, v] of Object.entries(extras)) {
     const s = str(v);
     if (s) raw_payload[k] = s;
+  }
+
+  for (const key of [...ATTRIBUTION_QUERY_KEYS, "landing_path"] as const) {
+    const s = str(fields[key]);
+    if (s) raw_payload[key] = s.slice(0, key === "landing_path" ? 300 : 200);
   }
 
   const currentLevel =

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { HYROX_TEAM_EMAIL_LINKING_NOTE } from "@/components/hyrox-team/hyroxTeamOfferCopy";
+import { collectEnquiryAttribution } from "@/components/start/coachingEnquiryFormUi";
 
 const APPLICATION_API = "/api/hyrox/applications";
 
@@ -67,6 +68,13 @@ export default function HyroxTeamApplyFormSection() {
         fields[key] = value;
       }
     });
+
+    const attribution = collectEnquiryAttribution();
+    if (attribution) {
+      for (const [key, value] of Object.entries(attribution)) {
+        if (value) fields[key] = value;
+      }
+    }
 
     if (!fields.name?.trim()) {
       setError("Full name is required.");

@@ -5,8 +5,6 @@
  * `currentGoal` is omitted until real goals are supplied — do not invent or show placeholders.
  */
 
-import type { PhoneScreenId } from "@/app/lib/homepage/phoneScreens";
-
 export const HYROX_ONE_TO_ONE_APPLY_HREF = "/hyrox-team/apply";
 
 export const HYROX_ONE_TO_ONE_NAV = {
@@ -63,7 +61,7 @@ export const HYROX_ONE_TO_ONE_HERO = {
   eyebrow: "HYBRID365 HYROX TEAM",
   headline: ["YOUR FASTEST HYROX", "STARTS WITH A PLAN", "BUILT AROUND YOU."],
   body: "Individual programming, direct coaching and a performance team built around helping you race faster.",
-  primaryCta: "APPLY TO JOIN THE HYROX TEAM",
+  primaryCta: "APPLY FOR 1-1 COACHING",
   secondaryCta: "MEET THE TEAM",
   videoLabel: "WATCH THIS FIRST ↓",
   credibility: "Individual coaching · Team environment · Built around your performance",
@@ -209,19 +207,23 @@ export const HYROX_ONE_TO_ONE_JOURNEY = {
 } as const;
 
 export const HYROX_ONE_TO_ONE_PROOF = {
-  eyebrow: "THE SYSTEM BEHIND SUB-60",
-  headline: "1:08:37 → 59:14",
+  eyebrow: "MANCHESTER → DUBLIN",
+  delta: ["12:17 faster", "in ~10 months"] as const,
   imageSrc: "/images/hyrox-team/Hyrox-Result.jpg",
-  imageAlt: "Kieran Higgs celebrating 59:14 HYROX finish",
+  imageAlt: "Kieran Higgs at a HYROX finish, clock showing 59:14",
+  finishPhotoLabel: "Race day",
   from: "1:08:37",
-  to: "59:14",
+  to: "56:20",
+  fromMeta: "January 2026 · Manchester",
+  toMeta: "13 November 2026 · Dublin",
   fiveK: "16:00",
-  event: "Pro Solo HYROX",
   body: [
-    "The result came from combining running development, aerobic capacity, threshold, strength, strength endurance, HYROX-specific work and race execution.",
-    "HYROX Team applies those principles around the individual athlete rather than copying one programme across everyone.",
+    "Manchester to Dublin came from threshold development, aerobic durability, HYROX-specific conditioning, station capacity and a workload progressed over about ten months.",
+    "HYROX Team coaching is delivered the same way — structured progression, reviewed against how you are actually training, and adjusted week to week.",
   ],
 } as const;
+
+export type HyroxTeamAppScreenId = "programme" | "session" | "workload";
 
 export type HyroxOneToOneGalleryItem = {
   id: string;
@@ -229,7 +231,14 @@ export type HyroxOneToOneGalleryItem = {
   title: string;
   caption: string;
   points: string[];
-  screenId: PhoneScreenId;
+  /** Current-app screen rendered in the existing phone slot. */
+  screen: HyroxTeamAppScreenId;
+  /**
+   * Drop a supplied iPhone capture here (public path). Shown as-is inside the frame.
+   * Leave unset to use the current-app screen.
+   */
+  imageSrc?: string;
+  imageAlt?: string;
 };
 
 export const HYROX_ONE_TO_ONE_SYSTEM = {
@@ -244,27 +253,45 @@ export const HYROX_ONE_TO_ONE_GALLERY: HyroxOneToOneGalleryItem[] = [
     id: "programme",
     eyebrow: "PROGRAMME",
     title: "TRAINING BUILT AROUND YOU.",
-    caption: "Individual programming built around your race date, availability and limiters.",
-    points: ["Weekly structure", "Session purpose", "Built around your numbers"],
-    screenId: "programme",
+    caption: "A weekly programme with a purpose on every session — built around the athlete, not a template.",
+    points: ["Weekly structure", "Session purpose", "Threshold, strength and stations"],
+    screen: "programme",
   },
   {
     id: "session",
     eyebrow: "SESSION",
     title: "KNOW EXACTLY WHAT TO DO.",
-    caption: "Purpose, prescription, pace, watts or load, intensity and coach notes — not a vague workout.",
-    points: ["Purpose", "Pace / watts / load", "RPE / intensity", "Coach notes"],
-    screenId: "threshold-run",
+    caption: "Purpose, prescription, pace or load, and what to bring back after the session.",
+    points: ["Purpose", "Pace / load", "RPE", "What gets logged"],
+    screen: "session",
   },
   {
-    id: "review",
-    eyebrow: "REVIEW / PROGRESS",
-    title: "TRAINING THAT GETS REVIEWED.",
-    caption: "Check-ins, benchmarks and monitoring so the plan can actually be adapted.",
-    points: ["Weekly check-ins", "Benchmark data", "Coach feedback"],
-    screenId: "weekly-check-in",
+    id: "workload",
+    eyebrow: "WORKLOAD",
+    title: "THE WORK THAT MATTERS.",
+    caption: "We track the work that actually matters — not just whether a session was completed.",
+    points: ["Threshold volume", "Running workload", "Station workload", "How it trends"],
+    screen: "workload",
   },
 ];
+
+/** Compact proof under the existing platform gallery — not a new page section. */
+export const HYROX_ONE_TO_ONE_COACHING_LOOP = {
+  message: "Your training, feedback and recovery feed into the next coaching decision.",
+  session: {
+    title: "Session completed",
+    facts: ["RPE 8", "25:02", "5.86 km"],
+  },
+  recovery: [
+    { label: "Sleep", value: "7" },
+    { label: "Energy", value: "6" },
+    { label: "Soreness", value: "3" },
+  ],
+  decision: {
+    label: "Next week",
+    body: "Threshold moves 25 → 30 min. Easy running stays where it is.",
+  },
+} as const;
 
 export const HYROX_ONE_TO_ONE_RESULTS = {
   eyebrow: "ATHLETE RESULTS",
@@ -324,5 +351,5 @@ export const HYROX_ONE_TO_ONE_FINAL = {
   headline: ["READY TO SEE HOW", "FAST YOU CAN GET?"],
   body: "Apply to join the Hybrid365 HYROX Team.",
   note: "Limited athlete capacity to protect coaching quality.",
-  cta: "APPLY TO JOIN THE HYROX TEAM",
+  cta: "APPLY FOR 1-1 COACHING",
 } as const;

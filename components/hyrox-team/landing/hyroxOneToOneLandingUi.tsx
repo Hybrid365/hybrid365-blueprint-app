@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AttributedLink } from "@/components/start/AttributedLink";
 import { cn } from "@/lib/utils";
 
 /** 1-1 landing primitives — cloned from Community visual language, not shared with `/hyrox-community`. */
@@ -79,7 +80,7 @@ export function HyroxOneToOneApplyCta({
   size?: "default" | "large";
 }) {
   return (
-    <Link
+    <AttributedLink
       href={href}
       className={cn(
         "inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#f4d23c] px-6 text-center text-sm font-black uppercase tracking-wide text-[#050505] transition hover:bg-[#e8c935]",
@@ -88,7 +89,7 @@ export function HyroxOneToOneApplyCta({
       )}
     >
       {children}
-    </Link>
+    </AttributedLink>
   );
 }
 
