@@ -254,14 +254,15 @@ export const HYROX_ONE_TO_ONE_GALLERY: HyroxOneToOneGalleryItem[] = [
       "Hybrid365 home screen for Monday 11 May, showing the threshold development session, a coach note and readiness",
   },
   {
-    id: "progress",
-    eyebrow: "PROGRESS",
-    title: "THE WORK THAT MATTERS.",
-    caption: "We track the work that actually matters — not just whether a session was completed.",
-    points: ["Running volume", "5K progression", "Threshold pace"],
-    imageSrc: "/images/hyrox-team/ui/training-progress.webp",
+    id: "session",
+    eyebrow: "SESSION",
+    title: "KNOW EXACTLY WHAT TO DO.",
+    caption:
+      "Every session has a clear purpose, structure and target — built into your wider progression.",
+    points: ["Purpose", "Main set", "Target pace"],
+    imageSrc: "/images/hyrox-team/ui/session-threshold.webp",
     imageAlt:
-      "Hybrid365 training progress screen with eight weeks of running volume, 5K progression and threshold intervals",
+      "Hybrid365 session screen for threshold development, showing the main set, target pace and start control",
   },
   {
     id: "feedback",
