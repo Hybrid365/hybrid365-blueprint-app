@@ -23,7 +23,7 @@ const FOUNDER_PROOF_PHOTOS = [
   {
     src: HYROX_ONE_TO_ONE_PROOF.imageSrc,
     alt: HYROX_ONE_TO_ONE_PROOF.imageAlt,
-    label: HYROX_ONE_TO_ONE_PROOF.to,
+    label: HYROX_ONE_TO_ONE_PROOF.finishPhotoLabel,
     imageClassName: "object-cover object-top",
   },
 ] as const;
@@ -33,23 +33,28 @@ export function HyroxOneToOneProof() {
     <HyroxOneToOneSection id="sub-60" variant="default" className="border-b-0 !py-12 sm:!py-16">
       <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:text-left">
         <HyroxOneToOneEyebrow>{HYROX_ONE_TO_ONE_PROOF.eyebrow}</HyroxOneToOneEyebrow>
-        <HyroxOneToOneHeading className="text-[clamp(1.85rem,6vw,3.1rem)]">
-          {HYROX_ONE_TO_ONE_PROOF.headline}
+        <p className="text-[clamp(2.15rem,9.2vw,4.6rem)] font-black leading-none tracking-[-0.05em] text-white">
+          <span className="text-white/35">{HYROX_ONE_TO_ONE_PROOF.from}</span>
+          <span className="mx-1.5 text-[#f4d23c] sm:mx-2" aria-hidden>
+            →
+          </span>
+          <span>{HYROX_ONE_TO_ONE_PROOF.to}</span>
+        </p>
+        <HyroxOneToOneHeading className="mt-4 text-[clamp(1.35rem,4.8vw,2.2rem)]">
+          <span className="text-[#f4d23c]">{HYROX_ONE_TO_ONE_PROOF.delta[0]}</span>
+          <span className="mt-1 block text-white/75">{HYROX_ONE_TO_ONE_PROOF.delta[1]}</span>
         </HyroxOneToOneHeading>
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45 sm:text-xs">
+          <span className="block sm:inline">{HYROX_ONE_TO_ONE_PROOF.fromMeta}</span>
+          <span className="mx-3 hidden text-[#f4d23c] sm:inline" aria-hidden>
+            →
+          </span>
+          <span className="mt-1 block text-white/70 sm:mt-0 sm:inline">{HYROX_ONE_TO_ONE_PROOF.toMeta}</span>
+        </p>
+        <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/30">
+          5K {HYROX_ONE_TO_ONE_PROOF.fiveK}
+        </p>
       </div>
-
-      <p className="mt-8 text-center text-[clamp(2.4rem,11vw,5rem)] font-black leading-none tracking-[-0.05em] text-white lg:text-left">
-        <span className="text-white/35">{HYROX_ONE_TO_ONE_PROOF.from}</span>
-        <span className="mx-2 text-[#f4d23c]" aria-hidden>
-          →
-        </span>
-        <span>{HYROX_ONE_TO_ONE_PROOF.to}</span>
-      </p>
-      <p className="mt-3 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-white/40 lg:text-left">
-        {HYROX_ONE_TO_ONE_PROOF.event}
-        <span className="mx-3 text-white/20">·</span>
-        5K {HYROX_ONE_TO_ONE_PROOF.fiveK}
-      </p>
 
       <div className="mt-8 grid grid-cols-3 gap-1 overflow-hidden rounded-[1.15rem] sm:gap-1.5 sm:rounded-[1.5rem]">
         {FOUNDER_PROOF_PHOTOS.map((photo) => (

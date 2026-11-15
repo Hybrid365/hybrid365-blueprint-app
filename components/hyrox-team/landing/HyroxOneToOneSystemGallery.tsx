@@ -6,24 +6,26 @@ import {
   HYROX_ONE_TO_ONE_SYSTEM,
   type HyroxOneToOneGalleryItem,
 } from "@/app/lib/hyrox-team/landing/hyroxOneToOneLanding";
-import { getPhoneScreen } from "@/app/lib/homepage/phoneScreens";
-import { HomepagePhoneVisual } from "@/components/homepage/HomepagePhoneVisual";
 import { cn } from "@/lib/utils";
+import { HyroxTeamAppScreen, HyroxTeamCoachingDecision } from "./HyroxTeamAppScreens";
 import {
   HyroxOneToOneEyebrow,
   HyroxOneToOneHeading,
   HyroxOneToOneSection,
 } from "./hyroxOneToOneLandingUi";
 
-function PlatformSlide({
-  slide,
-  priority,
-}: {
-  slide: HyroxOneToOneGalleryItem;
-  priority?: boolean;
-}) {
-  const screen = getPhoneScreen(slide.screenId);
+function SuppliedPhoneCapture({ src, alt }: { src: string; alt: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className="block h-auto w-full object-contain drop-shadow-[0_24px_48px_rgba(0,0,0,0.55)]"
+    />
+  );
+}
 
+function PlatformSlide({ slide }: { slide: HyroxOneToOneGalleryItem }) {
   return (
     <article className="grid items-center gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
       <div>
@@ -41,14 +43,13 @@ function PlatformSlide({
         </ul>
       </div>
 
-      <div className="flex justify-center px-6 py-3 lg:justify-end lg:px-0 lg:py-0">
-        <div className="w-[min(74vw,280px)] lg:w-[340px]">
-          <HomepagePhoneVisual
-            screen={screen}
-            displayWidth={340}
-            fillContainer
-            priority={priority}
-          />
+      <div className="flex justify-center px-2 py-3 lg:justify-end lg:px-0 lg:py-0">
+        <div className="w-[min(78vw,300px)] lg:w-[340px]">
+          {slide.imageSrc ? (
+            <SuppliedPhoneCapture src={slide.imageSrc} alt={slide.imageAlt ?? slide.title} />
+          ) : (
+            <HyroxTeamAppScreen id={slide.screen} />
+          )}
         </div>
       </div>
     </article>
@@ -111,13 +112,13 @@ export function HyroxOneToOneSystemGallery() {
         aria-label="HYROX Team coaching platform"
         className="-mx-4 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] outline-none [&::-webkit-scrollbar]:hidden lg:mx-0 lg:mt-12 lg:px-0"
       >
-        {slides.map((slide, i) => (
+        {slides.map((slide) => (
           <div
             key={slide.id}
             data-platform-slide
             className="w-[min(92vw,720px)] shrink-0 snap-center lg:w-full lg:min-w-full"
           >
-            <PlatformSlide slide={slide} priority={i === 0} />
+            <PlatformSlide slide={slide} />
           </div>
         ))}
       </div>
@@ -156,6 +157,7 @@ export function HyroxOneToOneSystemGallery() {
           →
         </button>
       </div>
+
       <div className="mt-6 flex items-center justify-center gap-2 sm:hidden" role="tablist" aria-label="Platform slides">
         {slides.map((slide, i) => (
           <button
@@ -172,6 +174,7 @@ export function HyroxOneToOneSystemGallery() {
           />
         ))}
       </div>
+      <HyroxTeamCoachingDecision />
     </HyroxOneToOneSection>
   );
 }

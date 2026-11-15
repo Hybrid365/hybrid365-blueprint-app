@@ -60,6 +60,9 @@ export function HyroxOneToOneHero() {
                 title="Hybrid365 HYROX Team coaching"
               />
             </div>
+            <p className="mx-auto mt-2 max-w-md text-center text-[10px] leading-snug text-white/35 lg:mx-0 lg:text-left">
+              App screenshots shown in this video may be out of date due to recent Hybrid365 app updates.
+            </p>
           </div>
         </div>
       </div>

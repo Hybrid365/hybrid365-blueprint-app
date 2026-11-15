@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { HYROX_ONE_TO_ONE_APPLY_HREF } from "@/app/lib/hyrox-team/landing/hyroxOneToOneLanding";
+import {
+  HYROX_ONE_TO_ONE_APPLY_HREF,
+  HYROX_ONE_TO_ONE_HERO,
+} from "@/app/lib/hyrox-team/landing/hyroxOneToOneLanding";
 import { HyroxOneToOneApplyCta } from "./hyroxOneToOneLandingUi";
 
 export function HyroxTeamHeader() {
@@ -9,8 +12,11 @@ export function HyroxTeamHeader() {
         <Link href="/" className="text-sm font-black uppercase tracking-[0.12em] text-white">
           Hybrid<span className="text-[#f4d23c]">365</span>
         </Link>
-        <HyroxOneToOneApplyCta href={HYROX_ONE_TO_ONE_APPLY_HREF} className="min-h-[40px] px-5 text-xs">
-          Apply
+        <HyroxOneToOneApplyCta
+          href={HYROX_ONE_TO_ONE_APPLY_HREF}
+          className="min-h-[40px] shrink-0 px-3 text-[10px] tracking-[0.04em] sm:px-5 sm:text-xs"
+        >
+          {HYROX_ONE_TO_ONE_HERO.primaryCta}
         </HyroxOneToOneApplyCta>
       </div>
     </header>
