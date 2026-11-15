@@ -223,22 +223,15 @@ export const HYROX_ONE_TO_ONE_PROOF = {
   ],
 } as const;
 
-export type HyroxTeamAppScreenId = "programme" | "session" | "workload";
-
 export type HyroxOneToOneGalleryItem = {
   id: string;
   eyebrow: string;
   title: string;
   caption: string;
   points: string[];
-  /** Current-app screen rendered in the existing phone slot. */
-  screen: HyroxTeamAppScreenId;
-  /**
-   * Drop a supplied iPhone capture here (public path). Shown as-is inside the frame.
-   * Leave unset to use the current-app screen.
-   */
-  imageSrc?: string;
-  imageAlt?: string;
+  /** Supplied iPhone capture. Already framed — do not wrap in another device. */
+  imageSrc: string;
+  imageAlt: string;
 };
 
 export const HYROX_ONE_TO_ONE_SYSTEM = {
@@ -253,45 +246,35 @@ export const HYROX_ONE_TO_ONE_GALLERY: HyroxOneToOneGalleryItem[] = [
     id: "programme",
     eyebrow: "PROGRAMME",
     title: "TRAINING BUILT AROUND YOU.",
-    caption: "A weekly programme with a purpose on every session — built around the athlete, not a template.",
-    points: ["Weekly structure", "Session purpose", "Threshold, strength and stations"],
-    screen: "programme",
+    caption:
+      "Your programme is built around your ability, weaknesses, race calendar and availability.",
+    points: ["This week", "Today's session", "Coach note"],
+    imageSrc: "/images/hyrox-team/ui/home-today.webp",
+    imageAlt:
+      "Hybrid365 home screen for Monday 11 May, showing the threshold development session, a coach note and readiness",
   },
   {
     id: "session",
     eyebrow: "SESSION",
     title: "KNOW EXACTLY WHAT TO DO.",
-    caption: "Purpose, prescription, pace or load, and what to bring back after the session.",
-    points: ["Purpose", "Pace / load", "RPE", "What gets logged"],
-    screen: "session",
+    caption:
+      "Every session has a clear purpose, structure and target — built into your wider progression.",
+    points: ["Purpose", "Main set", "Target pace"],
+    imageSrc: "/images/hyrox-team/ui/session-threshold.webp",
+    imageAlt:
+      "Hybrid365 session screen for threshold development, showing the main set, target pace and start control",
   },
   {
-    id: "workload",
-    eyebrow: "WORKLOAD",
-    title: "THE WORK THAT MATTERS.",
-    caption: "We track the work that actually matters — not just whether a session was completed.",
-    points: ["Threshold volume", "Running workload", "Station workload", "How it trends"],
-    screen: "workload",
+    id: "feedback",
+    eyebrow: "FEEDBACK",
+    title: "THE NEXT DECISION.",
+    caption: "Your training, feedback and recovery feed into the next coaching decision.",
+    points: ["Today's call", "Contributing signals", "Morning check-in"],
+    imageSrc: "/images/hyrox-team/ui/readiness.webp",
+    imageAlt:
+      "Hybrid365 readiness screen with today's call, contributing signals and the morning check-in",
   },
 ];
-
-/** Compact proof under the existing platform gallery — not a new page section. */
-export const HYROX_ONE_TO_ONE_COACHING_LOOP = {
-  message: "Your training, feedback and recovery feed into the next coaching decision.",
-  session: {
-    title: "Session completed",
-    facts: ["RPE 8", "25:02", "5.86 km"],
-  },
-  recovery: [
-    { label: "Sleep", value: "7" },
-    { label: "Energy", value: "6" },
-    { label: "Soreness", value: "3" },
-  ],
-  decision: {
-    label: "Next week",
-    body: "Threshold moves 25 → 30 min. Easy running stays where it is.",
-  },
-} as const;
 
 export const HYROX_ONE_TO_ONE_RESULTS = {
   eyebrow: "ATHLETE RESULTS",

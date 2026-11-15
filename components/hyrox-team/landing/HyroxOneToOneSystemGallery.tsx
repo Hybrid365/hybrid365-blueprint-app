@@ -7,7 +7,6 @@ import {
   type HyroxOneToOneGalleryItem,
 } from "@/app/lib/hyrox-team/landing/hyroxOneToOneLanding";
 import { cn } from "@/lib/utils";
-import { HyroxTeamAppScreen, HyroxTeamCoachingDecision } from "./HyroxTeamAppScreens";
 import {
   HyroxOneToOneEyebrow,
   HyroxOneToOneHeading,
@@ -27,7 +26,7 @@ function SuppliedPhoneCapture({ src, alt }: { src: string; alt: string }) {
 
 function PlatformSlide({ slide }: { slide: HyroxOneToOneGalleryItem }) {
   return (
-    <article className="grid items-center gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
+    <article className="grid items-start gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-10">
       <div>
         <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#f4d23c]">
           {slide.eyebrow}
@@ -43,13 +42,9 @@ function PlatformSlide({ slide }: { slide: HyroxOneToOneGalleryItem }) {
         </ul>
       </div>
 
-      <div className="flex justify-center px-2 py-3 lg:justify-end lg:px-0 lg:py-0">
-        <div className="w-[min(78vw,300px)] lg:w-[340px]">
-          {slide.imageSrc ? (
-            <SuppliedPhoneCapture src={slide.imageSrc} alt={slide.imageAlt ?? slide.title} />
-          ) : (
-            <HyroxTeamAppScreen id={slide.screen} />
-          )}
+      <div className="flex justify-center px-1 py-2 lg:justify-end lg:px-0 lg:py-0">
+        <div className="w-[min(84vw,400px)] lg:w-[min(100%,420px)]">
+          <SuppliedPhoneCapture src={slide.imageSrc} alt={slide.imageAlt} />
         </div>
       </div>
     </article>
@@ -174,7 +169,6 @@ export function HyroxOneToOneSystemGallery() {
           />
         ))}
       </div>
-      <HyroxTeamCoachingDecision />
     </HyroxOneToOneSection>
   );
 }
