@@ -563,6 +563,12 @@ function testAdvancedHyroxPro7Day() {
       );
     }
 
+    // Week 7 Tuesday is doctrine: the HYROX Pro skeleton assigns Tue run_quality,
+    // and the picker only biases a threshold template (+45). It does not force one.
+    // weightedPick uses Math.random, and repairHyroxProWeeklySkeleton downgrades
+    // violations without putting a threshold session back. A repeat run can land
+    // a long brick on Tuesday, or miss the 40km floor on an earlier week.
+    // This assert stays. The generator is not changed from Track.
     if (wn === 7) {
       const mon = schedule.find((d) => d.day === "Mon");
       const tue = schedule.find((d) => d.day === "Tue");
