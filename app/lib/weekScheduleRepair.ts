@@ -54,6 +54,8 @@ import {
   sessionViolatesSkeleton,
   shouldUseHyroxProWeeklySkeleton,
 } from "./hyroxProWeeklySkeleton";
+import { immovableHardAnchorDays } from "./programmeSlotObligations";
+import { getProgressionFamily } from "./progressionFamilies";
 import {
   benchmarkPlacedBeforeKeySession,
   countStrengthExposures,
@@ -73,6 +75,8 @@ const DAY_ORDER: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 let weekSwapOptions:
   | { protect_sunday_long?: boolean; allow_filler_swap?: boolean }
   | undefined;
+
+let immovableAnchorDays: DayKey[] = [];
 
 const HARD_ROLES = new Set<StructureRole>([
   "run_quality",
@@ -183,6 +187,7 @@ function swapScheduleDays(
   const ia = schedule.findIndex((d) => d.day === dayA);
   const ib = schedule.findIndex((d) => d.day === dayB);
   if (ia < 0 || ib < 0) return false;
+  if (immovableAnchorDays.includes(dayA) || immovableAnchorDays.includes(dayB)) return false;
   const planA = schedule[ia]!;
   const planB = schedule[ib]!;
   if (!opts?.allow_filler_swap && (isFiller(planA) || isFiller(planB))) return false;
@@ -765,7 +770,7 @@ function repairConsecutiveHard(
 
   repairBreakHardChains(schedule, roleByDay);
 
-  const balanced = balanceScheduleHardEasy(schedule, roleByDay);
+  const balanced = balanceScheduleHardEasy(schedule, roleByDay, { immovableDays: immovableAnchorDays });
   schedule.splice(0, schedule.length, ...balanced);
 
   repairBreakHardChains(schedule, roleByDay);
@@ -1055,6 +1060,127 @@ function collectRemainingIssues(
   return [...new Set(issues)];
 }
 
+function forceExchangeDays(
+  schedule: DayPlan[],
+  dayA: DayKey,
+  dayB: DayKey,
+  roleByDay: Map<DayKey, StructureRole>
+) {
+  const ia = schedule.findIndex((day) => day.day === dayA);
+  const ib = schedule.findIndex((day) => day.day === dayB);
+  if (ia < 0 || ib < 0) return;
+  const planA = schedule[ia]!;
+  const planB = schedule[ib]!;
+  schedule[ia] = { ...planB, day: dayA };
+  schedule[ib] = { ...planA, day: dayB };
+  const roleA = roleByDay.get(dayA);
+  const roleB = roleByDay.get(dayB);
+  if (roleA) roleByDay.set(dayB, roleA);
+  else roleByDay.delete(dayB);
+  if (roleB) roleByDay.set(dayA, roleB);
+  else roleByDay.delete(dayA);
+}
+
+function placePublishedVariant(
+  day: DayPlan,
+  familyId: string,
+  weekNumber: number,
+  tags: string[]
+): boolean {
+  const family = getProgressionFamily(familyId);
+  const block = ((((weekNumber - 1) % 4) + 1) || 1) as 1 | 2 | 3 | 4;
+  const variant = family?.variants.find((item) => item.block_week === block) ?? family?.variants[0];
+  if (!family || !variant) return false;
+  day.template_id = variant.template_id;
+  day.title = variant.title;
+  day.tags = tags;
+  day.progression_family = family.family_id;
+  day.progression_marker = variant.marker;
+  day.session = { ...day.session, main: [...variant.main] };
+  day.session_stress = "high";
+  day.session_role = "key";
+  day.double_session = undefined;
+  return true;
+}
+
+function isHyroxKeySession(day: DayPlan, role?: StructureRole): boolean {
+  if (role === "hybrid_primary" || role === "hybrid_density") return true;
+  return (
+    day.tags?.[0] === "hybrid_compromised" ||
+    day.tags?.[0] === "hybrid_density" ||
+    /hyrox|compromised|station/i.test(day.title)
+  );
+}
+
+/** Last pass. Flexible repairs may have moved a fixed key. Put it back from the published family. */
+function restoreImmovableAnchors(
+  schedule: DayPlan[],
+  roleByDay: Map<DayKey, StructureRole>,
+  ctx: WeekRepairContext
+): string | null {
+  if (immovableAnchorDays.length === 0) return null;
+  const notes: string[] = [];
+  const tuesday = schedule.find((day) => day.day === "Tue");
+  if (tuesday && !isRunThresholdAnchorDay(tuesday) && tuesday.tags?.[0] !== "threshold_run") {
+    const holder = schedule.find(
+      (day) =>
+        day.day !== "Tue" &&
+        day.day !== "Sat" &&
+        day.day !== "Sun" &&
+        (isRunThresholdAnchorDay(day) || day.tags?.[0] === "threshold_run")
+    );
+    if (holder) {
+      forceExchangeDays(schedule, "Tue", holder.day, roleByDay);
+      notes.push("Tuesday threshold anchor returned");
+    } else if (
+      placePublishedVariant(
+        tuesday,
+        ctx.input.ability_level === "beginner" ? "threshold_volume_beginner_a" : "threshold_volume_a",
+        ctx.weekNumber,
+        ["threshold_run", "run", "threshold"]
+      )
+    ) {
+      roleByDay.set("Tue", "run_quality");
+      notes.push("Tuesday threshold anchor placed");
+    }
+  }
+
+  const sunday = schedule.find((day) => day.day === "Sun");
+  if (sunday && sunday.tags?.[0] !== "long_run" && !/long run|long zone|long aerobic|long endurance/i.test(sunday.title)) {
+    const holder = schedule.find((day) => day.day !== "Sun" && day.day !== "Tue" && day.tags?.[0] === "long_run");
+    if (holder) {
+      forceExchangeDays(schedule, "Sun", holder.day, roleByDay);
+      notes.push("Sunday long anchor returned");
+    } else if (
+      placePublishedVariant(
+        sunday,
+        ctx.input.ability_level === "advanced" ? "long_run_advanced_a" : "long_run_base_a",
+        ctx.weekNumber,
+        ["long_run", "run", "long_run"]
+      )
+    ) {
+      roleByDay.set("Sun", "run_long");
+      notes.push("Sunday long anchor placed");
+    }
+  }
+
+  const saturday = schedule.find((day) => day.day === "Sat");
+  if (saturday && !isHyroxKeySession(saturday, roleByDay.get("Sat"))) {
+    if (
+      placePublishedVariant(saturday, "compromised_run_a", ctx.weekNumber, [
+        "hybrid_compromised",
+        "hybrid",
+        "hybrid_primary",
+      ])
+    ) {
+      roleByDay.set("Sat", "hybrid_primary");
+      notes.push("Saturday HYROX anchor placed");
+    }
+  }
+
+  return notes.length > 0 ? `Hard anchors: ${notes.join("; ")}.` : null;
+}
+
 /**
  * Run repair passes on a generated week schedule (mutates schedule in place).
  */
@@ -1067,6 +1193,7 @@ export function repairWeekSchedule(
   weekSwapOptions = ctx.input.hyrox_track?.active
     ? { protect_sunday_long: true, allow_filler_swap: true }
     : undefined;
+  immovableAnchorDays = immovableHardAnchorDays(ctx.input, ctx.weekNumber, ctx.weekFocus);
 
   const passes: Array<() => string | null> = [
     () => repairStripRunPrescription(schedule),
@@ -1100,7 +1227,7 @@ export function repairWeekSchedule(
     () => {
       const before = analyzeWeeklyRhythm(schedule, roleByDay).max_consecutive_hard;
       if (before < 3) return null;
-      const balanced = balanceScheduleHardEasy(schedule, roleByDay);
+      const balanced = balanceScheduleHardEasy(schedule, roleByDay, { immovableDays: immovableAnchorDays });
       schedule.splice(0, schedule.length, ...balanced);
       const after = analyzeWeeklyRhythm(schedule, roleByDay).max_consecutive_hard;
       return after < before ? "Final hard/easy rebalance for weekly rhythm." : null;
@@ -1126,7 +1253,11 @@ export function repairWeekSchedule(
     if (msg) repairsApplied.push(msg);
   }
 
+  const restored = restoreImmovableAnchors(schedule, roleByDay, ctx);
+  if (restored) repairsApplied.push(restored);
+
   weekSwapOptions = undefined;
+  immovableAnchorDays = [];
 
   const remainingIssues = collectRemainingIssues(schedule, roleByDay, ctx);
 

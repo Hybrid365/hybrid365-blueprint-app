@@ -262,8 +262,15 @@ export function analyseProgrammePreview(
       ) {
         nonRunRx += 1;
       }
+      const bikeAerobic =
+        day.title === "Aerobic Support" ||
+        day.tags?.includes("aerobic_support") ||
+        day.tags?.includes("bike_z2_support") ||
+        /easy z2 bike|bike flush|recovery bike|bike low-impact|low-impact aerobic|mixed aerobic|z2 run/i.test(
+          day.title
+        );
       if (
-        /bike|flush|aerobic support/i.test(`${day.title} ${(day.session?.main ?? []).join(" ")}`) &&
+        bikeAerobic &&
         !/(\d{2}–\d{2}|\d{2}-\d{2})\s*min/i.test(
           `${day.title} ${(day.session?.main ?? []).join(" ")} ${(day.session?.notes ?? []).join(" ")}`
         )

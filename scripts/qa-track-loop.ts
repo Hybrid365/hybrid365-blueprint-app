@@ -6,6 +6,9 @@ import fs from "node:fs";
 import { actualWorkload } from "../app/lib/track-loop/policy";
 import {
   assertNoLiveWrite,
+  CANONICAL_STAGING_SUPABASE_REF,
+  PRODUCTION_SUPABASE_REF,
+  trackStagingWriteAllowed,
   GENERATOR_REGRESSION,
   nextBlock,
   oneGoodSessionKeeps,
@@ -33,7 +36,7 @@ const pain = runPainStory();
 const stuck = runNoSafeReflowStory();
 const misses = runMultiMissStory();
 
-assert(GENERATOR_REGRESSION.verdict === "genuine", "generator verdict");
+assert(GENERATOR_REGRESSION.verdict === "fixed", "generator verdict");
 assert(fs.readFileSync("scripts/qa-hyrox-track-programming.ts", "utf8").includes("Week 7: Tuesday hard threshold anchor"), "threshold assert still present");
 assert(!fs.readFileSync("scripts/qa-hyrox-track-programming.ts", "utf8").includes("test.skip"), "generator test not skipped");
 
@@ -109,6 +112,35 @@ try {
   canaryRefused = true;
 }
 assert(canaryRefused, "canary flag is not a live write");
+const stagingAthlete = "c0ffee00-1111-4111-8111-000000000365";
+assert(
+  trackStagingWriteAllowed(
+    {
+      NEXT_PUBLIC_SUPABASE_URL: `https://${CANONICAL_STAGING_SUPABASE_REF}.supabase.co`,
+      HYROX_STAGING_SUPABASE_REF: CANONICAL_STAGING_SUPABASE_REF,
+      HYROX_ENV: "staging",
+      HYROX_TRACK_STAGING_WRITE: "1",
+      HYROX_TRACK_CANARY_ATHLETE_IDS: stagingAthlete,
+    },
+    stagingAthlete
+  ),
+  "staging allowlist can open a write"
+);
+assert(
+  trackStagingWriteAllowed(
+    {
+      NEXT_PUBLIC_SUPABASE_URL: `https://${PRODUCTION_SUPABASE_REF}.supabase.co`,
+      HYROX_STAGING_SUPABASE_REF: CANONICAL_STAGING_SUPABASE_REF,
+      HYROX_ENV: "production",
+      VERCEL_ENV: "production",
+      HYROX_TRACK_STAGING_WRITE: "1",
+      HYROX_TRACK_ADAPTATION_V1: "1",
+      HYROX_TRACK_CANARY_ATHLETE_IDS: stagingAthlete,
+    },
+    stagingAthlete
+  ) === false,
+  "production stays blocked when staging flags are copied"
+);
 assert(accept.athleteState.anchors.ski != null && accept.athleteState.missing.includes("Ski anchor") === false, "athlete state has the ski anchor");
 assert(accept.athleteState.readiness === "FATIGUED" || accept.athleteState.readiness === "MULTIPLE_STRESSORS", accept.athleteState.readiness);
 

@@ -1,4 +1,4 @@
-import { getProgressionFamily } from "@/app/lib/progressionFamilies";
+import { getProgressionFamily, PROGRESSION_FAMILIES } from "@/app/lib/progressionFamilies";
 import type { NextWeekDecision } from "./policy";
 import { weeklyCheckInTone } from "./policy";
 import type { TrackAthleteRecord } from "./store";
@@ -83,4 +83,25 @@ export function recommendNextWeek(record: TrackAthleteRecord): NextWeekDecision 
     ],
     explanation: "Threshold progressed after repeated successful sessions. Sled volume stays unchanged.",
   };
+}
+
+/** Next-week progression stays a proposal. This task does not write it. */
+export function progressionWriteContract(decision: NextWeekDecision): {
+  persisted: false;
+  published: false;
+  decision: NextWeekDecision["decision"];
+} {
+  return { persisted: false, published: false, decision: decision.decision };
+}
+
+const STATION_FAMILIES = ["sled_push", "sled_pull", "lunges", "bbj", "farmers", "wall_balls"] as const;
+
+export function stationProgressionCoverage(): Array<{ station: string; graph: string | null; state: "PROGRESS_EDGE" | "HOLD" }> {
+  const families = PROGRESSION_FAMILIES.map((family) => family.family_id);
+  return STATION_FAMILIES.map((station) => {
+    if (station === "wall_balls" && families.includes("wall_ball_durability_a")) {
+      return { station, graph: "wall_ball_durability_a", state: "PROGRESS_EDGE" as const };
+    }
+    return { station, graph: null, state: "HOLD" as const };
+  });
 }

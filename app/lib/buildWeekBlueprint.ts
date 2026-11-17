@@ -30,6 +30,7 @@ import {
   hyroxProSevenDayStructureRoles,
   shouldUseHyroxProWeeklySkeleton,
 } from "./hyroxProWeeklySkeleton";
+import { hyroxProSlotObligation, immovableHardAnchorDays, sessionMeetsHardAnchor } from "./programmeSlotObligations";
 import { computeSessionStress, computeWeeklyStress, type SessionStressInput } from "./stressBudget";
 import {
   analyzeWeeklyRhythm,
@@ -1549,26 +1550,51 @@ function pickWeightedSession(
     return { item: s, weight: Math.max(MIN_SESSION_WEIGHT, weight) };
   });
 
-  if (preferredTemplateId) {
-    const forced = optionsPool.find((s) => s.id === preferredTemplateId);
-    if (forced && (!runProgression || !isBannedRunPick(forced, runProgression))) {
-      pickContext.usedIds.add(forced.id);
-      pickContext.usedVariationGroups.add(forced.variation_group);
-      pickContext.usedSessionNames.add(forced.name.trim().toLowerCase());
-      return forced;
+  const anchor =
+    assignedDay != null
+      ? hyroxProSlotObligation({
+          input,
+          day: assignedDay,
+          role,
+          weekNumber: pickContext.weekNumber,
+          weekFocus: pickContext.weekFocus,
+        })
+      : null;
+  let selection = weighted;
+  if (anchor?.class === "HARD_ANCHOR" && anchor.kind !== "lower_strength" && anchor.kind !== "recovery" && anchor.kind !== "aerobic" && anchor.kind !== "flexible") {
+    const matching = selection.filter((option) => sessionMeetsHardAnchor(option.item, anchor.kind));
+    if (matching.length > 0) {
+      selection = matching;
+    } else {
+      const fallback = SESSION_LIBRARY.filter(
+        (session) => sessionMeetsHardAnchor(session, anchor.kind) && matchesLevel(session, input.ability_level)
+      );
+      if (fallback.length > 0) selection = fallback.map((session) => ({ item: session, weight: 1 }));
     }
   }
 
-  let pick = weightedPick(weighted);
-  if (runProgression && isBannedRunPick(pick, runProgression) && optionsPool.length > 1) {
-    const fallback = optionsPool.filter((s) => !isBannedRunPick(s, runProgression));
-    if (fallback.length > 0) {
-      const fbWeighted = fallback.map((s) => {
-        const existing = weighted.find((w) => w.item.id === s.id);
-        return { item: s, weight: Math.max(MIN_SESSION_WEIGHT, existing?.weight ?? 1) };
-      });
-      pick = weightedPick(fbWeighted);
+  if (preferredTemplateId) {
+    const forced = selection.find((option) => option.item.id === preferredTemplateId);
+    if (forced && (!runProgression || !isBannedRunPick(forced.item, runProgression))) {
+      pickContext.usedIds.add(forced.item.id);
+      pickContext.usedVariationGroups.add(forced.item.variation_group);
+      pickContext.usedSessionNames.add(forced.item.name.trim().toLowerCase());
+      return forced.item;
     }
+  }
+
+  let pick = weightedPick(selection);
+  if (runProgression && isBannedRunPick(pick, runProgression) && selection.length > 1) {
+    const fallback = selection.filter((option) => !isBannedRunPick(option.item, runProgression));
+    if (fallback.length > 0) pick = weightedPick(fallback);
+  }
+  if (
+    anchor?.class === "HARD_ANCHOR" &&
+    (anchor.kind === "threshold_run" || anchor.kind === "long_run" || anchor.kind === "hyrox_key") &&
+    !sessionMeetsHardAnchor(pick, anchor.kind)
+  ) {
+    const safe = selection.find((option) => sessionMeetsHardAnchor(option.item, anchor.kind));
+    if (safe) pick = safe.item;
   }
   pickContext.usedIds.add(pick.id);
   pickContext.usedVariationGroups.add(pick.variation_group);
@@ -2264,7 +2290,13 @@ export function buildWeekBlueprint(
     compressOffSessions,
   });
 
-  schedule = balanceScheduleHardEasy(schedule, dayRoleByAssignedDay);
+  schedule = balanceScheduleHardEasy(schedule, dayRoleByAssignedDay, {
+    immovableDays: immovableHardAnchorDays(
+      input,
+      options?.week_number ?? 1,
+      options?.progression_target?.week_focus
+    ),
+  });
   orderedStressInputs = schedule.map((d) => {
     const role = dayRoleByAssignedDay.get(d.day);
     const classified = classifyDayPlan(d, role);

@@ -22,10 +22,10 @@ const DATE: Record<WeekDay, string> = {
 };
 
 export const GENERATOR_REGRESSION = {
-  verdict: "genuine" as const,
+  verdict: "fixed" as const,
   assertion: "Week 7 Tuesday hard threshold anchor",
   cause:
-    "Tuesday is only biased toward a threshold session. weightedPick uses Math.random, and the weekly repair downgrades a bad skeleton day without putting the threshold session back. A long brick can land on Tuesday. The assertion matches the HYROX Pro skeleton and was left in place.",
+    "Tuesday, Saturday and Sunday are hard anchors on a non-deload HYROX Pro week. The picker may vary only among sessions that satisfy the anchor, and repair cannot swap those days away.",
 };
 
 export const AUTOMATION_MATRIX = {
