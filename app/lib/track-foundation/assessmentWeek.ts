@@ -157,7 +157,7 @@ export function buildAssessmentWeek(
 
   const covered = requirements.filter((req) => req.status === "satisfied" && req.testId && req.satisfiedByResultId);
   for (const req of covered) {
-    const free = days.find((day) => !sessions.some((session) => session.day === day));
+    const free = days.find((day) => !sessions.some((session) => session.day === day)) ?? days[days.length - 1];
     if (!free) break;
     sessions.push({
       id: `covered-${req.id}`,

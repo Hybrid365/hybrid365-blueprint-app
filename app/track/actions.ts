@@ -6,6 +6,7 @@ import {
   activateProgramme,
   addEvidence,
   advanceClock,
+  acceptNextWeek,
   chooseAccept,
   chooseOriginal,
   completeAssessment,
@@ -14,6 +15,7 @@ import {
   saveCheckIn,
   saveMorning,
   saveOnboarding,
+  saveStationBattery,
 } from "@/app/lib/track-canary/model";
 
 function refresh() {
@@ -73,5 +75,21 @@ export async function saveCheckInAction(answers: Record<string, string | number 
 
 export async function advanceClockAction() {
   await advanceClock();
+  refresh();
+}
+
+export async function acceptNextWeekAction(choice: "recommended" | "keep") {
+  await acceptNextWeek(choice);
+  refresh();
+}
+
+export async function saveStationBatteryAction(input: {
+  wallBallReps: string;
+  sledPushMetres: string;
+  sledPullMetres: string;
+  farmersMetres: string;
+  bbjMetres: string;
+}) {
+  await saveStationBattery(input);
   refresh();
 }

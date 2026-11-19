@@ -14,6 +14,7 @@ import { evaluateTrackFoundation } from "../app/lib/track-foundation/pipeline";
 import { TRACK_FIXTURES } from "../app/lib/track-foundation/fixtures";
 import { buildReadOnlyProgrammeProposal } from "../app/lib/track-foundation/proposeProgramme";
 import { protocolForAthlete } from "../app/lib/track-foundation/testLibrary";
+import { resolveStationDomains } from "../app/lib/track-foundation/stationEvidence";
 import { trainingDays } from "../app/lib/track-foundation/assessmentWeek";
 import { classifyEvidence } from "../app/lib/track-foundation/evidence";
 import { buildAutomationContext } from "../app/lib/track-foundation/automationContext";
@@ -86,7 +87,15 @@ assert(!testIds(recent).includes("run_5k"), "A repeated a valid 5K");
 assert(recent.week.sessions.some((session) => session.kind === "covered" && session.testId === "run_5k"), "A did not show the 5K as already covered");
 assert(testIds(recent).includes("ski_2k"), "A skipped SkiErg");
 assert(!testIds(recent).includes("bike_20min"), "A prescribed a bike test for HYROX");
-assert(!testIds(recent).includes("hyrox_station_battery"), "A repeated station testing after a recent race");
+assert(testIds(recent).includes("hyrox_station_battery"), "A skipped stations when the race had no splits");
+assert(
+  recent.requirements.some((req) => req.id === "stations" && req.status === "test_required"),
+  "A treated an overall race time as station evidence"
+);
+const recentDomains = resolveStationDomains(recent.evidence, recent.intake.equipment);
+assert(recentDomains.every((domain) => !domain.evidence), "A inferred station capacity from the race clock");
+assert(recentDomains.some((domain) => domain.id === "wall_ball" && domain.graph === true), "Wall-ball graph was dropped");
+assert(recentDomains.some((domain) => domain.id === "sled" && domain.graph === false), "A invented a sled progression graph");
 assert(recent.handoff.fiveKTime === "18:12", "A did not pass the 5K to the handoff");
 assert(recent.anchors.running.threshold?.provenance?.statement.includes("18:12"), "A threshold provenance missing");
 assert(!consecutiveHighs(recent), "A stacked maximal tests");
@@ -123,6 +132,8 @@ assert(runner.profile.programmingReadiness === "PARTIALLY_READY", `C readiness $
 
 const complete = evaluate("complete_recent");
 counts.fixtures += 1;
+const completeDomains = resolveStationDomains(complete.evidence, complete.intake.equipment);
+assert(completeDomains.every((domain) => domain.evidence), "D ignored race splits that name the station");
 assert(complete.profile.programmingReadiness === "READY", `D readiness ${complete.profile.programmingReadiness}`);
 assert(complete.week.testCount === 0, `D still scheduled ${complete.week.testCount} tests`);
 assert(complete.week.sessions.some((session) => session.kind === "test") === false, "D scheduled a test");

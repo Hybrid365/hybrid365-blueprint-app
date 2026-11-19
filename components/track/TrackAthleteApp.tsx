@@ -5,6 +5,7 @@ import type { CanaryView } from "@/app/lib/track-canary/model";
 import type { DayKey, EquipmentId, SessionLength, TrackIntake } from "@/app/lib/track-foundation/types";
 import {
   acceptAction,
+  acceptNextWeekAction,
   activateProgrammeAction,
   addEvidenceAction,
   advanceClockAction,
@@ -15,6 +16,7 @@ import {
   saveCheckInAction,
   saveMorningAction,
   saveOnboardingAction,
+  saveStationBatteryAction,
 } from "@/app/track/actions";
 
 const DAYS: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -89,9 +91,9 @@ export default function TrackAthleteApp({ view }: { view: CanaryView }) {
         {view.phase === "home" && screen === "session" && session && (
           <SessionDetail session={session} pending={pending} start={start} onDone={() => setScreen("today")} />
         )}
-        {view.phase === "home" && screen === "progress" && <Progress view={view} />}
+        {view.phase === "home" && screen === "progress" && <Progress view={view} pending={pending} start={start} />}
         {view.phase === "home" && screen === "checkin" && <CheckIn pending={pending} start={start} saved={view.checkIn} />}
-        {view.phase === "home" && screen === "next" && <NextWeek view={view} />}
+        {view.phase === "home" && screen === "next" && <NextWeek view={view} pending={pending} start={start} />}
         {view.phase === "home" && screen === "pain" && (
           <section className="space-y-4">
             <h1 className="text-2xl font-semibold">Pain</h1>
@@ -294,7 +296,8 @@ function Choice({ view, pending, start, onDone }: { view: CanaryView; pending: b
 function Week({ view, onOpen }: { view: CanaryView; onOpen: (id: string) => void }) {
   return (
     <section className="space-y-2">
-      <h1 className="text-2xl font-semibold">{view.accepted ? "Updated week" : "This week"}</h1>
+      <h1 className="text-2xl font-semibold">This week</h1>
+      <p className="text-xs uppercase tracking-wide text-zinc-500">Week {view.currentWeek} of {view.programmeWeeks}</p>
       {view.homeDays.map((day) => {
         const session = view.sessions.find((item) => item.day === day.day);
         return (
@@ -304,6 +307,14 @@ function Week({ view, onOpen }: { view: CanaryView; onOpen: (id: string) => void
           </button>
         );
       })}
+      {view.history.length > 0 && (
+        <div className="pt-4">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Earlier</p>
+          {view.history.map((item) => (
+            <p key={`${item.day}${item.summary}`} className="mt-2 text-sm text-zinc-400">{item.day} · {item.summary}</p>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -317,16 +328,16 @@ function SessionDetail({ session, pending, start, onDone }: { session: CanaryVie
       {session.pace && <p className="text-sm">Target pace {session.pace}</p>}
       {session.effort && <p className="text-sm text-zinc-400">{session.effort}</p>}
       <div className="space-y-2">{session.blocks.slice(0, 6).map((line) => <p key={line} className="rounded-xl bg-zinc-900 px-4 py-3 text-sm">{line}</p>)}</div>
-      {session.family && <p className="text-xs text-zinc-500">Progression family stays with this session.</p>}
       {session.status !== "completed" && session.kind === "training" && (
         <button type="button" disabled={pending} onClick={() => start(async () => {
+          const threshold = /threshold/i.test(session.title);
           await completeTrainingAction({
             sessionId: session.id,
-            completion: hyrox ? "completed" : "completed",
+            completion: "completed",
             rpe: 7,
             feel: "expected",
             pain: false,
-            actuals: hyrox ? { note: "Stations as planned", threshold: "logged" } : { minutes: 25, note: "threshold" },
+            actuals: hyrox ? { note: "Stations as planned" } : threshold ? { minutes: 25, note: "threshold" } : { note: "logged" },
           });
           onDone();
         })} className="w-full rounded-xl bg-white py-3 font-semibold text-black">Completed · RPE 7 · as expected · no pain</button>
@@ -335,10 +346,11 @@ function SessionDetail({ session, pending, start, onDone }: { session: CanaryVie
   );
 }
 
-function Progress({ view }: { view: CanaryView }) {
+function Progress({ view, pending, start }: { view: CanaryView; pending: boolean; start: (fn: () => void) => void }) {
   return (
     <section className="space-y-4">
       <h1 className="text-2xl font-semibold">Progress</h1>
+      <p className="text-xs uppercase tracking-wide text-zinc-500">This week · week {view.currentWeek}</p>
       {view.workload.length === 0 && <p className="text-sm text-zinc-400">Workload appears once the week is active.</p>}
       {view.workload.map((card) => (
         <div key={card.label} className="rounded-2xl bg-zinc-900 p-4">
@@ -347,6 +359,21 @@ function Progress({ view }: { view: CanaryView }) {
           <p className="text-sm text-zinc-400">{card.completed ? `Done ${card.completed}` : "Not logged yet"}</p>
         </div>
       ))}
+      {view.previousCompleted.length > 0 && (
+        <div className="rounded-2xl bg-zinc-900 p-4">
+          <p className="text-xs uppercase text-zinc-500">Previous week · completed</p>
+          {view.previousCompleted.map((title) => <p key={title} className="mt-2 text-sm">{title}</p>)}
+        </div>
+      )}
+      {view.impact.length > 0 && (
+        <div className="rounded-2xl bg-zinc-900 p-4">
+          <p className="text-xs uppercase text-zinc-500">This week and next week</p>
+          {view.impact.map((line) => (
+            <p key={line.label} className="mt-2 text-sm">{line.label} · {line.current} → {line.next}</p>
+          ))}
+        </div>
+      )}
+      {view.stationNeeded && <StationForm pending={pending} start={start} />}
       <h2 className="pt-2 text-lg font-semibold">Performance</h2>
       {view.performance.map((item) => (
         <div key={item.label} className="rounded-2xl bg-zinc-900 p-4">
@@ -370,22 +397,74 @@ function CheckIn({ pending, start, saved }: { pending: boolean; start: (fn: () =
   );
 }
 
-function NextWeek({ view }: { view: CanaryView }) {
+function StationForm({ pending, start }: { pending: boolean; start: (fn: () => void) => void }) {
+  const [wallBallReps, setWall] = useState("80");
+  const [sledPushMetres, setPush] = useState("50");
+  const [sledPullMetres, setPull] = useState("50");
+  const [farmersMetres, setFarmers] = useState("80");
+  const [bbjMetres, setBbj] = useState("80");
+  const fields = [
+    ["Wall-ball reps", wallBallReps, setWall],
+    ["Sled push metres", sledPushMetres, setPush],
+    ["Sled pull metres", sledPullMetres, setPull],
+    ["Farmers metres", farmersMetres, setFarmers],
+    ["Burpee broad jump metres", bbjMetres, setBbj],
+  ] as const;
+  return (
+    <div className="space-y-3 rounded-2xl border border-zinc-800 p-4">
+      <p className="font-medium">Station assessment</p>
+      <p className="text-sm leading-6 text-zinc-400">Your race time does not show these. One session, with rest between stations.</p>
+      {fields.map(([label, value, set]) => (
+        <label key={label} className="block text-sm">
+          {label}
+          <input value={value} onChange={(event) => set(event.target.value)} className="mt-1 w-full rounded-xl bg-zinc-900 px-3 py-2" />
+        </label>
+      ))}
+      <button type="button" disabled={pending} onClick={() => start(() => saveStationBatteryAction({ wallBallReps, sledPushMetres, sledPullMetres, farmersMetres, bbjMetres }))} className="w-full rounded-xl bg-white py-3 font-semibold text-black">Save station results</button>
+    </div>
+  );
+}
+
+function NextWeek({ view, pending, start }: { view: CanaryView; pending: boolean; start: (fn: () => void) => void }) {
+  const next = view.nextWeek;
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">Next week</h1>
-      <p className="text-xs uppercase tracking-wide text-zinc-500">{view.nextWeek.decision} · preview only</p>
-      <div className="rounded-2xl bg-zinc-900 p-4">
-        <p>Threshold</p>
-        <p className="mt-2 text-lg">{view.nextWeek.from}</p>
-        <p className="my-2 text-zinc-500">→</p>
-        <p className="text-lg">{view.nextWeek.to}</p>
+      <p className="text-xs uppercase tracking-wide text-[#f4d23c]">Next week</p>
+      <h1 className="text-2xl font-semibold">{next.accepted ? "Next week is set" : "Next week is ready"}</h1>
+      <p className="text-sm text-zinc-400">{next.starts ? `This week stays as it is until ${next.starts}.` : "This week stays as it is."}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl bg-zinc-900 p-3">
+          <p className="text-xs uppercase text-zinc-500">This week</p>
+          <p className="mt-2">{next.from}</p>
+          {next.minutesFrom && <p className="text-sm text-zinc-400">{next.minutesFrom}</p>}
+        </div>
+        <div className="rounded-2xl bg-zinc-900 p-3">
+          <p className="text-xs uppercase text-[#f4d23c]">Next week</p>
+          <p className="mt-2">{next.to}</p>
+          {next.minutesTo && <p className="text-sm text-zinc-400">{next.minutesTo}</p>}
+        </div>
       </div>
-      <p className="text-sm leading-6 text-zinc-300">{view.nextWeek.why}</p>
-      <button type="button" disabled className="w-full rounded-xl border border-zinc-700 py-3 font-semibold text-zinc-400">Use next week</button>
-      <p className="text-xs text-zinc-500">This stays a preview. Nothing is written into next week yet.</p>
-      {view.wallBall && <p className="text-sm text-zinc-300">Wall balls: {view.wallBall.from} → {view.wallBall.to}. {view.wallBall.why}</p>}
-      <p className="text-sm text-zinc-500">Held until a measured progression exists: {view.holds.join(", ")}.</p>
+      <div>
+        <p className="text-xs uppercase tracking-wide text-zinc-500">Why</p>
+        <p className="mt-1 text-sm leading-6 text-zinc-300">{next.why}</p>
+      </div>
+      {view.impact.map((line) => (
+        <p key={line.label} className="text-sm text-zinc-300">{line.label} · {line.current} → {line.next}</p>
+      ))}
+      {next.acceptLabel && (
+        <button type="button" disabled={pending} onClick={() => start(() => acceptNextWeekAction("recommended"))} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">{next.acceptLabel}</button>
+      )}
+      {next.keepLabel && (
+        <button type="button" disabled={pending} onClick={() => start(() => acceptNextWeekAction("keep"))} className="w-full rounded-xl border border-zinc-700 py-3 font-semibold">{next.keepLabel}</button>
+      )}
+      {view.nextTitles.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Next week plan</p>
+          {view.nextTitles.map((day) => (
+            <p key={day.day} className="flex justify-between text-sm"><span className="text-zinc-500">{day.day}</span><span>{day.title}</span></p>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

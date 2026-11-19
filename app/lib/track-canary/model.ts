@@ -7,10 +7,8 @@ import { generate12WeekProgramme } from "@/app/lib/generate12WeekProgramme";
 import { interpretReadiness } from "@/app/lib/daily-readiness/interpret";
 import { resolveRemainingWeek } from "@/app/lib/daily-readiness/reflow";
 import type { ReadinessSubmission, WeekSession } from "@/app/lib/daily-readiness/types";
-import { getProgressionFamily } from "@/app/lib/progressionFamilies";
-import { recommendNextWeek } from "@/app/lib/track-loop/progression";
-import type { TrackAthleteRecord } from "@/app/lib/track-loop/store";
 import { CANARY_ATHLETE_ID, CANARY_EMAIL, CANARY_NAME, canaryDb } from "./db";
+import { acceptNextWeek, prepareProgramme, saveStationBattery, type ProgrammeSnapshot } from "./weeks";
 
 const WEEK_START = "2026-11-16";
 const DAYS: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -69,7 +67,16 @@ export type CanaryView = {
   workload: Array<{ label: string; planned: string; completed: string | null }>;
   performance: Array<{ label: string; display: string; provenance: string }>;
   checkIn: null | { recovery: number; motivation: number };
-  nextWeek: { decision: string; from: string; to: string; why: string; write: "read-only" };
+  nextWeek: ProgrammeSnapshot["nextWeek"];
+  impact: ProgrammeSnapshot["impact"];
+  stations: ProgrammeSnapshot["stations"];
+  stationNeeded: boolean;
+  history: ProgrammeSnapshot["history"];
+  previousCompleted: string[];
+  nextTitles: Array<{ day: string; title: string }>;
+  currentWeek: number;
+  programmeWeeks: number;
+  blockNote: string | null;
   wallBall: null | { from: string; to: string; why: string };
   holds: string[];
   painNote: string | null;
@@ -646,14 +653,18 @@ async function openProposal() {
     .eq("status", "proposed")
     .order("created_at", { ascending: false })
     .limit(5);
-  return (data ?? []).find((row) => (row.proposal as { kind?: string } | null)?.kind !== "programme") ?? null;
+  return (data ?? []).find((row) => {
+    const proposal = row.proposal as { kind?: string; action?: string } | null;
+    return Boolean(proposal?.action) && proposal?.kind !== "next_week" && proposal?.kind !== "programme";
+  }) ?? null;
 }
 
 export async function loadCanary(): Promise<CanaryView> {
   await ensureAthlete();
   const intake = await readIntake();
   const results = await readResults();
-  const state = intake.goal ? evaluateTrackFoundation({ intake, results, asOf: "2026-11-17" }) : null;
+  const clock = String((intake as TrackIntake & { clock?: string }).clock ?? "2026-11-17");
+  const state = intake.goal ? evaluateTrackFoundation({ intake, results, asOf: clock }) : null;
   const sessions = await activeSessions();
   const training = sessions.filter((row) => row.kind === "training");
   const assessment = sessions.filter((row) => row.kind === "assessment");
@@ -679,7 +690,6 @@ export async function loadCanary(): Promise<CanaryView> {
   const acceptedLog = await latestAccepted();
   const feedback = await readFeedback();
   const checkins = await readCheckins();
-  const clock = String((intake as TrackIntake & { clock?: string }).clock ?? "2026-11-17");
   const today = dayKey(clock);
   const homeSource = training.length ? training : sessions;
   const beforeTitles = new Map<string, string>();
@@ -687,8 +697,29 @@ export async function loadCanary(): Promise<CanaryView> {
   for (const row of beforeWeek) {
     if (row.day_key && row.title) beforeTitles.set(row.day_key, row.title);
   }
-  const next = nextWeek(feedback, checkins);
-  const wall = wallBallEdge(results);
+  const programme = phase === "home"
+    ? await prepareProgramme({
+        intake,
+        results,
+        clock,
+        feedback,
+        checkins,
+        logs: (await canaryDb().from("track_adaptation_log").select("*").eq("athlete_id", CANARY_ATHLETE_ID).order("recorded_at")).data ?? [],
+      })
+    : null;
+  const next = programme?.nextWeek ?? {
+    decision: "KEEP",
+    from: "Threshold",
+    to: "Threshold",
+    minutesFrom: null,
+    minutesTo: null,
+    why: "",
+    starts: "",
+    accepted: false,
+    canAccept: false,
+    acceptLabel: null,
+    keepLabel: null,
+  };
   return {
     name: CANARY_NAME,
     clock,
@@ -730,20 +761,32 @@ export async function loadCanary(): Promise<CanaryView> {
           canChoose: true,
         }
       : null,
-    accepted: acceptedNote(acceptedLog),
+    accepted: acceptedNote(acceptedLog, clock),
     workload: workloadCards(homeSource, feedback),
     performance: performanceCards(state),
     checkIn: checkins[0] ? { recovery: Number(checkins[0].answers.recovery ?? 0), motivation: Number(checkins[0].answers.motivation ?? 0) } : null,
     nextWeek: next,
-    wallBall: wall,
-    holds: ["Sled push", "Sled pull", "Lunges", "Burpee broad jump", "Farmers"],
+    impact: programme?.impact ?? [],
+    stations: programme?.stations ?? [],
+    stationNeeded: programme?.stationNeeded ?? false,
+    history: programme?.history ?? [],
+    previousCompleted: programme?.previousCompleted ?? [],
+    nextTitles: programme?.nextTitles ?? [],
+    currentWeek: programme?.currentWeek ?? 1,
+    programmeWeeks: programme?.programmeWeeks ?? 1,
+    blockNote: programme?.blockNote ?? null,
+    wallBall: null,
+    holds: (programme?.stations ?? []).filter((station) => station.graph === "NO").map((station) => station.label),
     painNote: await painCopy(),
     audit: await audit(),
   };
 }
 
-function acceptedNote(log: Record<string, unknown> | null): CanaryView["accepted"] {
-  if (!log) return null;
+function acceptedNote(log: Record<string, unknown> | null, clock: string): CanaryView["accepted"] {
+  if (!log || log.source === "next_week") return null;
+  const fingerprint = ((log.proposal as { fingerprint?: string } | null)?.fingerprint) ?? "";
+  const appliedOn = fingerprint.slice(0, 10);
+  if (appliedOn !== clock) return null;
   const before = new Map((asWeek(log.before_week)).map((row) => [row.day, row.title]));
   const after = asWeek(log.after_week);
   const changes = after
@@ -781,85 +824,40 @@ function workloadCards(sessions: Array<Record<string, unknown>>, feedback: Array
   const cards: Array<{ label: string; planned: string; completed: string | null }> = [];
   const threshold = sessions.find((row) => /threshold/i.test(String(row.title)));
   if (threshold) {
+    const planned = minutesFromSession(String(threshold.title));
     const done = feedback.find((row) => row.session_id === threshold.id);
     const actual = (done?.actuals as { minutes?: number } | null)?.minutes;
-    cards.push({ label: "Threshold", planned: "25 min", completed: actual != null ? `${actual} min` : done ? "Completed" : null });
+    if (planned) cards.push({ label: "Threshold", planned, completed: actual != null ? `${actual} min` : done ? "Completed" : null });
   }
   const long = sessions.find((row) => /long/i.test(String(row.title)));
-  if (long) cards.push({ label: "Long run", planned: "65 min", completed: null });
+  const longMinutes = long ? String(long.title).match(/(\d+)\s*min/i) : null;
+  if (long && longMinutes) cards.push({ label: "Long run", planned: `${longMinutes[1]} min`, completed: null });
   const hyrox = sessions.find((row) => /compromised|hyrox/i.test(String(row.title)));
   if (hyrox) {
     const done = feedback.find((row) => row.session_id === hyrox.id);
     cards.push({ label: "HYROX session", planned: String(hyrox.title), completed: done ? String((done.actuals as { note?: string } | null)?.note ?? "Logged") : null });
   }
   const bike = sessions.find((row) => /bike/i.test(String(row.title)));
-  if (bike) cards.push({ label: "Bike", planned: "40 min", completed: null });
+  const bikeMinutes = bike ? String(bike.title).match(/(\d+)\s*min/i) : null;
+  if (bike && bikeMinutes) cards.push({ label: "Bike", planned: `${bikeMinutes[1]} min`, completed: null });
   return cards;
+}
+
+function minutesFromSession(title: string): string | null {
+  const match = title.match(/(\d+)\s*[x×]\s*(\d+)\s*min/i);
+  if (!match) return null;
+  return `${Number(match[1]) * Number(match[2])} min`;
 }
 
 function performanceCards(state: ReturnType<typeof evaluateTrackFoundation> | null) {
   if (!state) return [];
-  return [state.anchors.running.threshold, state.anchors.hyrox.anchor, state.anchors.ski, state.anchors.row]
+  return [state.anchors.running.threshold, state.anchors.hyrox.anchor, state.anchors.ski, state.anchors.row, ...state.anchors.stations]
     .filter((anchor) => anchor?.display)
     .map((anchor) => ({
       label: anchor!.label,
       display: anchor!.display,
       provenance: anchor!.provenance?.statement ?? "",
     }));
-}
-
-function nextWeek(feedback: Array<Record<string, unknown>>, checkins: Array<{ answers: Record<string, unknown> }>) {
-  const strong = feedback.filter((row) => {
-    const actuals = row.actuals as { note?: string } | null;
-    return row.completion === "completed" && Number(row.rpe) <= 8 && actuals?.note === "threshold";
-  });
-  const record = {
-    athleteId: CANARY_ATHLETE_ID,
-    product: "active",
-    intake: blankIntake(),
-    results: [],
-    sessions: [],
-    versions: [],
-    feedback: [],
-    checkIns: checkins.map((row) => ({
-      id: "check",
-      weekOf: WEEK_START,
-      recovery: Number(row.answers.recovery ?? 7),
-      motivation: Number(row.answers.motivation ?? 7),
-      lifeStress: Number(row.answers.lifeStress ?? 3),
-      manageable: Number(row.answers.manageable ?? 8),
-      persistentSoreness: Boolean(row.answers.soreness),
-      availabilityChanged: Boolean(row.answers.availability),
-      travel: Boolean(row.answers.travel),
-      eventChange: Boolean(row.answers.event),
-      note: null,
-    })),
-    adaptations: [],
-    escalations: [],
-    priorFamilyCompletions: strong.map(() => ({ familyId: "threshold_volume_a", title: "5 x 5 min Threshold", rpe: 7, completion: "completed" as const })),
-  } as unknown as TrackAthleteRecord;
-  const decision = recommendNextWeek(record);
-  const family = getProgressionFamily("threshold_volume_a");
-  const current = family?.variants.find((item) => item.title === "5 x 5 min Threshold");
-  const next = family?.variants.find((item) => item.block_week === (current?.block_week ?? 0) + 1);
-  return {
-    decision: decision.decision,
-    from: current?.title ?? "Threshold",
-    to: decision.decision === "PROGRESS" ? next?.title ?? current?.title ?? "Threshold" : current?.title ?? "Threshold",
-    why: decision.explanation,
-    write: "read-only" as const,
-  };
-}
-
-function wallBallEdge(results: BenchmarkResultInput[]) {
-  const wall = results.find((row) => row.testId === "wall_ball");
-  if (!wall) return null;
-  const family = getProgressionFamily("wall_ball_durability_a");
-  return {
-    from: family?.variants[0]?.title ?? "Wall balls",
-    to: family?.variants[1]?.title ?? "Wall balls",
-    why: "A measured wall-ball result can move one published step. This preview is not written into the week.",
-  };
 }
 
 async function readFeedback() {
@@ -907,6 +905,8 @@ async function audit() {
   for (const row of checkins.data ?? []) rows.push({ label: "Weekly check-in", at: String(row.created_at) });
   return rows;
 }
+
+export { acceptNextWeek, saveStationBattery };
 
 export async function loadAdmin() {
   const view = await loadCanary();

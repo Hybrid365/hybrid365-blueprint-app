@@ -16,6 +16,19 @@ export default async function TrackAdminPage() {
         ))}
       </section>
       <section className="mt-8">
+        <h2 className="text-lg font-semibold">Programme</h2>
+        <p className="text-sm text-zinc-300">Week {admin.view.currentWeek} of {admin.view.programmeWeeks}. Production mutation is off.</p>
+        {admin.view.blockNote && <p className="mt-2 text-sm text-zinc-400">{admin.view.blockNote}</p>}
+      </section>
+      <section className="mt-8 space-y-2">
+        <h2 className="text-lg font-semibold">Station evidence</h2>
+        {admin.view.stations.map((station) => (
+          <p key={station.label} className="text-sm text-zinc-300">
+            {station.label} · evidence {station.evidence} · progression graph {station.graph}
+          </p>
+        ))}
+      </section>
+      <section className="mt-8">
         <h2 className="text-lg font-semibold">Adaptations</h2>
         {(admin.adaptations.length ? admin.adaptations : [{ decision: "None yet", before_revision: null, after_revision: null }]).map((row, index) => (
           <p key={index} className="text-sm text-zinc-300">{String(row.decision)} {row.before_revision ?? ""} {row.after_revision ? `→ ${row.after_revision}` : ""}</p>

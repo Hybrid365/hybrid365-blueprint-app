@@ -1,4 +1,5 @@
 import type { EvidenceBook } from "./evidence";
+import { resolveStationDomains, stationAssessmentRequired, stationRequirementReason } from "./stationEvidence";
 import { athleteHasEquipment, getTest } from "./testLibrary";
 import type { AssessmentRequirement, TrackGoal, TrackIntake } from "./types";
 
@@ -260,7 +261,6 @@ export function resolveAssessmentRequirements(intake: TrackIntake, book: Evidenc
 
   if (wantsHyrox) {
     const raceKnown = book.hyrox.anchorStatus === "active" || book.hyrox.anchorStatus === "reassessment_due";
-    const stationKnown = Object.values(book.stations).some((family) => family.anchorStatus === "active");
     if (raceKnown) {
       push(
         reqs,
@@ -274,16 +274,16 @@ export function resolveAssessmentRequirements(intake: TrackIntake, book: Evidenc
         )
       );
     }
-    if (stationKnown || raceKnown) {
+    const domains = resolveStationDomains(book, intake.equipment);
+    const stationsKnown = !stationAssessmentRequired(domains);
+    if (stationsKnown) {
       push(reqs, {
         id: "stations",
         testId: "hyrox_station_battery",
         label: "Stations",
         priority: "supporting",
         status: "satisfied",
-        reason: stationKnown
-          ? "Station benchmark on file."
-          : "Race result covers station context. A full station battery is not added on top.",
+        reason: stationRequirementReason(domains),
         satisfiedByResultId: null,
       });
     } else if (!manual) {
@@ -293,9 +293,7 @@ export function resolveAssessmentRequirements(intake: TrackIntake, book: Evidenc
         label: "Stations",
         priority: "supporting",
         status: "test_required",
-        reason: has(intake.equipment, "sled")
-          ? "No race or station benchmark. One station session uses the kit you have."
-          : "No sled access. The station session leaves the sled out.",
+        reason: stationRequirementReason(domains),
         satisfiedByResultId: null,
       });
     }
