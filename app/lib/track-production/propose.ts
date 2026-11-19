@@ -2,7 +2,7 @@ import { generate12WeekProgramme } from "@/app/lib/generate12WeekProgramme";
 import { mapAssessmentToProgrammeInput } from "@/app/lib/mapAssessmentToProgrammeInput";
 import { PRODUCTION_TRACK_CANARY_ATHLETE_ID, assertTrackMutationStaysOff } from "@/app/lib/track-production/access";
 import { productionTrackDb } from "@/app/lib/track-production/db";
-import type { BenchmarkResultInput, TrackIntake } from "@/app/lib/track-foundation/types";
+import type { TrackIntake } from "@/app/lib/track-foundation/types";
 
 type Day = {
   day?: string;
@@ -43,19 +43,10 @@ function anchors(schedule: Day[], deload: boolean) {
   };
 }
 
-export async function proposeProductionProgramme(): Promise<{ weeks: ProposalWeek[]; anchorFailures: number[] }> {
-  assertTrackMutationStaysOff();
-  const db = productionTrackDb();
-  const athleteId = PRODUCTION_TRACK_CANARY_ATHLETE_ID;
-  const { data: intakeRow, error: intakeError } = await db.from("track_athlete_intake").select("intake").eq("athlete_id", athleteId).single();
-  if (intakeError || !intakeRow) throw new Error(intakeError?.message ?? "Intake missing.");
-  const intake = intakeRow.intake as TrackIntake;
-  const { data: resultRows, error: resultError } = await db.from("track_benchmark_results").select("*").eq("athlete_id", athleteId);
-  if (resultError) throw new Error(resultError.message);
-  const results = (resultRows ?? []) as Array<Record<string, unknown>>;
+export function productionGeneratorInput(intake: TrackIntake, results: Array<Record<string, unknown>>) {
   const five = results.find((row) => row.test_id === "run_5k");
   const race = results.find((row) => row.test_id === "hyrox_race");
-  const input = mapAssessmentToProgrammeInput({
+  return mapAssessmentToProgrammeInput({
     assessment: {
       first_name: "Track",
       goal_focus: "Improve Hybrid / Hyrox Performance",
@@ -82,6 +73,19 @@ export async function proposeProductionProgramme(): Promise<{ weeks: ProposalWee
     email: null,
     profile: { full_name: "Hybrid365 Track Canary" },
   });
+}
+
+export async function proposeProductionProgramme(): Promise<{ weeks: ProposalWeek[]; anchorFailures: number[] }> {
+  assertTrackMutationStaysOff();
+  const db = productionTrackDb();
+  const athleteId = PRODUCTION_TRACK_CANARY_ATHLETE_ID;
+  const { data: intakeRow, error: intakeError } = await db.from("track_athlete_intake").select("intake").eq("athlete_id", athleteId).single();
+  if (intakeError || !intakeRow) throw new Error(intakeError?.message ?? "Intake missing.");
+  const intake = intakeRow.intake as TrackIntake;
+  const { data: resultRows, error: resultError } = await db.from("track_benchmark_results").select("*").eq("athlete_id", athleteId);
+  if (resultError) throw new Error(resultError.message);
+  const results = (resultRows ?? []) as Array<Record<string, unknown>>;
+  const input = productionGeneratorInput(intake, results);
   const generated = generate12WeekProgramme(input);
   const weeks: ProposalWeek[] = generated.map((week, index) => {
     const weekNumber = index + 1;

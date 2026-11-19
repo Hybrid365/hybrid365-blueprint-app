@@ -266,11 +266,11 @@ function Today({ view, onSession, onChoice, onPain, pending, start }: { view: Ca
       </button>
       {view.recommendation ? (
         <button type="button" onClick={onChoice} className="w-full rounded-2xl border border-[#f4d23c] p-4 text-left">
-          <p className="text-xs uppercase tracking-wide text-[#f4d23c]">Recovery lower than normal</p>
+          <p className="text-xs uppercase tracking-wide text-[#f4d23c]">{view.recommendation.canChoose ? "Recovery lower than normal" : "Suggestion · week unchanged"}</p>
           <p className="mt-2 text-sm leading-6">{view.recommendation.also || view.recommendation.why}</p>
         </button>
       ) : (
-        <Morning pending={pending} start={start} clock={view.clock} />
+        <Morning pending={pending} start={start} clock={view.clock} locked={!view.activationOpen} />
       )}
       {view.accepted && (
         <div className="rounded-2xl bg-zinc-950 p-4 text-sm leading-6">
@@ -285,9 +285,9 @@ function Today({ view, onSession, onChoice, onPain, pending, start }: { view: Ca
   );
 }
 
-function Morning({ pending, start, clock }: { pending: boolean; start: (fn: () => void) => void; clock: string }) {
-  const low = clock >= "2026-11-17";
-  const scores = low ? { sleep: 3, energy: 3, recovery: 3, soreness: 8, readiness: 3 } : { sleep: 8, energy: 8, recovery: 8, soreness: 2, readiness: 8 };
+function Morning({ pending, start, clock, locked = false }: { pending: boolean; start: (fn: () => void) => void; clock: string; locked?: boolean }) {
+  const low = !locked && clock >= "2026-11-17";
+  const scores = low ? { sleep: 3, energy: 3, recovery: 3, soreness: 8, readiness: 3 } : { sleep: 7, energy: 7, recovery: 7, soreness: 3, readiness: 7 };
   return (
     <div className="space-y-3 rounded-2xl bg-zinc-950 p-4">
       <p className="text-xs uppercase tracking-wide text-zinc-500">This morning · {clock}</p>
@@ -295,8 +295,9 @@ function Morning({ pending, start, clock }: { pending: boolean; start: (fn: () =
         <div key={key} className="flex justify-between text-sm"><span className="capitalize">{key}</span><span>{value}</span></div>
       ))}
       <p className="text-sm text-zinc-400">Pain · No</p>
+      {locked && <p className="text-sm text-zinc-400">Saving readiness leaves the programme unchanged.</p>}
       <button type="button" disabled={pending} onClick={() => start(() => saveMorningAction({ ...scores, pain: false }))} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">Save morning</button>
-      {!low && <button type="button" disabled={pending} onClick={() => start(() => advanceClockAction())} className="w-full text-sm text-zinc-500">Next morning</button>}
+      {!low && !locked && <button type="button" disabled={pending} onClick={() => start(() => advanceClockAction())} className="w-full text-sm text-zinc-500">Next morning</button>}
     </div>
   );
 }
@@ -313,8 +314,14 @@ function Choice({ view, pending, start, onDone }: { view: CanaryView; pending: b
         <div className="rounded-2xl bg-zinc-900 p-3"><p className="text-xs uppercase text-[#f4d23c]">Recommended</p><p className="mt-2">{rec.recommended}</p></div>
       </div>
       <p className="text-sm leading-6 text-zinc-400">{rec.also}</p>
-      <button type="button" disabled={pending} onClick={() => start(async () => { await acceptAction(); onDone(); })} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">Accept changes</button>
-      <button type="button" disabled={pending} onClick={() => start(async () => { await keepAction(); onDone(); })} className="w-full rounded-xl border border-zinc-700 py-3 font-semibold">Keep original plan</button>
+      {rec.canChoose ? (
+        <>
+          <button type="button" disabled={pending} onClick={() => start(async () => { await acceptAction(); onDone(); })} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">Accept changes</button>
+          <button type="button" disabled={pending} onClick={() => start(async () => { await keepAction(); onDone(); })} className="w-full rounded-xl border border-zinc-700 py-3 font-semibold">Keep original plan</button>
+        </>
+      ) : (
+        <p className="rounded-xl bg-zinc-900 px-4 py-3 text-sm leading-6 text-zinc-300">This suggestion is read-only. The week stays as written.</p>
+      )}
     </section>
   );
 }
@@ -346,7 +353,7 @@ function Week({ view, onOpen }: { view: CanaryView; onOpen: (id: string) => void
 }
 
 function SessionDetail({ session, pending, start, onDone }: { session: CanaryView["sessions"][number]; pending: boolean; start: (fn: () => void) => void; onDone: () => void }) {
-  const hyrox = /compromised|hyrox/i.test(session.title);
+  const hyrox = /compromised|race-style/i.test(session.title);
   return (
     <section className="space-y-4">
       <h1 className="text-2xl font-semibold">{session.title}</h1>
@@ -477,12 +484,13 @@ function NextWeek({ view, pending, start }: { view: CanaryView; pending: boolean
       {view.impact.map((line) => (
         <p key={line.label} className="text-sm text-zinc-300">{line.label} · {line.current} → {line.next}</p>
       ))}
-      {next.acceptLabel && (
+      {view.activationOpen && next.acceptLabel && (
         <button type="button" disabled={pending} onClick={() => start(() => acceptNextWeekAction("recommended"))} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">{next.acceptLabel}</button>
       )}
-      {next.keepLabel && (
+      {view.activationOpen && next.keepLabel && (
         <button type="button" disabled={pending} onClick={() => start(() => acceptNextWeekAction("keep"))} className="w-full rounded-xl border border-zinc-700 py-3 font-semibold">{next.keepLabel}</button>
       )}
+      {!view.activationOpen && <p className="rounded-xl bg-zinc-900 px-4 py-3 text-sm leading-6 text-zinc-300">Next week stays written. Applying it is closed for this canary.</p>}
       {view.nextTitles.length > 0 && (
         <div className="space-y-2 pt-2">
           <p className="text-xs uppercase tracking-wide text-zinc-500">Next week plan</p>

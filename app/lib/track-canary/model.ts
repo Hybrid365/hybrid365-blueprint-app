@@ -632,7 +632,7 @@ export async function completeTraining(input: { sessionId: string; completion: s
     actuals: input.actuals,
   });
   if (input.completion === "completed") {
-    await db.from("track_calendar_sessions").update({ status: "completed" }).eq("id", input.sessionId);
+    await db.from("track_calendar_sessions").update({ status: "completed" }).eq("id", input.sessionId).eq("athlete_id", productAthleteId());
   }
 }
 
@@ -724,6 +724,42 @@ async function openProposal() {
   }) ?? null;
 }
 
+async function productionProgrammeView() {
+  const { data, error } = await productDb()
+    .from("track_calendar_sessions")
+    .select("week_number, day_key, title, session_date, programme_key, active")
+    .eq("athlete_id", productAthleteId())
+    .eq("kind", "training");
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  if (!rows.length) return null;
+  const activeWeek = Number(rows.find((row) => row.active)?.week_number ?? 1);
+  const nextRows = rows
+    .filter((row) => Number(row.week_number) === activeWeek + 1)
+    .sort((a, b) => String(a.session_date).localeCompare(String(b.session_date)));
+  const thisThreshold = rows.find((row) => Number(row.week_number) === activeWeek && /threshold/i.test(String(row.title)));
+  const nextThreshold = nextRows.find((row) => /threshold/i.test(String(row.title)));
+  return {
+    currentWeek: activeWeek,
+    programmeWeeks: new Set(rows.map((row) => row.week_number)).size,
+    blockNote: String(rows.find((row) => row.programme_key)?.programme_key ?? ""),
+    nextTitles: nextRows.map((row) => ({ day: String(row.day_key), title: String(row.title) })),
+    nextWeek: {
+      decision: "KEEP",
+      from: String(thisThreshold?.title ?? "This week"),
+      to: String(nextThreshold?.title ?? "Next week"),
+      minutesFrom: null,
+      minutesTo: null,
+      why: "Next week is already written. Applying a change is closed on this canary.",
+      starts: String(nextRows[0]?.session_date ?? ""),
+      accepted: false,
+      canAccept: false,
+      acceptLabel: null,
+      keepLabel: null,
+    },
+  };
+}
+
 export async function loadCanary(): Promise<CanaryView> {
   await ensureAthlete();
   const intake = await readIntake();
@@ -751,9 +787,7 @@ export async function loadCanary(): Promise<CanaryView> {
             : "ready";
   const known = (state?.requirements ?? []).filter((req) => req.status === "satisfied" && ["running", "hyrox"].includes(req.id)).map((req) => (req.id === "running" ? "5K" : "HYROX"));
   const needed = (state?.requirements ?? []).filter((req) => req.status === "test_required").map((req) => req.label);
-  if (productionTrackAccessEnabled() && training.length > 0) {
-    throw new Error("Production canary already has training weeks.");
-  }
+  const productionHome = productionTrackAccessEnabled() && phase === "home" ? await productionProgrammeView() : null;
   const proposal = phase === "home" ? await openProposal() : null;
   const acceptedLog = await latestAccepted();
   const feedback = await readFeedback();
@@ -783,7 +817,7 @@ export async function loadCanary(): Promise<CanaryView> {
         note: domain.reason,
       }))
     : [];
-  const next = programme?.nextWeek ?? {
+  const next = productionHome?.nextWeek ?? programme?.nextWeek ?? {
     decision: "KEEP",
     from: "Threshold",
     to: "Threshold",
@@ -826,7 +860,7 @@ export async function loadCanary(): Promise<CanaryView> {
       return { day, title, today: day === today, changed: Boolean(beforeTitles.get(day) && beforeTitles.get(day) !== title) };
     }),
     todayTitle: String(homeSource.find((row) => row.day_key === today)?.title ?? "Rest"),
-    countdown: intake.event.eventDate ? `${intake.event.eventName ?? "Race"} in ${Math.round((Date.parse(intake.event.eventDate) - Date.parse("2026-11-17")) / 86_400_000)} days` : "",
+    countdown: intake.event.eventDate ? `${intake.event.eventName ?? "Race"} in ${Math.round((Date.parse(intake.event.eventDate) - Date.parse(productionTrackAccessEnabled() ? clock : "2026-11-17")) / 86_400_000)} days` : "",
     recommendation: proposal
       ? {
           proposalId: String(proposal.id),
@@ -834,7 +868,7 @@ export async function loadCanary(): Promise<CanaryView> {
           todayTitle: String(homeSource.find((row) => row.day_key === today)?.title ?? "Today"),
           recommended: proposalActionTitle(proposal.proposal),
           also: String((proposal.proposal as { explanation?: string }).explanation ?? ""),
-          canChoose: true,
+          canChoose: !productionTrackAccessEnabled(),
         }
       : null,
     accepted: acceptedNote(acceptedLog, clock),
@@ -847,10 +881,10 @@ export async function loadCanary(): Promise<CanaryView> {
     stationNeeded: programme?.stationNeeded ?? false,
     history: programme?.history ?? [],
     previousCompleted: programme?.previousCompleted ?? [],
-    nextTitles: programme?.nextTitles ?? [],
-    currentWeek: programme?.currentWeek ?? 1,
-    programmeWeeks: programme?.programmeWeeks ?? 1,
-    blockNote: programme?.blockNote ?? null,
+    nextTitles: productionHome?.nextTitles ?? programme?.nextTitles ?? [],
+    currentWeek: productionHome?.currentWeek ?? programme?.currentWeek ?? 1,
+    programmeWeeks: productionHome?.programmeWeeks ?? programme?.programmeWeeks ?? 1,
+    blockNote: productionHome?.blockNote ?? programme?.blockNote ?? null,
     wallBall: null,
     holds: (programme?.stations ?? []).filter((station) => station.graph === "NO").map((station) => station.label),
     painNote: await painCopy(),
@@ -912,7 +946,7 @@ function workloadCards(sessions: Array<Record<string, unknown>>, feedback: Array
   const long = sessions.find((row) => /long/i.test(String(row.title)));
   const longMinutes = long ? String(long.title).match(/(\d+)\s*min/i) : null;
   if (long && longMinutes) cards.push({ label: "Long run", planned: `${longMinutes[1]} min`, completed: null });
-  const hyrox = sessions.find((row) => /compromised|hyrox/i.test(String(row.title)));
+  const hyrox = sessions.find((row) => /compromised|race-style/i.test(String(row.title)));
   if (hyrox) {
     const done = feedback.find((row) => row.session_id === hyrox.id);
     cards.push({ label: "HYROX session", planned: String(hyrox.title), completed: done ? String((done.actuals as { note?: string } | null)?.note ?? "Logged") : null });
@@ -971,7 +1005,7 @@ async function audit() {
     db.from("track_benchmark_results").select("test_id, created_at").eq("athlete_id", productAthleteId()).order("created_at"),
     db.from("track_calendar_sessions").select("kind, created_at").eq("athlete_id", productAthleteId()).order("created_at").limit(1),
     db.from("track_morning_readiness").select("local_date, created_at").eq("athlete_id", productAthleteId()).order("created_at"),
-    db.from("track_programme_proposals").select("status, created_at").eq("athlete_id", productAthleteId()).order("created_at"),
+    db.from("track_programme_proposals").select("status, created_at, proposal").eq("athlete_id", productAthleteId()).order("created_at"),
     db.from("track_session_feedback").select("created_at").eq("athlete_id", productAthleteId()).order("created_at"),
     db.from("track_weekly_checkins").select("created_at").eq("athlete_id", productAthleteId()).order("created_at"),
   ]);
@@ -980,7 +1014,11 @@ async function audit() {
   for (const row of evidence.data ?? []) rows.push({ label: `Evidence ${row.test_id}`, at: String(row.created_at) });
   if (sessions.data?.[0]) rows.push({ label: "Calendar started", at: String(sessions.data[0].created_at) });
   for (const row of mornings.data ?? []) rows.push({ label: `Morning ${row.local_date}`, at: String(row.created_at) });
-  for (const row of proposals.data ?? []) rows.push({ label: `Recommendation ${row.status}`, at: String(row.created_at) });
+  for (const row of proposals.data ?? []) {
+    const kind = (row.proposal as { kind?: string } | null)?.kind;
+    const label = kind === "programme" && row.status === "accepted" ? "Programme activated" : `Recommendation ${row.status}`;
+    rows.push({ label, at: String(row.created_at) });
+  }
   for (const row of feedback.data ?? []) rows.push({ label: "Session feedback", at: String(row.created_at) });
   for (const row of checkins.data ?? []) rows.push({ label: "Weekly check-in", at: String(row.created_at) });
   return rows;
