@@ -238,10 +238,7 @@ function deriveErg(family: FamilyResolution, domain: "ski" | "row", distance = 2
   const seconds = parseClockToSeconds(row.resultValue);
   const split = seconds != null ? formatPacePer500(seconds, distance) : null;
   const per500 = seconds != null ? seconds / (distance / 500) : null;
-  const guidedLabel =
-    per500 != null
-      ? `${Math.floor((per500 + ERG_THRESHOLD_OFFSET_SEC) / 60)}:${String(Math.round((per500 + ERG_THRESHOLD_OFFSET_SEC) % 60)).padStart(2, "0")}/500m`
-      : null;
+  const guidedLabel = per500 != null ? formatPacePer500(per500 + ERG_THRESHOLD_OFFSET_SEC, 500) : null;
   const clock = seconds != null ? formatClock(seconds) : row.resultValue;
   const display = [clock, split].filter(Boolean).join(" · ");
   const name = domain === "ski" ? "SkiErg" : "RowErg";

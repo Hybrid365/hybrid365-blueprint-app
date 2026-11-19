@@ -67,7 +67,8 @@ export function formatClock(totalSeconds: number): string {
 export function formatPacePer500(totalSeconds: number, distanceMetres: number): string | null {
   if (!Number.isFinite(totalSeconds) || totalSeconds <= 0 || distanceMetres <= 0) return null;
   const per = totalSeconds / (distanceMetres / 500);
-  const m = Math.floor(per / 60);
-  const s = Math.round(per % 60);
+  const rounded = Math.round(per);
+  const m = Math.floor(rounded / 60);
+  const s = rounded % 60;
   return `${m}:${String(s).padStart(2, "0")}/500m`;
 }

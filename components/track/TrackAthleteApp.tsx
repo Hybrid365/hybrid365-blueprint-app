@@ -10,6 +10,7 @@ import {
   addEvidenceAction,
   advanceClockAction,
   completeAssessmentAction,
+  completeStationAssessmentAction,
   completeTrainingAction,
   createAssessmentAction,
   keepAction,
@@ -56,8 +57,8 @@ export default function TrackAthleteApp({ view }: { view: CanaryView }) {
       </header>
 
       <div className="px-4 pt-4">
-        {view.phase === "onboard" && <Onboarding pending={pending} start={start} />}
-        {view.phase === "evidence" && <Evidence pending={pending} start={start} known={view.known} />}
+        {view.phase === "onboard" && <Onboarding view={view} pending={pending} start={start} />}
+        {view.phase === "evidence" && <Evidence view={view} pending={pending} start={start} known={view.known} />}
         {view.phase === "plan" && (
           <section className="space-y-4">
             <h1 className="text-2xl font-semibold">What we know</h1>
@@ -77,8 +78,8 @@ export default function TrackAthleteApp({ view }: { view: CanaryView }) {
         {view.phase === "ready" && (
           <section className="space-y-4">
             <h1 className="text-2xl font-semibold">You&apos;re ready</h1>
-            <p className="text-sm leading-6 text-zinc-300">We have what we need to build the first block. Ski, row and your race are on your profile.</p>
-            <button type="button" disabled={pending} onClick={() => start(() => activateProgrammeAction())} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">Build my programme</button>
+            <p className="text-sm leading-6 text-zinc-300">{view.activationOpen ? "We have what we need to build the first block. Ski, row and your race are on your profile." : "The first block is ready for coach review. It is not active, and nothing in the week can change yet."}</p>
+            <button type="button" disabled={pending} onClick={() => start(() => activateProgrammeAction())} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">{view.activationOpen ? "Build my programme" : "Prepare programme for review"}</button>
           </section>
         )}
         {view.phase === "home" && screen === "today" && (
@@ -120,7 +121,7 @@ function dayOf(iso: string): string {
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(`${iso}T00:00:00Z`).getUTCDay()] ?? "Mon";
 }
 
-function Onboarding({ pending, start }: { pending: boolean; start: (fn: () => void) => void }) {
+function Onboarding({ view, pending, start }: { view: CanaryView; pending: boolean; start: (fn: () => void) => void }) {
   const [days, setDays] = useState<DayKey[]>(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
   const [kit, setKit] = useState<EquipmentId[]>(["gym", "skierg", "rower", "bike", "sled", "wall_ball", "farmers"]);
   const [length, setLength] = useState<SessionLength>("60_90");
@@ -130,10 +131,12 @@ function Onboarding({ pending, start }: { pending: boolean; start: (fn: () => vo
   }
   function save() {
     const intake: TrackIntake = {
-      athleteId: "canary",
-      displayName: "Alex Hale",
+      athleteId: view.name,
+      displayName: view.name,
       goal: "hyrox",
-      event: { hasEvent: true, eventType: "Hyrox Pro", eventName: "HYROX London", eventDate: "2027-03-20", division: "Pro" },
+      event: view.activationOpen
+        ? { hasEvent: true, eventType: "Hyrox Pro", eventName: "HYROX London", eventDate: "2027-03-20", division: "Pro" }
+        : { hasEvent: true, eventType: "Hyrox Pro", eventName: "HYROX Manchester", eventDate: "2027-05-15", division: "Pro" },
       availability: {
         daysPerWeek: days.length,
         availableDays: days,
@@ -153,11 +156,11 @@ function Onboarding({ pending, start }: { pending: boolean; start: (fn: () => vo
   return (
     <section className="space-y-5">
       <div>
-        <p className="text-xs uppercase tracking-wide text-zinc-500">Alex Hale · internal canary</p>
+        <p className="text-xs uppercase tracking-wide text-zinc-500">{view.name}</p>
         <h1 className="mt-1 text-2xl font-semibold">Set up your training</h1>
       </div>
       <Field label="Goal"><p className="rounded-xl bg-zinc-900 px-4 py-3">HYROX</p></Field>
-      <Field label="Event"><p className="rounded-xl bg-zinc-900 px-4 py-3">HYROX London · Pro · 20 Mar 2027</p></Field>
+      <Field label="Event"><p className="rounded-xl bg-zinc-900 px-4 py-3">{view.activationOpen ? "HYROX London · Pro · 20 Mar 2027" : "HYROX Manchester · Pro · 15 May 2027"}</p></Field>
       <Field label="Days">
         <div className="flex flex-wrap gap-2">
           {DAYS.map((day) => (
@@ -192,22 +195,25 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div className="space-y-2"><p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>{children}</div>;
 }
 
-function Evidence({ pending, start, known }: { pending: boolean; start: (fn: () => void) => void; known: string[] }) {
+function Evidence({ view, pending, start, known }: { view: CanaryView; pending: boolean; start: (fn: () => void) => void; known: string[] }) {
+  const choice = view.evidenceChoices;
   return (
     <section className="space-y-4">
       <h1 className="text-2xl font-semibold">Recent results</h1>
       <p className="text-sm text-zinc-400">We already know {known.length ? known.join(" and ") : "nothing yet"}.</p>
-      <button type="button" disabled={pending || known.includes("5K")} onClick={() => start(() => addEvidenceAction({ testId: "run_5k", resultValue: "18:12", date: "2026-11-05", source: "official_race" }))} className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-left">5K · 18:12 · 5 Nov · official</button>
-      <button type="button" disabled={pending || known.includes("HYROX")} onClick={() => start(() => addEvidenceAction({ testId: "hyrox_race", resultValue: "1:04:40", date: "2026-10-18", source: "official_race" }))} className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-left">HYROX London · 1:04:40 · 18 Oct</button>
-      {known.length >= 2 && <p className="text-sm text-zinc-400">Both results are saved.</p>}
+      <button type="button" disabled={pending || known.includes("5K")} onClick={() => start(() => addEvidenceAction({ testId: "run_5k", resultValue: choice.fiveK, date: choice.fiveKDate, source: "official_race" }))} className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-left">5K · {choice.fiveK} · {choice.fiveKDate} · official</button>
+      <button type="button" disabled={pending || known.includes("HYROX")} onClick={() => start(() => addEvidenceAction({ testId: "hyrox_race", resultValue: choice.hyrox, date: choice.hyroxDate, source: "official_race" }))} className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-left">{choice.hyroxLabel} · {choice.hyrox} · {choice.hyroxDate}</button>
+      {known.length >= 2 && <p className="text-sm text-zinc-400">Both results are saved. The race time does not fill in missing stations.</p>}
     </section>
   );
 }
 
 function Assessment({ view, pending, start, onOpen }: { view: CanaryView; pending: boolean; start: (fn: () => void) => void; onOpen: (id: string) => void }) {
   const [open, setOpen] = useState<string | null>(null);
-  const [result, setResult] = useState("7:40");
+  const [result, setResult] = useState("8:12");
+  const [stations, setStations] = useState({ wall: "65", push: "40", pull: "40", farmers: "60", bbj: "70" });
   const session = view.sessions.find((item) => item.id === open);
+  const stationSession = session?.testId === "hyrox_station_battery";
   return (
     <section className="space-y-3">
       <h1 className="text-2xl font-semibold">Assessment week</h1>
@@ -222,8 +228,28 @@ function Assessment({ view, pending, start, onOpen }: { view: CanaryView; pendin
         <div className="space-y-3 rounded-2xl border border-zinc-800 p-4">
           <p className="font-medium">{session.title}</p>
           {session.blocks.slice(0, 4).map((line) => <p key={line} className="text-sm text-zinc-300">{line}</p>)}
-          <input value={result} onChange={(event) => setResult(event.target.value)} className="w-full rounded-xl bg-zinc-900 px-3 py-2" aria-label="Result" />
-          <button type="button" disabled={pending} onClick={() => start(() => completeAssessmentAction({ sessionId: session.id, resultValue: result, rpe: 8 }))} className="w-full rounded-xl bg-white py-3 font-semibold text-black">Save result</button>
+          {stationSession ? (
+            <div className="space-y-2">
+              {([
+                ["wall", "Wall balls (reps)"],
+                ["push", "Sled push (m)"],
+                ["pull", "Sled pull (m)"],
+                ["farmers", "Farmers (m)"],
+                ["bbj", "Burpee broad jump (m)"],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="block text-sm text-zinc-400">
+                  {label}
+                  <input value={stations[key]} onChange={(event) => setStations((current) => ({ ...current, [key]: event.target.value }))} className="mt-1 w-full rounded-xl bg-zinc-900 px-3 py-2 text-white" />
+                </label>
+              ))}
+              <button type="button" disabled={pending} onClick={() => start(() => completeStationAssessmentAction({ sessionId: session.id, wallBallReps: stations.wall, sledPushMetres: stations.push, sledPullMetres: stations.pull, farmersMetres: stations.farmers, bbjMetres: stations.bbj, rpe: 7 }))} className="w-full rounded-xl bg-white py-3 font-semibold text-black">Save station results</button>
+            </div>
+          ) : (
+            <>
+              <input value={result} onChange={(event) => setResult(event.target.value)} className="w-full rounded-xl bg-zinc-900 px-3 py-2" aria-label="Result" />
+              <button type="button" disabled={pending} onClick={() => start(() => completeAssessmentAction({ sessionId: session.id, resultValue: result, rpe: 8 }))} className="w-full rounded-xl bg-white py-3 font-semibold text-black">Save result</button>
+            </>
+          )}
         </div>
       )}
     </section>

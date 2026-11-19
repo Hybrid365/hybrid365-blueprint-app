@@ -2,6 +2,12 @@ import { loadAdmin } from "@/app/lib/track-canary/model";
 
 export const dynamic = "force-dynamic";
 
+function proposalWeeks(proposal: { proposal?: unknown } | null): Array<{ week: number; deload?: boolean; tuesday?: string; saturday?: string; sunday?: string }> {
+  const body = proposal?.proposal as { kind?: string; weeks?: Array<{ week: number; deload?: boolean; tuesday?: string; saturday?: string; sunday?: string }> } | undefined;
+  if (body?.kind !== "programme" || !Array.isArray(body.weeks)) return [];
+  return body.weeks;
+}
+
 export default async function TrackAdminPage() {
   const admin = await loadAdmin();
   return (
@@ -19,6 +25,11 @@ export default async function TrackAdminPage() {
         <h2 className="text-lg font-semibold">Programme</h2>
         <p className="text-sm text-zinc-300">Week {admin.view.currentWeek} of {admin.view.programmeWeeks}. Production mutation is off.</p>
         {admin.view.blockNote && <p className="mt-2 text-sm text-zinc-400">{admin.view.blockNote}</p>}
+        {proposalWeeks(admin.proposal).map((week) => (
+          <p key={week.week} className="mt-1 text-sm text-zinc-300">
+            Week {week.week}{week.deload ? " · lighter" : ""} · Tue {week.tuesday} · Sat {week.saturday} · Sun {week.sunday}
+          </p>
+        ))}
       </section>
       <section className="mt-8 space-y-2">
         <h2 className="text-lg font-semibold">Station evidence</h2>

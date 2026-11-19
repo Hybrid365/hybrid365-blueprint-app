@@ -1,5 +1,7 @@
 import { addDays } from "@/app/lib/track-foundation/dates";
 import { evaluateTrackFoundation } from "@/app/lib/track-foundation/pipeline";
+import { buildEvidenceBook } from "@/app/lib/track-foundation/evidence";
+import { resolveStationDomains } from "@/app/lib/track-foundation/stationEvidence";
 import { getTest, protocolForAthlete } from "@/app/lib/track-foundation/testLibrary";
 import type { BenchmarkResultInput, DayKey, TrackIntake } from "@/app/lib/track-foundation/types";
 import { mapAssessmentToProgrammeInput } from "@/app/lib/mapAssessmentToProgrammeInput";
@@ -8,10 +10,30 @@ import { interpretReadiness } from "@/app/lib/daily-readiness/interpret";
 import { resolveRemainingWeek } from "@/app/lib/daily-readiness/reflow";
 import type { ReadinessSubmission, WeekSession } from "@/app/lib/daily-readiness/types";
 import { CANARY_ATHLETE_ID, CANARY_EMAIL, CANARY_NAME, canaryDb } from "./db";
-import { acceptNextWeek, prepareProgramme, saveStationBattery, type ProgrammeSnapshot } from "./weeks";
+import { acceptNextWeek as stagingAcceptNextWeek, prepareProgramme, saveStationBattery, type ProgrammeSnapshot } from "./weeks";
+import {
+  PRODUCTION_TRACK_CANARY_ATHLETE_ID,
+  PRODUCTION_TRACK_CANARY_AUTH_USER_ID,
+  productionTrackAccessEnabled,
+  refuseProductionProgrammeWrite,
+} from "@/app/lib/track-production/access";
+import { productionTrackDb } from "@/app/lib/track-production/db";
 
 const WEEK_START = "2026-11-16";
 const DAYS: DayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function productAthleteId(): string {
+  return productionTrackAccessEnabled() ? PRODUCTION_TRACK_CANARY_ATHLETE_ID : CANARY_ATHLETE_ID;
+}
+
+function productDb() {
+  return productionTrackAccessEnabled() ? productionTrackDb() : canaryDb();
+}
+
+function productClock(fallback: string): string {
+  return productionTrackAccessEnabled() ? "2026-11-19" : fallback;
+}
+
 
 type SessionPayload = {
   weekNumber?: number;
@@ -81,6 +103,8 @@ export type CanaryView = {
   holds: string[];
   painNote: string | null;
   audit: Array<{ label: string; at: string }>;
+  activationOpen: boolean;
+  evidenceChoices: { fiveK: string; fiveKDate: string; hyrox: string; hyroxDate: string; hyroxLabel: string };
 };
 
 function dateFor(day: DayKey, start = WEEK_START): string {
@@ -89,7 +113,7 @@ function dateFor(day: DayKey, start = WEEK_START): string {
 
 function blankIntake(): TrackIntake {
   return {
-    athleteId: CANARY_ATHLETE_ID,
+    athleteId: productAthleteId(),
     displayName: CANARY_NAME,
     goal: null,
     event: { hasEvent: false, eventType: null, eventName: null, eventDate: null, division: null },
@@ -117,10 +141,23 @@ function blankIntake(): TrackIntake {
 }
 
 async function ensureAthlete() {
-  const db = canaryDb();
+  const db = productDb();
+  if (productionTrackAccessEnabled()) {
+    const { data, error } = await db
+      .from("hyrox_athletes")
+      .select("id, user_id, name, payment_status")
+      .eq("id", productAthleteId())
+      .maybeSingle();
+    if (error || !data) throw new Error(error?.message ?? "Production canary athlete is missing.");
+    if (data.user_id !== PRODUCTION_TRACK_CANARY_AUTH_USER_ID || data.name !== "Hybrid365 Track Canary") {
+      throw new Error("Production canary identity mismatch.");
+    }
+    if (data.payment_status === "paid") throw new Error("Production canary must stay unpaid.");
+    return db;
+  }
   const { error } = await db.from("hyrox_athletes").upsert(
     {
-      id: CANARY_ATHLETE_ID,
+      id: productAthleteId(),
       name: CANARY_NAME,
       email: CANARY_EMAIL,
       status: "accepted",
@@ -130,7 +167,7 @@ async function ensureAthlete() {
     { onConflict: "id" }
   );
   if (error) throw new Error(error.message);
-  await db.from("track_product_membership").upsert({ athlete_id: CANARY_ATHLETE_ID, status: "active" }, { onConflict: "athlete_id" });
+  await db.from("track_product_membership").upsert({ athlete_id: productAthleteId(), status: "active" }, { onConflict: "athlete_id" });
   return db;
 }
 
@@ -149,8 +186,13 @@ function resultsFromRows(rows: Array<Record<string, unknown>>): BenchmarkResultI
 }
 
 async function persistDerived(intake: TrackIntake, results: BenchmarkResultInput[]) {
-  const db = canaryDb();
-  const state = evaluateTrackFoundation({ intake, results, asOf: "2026-11-17" });
+  const db = productDb();
+  const clock = (intake as TrackIntake & { clock?: string }).clock;
+  const state = evaluateTrackFoundation({
+    intake,
+    results,
+    asOf: productionTrackAccessEnabled() ? String(clock ?? productClock("2026-11-19")) : "2026-11-17",
+  });
   const anchors = [
     state.anchors.running.easy,
     state.anchors.running.threshold,
@@ -162,7 +204,7 @@ async function persistDerived(intake: TrackIntake, results: BenchmarkResultInput
   for (const anchor of anchors) {
     await db.from("track_training_anchors").upsert(
       {
-        athlete_id: CANARY_ATHLETE_ID,
+        athlete_id: productAthleteId(),
         anchor_key: anchor!.key,
         status: anchor!.status,
         display_value: anchor!.display,
@@ -173,7 +215,7 @@ async function persistDerived(intake: TrackIntake, results: BenchmarkResultInput
     );
   }
   await db.from("track_performance_profiles").upsert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     readiness: state.profile.programmingReadiness,
     profile: { lines: state.profile.sections.flatMap((section) => section.known).slice(0, 12) },
     derived_at: new Date().toISOString(),
@@ -183,9 +225,14 @@ async function persistDerived(intake: TrackIntake, results: BenchmarkResultInput
 
 export async function saveOnboarding(intake: TrackIntake) {
   const db = await ensureAthlete();
-  const stored = { ...intake, athleteId: CANARY_ATHLETE_ID, displayName: CANARY_NAME, clock: "2026-11-13" };
+  const stored = {
+    ...intake,
+    athleteId: productAthleteId(),
+    displayName: productionTrackAccessEnabled() ? "Hybrid365 Track Canary" : CANARY_NAME,
+    clock: productClock("2026-11-13"),
+  };
   const { error } = await db.from("track_athlete_intake").upsert(
-    { athlete_id: CANARY_ATHLETE_ID, intake: stored, updated_at: new Date().toISOString() },
+    { athlete_id: productAthleteId(), intake: stored, updated_at: new Date().toISOString() },
     { onConflict: "athlete_id" }
   );
   if (error) throw new Error(error.message);
@@ -197,7 +244,7 @@ export async function addEvidence(input: { testId: string; resultValue: string; 
   const test = getTest(input.testId);
   if (!test) throw new Error("Unknown test.");
   const { error } = await db.from("track_benchmark_results").insert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     test_id: input.testId,
     result_value: input.resultValue,
     unit: test.resultUnit,
@@ -216,23 +263,32 @@ export async function createAssessmentWeek() {
   const db = await ensureAthlete();
   const intake = await readIntake();
   const results = await readResults();
-  const state = evaluateTrackFoundation({ intake, results, asOf: "2026-11-09" });
+  const asOf = productionTrackAccessEnabled()
+    ? String((intake as TrackIntake & { clock?: string }).clock ?? productClock("2026-11-19"))
+    : "2026-11-09";
+  const state = evaluateTrackFoundation({ intake, results, asOf });
   await db.from("track_assessment_plans").insert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     requirements: state.requirements,
     sessions: state.week.sessions,
   });
-  const rows = state.week.sessions.map((session) => ({
-    athlete_id: CANARY_ATHLETE_ID,
+  const usedDays = new Set<string>();
+  const rows = state.week.sessions.map((session) => {
+    const covered = session.summary.includes("Already covered");
+    const active = !covered && !usedDays.has(session.day);
+    if (active) usedDays.add(session.day);
+    return {
+    athlete_id: productAthleteId(),
     programme_version: 0,
+    week_number: productionTrackAccessEnabled() ? 0 : null,
     session_date: session.date,
     day_key: session.day,
     title: session.title,
     kind: "assessment",
     test_id: session.testId,
     instructions: protocolForAthlete(session.testId ?? "easy_aerobic", intake.equipment),
-    status: "planned",
-    active: true,
+    status: covered ? "completed" : "planned",
+    active,
     payload: {
       purpose: session.summary,
       main: protocolForAthlete(session.testId ?? "easy_aerobic", intake.equipment),
@@ -244,7 +300,8 @@ export async function createAssessmentWeek() {
       anchor: false,
       load: [],
     } satisfies SessionPayload,
-  }));
+    };
+  });
   if (rows.length) {
     const { error } = await db.from("track_calendar_sessions").insert(rows);
     if (error) throw new Error(error.message);
@@ -256,20 +313,24 @@ export async function completeAssessment(input: { sessionId: string; resultValue
   const { data: session, error } = await db.from("track_calendar_sessions").select("*").eq("id", input.sessionId).single();
   if (error || !session) throw new Error(error?.message ?? "Session missing.");
   const testId = (session.payload as SessionPayload | null)?.testId ?? session.test_id;
+  const intake = await readIntake();
+  const clock = String((intake as TrackIntake & { clock?: string }).clock ?? session.session_date);
+  const sessionDate = String(session.session_date).slice(0, 10);
+  const testedOn = sessionDate > clock ? clock : sessionDate;
   if (testId && testId !== "easy_aerobic") {
     const test = getTest(String(testId));
     await db.from("track_benchmark_results").insert({
-      athlete_id: CANARY_ATHLETE_ID,
+      athlete_id: productAthleteId(),
       test_id: testId,
       result_value: input.resultValue,
       unit: test?.resultUnit ?? "result",
-      tested_on: session.session_date,
+      tested_on: testedOn,
       source: "training_test",
       details: {},
     });
   }
   await db.from("track_session_feedback").insert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     session_id: input.sessionId,
     completion: "completed",
     rpe: input.rpe,
@@ -282,6 +343,7 @@ export async function completeAssessment(input: { sessionId: string; resultValue
 }
 
 export async function activateProgramme() {
+  refuseProductionProgrammeWrite();
   const db = await ensureAthlete();
   const intake = await readIntake();
   const results = await readResults();
@@ -340,9 +402,9 @@ export async function activateProgramme() {
     chosen = chosen ?? week;
   }
   if (!chosen) throw new Error("Programme did not generate.");
-  await db.from("track_calendar_sessions").update({ active: false }).eq("athlete_id", CANARY_ATHLETE_ID).eq("active", true);
+  await db.from("track_calendar_sessions").update({ active: false }).eq("athlete_id", productAthleteId()).eq("active", true);
   const rows = chosen.plan_json.schedule.map((day) => ({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     programme_version: 1,
     session_date: dateFor(day.day),
     day_key: day.day,
@@ -356,7 +418,7 @@ export async function activateProgramme() {
   const { error } = await db.from("track_calendar_sessions").insert(rows);
   if (error) throw new Error(error.message);
   await db.from("track_programme_proposals").insert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     readiness: "READY",
     proposal: { kind: "programme", weeks: 12, draw, weekTitle: chosen.title },
     published: false,
@@ -366,7 +428,7 @@ export async function activateProgramme() {
   });
   const stored = await readIntake();
   stored.clock = "2026-11-13";
-  await db.from("track_athlete_intake").update({ intake: stored, updated_at: new Date().toISOString() }).eq("athlete_id", CANARY_ATHLETE_ID);
+  await db.from("track_athlete_intake").update({ intake: stored, updated_at: new Date().toISOString() }).eq("athlete_id", productAthleteId());
 }
 
 function payloadFromDay(day: { day: DayKey; title: string; tags?: string[]; progression_family?: string; session?: { main?: string[]; notes?: string[] }; run_prescription?: { pace_range: string | null; rpe: string; effort_description: string; personalization_line: string | null } | null }, weekNumber: number): SessionPayload {
@@ -409,7 +471,7 @@ function toWeekSession(day: { day: DayKey; title: string; tags?: string[] }, id 
 
 function fatiguedState() {
   return interpretReadiness({
-    athleteId: CANARY_ATHLETE_ID,
+    athleteId: productAthleteId(),
     localDate: "2026-11-17",
     submissions: [
       ...["2026-11-13", "2026-11-14", "2026-11-15", "2026-11-16"].map((date) => morning(date, 8, 8, 8, 2, 8)),
@@ -421,7 +483,7 @@ function fatiguedState() {
 function morning(date: string, sleep: number, energy: number, recovery: number, soreness: number, trainingReadiness: number, pain = false): ReadinessSubmission {
   return {
     id: date,
-    athleteId: CANARY_ATHLETE_ID,
+    athleteId: productAthleteId(),
     localDate: date,
     timezone: "Europe/London",
     submittedAt: `${date}T07:00:00.000Z`,
@@ -446,16 +508,16 @@ export async function saveMorning(input: { sleep: number; energy: number; recove
   const clock = String((intake as TrackIntake & { clock?: string }).clock ?? "2026-11-17");
   const row = morning(clock, input.sleep, input.energy, input.recovery, input.soreness, input.readiness, input.pain);
   const prior = await readMornings();
-  const state = interpretReadiness({ athleteId: CANARY_ATHLETE_ID, localDate: clock, submissions: [...prior, row] });
+  const state = interpretReadiness({ athleteId: productAthleteId(), localDate: clock, submissions: [...prior, row] });
   await db.from("track_morning_readiness").insert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     local_date: clock,
     answers: row,
     interpretation: state.interpretation,
   });
   if (input.pain) {
     await db.from("track_escalations").insert({
-      athlete_id: CANARY_ATHLETE_ID,
+      athlete_id: productAthleteId(),
       kind: "PAIN_REVIEW",
       summary: "Athlete reported pain. The programme was not changed.",
     });
@@ -471,10 +533,10 @@ export async function saveMorning(input: { sleep: number; energy: number; recove
   if (proposal.status !== "proposed") return;
   const revision = await activeRevision();
   const fingerprint = `${clock}:${proposal.action}:${revision}`;
-  const { data: declined } = await db.from("track_adaptation_log").select("proposal").eq("athlete_id", CANARY_ATHLETE_ID).eq("decision", "declined");
+  const { data: declined } = await db.from("track_adaptation_log").select("proposal").eq("athlete_id", productAthleteId()).eq("decision", "declined");
   if ((declined ?? []).some((row) => (row.proposal as { fingerprint?: string } | null)?.fingerprint === fingerprint)) return;
   await db.from("track_programme_proposals").insert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     readiness: state.interpretation,
     proposal: { fingerprint, action: proposal.action, explanation: proposal.athleteExplanation, after: proposal.after, load: proposal.load },
     published: false,
@@ -485,13 +547,14 @@ export async function saveMorning(input: { sleep: number; energy: number; recove
 }
 
 export async function chooseOriginal() {
+  refuseProductionProgrammeWrite();
   const db = await ensureAthlete();
   const proposal = await openProposal();
   if (!proposal) return;
   const revision = await activeRevision();
   const { error } = await db.rpc("track_decline_reflow", {
     payload: {
-      athlete_id: CANARY_ATHLETE_ID,
+      athlete_id: productAthleteId(),
       proposal_id: proposal.id,
       expected_revision: revision,
       snapshot: { interpretation: proposal.readiness },
@@ -502,6 +565,7 @@ export async function chooseOriginal() {
 }
 
 export async function chooseAccept() {
+  refuseProductionProgrammeWrite();
   const db = await ensureAthlete();
   const proposal = await openProposal();
   if (!proposal) throw new Error("No current recommendation.");
@@ -513,7 +577,7 @@ export async function chooseAccept() {
   const load = (proposal.proposal as { load?: Array<{ label: string; before: number; after: number }> }).load ?? [];
   const { error } = await db.rpc("track_accept_reflow", {
     payload: {
-      athlete_id: CANARY_ATHLETE_ID,
+      athlete_id: productAthleteId(),
       proposal_id: proposal.id,
       expected_revision: revision,
       policy_version: "track-loop-v1",
@@ -559,7 +623,7 @@ function diffOps(before: WeekSession[], after: WeekSession[]) {
 export async function completeTraining(input: { sessionId: string; completion: string; rpe: number; feel: string; pain: boolean; actuals: Record<string, string | number> }) {
   const db = await ensureAthlete();
   await db.from("track_session_feedback").insert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     session_id: input.sessionId,
     completion: input.completion,
     rpe: input.rpe,
@@ -575,7 +639,7 @@ export async function completeTraining(input: { sessionId: string; completion: s
 export async function saveCheckIn(answers: Record<string, string | number | boolean>) {
   const db = await ensureAthlete();
   const { error } = await db.from("track_weekly_checkins").insert({
-    athlete_id: CANARY_ATHLETE_ID,
+    athlete_id: productAthleteId(),
     week_of: WEEK_START,
     answers,
   });
@@ -583,6 +647,7 @@ export async function saveCheckIn(answers: Record<string, string | number | bool
 }
 
 export async function advanceClock() {
+  refuseProductionProgrammeWrite();
   const db = await ensureAthlete();
   const intake = await readIntake();
   const clock = String((intake as TrackIntake & { clock?: string }).clock ?? "2026-11-13");
@@ -590,30 +655,30 @@ export async function advanceClock() {
   await db.from("track_athlete_intake").update({
     intake: { ...intake, clock: next },
     updated_at: new Date().toISOString(),
-  }).eq("athlete_id", CANARY_ATHLETE_ID);
+  }).eq("athlete_id", productAthleteId());
 }
 
 async function readIntake(): Promise<TrackIntake & { clock?: string }> {
-  const db = canaryDb();
-  const { data } = await db.from("track_athlete_intake").select("intake").eq("athlete_id", CANARY_ATHLETE_ID).maybeSingle();
+  const db = productDb();
+  const { data } = await db.from("track_athlete_intake").select("intake").eq("athlete_id", productAthleteId()).maybeSingle();
   return (data?.intake as TrackIntake & { clock?: string }) ?? blankIntake();
 }
 
 async function readResults(): Promise<BenchmarkResultInput[]> {
-  const db = canaryDb();
-  const { data } = await db.from("track_benchmark_results").select("*").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at");
+  const db = productDb();
+  const { data } = await db.from("track_benchmark_results").select("*").eq("athlete_id", productAthleteId()).order("created_at");
   return resultsFromRows(data ?? []);
 }
 
 async function readMornings(): Promise<ReadinessSubmission[]> {
-  const db = canaryDb();
-  const { data } = await db.from("track_morning_readiness").select("answers").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at");
+  const db = productDb();
+  const { data } = await db.from("track_morning_readiness").select("answers").eq("athlete_id", productAthleteId()).order("created_at");
   return (data ?? []).map((row) => row.answers as ReadinessSubmission);
 }
 
 async function activeSessions() {
-  const db = canaryDb();
-  const { data } = await db.from("track_calendar_sessions").select("*").eq("athlete_id", CANARY_ATHLETE_ID).eq("active", true).order("session_date");
+  const db = productDb();
+  const { data } = await db.from("track_calendar_sessions").select("*").eq("athlete_id", productAthleteId()).eq("active", true).order("session_date");
   return data ?? [];
 }
 
@@ -645,11 +710,11 @@ function dayKey(iso: string): WeekSession["day"] {
 }
 
 async function openProposal() {
-  const db = canaryDb();
+  const db = productDb();
   const { data } = await db
     .from("track_programme_proposals")
     .select("*")
-    .eq("athlete_id", CANARY_ATHLETE_ID)
+    .eq("athlete_id", productAthleteId())
     .eq("status", "proposed")
     .order("created_at", { ascending: false })
     .limit(5);
@@ -686,6 +751,9 @@ export async function loadCanary(): Promise<CanaryView> {
             : "ready";
   const known = (state?.requirements ?? []).filter((req) => req.status === "satisfied" && ["running", "hyrox"].includes(req.id)).map((req) => (req.id === "running" ? "5K" : "HYROX"));
   const needed = (state?.requirements ?? []).filter((req) => req.status === "test_required").map((req) => req.label);
+  if (productionTrackAccessEnabled() && training.length > 0) {
+    throw new Error("Production canary already has training weeks.");
+  }
   const proposal = phase === "home" ? await openProposal() : null;
   const acceptedLog = await latestAccepted();
   const feedback = await readFeedback();
@@ -697,16 +765,24 @@ export async function loadCanary(): Promise<CanaryView> {
   for (const row of beforeWeek) {
     if (row.day_key && row.title) beforeTitles.set(row.day_key, row.title);
   }
-  const programme = phase === "home"
+  const programme = phase === "home" && !productionTrackAccessEnabled()
     ? await prepareProgramme({
         intake,
         results,
         clock,
         feedback,
         checkins,
-        logs: (await canaryDb().from("track_adaptation_log").select("*").eq("athlete_id", CANARY_ATHLETE_ID).order("recorded_at")).data ?? [],
+        logs: (await productDb().from("track_adaptation_log").select("*").eq("athlete_id", productAthleteId()).order("recorded_at")).data ?? [],
       })
     : null;
+  const stationCards = state
+    ? resolveStationDomains(buildEvidenceBook(results, clock), intake.equipment).map((domain) => ({
+        label: domain.label,
+        evidence: domain.evidence ? "YES" as const : "NO" as const,
+        graph: domain.graph ? "YES" as const : "NO" as const,
+        note: domain.reason,
+      }))
+    : [];
   const next = programme?.nextWeek ?? {
     decision: "KEEP",
     from: "Threshold",
@@ -721,7 +797,7 @@ export async function loadCanary(): Promise<CanaryView> {
     keepLabel: null,
   };
   return {
-    name: CANARY_NAME,
+    name: productionTrackAccessEnabled() ? "Hybrid365 Track Canary" : CANARY_NAME,
     clock,
     phase,
     known,
@@ -767,7 +843,7 @@ export async function loadCanary(): Promise<CanaryView> {
     checkIn: checkins[0] ? { recovery: Number(checkins[0].answers.recovery ?? 0), motivation: Number(checkins[0].answers.motivation ?? 0) } : null,
     nextWeek: next,
     impact: programme?.impact ?? [],
-    stations: programme?.stations ?? [],
+    stations: programme?.stations?.length ? programme.stations : stationCards,
     stationNeeded: programme?.stationNeeded ?? false,
     history: programme?.history ?? [],
     previousCompleted: programme?.previousCompleted ?? [],
@@ -779,6 +855,10 @@ export async function loadCanary(): Promise<CanaryView> {
     holds: (programme?.stations ?? []).filter((station) => station.graph === "NO").map((station) => station.label),
     painNote: await painCopy(),
     audit: await audit(),
+    activationOpen: !productionTrackAccessEnabled(),
+    evidenceChoices: productionTrackAccessEnabled()
+      ? { fiveK: "20:48", fiveKDate: "2026-10-12", hyrox: "1:18:30", hyroxDate: "2026-09-27", hyroxLabel: "HYROX Manchester" }
+      : { fiveK: "18:12", fiveKDate: "2026-11-05", hyrox: "1:04:40", hyroxDate: "2026-10-18", hyroxLabel: "HYROX London" },
   };
 }
 
@@ -861,39 +941,39 @@ function performanceCards(state: ReturnType<typeof evaluateTrackFoundation> | nu
 }
 
 async function readFeedback() {
-  const db = canaryDb();
-  const { data } = await db.from("track_session_feedback").select("*").eq("athlete_id", CANARY_ATHLETE_ID);
+  const db = productDb();
+  const { data } = await db.from("track_session_feedback").select("*").eq("athlete_id", productAthleteId());
   return data ?? [];
 }
 
 async function readCheckins() {
-  const db = canaryDb();
-  const { data } = await db.from("track_weekly_checkins").select("answers, created_at").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at", { ascending: false });
+  const db = productDb();
+  const { data } = await db.from("track_weekly_checkins").select("answers, created_at").eq("athlete_id", productAthleteId()).order("created_at", { ascending: false });
   return (data ?? []) as Array<{ answers: Record<string, unknown>; created_at: string }>;
 }
 
 async function latestAccepted() {
-  const db = canaryDb();
-  const { data } = await db.from("track_adaptation_log").select("*").eq("athlete_id", CANARY_ATHLETE_ID).eq("decision", "accepted").order("recorded_at", { ascending: false }).limit(1);
+  const db = productDb();
+  const { data } = await db.from("track_adaptation_log").select("*").eq("athlete_id", productAthleteId()).eq("decision", "accepted").order("recorded_at", { ascending: false }).limit(1);
   return data?.[0] ?? null;
 }
 
 async function painCopy() {
-  const db = canaryDb();
-  const { data } = await db.from("track_escalations").select("id").eq("athlete_id", CANARY_ATHLETE_ID).eq("kind", "PAIN_REVIEW").limit(1);
+  const db = productDb();
+  const { data } = await db.from("track_escalations").select("id").eq("athlete_id", productAthleteId()).eq("kind", "PAIN_REVIEW").limit(1);
   return data?.[0] ? "You reported pain. Keep today's plan until a coach has seen it. This is not a diagnosis." : null;
 }
 
 async function audit() {
-  const db = canaryDb();
+  const db = productDb();
   const [intake, evidence, sessions, mornings, proposals, feedback, checkins] = await Promise.all([
-    db.from("track_athlete_intake").select("created_at").eq("athlete_id", CANARY_ATHLETE_ID).maybeSingle(),
-    db.from("track_benchmark_results").select("test_id, created_at").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at"),
-    db.from("track_calendar_sessions").select("kind, created_at").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at").limit(1),
-    db.from("track_morning_readiness").select("local_date, created_at").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at"),
-    db.from("track_programme_proposals").select("status, created_at").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at"),
-    db.from("track_session_feedback").select("created_at").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at"),
-    db.from("track_weekly_checkins").select("created_at").eq("athlete_id", CANARY_ATHLETE_ID).order("created_at"),
+    db.from("track_athlete_intake").select("created_at").eq("athlete_id", productAthleteId()).maybeSingle(),
+    db.from("track_benchmark_results").select("test_id, created_at").eq("athlete_id", productAthleteId()).order("created_at"),
+    db.from("track_calendar_sessions").select("kind, created_at").eq("athlete_id", productAthleteId()).order("created_at").limit(1),
+    db.from("track_morning_readiness").select("local_date, created_at").eq("athlete_id", productAthleteId()).order("created_at"),
+    db.from("track_programme_proposals").select("status, created_at").eq("athlete_id", productAthleteId()).order("created_at"),
+    db.from("track_session_feedback").select("created_at").eq("athlete_id", productAthleteId()).order("created_at"),
+    db.from("track_weekly_checkins").select("created_at").eq("athlete_id", productAthleteId()).order("created_at"),
   ]);
   const rows: Array<{ label: string; at: string }> = [];
   if (intake.data?.created_at) rows.push({ label: "Onboarding saved", at: String(intake.data.created_at) });
@@ -906,20 +986,73 @@ async function audit() {
   return rows;
 }
 
-export { acceptNextWeek, saveStationBattery };
+export async function completeStationAssessment(input: {
+  sessionId: string;
+  wallBallReps: string;
+  sledPushMetres: string;
+  sledPullMetres: string;
+  farmersMetres: string;
+  bbjMetres: string;
+  rpe: number;
+}) {
+  const db = await ensureAthlete();
+  const { data: session, error } = await db.from("track_calendar_sessions").select("*").eq("id", input.sessionId).eq("athlete_id", productAthleteId()).single();
+  if (error || !session) throw new Error(error?.message ?? "Session missing.");
+  if (session.test_id !== "hyrox_station_battery") throw new Error("This session is not the station assessment.");
+  const clock = String((await readIntake() as TrackIntake & { clock?: string }).clock ?? productClock("2026-11-19"));
+  const protocol = "One station session. Rest between stations. Record the number. This is not a race.";
+  const rows = [
+    { test_id: "wall_ball", result_value: input.wallBallReps, unit: "reps" },
+    { test_id: "sled_push", result_value: input.sledPushMetres, unit: "m" },
+    { test_id: "sled_pull", result_value: input.sledPullMetres, unit: "m" },
+    { test_id: "farmers", result_value: input.farmersMetres, unit: "m" },
+    { test_id: "bbj", result_value: input.bbjMetres, unit: "m" },
+  ];
+  const { error: insertError } = await db.from("track_benchmark_results").insert(rows.map((row) => ({
+    athlete_id: productAthleteId(),
+    test_id: row.test_id,
+    result_value: row.result_value.trim(),
+    unit: row.unit,
+    tested_on: clock,
+    source: "training_test",
+    notes: protocol,
+    details: { protocol, quality: "measured" },
+  })));
+  if (insertError) throw new Error(insertError.message);
+  await db.from("track_session_feedback").insert({
+    athlete_id: productAthleteId(),
+    session_id: input.sessionId,
+    completion: "completed",
+    rpe: input.rpe,
+    feel: "expected",
+    pain: false,
+    actuals: { note: "station_battery" },
+  });
+  await db.from("track_calendar_sessions").update({ status: "completed" }).eq("id", input.sessionId).eq("athlete_id", productAthleteId());
+  await persistDerived(await readIntake(), await readResults());
+}
+
+export async function acceptNextWeek(choice: "recommended" | "keep") {
+  refuseProductionProgrammeWrite();
+  return stagingAcceptNextWeek(choice);
+}
+
+export { saveStationBattery };
 
 export async function loadAdmin() {
   const view = await loadCanary();
-  const db = canaryDb();
-  const [escalations, adaptations, profile] = await Promise.all([
-    db.from("track_escalations").select("kind, summary, status").eq("athlete_id", CANARY_ATHLETE_ID),
-    db.from("track_adaptation_log").select("decision, before_revision, after_revision, policy_version").eq("athlete_id", CANARY_ATHLETE_ID),
-    db.from("track_performance_profiles").select("readiness").eq("athlete_id", CANARY_ATHLETE_ID).maybeSingle(),
+  const db = productDb();
+  const [escalations, adaptations, profile, proposal] = await Promise.all([
+    db.from("track_escalations").select("kind, summary, status").eq("athlete_id", productAthleteId()),
+    db.from("track_adaptation_log").select("decision, before_revision, after_revision, policy_version").eq("athlete_id", productAthleteId()),
+    db.from("track_performance_profiles").select("readiness").eq("athlete_id", productAthleteId()).maybeSingle(),
+    db.from("track_programme_proposals").select("proposal, published, status").eq("athlete_id", productAthleteId()).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   return {
     view,
     readiness: profile.data?.readiness ?? "NOT_READY",
     escalations: escalations.data ?? [],
     adaptations: adaptations.data ?? [],
+    proposal: proposal.data ?? null,
   };
 }

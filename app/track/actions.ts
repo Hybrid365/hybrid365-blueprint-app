@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import type { BenchmarkResultInput, TrackIntake } from "@/app/lib/track-foundation/types";
+import { productionTrackAccessEnabled } from "@/app/lib/track-production/access";
+import { proposeProductionProgramme } from "@/app/lib/track-production/propose";
 import {
   activateProgramme,
   addEvidence,
@@ -10,6 +12,7 @@ import {
   chooseAccept,
   chooseOriginal,
   completeAssessment,
+  completeStationAssessment,
   completeTraining,
   createAssessmentWeek,
   saveCheckIn,
@@ -43,8 +46,22 @@ export async function completeAssessmentAction(input: { sessionId: string; resul
   refresh();
 }
 
+export async function completeStationAssessmentAction(input: {
+  sessionId: string;
+  wallBallReps: string;
+  sledPushMetres: string;
+  sledPullMetres: string;
+  farmersMetres: string;
+  bbjMetres: string;
+  rpe: number;
+}) {
+  await completeStationAssessment(input);
+  refresh();
+}
+
 export async function activateProgrammeAction() {
-  await activateProgramme();
+  if (productionTrackAccessEnabled()) await proposeProductionProgramme();
+  else await activateProgramme();
   refresh();
 }
 
