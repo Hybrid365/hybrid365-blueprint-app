@@ -6,7 +6,13 @@ import { PRODUCTION_TRACK_CANARY_ATHLETE_ID, PRODUCTION_TRACK_CANARY_AUTH_USER_I
 import type { TrackIntake } from "@/app/lib/track-foundation/types";
 
 const require = createRequire("/tmp/track-pg/package.json");
-const { Client } = require("pg") as typeof import("pg");
+const { Client } = require("pg") as {
+  Client: new (config: { connectionString: string; ssl?: { rejectUnauthorized: boolean } }) => {
+    connect(): Promise<void>;
+    query(sql: string, params?: unknown[]): Promise<{ rows: Array<Record<string, any>> }>;
+    end(): Promise<void>;
+  };
+};
 
 const CANARY = PRODUCTION_TRACK_CANARY_ATHLETE_ID;
 const AUTH = PRODUCTION_TRACK_CANARY_AUTH_USER_ID;

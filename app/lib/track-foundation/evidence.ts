@@ -55,7 +55,7 @@ function classifyOne(
     }
   } else if (age <= policy.currentDays) {
     disposition = "CURRENT_ANCHOR";
-    canAnchor = complete !== "incomplete";
+    canAnchor = true;
     reasons.push(
       `${SOURCE_LABEL[result.source]} is inside the ${policy.currentDays}-day current window for ${policy.label}.`
     );
