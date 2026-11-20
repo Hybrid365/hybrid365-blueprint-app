@@ -161,7 +161,7 @@ function Onboarding({ view, pending, start }: { view: CanaryView; pending: boole
       </div>
       <Field label="Goal"><p className="rounded-xl bg-zinc-900 px-4 py-3">HYROX</p></Field>
       <Field label="Event"><p className="rounded-xl bg-zinc-900 px-4 py-3">{view.activationOpen ? "HYROX London · Pro · 20 Mar 2027" : "HYROX Manchester · Pro · 15 May 2027"}</p></Field>
-      <Field label="Days">
+      <Field label="Days you can train">
         <div className="flex flex-wrap gap-2">
           {DAYS.map((day) => (
             <button key={day} type="button" onClick={() => toggle(days, day, setDays)} className={days.includes(day) ? "rounded-full bg-[#f4d23c] px-3 py-1 text-sm font-semibold text-black" : "rounded-full bg-zinc-900 px-3 py-1 text-sm"}>{day}</button>

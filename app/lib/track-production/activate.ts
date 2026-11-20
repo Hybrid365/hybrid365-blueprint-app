@@ -120,3 +120,44 @@ export function buildActivationRows(input: {
   if (activeWeeks.size !== 1 || !activeWeeks.has(1)) throw new Error("Activation would not leave exactly Week 1 active.");
   return { programmeKey: PROGRAMME_KEY, weekStart, rows };
 }
+
+export function generatedCalendarRows(input: {
+  intake: TrackIntake;
+  results: Array<Record<string, unknown>>;
+  weekNumbers: number[];
+}): { programmeKey: string; weekStart: string; rows: ActivationRow[] } {
+  assertTrackMutationStaysOff();
+  const unavailable = new Set(input.intake.availability.unavailableDays);
+  const clock = String((input.intake as TrackIntake & { clock?: string }).clock ?? "2026-11-19").slice(0, 10);
+  const weekStart = mondayOnOrBefore(clock);
+  const generated = generate12WeekProgramme(productionGeneratorInput(input.intake, input.results));
+  const wanted = new Set(input.weekNumbers);
+  const rows: ActivationRow[] = [];
+  for (const week of generated) {
+    if (!wanted.has(week.week_number)) continue;
+    const seen = new Set<string>();
+    for (const day of week.plan_json.schedule) {
+      if (unavailable.has(day.day)) throw new Error(`Week ${week.week_number} still schedules unavailable ${day.day}.`);
+      if (seen.has(day.day)) throw new Error(`Week ${week.week_number} repeats ${day.day}.`);
+      seen.add(day.day);
+      rows.push({
+        session_date: addDays(weekStart, (week.week_number - 1) * 7 + DAYS.indexOf(day.day)),
+        day_key: day.day,
+        title: day.title,
+        active: false,
+        instructions: day.session?.main ?? [],
+        week_number: week.week_number,
+        week_state: "future",
+        payload: payloadFor(day, week.week_number, week.block_number),
+      });
+    }
+    const titles = week.plan_json.schedule.map((day) => day.title).join(" | ");
+    const hasThreshold = /threshold/i.test(titles);
+    const hasLong = /long/i.test(titles);
+    const hasHyrox = /compromised|race-style|hyrox/i.test(titles);
+    if (!hasThreshold || !hasLong || !hasHyrox) {
+      throw new Error(`Week ${week.week_number} is missing a required stimulus: ${titles}`);
+    }
+  }
+  return { programmeKey: PROGRAMME_KEY, weekStart, rows };
+}

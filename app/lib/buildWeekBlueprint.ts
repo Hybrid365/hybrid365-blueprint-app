@@ -86,6 +86,8 @@ export type BlueprintInput = {
   /** Specific days the athlete can do doubles, e.g. ["Monday","Wednesday"] */
   double_session_days?: string[];
   preferred_days?: string[];
+  /** Hard limit. These days receive no session. Omitted means the existing day preferences stay in force. */
+  unavailable_days?: DayKey[];
   equipment?: string[];
   five_k_time?: string;
   /** Optional max HR (bpm) from paid assessment — enables HR zone guidance on run sessions. */
@@ -364,7 +366,9 @@ function buildDayPlanAndStressFromTemplate(args: {
   }).filter((line) => typeof line === "string" && line.trim().length > 0);
 
   const coachingPrefix = [
-    purposeText(picked),
+    appliedProgression?.variant.progression_focus
+      ? `Purpose: ${appliedProgression.variant.progression_focus}`
+      : purposeText(picked),
     structureReasonText(picked, input.goal_focus),
     cueText(picked),
     rpeText(picked),
@@ -2104,6 +2108,7 @@ function fillSevenDayWeek(
 
   for (let i = 0; i < 7; i++) {
     const dayKey = baseDays[i];
+    if ((input.unavailable_days ?? []).includes(dayKey)) continue;
     const existing = activeDays.find((d) => d.day === dayKey);
     if (existing) {
       result.push(existing);
@@ -2294,7 +2299,8 @@ export function buildWeekBlueprint(
     immovableDays: immovableHardAnchorDays(
       input,
       options?.week_number ?? 1,
-      options?.progression_target?.week_focus
+      options?.progression_target?.week_focus,
+      dayRoleByAssignedDay
     ),
   });
   orderedStressInputs = schedule.map((d) => {

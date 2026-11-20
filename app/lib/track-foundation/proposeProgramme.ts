@@ -64,7 +64,10 @@ export function buildReadOnlyProgrammeProposal(state: TrackFoundationState): Rea
     },
   });
 
-  const weeks = generate12WeekProgramme(input);
+  const weeks = generate12WeekProgramme({
+    ...input,
+    unavailable_days: state.intake.availability.unavailableDays,
+  });
   const hyrox = input.hyrox_track ?? null;
   return {
     engine: "generate12WeekProgramme",

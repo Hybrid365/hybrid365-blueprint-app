@@ -2,8 +2,8 @@ import { loadAdmin } from "@/app/lib/track-canary/model";
 
 export const dynamic = "force-dynamic";
 
-function proposalWeeks(proposal: { proposal?: unknown } | null): Array<{ week: number; deload?: boolean; tuesday?: string; saturday?: string; sunday?: string }> {
-  const body = proposal?.proposal as { kind?: string; weeks?: Array<{ week: number; deload?: boolean; tuesday?: string; saturday?: string; sunday?: string }> } | undefined;
+function proposalWeeks(proposal: { proposal?: unknown } | null): Array<{ week: number; deload?: boolean; tuesday?: string; saturday?: string; sunday?: string; days?: Array<{ day: string; title: string }> }> {
+  const body = proposal?.proposal as { kind?: string; weeks?: Array<{ week: number; deload?: boolean; tuesday?: string; saturday?: string; sunday?: string; days?: Array<{ day: string; title: string }> }> } | undefined;
   if (body?.kind !== "programme" || !Array.isArray(body.weeks)) return [];
   return body.weeks;
 }
@@ -27,7 +27,7 @@ export default async function TrackAdminPage() {
         {admin.view.blockNote && <p className="mt-2 text-sm text-zinc-400">{admin.view.blockNote}</p>}
         {proposalWeeks(admin.proposal).map((week) => (
           <p key={week.week} className="mt-1 text-sm text-zinc-300">
-            Week {week.week}{week.deload ? " · lighter" : ""} · Tue {week.tuesday} · Sat {week.saturday} · Sun {week.sunday}
+            Week {week.week}{week.deload ? " · lighter" : ""} · {week.days?.length ? week.days.map((day) => `${day.day} ${day.title}`).join(" · ") : `Tue ${week.tuesday} · Sat ${week.saturday} · Sun ${week.sunday}`}
           </p>
         ))}
       </section>

@@ -36,8 +36,8 @@ export function sessionMeetsHardAnchor(session: SessionTemplate, kind: HardAncho
 
 /**
  * HYROX Pro skeleton, outside a deload.
- * Tuesday is the threshold anchor, Sunday the long run, Saturday the HYROX key.
- * Thursday lower work is required, and its exact template can vary.
+ * The anchors are the stimuli. Tuesday, Saturday and Sunday are only the
+ * preferred days when the athlete can train then.
  */
 export function hyroxProSlotObligation(args: {
   input: BlueprintInput;
@@ -48,29 +48,37 @@ export function hyroxProSlotObligation(args: {
 }): SlotObligation | null {
   if (!shouldUseHyroxProWeeklySkeleton(args.input)) return null;
   if (isDoctrineDeloadWeek(args.weekNumber, args.weekFocus)) return null;
-  if (args.day === "Tue" && args.role === "run_quality") {
-    return { class: "HARD_ANCHOR", kind: "threshold_run", day: "Tue" };
+  if (args.role === "run_quality" || args.role === "run_quality_beginner") {
+    return { class: "HARD_ANCHOR", kind: "threshold_run", day: args.day };
   }
-  if (args.day === "Sun" && args.role === "run_long") {
-    return { class: "HARD_ANCHOR", kind: "long_run", day: "Sun" };
+  if (args.role === "run_long") {
+    return { class: "HARD_ANCHOR", kind: "long_run", day: args.day };
   }
-  if (args.day === "Sat" && (args.role === "hybrid_primary" || args.role === "hybrid_density")) {
-    return { class: "HARD_ANCHOR", kind: "hyrox_key", day: "Sat" };
+  if (args.role === "hybrid_primary" || args.role === "hybrid_density") {
+    return { class: "HARD_ANCHOR", kind: "hyrox_key", day: args.day };
   }
-  if (args.day === "Thu" && (args.role === "lower_primary" || args.role === "lower_full")) {
-    return { class: "REQUIRED_STIMULUS", kind: "lower_strength", day: "Thu" };
+  if (args.role === "lower_primary" || args.role === "lower_full") {
+    return { class: "REQUIRED_STIMULUS", kind: "lower_strength", day: args.day };
   }
-  if (args.day === "Mon") return { class: "REQUIRED_STIMULUS", kind: "recovery", day: "Mon" };
-  if (args.day === "Wed" || args.day === "Fri") return { class: "SUPPORTING", kind: "aerobic", day: args.day };
+  if (args.role === "recovery") return { class: "REQUIRED_STIMULUS", kind: "recovery", day: args.day };
+  if (args.role === "aerobic_support" || args.role === "run_aerobic") {
+    return { class: "SUPPORTING", kind: "aerobic", day: args.day };
+  }
   return { class: "OPTIONAL", kind: "flexible", day: args.day };
 }
 
 export function immovableHardAnchorDays(
   input: BlueprintInput,
   weekNumber: number,
-  weekFocus?: string | null
+  weekFocus?: string | null,
+  roleByDay?: Map<DayKey, StructureRole>
 ): DayKey[] {
   if (!shouldUseHyroxProWeeklySkeleton(input)) return [];
   if (isDoctrineDeloadWeek(weekNumber, weekFocus)) return [];
+  if (roleByDay) {
+    return [...roleByDay.entries()]
+      .filter(([, role]) => role === "run_quality" || role === "run_long" || role === "hybrid_primary" || role === "hybrid_density")
+      .map(([day]) => day);
+  }
   return ["Tue", "Sat", "Sun"];
 }

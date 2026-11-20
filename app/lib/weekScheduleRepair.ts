@@ -1112,73 +1112,148 @@ function isHyroxKeySession(day: DayPlan, role?: StructureRole): boolean {
   );
 }
 
-/** Last pass. Flexible repairs may have moved a fixed key. Put it back from the published family. */
+function isLongAnchorDay(day: DayPlan): boolean {
+  return day.tags?.[0] === "long_run" || /long run|long zone|long aerobic|long endurance/i.test(day.title);
+}
+
+/** Last pass. Put a moved stimulus back on the day that owns that stimulus. */
 function restoreImmovableAnchors(
   schedule: DayPlan[],
   roleByDay: Map<DayKey, StructureRole>,
+  plannedRoles: Map<DayKey, StructureRole>,
   ctx: WeekRepairContext
 ): string | null {
   if (immovableAnchorDays.length === 0) return null;
   const notes: string[] = [];
-  const tuesday = schedule.find((day) => day.day === "Tue");
-  if (tuesday && !isRunThresholdAnchorDay(tuesday) && tuesday.tags?.[0] !== "threshold_run") {
-    const holder = schedule.find(
-      (day) =>
-        day.day !== "Tue" &&
-        day.day !== "Sat" &&
-        day.day !== "Sun" &&
-        (isRunThresholdAnchorDay(day) || day.tags?.[0] === "threshold_run")
-    );
-    if (holder) {
-      forceExchangeDays(schedule, "Tue", holder.day, roleByDay);
-      notes.push("Tuesday threshold anchor returned");
-    } else if (
-      placePublishedVariant(
-        tuesday,
-        ctx.input.ability_level === "beginner" ? "threshold_volume_beginner_a" : "threshold_volume_a",
-        ctx.weekNumber,
-        ["threshold_run", "run", "threshold"]
-      )
-    ) {
-      roleByDay.set("Tue", "run_quality");
-      notes.push("Tuesday threshold anchor placed");
-    }
-  }
+  const unavailable = new Set(ctx.input.unavailable_days ?? []);
 
-  const sunday = schedule.find((day) => day.day === "Sun");
-  if (sunday && sunday.tags?.[0] !== "long_run" && !/long run|long zone|long aerobic|long endurance/i.test(sunday.title)) {
-    const holder = schedule.find((day) => day.day !== "Sun" && day.day !== "Tue" && day.tags?.[0] === "long_run");
-    if (holder) {
-      forceExchangeDays(schedule, "Sun", holder.day, roleByDay);
-      notes.push("Sunday long anchor returned");
-    } else if (
-      placePublishedVariant(
-        sunday,
-        ctx.input.ability_level === "advanced" ? "long_run_advanced_a" : "long_run_base_a",
-        ctx.weekNumber,
-        ["long_run", "run", "long_run"]
-      )
-    ) {
-      roleByDay.set("Sun", "run_long");
-      notes.push("Sunday long anchor placed");
-    }
-  }
+  for (const dayKey of immovableAnchorDays) {
+    if (unavailable.has(dayKey)) continue;
+    const day = schedule.find((item) => item.day === dayKey);
+    const role = plannedRoles.get(dayKey);
+    if (!day || !role) continue;
 
-  const saturday = schedule.find((day) => day.day === "Sat");
-  if (saturday && !isHyroxKeySession(saturday, roleByDay.get("Sat"))) {
-    if (
-      placePublishedVariant(saturday, "compromised_run_a", ctx.weekNumber, [
-        "hybrid_compromised",
-        "hybrid",
-        "hybrid_primary",
-      ])
-    ) {
-      roleByDay.set("Sat", "hybrid_primary");
-      notes.push("Saturday HYROX anchor placed");
+    if ((role === "run_quality" || role === "run_quality_beginner") && !isRunThresholdAnchorDay(day) && day.tags?.[0] !== "threshold_run") {
+      const holder = schedule.find(
+        (item) =>
+          !immovableAnchorDays.includes(item.day) &&
+          (isRunThresholdAnchorDay(item) || item.tags?.[0] === "threshold_run")
+      );
+      if (holder) {
+        forceExchangeDays(schedule, dayKey, holder.day, roleByDay);
+        notes.push(`${dayKey} threshold anchor returned`);
+      } else if (
+        placePublishedVariant(
+          day,
+          ctx.input.ability_level === "beginner" ? "threshold_volume_beginner_a" : "threshold_volume_a",
+          ctx.weekNumber,
+          ["threshold_run", "run", "threshold"]
+        )
+      ) {
+        roleByDay.set(dayKey, "run_quality");
+        notes.push(`${dayKey} threshold anchor placed`);
+      }
+    }
+
+    if (role === "run_long" && !isLongAnchorDay(day)) {
+      const holder = schedule.find((item) => !immovableAnchorDays.includes(item.day) && isLongAnchorDay(item));
+      if (holder) {
+        forceExchangeDays(schedule, dayKey, holder.day, roleByDay);
+        notes.push(`${dayKey} long anchor returned`);
+      } else if (
+        placePublishedVariant(
+          day,
+          ctx.input.ability_level === "advanced" ? "long_run_advanced_a" : "long_run_base_a",
+          ctx.weekNumber,
+          ["long_run", "run", "long_run"]
+        )
+      ) {
+        roleByDay.set(dayKey, "run_long");
+        notes.push(`${dayKey} long anchor placed`);
+      }
+    }
+
+    if ((role === "hybrid_primary" || role === "hybrid_density") && !isHyroxKeySession(day, role)) {
+      const holder = schedule.find((item) => !immovableAnchorDays.includes(item.day) && isHyroxKeySession(item));
+      if (holder) {
+        forceExchangeDays(schedule, dayKey, holder.day, roleByDay);
+        notes.push(`${dayKey} HYROX anchor returned`);
+      } else if (
+        placePublishedVariant(day, "compromised_run_a", ctx.weekNumber, [
+          "hybrid_compromised",
+          "hybrid",
+          "hybrid_primary",
+        ])
+      ) {
+        roleByDay.set(dayKey, "hybrid_primary");
+        notes.push(`${dayKey} HYROX anchor placed`);
+      }
     }
   }
 
   return notes.length > 0 ? `Hard anchors: ${notes.join("; ")}.` : null;
+}
+
+/** A deload still owes the three stimuli, at the lighter published variant. Availability does not turn them into optional fillers. */
+function restoreDeloadStimuli(
+  schedule: DayPlan[],
+  roleByDay: Map<DayKey, StructureRole>,
+  plannedRoles: Map<DayKey, StructureRole>,
+  ctx: WeekRepairContext
+): string | null {
+  if (!(ctx.input.unavailable_days ?? []).length) return null;
+  if (!isDeloadWeek(ctx.weekNumber, ctx.weekFocus)) return null;
+  const notes: string[] = [];
+  const unavailable = new Set(ctx.input.unavailable_days ?? []);
+  const owners = new Set<DayKey>();
+  for (const [dayKey, role] of plannedRoles) {
+    if (unavailable.has(dayKey)) continue;
+    const day = schedule.find((item) => item.day === dayKey);
+    if (!day) continue;
+    if (role === "run_quality" || role === "run_quality_beginner") {
+      owners.add(dayKey);
+      if (day.title !== "4 x 5 min Controlled Threshold" && day.title !== "Controlled Threshold") {
+        placePublishedVariant(
+          day,
+          ctx.input.ability_level === "beginner" ? "threshold_volume_beginner_a" : "threshold_volume_a",
+          ctx.weekNumber,
+          ["threshold_run", "run", "threshold"]
+        );
+        notes.push(`${dayKey} deload threshold placed`);
+      }
+    }
+    if (role === "hybrid_primary" || role === "hybrid_density") {
+      owners.add(dayKey);
+      if (!/compromised run — control/i.test(day.title)) {
+        placePublishedVariant(day, "compromised_run_a", ctx.weekNumber, [
+          "hybrid_compromised",
+          "hybrid",
+          "hybrid_primary",
+        ]);
+        notes.push(`${dayKey} deload HYROX placed`);
+      }
+    }
+    if (role === "run_long") {
+      owners.add(dayKey);
+      if (!/deload long run/i.test(day.title)) {
+        placePublishedVariant(
+          day,
+          ctx.input.ability_level === "advanced" ? "long_run_advanced_a" : "long_run_base_a",
+          ctx.weekNumber,
+          ["long_run", "run", "long_run"]
+        );
+        notes.push(`${dayKey} deload long run placed`);
+      }
+    }
+  }
+  for (const day of schedule) {
+    if (owners.has(day.day)) continue;
+    if (/threshold|compromised|race-style|hyrox|long run/i.test(day.title)) {
+      downgradeDayToEasyBike(day, ctx.input, roleByDay);
+      notes.push(`${day.day} extra stimulus eased`);
+    }
+  }
+  return notes.length > 0 ? `Deload stimuli: ${notes.join("; ")}.` : null;
 }
 
 /**
@@ -1189,11 +1264,12 @@ export function repairWeekSchedule(
   ctx: WeekRepairContext
 ): WeekRepairResult {
   const roleByDay = new Map(ctx.roleByDay);
+  const plannedAnchorRoles = new Map(roleByDay);
   const repairsApplied: string[] = [];
   weekSwapOptions = ctx.input.hyrox_track?.active
     ? { protect_sunday_long: true, allow_filler_swap: true }
     : undefined;
-  immovableAnchorDays = immovableHardAnchorDays(ctx.input, ctx.weekNumber, ctx.weekFocus);
+  immovableAnchorDays = immovableHardAnchorDays(ctx.input, ctx.weekNumber, ctx.weekFocus, plannedAnchorRoles);
 
   const passes: Array<() => string | null> = [
     () => repairStripRunPrescription(schedule),
@@ -1253,8 +1329,10 @@ export function repairWeekSchedule(
     if (msg) repairsApplied.push(msg);
   }
 
-  const restored = restoreImmovableAnchors(schedule, roleByDay, ctx);
+  const restored = restoreImmovableAnchors(schedule, roleByDay, plannedAnchorRoles, ctx);
   if (restored) repairsApplied.push(restored);
+  const deloadStimuli = restoreDeloadStimuli(schedule, roleByDay, plannedAnchorRoles, ctx);
+  if (deloadStimuli) repairsApplied.push(deloadStimuli);
 
   weekSwapOptions = undefined;
   immovableAnchorDays = [];

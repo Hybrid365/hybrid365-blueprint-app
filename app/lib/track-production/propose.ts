@@ -22,31 +22,26 @@ export type ProposalWeek = {
   sundayAnchor: boolean;
 };
 
-function day(schedule: Day[], key: string): Day | undefined {
-  return schedule.find((item) => item.day === key);
-}
-
 function anchors(schedule: Day[], deload: boolean) {
-  const tuesday = day(schedule, "Tue");
-  const saturday = day(schedule, "Sat");
-  const sunday = day(schedule, "Sun");
-  if (deload) {
-    return { tuesdayAnchor: true, saturdayAnchor: true, sundayAnchor: true, tuesday: tuesday?.title ?? "", saturday: saturday?.title ?? "", sunday: sunday?.title ?? "" };
-  }
+  const threshold = schedule.find((item) => item.tags?.[0] === "threshold_run" || /threshold/i.test(item.title ?? ""));
+  const hyrox = schedule.find((item) => /compromised|race-style/i.test(`${item.title ?? ""} ${item.tags?.[0] ?? ""}`));
+  const long = schedule.find((item) => item.tags?.[0] === "long_run" || /long/i.test(item.title ?? ""));
   return {
-    tuesday: tuesday?.title ?? "",
-    saturday: saturday?.title ?? "",
-    sunday: sunday?.title ?? "",
-    tuesdayAnchor: tuesday?.tags?.[0] === "threshold_run",
-    saturdayAnchor: /hyrox|compromised|station/i.test(`${saturday?.title ?? ""} ${saturday?.tags?.[0] ?? ""}`),
-    sundayAnchor: sunday?.tags?.[0] === "long_run" || /long/i.test(sunday?.title ?? ""),
+    tuesday: threshold?.title ?? "",
+    saturday: hyrox?.title ?? "",
+    sunday: long?.title ?? "",
+    tuesdayAnchor: deload || Boolean(threshold),
+    saturdayAnchor: deload || Boolean(hyrox),
+    sundayAnchor: deload || Boolean(long),
+    days: schedule.map((item) => ({ day: item.day ?? "", title: item.title ?? "" })),
   };
 }
 
 export function productionGeneratorInput(intake: TrackIntake, results: Array<Record<string, unknown>>) {
   const five = results.find((row) => row.test_id === "run_5k");
   const race = results.find((row) => row.test_id === "hyrox_race");
-  return mapAssessmentToProgrammeInput({
+  return {
+    ...mapAssessmentToProgrammeInput({
     assessment: {
       first_name: "Track",
       goal_focus: "Improve Hybrid / Hyrox Performance",
@@ -72,7 +67,9 @@ export function productionGeneratorInput(intake: TrackIntake, results: Array<Rec
     benchmarkTests: [],
     email: null,
     profile: { full_name: "Hybrid365 Track Canary" },
-  });
+  }),
+    unavailable_days: intake.availability.unavailableDays,
+  };
 }
 
 export async function proposeProductionProgramme(): Promise<{ weeks: ProposalWeek[]; anchorFailures: number[] }> {

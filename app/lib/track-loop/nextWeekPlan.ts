@@ -94,6 +94,20 @@ export function composeNextWeek(input: {
   source: WeekRow[];
   current: WeekRow[];
   edges: NextEdge[];
+  unavailableDays?: string[];
+}): WeekRow[] {
+  const next = composeNextWeekRows(input);
+  const blocked = new Set(input.unavailableDays ?? []);
+  const illegal = next.find((row) => blocked.has(row.day_key));
+  if (illegal) throw new Error(`PROGRAMME_CONFIGURATION_REQUIRED: ${illegal.day_key} is unavailable.`);
+  return next;
+}
+
+function composeNextWeekRows(input: {
+  decision: "KEEP" | "REPEAT" | "PROGRESS" | "REDUCE";
+  source: WeekRow[];
+  current: WeekRow[];
+  edges: NextEdge[];
 }): WeekRow[] {
   if (input.decision === "KEEP") return input.source.map((row) => ({ ...row, payload: { ...row.payload } }));
   if (input.decision === "REPEAT") {

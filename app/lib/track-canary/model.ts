@@ -528,6 +528,7 @@ export async function saveMorning(input: { sleep: number; energy: number; recove
     state,
     sessions: active.map(rowToSession),
     today: dayKey(clock),
+    unavailableDays: intake.availability.unavailableDays,
     product: "track",
   });
   if (proposal.status !== "proposed") return;
@@ -727,11 +728,11 @@ async function openProposal() {
 async function productionProgrammeView() {
   const { data, error } = await productDb()
     .from("track_calendar_sessions")
-    .select("week_number, day_key, title, session_date, programme_key, active")
+    .select("week_number, day_key, title, session_date, programme_key, active, week_state")
     .eq("athlete_id", productAthleteId())
     .eq("kind", "training");
   if (error) throw new Error(error.message);
-  const rows = data ?? [];
+  const rows = (data ?? []).filter((row) => row.week_state !== "superseded" && row.week_state !== "history");
   if (!rows.length) return null;
   const activeWeek = Number(rows.find((row) => row.active)?.week_number ?? 1);
   const nextRows = rows
