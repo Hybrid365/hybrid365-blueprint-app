@@ -1565,13 +1565,18 @@ function pickWeightedSession(
         })
       : null;
   let selection = weighted;
-  if (anchor?.class === "HARD_ANCHOR" && anchor.kind !== "lower_strength" && anchor.kind !== "recovery" && anchor.kind !== "aerobic" && anchor.kind !== "flexible") {
-    const matching = selection.filter((option) => sessionMeetsHardAnchor(option.item, anchor.kind));
+  const anchorKind =
+    anchor?.class === "HARD_ANCHOR" &&
+    (anchor.kind === "threshold_run" || anchor.kind === "long_run" || anchor.kind === "hyrox_key")
+      ? anchor.kind
+      : null;
+  if (anchorKind) {
+    const matching = selection.filter((option) => sessionMeetsHardAnchor(option.item, anchorKind));
     if (matching.length > 0) {
       selection = matching;
     } else {
       const fallback = SESSION_LIBRARY.filter(
-        (session) => sessionMeetsHardAnchor(session, anchor.kind) && matchesLevel(session, input.ability_level)
+        (session) => sessionMeetsHardAnchor(session, anchorKind) && matchesLevel(session, input.ability_level)
       );
       if (fallback.length > 0) selection = fallback.map((session) => ({ item: session, weight: 1 }));
     }
