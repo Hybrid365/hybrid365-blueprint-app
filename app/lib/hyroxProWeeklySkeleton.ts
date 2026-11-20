@@ -12,6 +12,7 @@ import {
 } from "./hyroxRunIntensityPolicy";
 import type { DayKey, DayPlan, StructureRole } from "./sessionLibrary";
 import { classifyDayPlan } from "./sessionStressClassification";
+import { placeHyroxWeek } from "./hyroxAvailabilityPlacement";
 import { isRunThresholdAnchorDay } from "./thresholdVolumeTracking";
 
 export type HyroxSkeletonDayRole = "recovery" | "hard" | "easy" | "long_aerobic";
@@ -128,6 +129,18 @@ export function buildHyroxProSkeletonAssignments(args: {
   weekFocus?: string | null;
 }): HyroxSkeletonAssignment[] | null {
   if (!shouldUseHyroxProWeeklySkeleton(args.input)) return null;
+
+  const blocked = args.input.unavailable_days ?? [];
+  if (blocked.length > 0) {
+    const available = DAY_ORDER.filter((day) => !blocked.includes(day));
+    const placed = placeHyroxWeek({ availableDays: available });
+    if (!placed.ok) throw new Error(`${placed.code}: ${placed.reason}`);
+    return placed.days.map((day) => ({
+      day: day.day,
+      skeleton: day.skeleton,
+      structureRole: day.role,
+    }));
+  }
 
   const pools = extractPools(hyroxProSevenDayStructureRoles());
   const out: HyroxSkeletonAssignment[] = [];

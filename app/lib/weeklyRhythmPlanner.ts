@@ -213,8 +213,10 @@ function mondayWouldBeHardAfterSwap(
 
 export function balanceScheduleHardEasy(
   schedule: DayPlan[],
-  roleByDay: Map<DayKey, StructureRole>
+  roleByDay: Map<DayKey, StructureRole>,
+  options?: { immovableDays?: DayKey[] }
 ): DayPlan[] {
+  const immovable = new Set(options?.immovableDays ?? []);
   const days = [...schedule];
   const maxPasses = 16;
   const protectMon = sundayLongProtectsMonday(days);
@@ -228,6 +230,7 @@ export function balanceScheduleHardEasy(
       for (let j = i + 1; j < ALL_DAYS.length; j++) {
         const dayA = ALL_DAYS[i]!;
         const dayB = ALL_DAYS[j]!;
+        if (immovable.has(dayA) || immovable.has(dayB)) continue;
         const a = days.find((d) => d.day === dayA);
         const b = days.find((d) => d.day === dayB);
         if (!a || !b) continue;

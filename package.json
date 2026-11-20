@@ -61,6 +61,9 @@
     "staging:seed": "npx --yes tsx scripts/staging/seed-hyrox-demo-athletes.mjs",
     "staging:seed:home-d-canary": "npx --yes tsx scripts/staging/seed-home-d-canary-programme.mjs",
     "staging:qa:benchmarks": "node scripts/staging/qa-staging-benchmark-permissions.mjs",
+    "qa:track-foundation": "npx --yes tsx scripts/qa-track-foundation.ts",
+    "qa:track-loop": "npx --yes tsx scripts/qa-track-loop.ts",
+    "qa:generator-anchors": "npx --yes tsx scripts/qa-generator-anchor-stress.ts",
     "export:homepage-phones": "npx --yes tsx scripts/homepage/export-phone-screens.ts"
   },
   "dependencies": {
