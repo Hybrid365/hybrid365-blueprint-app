@@ -7,6 +7,8 @@ import { TRACK_FIXTURES } from "../app/lib/track-foundation/fixtures";
 import { resolveStationDomains } from "../app/lib/track-foundation/stationEvidence";
 import { mondayOf } from "../app/lib/track-foundation/dates";
 import { TRACK_PROGRAMME_MUTATION_ENABLED } from "../app/lib/track-foundation/productionBoundary";
+import { savedMorningForDate } from "../app/lib/track-canary/morningCard";
+import { productionTrackAllowsUser } from "../app/lib/track-production/access";
 import { productionClockLeakedFixture, resolveTrackClock } from "../app/lib/track-production/clock";
 import { recommendNextWeek } from "../app/lib/track-loop/progression";
 import type { TrackAthleteRecord } from "../app/lib/track-loop/store";
@@ -32,6 +34,24 @@ assert(productionToday === "2026-11-20", "production Track used the stored fixtu
 assert(mondayOf(productionToday) === "2026-11-16", "Friday is outside the Monday 16 Nov week");
 assert(!productionClockLeakedFixture(productionToday, friday), "production clock matched a fixture date");
 assert(resolveTrackClock({ production: false, intakeClock: "2026-11-19", now: friday }) === "2026-11-19", "staging fixture clock was discarded");
+
+const yesterday = { localDate: "2026-11-19", sleep: 7, energy: 7, recovery: 7, soreness: 3, readiness: 7, pain: false };
+const todaySaved = { ...yesterday, localDate: "2026-11-20", sleep: 6 };
+assert(savedMorningForDate([], "2026-11-20") === null, "A: empty today showed a readiness");
+assert(savedMorningForDate([todaySaved], "2026-11-20")?.sleep === 6, "B: today's saved readiness was hidden");
+assert(savedMorningForDate([yesterday], "2026-11-20") === null, "C: yesterday appeared as today");
+const previousFlag = process.env.HYROX_TRACK_PRODUCTION_CANARY;
+const previousUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+process.env.HYROX_TRACK_PRODUCTION_CANARY = "0";
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://uuqdgbsntdjhojjkjkgd.supabase.co";
+assert(productionTrackAllowsUser({ id: "31115568-5181-479d-ad17-4d653c7f8fa8" }) === false, "D: logged-out production access stayed open");
+process.env.HYROX_TRACK_PRODUCTION_CANARY = "1";
+assert(productionTrackAllowsUser(null) === false, "D: a missing user could open Track");
+assert(productionTrackAllowsUser({ id: "1c0e603e-71a0-4852-a582-def1ca9ec7e2" }) === false, "E: a non-canary athlete could open Track");
+if (previousFlag === undefined) delete process.env.HYROX_TRACK_PRODUCTION_CANARY;
+else process.env.HYROX_TRACK_PRODUCTION_CANARY = previousFlag;
+if (previousUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+else process.env.NEXT_PUBLIC_SUPABASE_URL = previousUrl;
 
 const recent = TRACK_FIXTURES.find((item) => item.id === "hyrox_recent");
 const complete = TRACK_FIXTURES.find((item) => item.id === "complete_recent");

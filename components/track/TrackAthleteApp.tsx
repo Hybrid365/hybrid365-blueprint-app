@@ -270,7 +270,7 @@ function Today({ view, onSession, onChoice, onPain, pending, start }: { view: Ca
           <p className="mt-2 text-sm leading-6">{view.recommendation.also || view.recommendation.why}</p>
         </button>
       ) : (
-        <Morning pending={pending} start={start} clock={view.clock} locked={!view.activationOpen} />
+        <Morning view={view} pending={pending} start={start} />
       )}
       {view.accepted && (
         <div className="rounded-2xl bg-zinc-950 p-4 text-sm leading-6">
@@ -285,19 +285,71 @@ function Today({ view, onSession, onChoice, onPain, pending, start }: { view: Ca
   );
 }
 
-function Morning({ pending, start, clock, locked = false }: { pending: boolean; start: (fn: () => void) => void; clock: string; locked?: boolean }) {
-  const low = !locked && clock >= "2026-11-17";
-  const scores = low ? { sleep: 3, energy: 3, recovery: 3, soreness: 8, readiness: 3 } : { sleep: 7, energy: 7, recovery: 7, soreness: 3, readiness: 7 };
+function Morning({ view, pending, start }: { view: CanaryView; pending: boolean; start: (fn: () => void) => void }) {
+  const [open, setOpen] = useState(false);
+  const saved = view.morning;
+  if (saved) {
+    const scores = [
+      ["Sleep", saved.sleep],
+      ["Energy", saved.energy],
+      ["Recovery", saved.recovery],
+      ["Soreness", saved.soreness],
+      ["Readiness", saved.readiness],
+    ] as const;
+    return (
+      <div className="space-y-3 rounded-2xl bg-zinc-950 p-4">
+        <p className="text-xs uppercase tracking-wide text-zinc-500">Morning check-in saved · {saved.localDate.slice(0, 10)}</p>
+        {scores.map(([label, value]) => (
+          <div key={label} className="flex justify-between text-sm"><span>{label}</span><span>{value}</span></div>
+        ))}
+        <p className="text-sm text-zinc-400">Pain · {saved.pain ? "Yes" : "No"}</p>
+      </div>
+    );
+  }
+  if (!open) {
+    return (
+      <div className="space-y-3 rounded-2xl bg-zinc-950 p-4">
+        <p className="text-xs uppercase tracking-wide text-zinc-500">Morning check-in · {view.clock}</p>
+        <p className="text-sm text-zinc-300">Not completed.</p>
+        <button type="button" onClick={() => setOpen(true)} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">Complete morning check-in</button>
+      </div>
+    );
+  }
+  return <MorningForm pending={pending} start={start} locked={!view.activationOpen} onClose={() => setOpen(false)} />;
+}
+
+function MorningForm({ pending, start, locked, onClose }: { pending: boolean; start: (fn: () => void) => void; locked: boolean; onClose: () => void }) {
+  const [sleep, setSleep] = useState(7);
+  const [energy, setEnergy] = useState(7);
+  const [recovery, setRecovery] = useState(7);
+  const [soreness, setSoreness] = useState(3);
+  const [readiness, setReadiness] = useState(7);
+  const [pain, setPain] = useState(false);
+  const fields = [
+    ["Sleep", sleep, setSleep],
+    ["Energy", energy, setEnergy],
+    ["Recovery", recovery, setRecovery],
+    ["Soreness", soreness, setSoreness],
+    ["Readiness", readiness, setReadiness],
+  ] as const;
   return (
     <div className="space-y-3 rounded-2xl bg-zinc-950 p-4">
-      <p className="text-xs uppercase tracking-wide text-zinc-500">This morning · {clock}</p>
-      {Object.entries(scores).map(([key, value]) => (
-        <div key={key} className="flex justify-between text-sm"><span className="capitalize">{key}</span><span>{value}</span></div>
+      <p className="text-xs uppercase tracking-wide text-zinc-500">Morning check-in · not saved</p>
+      {fields.map(([label, value, set]) => (
+        <label key={label} className="block text-sm">
+          <span className="flex justify-between"><span>{label}</span><span>{value}</span></span>
+          <input type="range" min={1} max={10} value={value} onChange={(event) => set(Number(event.target.value))} className="mt-1 w-full" />
+        </label>
       ))}
-      <p className="text-sm text-zinc-400">Pain · No</p>
+      <label className="flex items-center justify-between text-sm">
+        <span>Pain</span>
+        <input type="checkbox" checked={pain} onChange={(event) => setPain(event.target.checked)} />
+      </label>
+      <p className="text-sm text-zinc-400">These scores are not saved until you submit.</p>
       {locked && <p className="text-sm text-zinc-400">Saving readiness leaves the programme unchanged.</p>}
-      <button type="button" disabled={pending} onClick={() => start(() => saveMorningAction({ ...scores, pain: false }))} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">Save morning</button>
-      {!low && !locked && <button type="button" disabled={pending} onClick={() => start(() => advanceClockAction())} className="w-full text-sm text-zinc-500">Next morning</button>}
+      <button type="button" disabled={pending} onClick={() => start(() => saveMorningAction({ sleep, energy, recovery, soreness, readiness, pain }))} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">Save morning check-in</button>
+      <button type="button" onClick={onClose} className="w-full text-sm text-zinc-500">Cancel</button>
+      {!locked && <button type="button" disabled={pending} onClick={() => start(() => advanceClockAction())} className="w-full text-sm text-zinc-500">Next morning</button>}
     </div>
   );
 }

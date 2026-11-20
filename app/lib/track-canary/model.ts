@@ -17,6 +17,7 @@ import {
   productionTrackAccessEnabled,
   refuseProductionProgrammeWrite,
 } from "@/app/lib/track-production/access";
+import { savedMorningForDate, type SavedMorning } from "@/app/lib/track-canary/morningCard";
 import { resolveTrackClock } from "@/app/lib/track-production/clock";
 import { productionTrackDb } from "@/app/lib/track-production/db";
 
@@ -94,6 +95,7 @@ export type CanaryView = {
   workload: Array<{ label: string; planned: string; completed: string | null }>;
   performance: Array<{ label: string; display: string; provenance: string }>;
   checkIn: null | { recovery: number; motivation: number };
+  morning: SavedMorning | null;
   nextWeek: ProgrammeSnapshot["nextWeek"];
   impact: ProgrammeSnapshot["impact"];
   stations: ProgrammeSnapshot["stations"];
@@ -797,6 +799,7 @@ export async function loadCanary(): Promise<CanaryView> {
   const acceptedLog = await latestAccepted();
   const feedback = await readFeedback();
   const checkins = await readCheckins();
+  const mornings = await readMornings();
   const today = dayKey(clock);
   const homeSource = training.length ? training : sessions;
   const beforeTitles = new Map<string, string>();
@@ -880,6 +883,18 @@ export async function loadCanary(): Promise<CanaryView> {
     workload: workloadCards(homeSource, feedback),
     performance: performanceCards(state),
     checkIn: checkins[0] ? { recovery: Number(checkins[0].answers.recovery ?? 0), motivation: Number(checkins[0].answers.motivation ?? 0) } : null,
+    morning: savedMorningForDate(
+      mornings.map((row) => ({
+        localDate: row.localDate,
+        sleep: Number(row.sleep ?? 0),
+        energy: Number(row.energy ?? 0),
+        recovery: Number(row.recovery ?? 0),
+        soreness: Number(row.soreness ?? 0),
+        readiness: Number(row.trainingReadiness ?? 0),
+        pain: row.pain,
+      })),
+      clock
+    ),
     nextWeek: next,
     impact: programme?.impact ?? [],
     stations: programme?.stations?.length ? programme.stations : stationCards,
