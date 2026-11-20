@@ -1597,12 +1597,8 @@ function pickWeightedSession(
     const fallback = selection.filter((option) => !isBannedRunPick(option.item, runProgression));
     if (fallback.length > 0) pick = weightedPick(fallback);
   }
-  if (
-    anchor?.class === "HARD_ANCHOR" &&
-    (anchor.kind === "threshold_run" || anchor.kind === "long_run" || anchor.kind === "hyrox_key") &&
-    !sessionMeetsHardAnchor(pick, anchor.kind)
-  ) {
-    const safe = selection.find((option) => sessionMeetsHardAnchor(option.item, anchor.kind));
+  if (anchorKind && !sessionMeetsHardAnchor(pick, anchorKind)) {
+    const safe = selection.find((option) => sessionMeetsHardAnchor(option.item, anchorKind));
     if (safe) pick = safe.item;
   }
   pickContext.usedIds.add(pick.id);
