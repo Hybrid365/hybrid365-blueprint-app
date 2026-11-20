@@ -1,4 +1,4 @@
-import { addDays } from "@/app/lib/track-foundation/dates";
+import { addDays, mondayOf } from "@/app/lib/track-foundation/dates";
 import { evaluateTrackFoundation } from "@/app/lib/track-foundation/pipeline";
 import { buildEvidenceBook } from "@/app/lib/track-foundation/evidence";
 import { resolveStationDomains } from "@/app/lib/track-foundation/stationEvidence";
@@ -17,6 +17,7 @@ import {
   productionTrackAccessEnabled,
   refuseProductionProgrammeWrite,
 } from "@/app/lib/track-production/access";
+import { resolveTrackClock } from "@/app/lib/track-production/clock";
 import { productionTrackDb } from "@/app/lib/track-production/db";
 
 const WEEK_START = "2026-11-16";
@@ -30,8 +31,12 @@ function productDb() {
   return productionTrackAccessEnabled() ? productionTrackDb() : canaryDb();
 }
 
-function productClock(fallback: string): string {
-  return productionTrackAccessEnabled() ? "2026-11-19" : fallback;
+function productClock(fallback: string, intakeClock?: string | null): string {
+  return resolveTrackClock({
+    production: productionTrackAccessEnabled(),
+    intakeClock,
+    fixtureClock: fallback,
+  });
 }
 
 
@@ -191,7 +196,7 @@ async function persistDerived(intake: TrackIntake, results: BenchmarkResultInput
   const state = evaluateTrackFoundation({
     intake,
     results,
-    asOf: productionTrackAccessEnabled() ? String(clock ?? productClock("2026-11-19")) : "2026-11-17",
+    asOf: productClock("2026-11-17", clock),
   });
   const anchors = [
     state.anchors.running.easy,
@@ -263,9 +268,7 @@ export async function createAssessmentWeek() {
   const db = await ensureAthlete();
   const intake = await readIntake();
   const results = await readResults();
-  const asOf = productionTrackAccessEnabled()
-    ? String((intake as TrackIntake & { clock?: string }).clock ?? productClock("2026-11-19"))
-    : "2026-11-09";
+  const asOf = productClock("2026-11-09", (intake as TrackIntake & { clock?: string }).clock);
   const state = evaluateTrackFoundation({ intake, results, asOf });
   await db.from("track_assessment_plans").insert({
     athlete_id: productAthleteId(),
@@ -314,7 +317,7 @@ export async function completeAssessment(input: { sessionId: string; resultValue
   if (error || !session) throw new Error(error?.message ?? "Session missing.");
   const testId = (session.payload as SessionPayload | null)?.testId ?? session.test_id;
   const intake = await readIntake();
-  const clock = String((intake as TrackIntake & { clock?: string }).clock ?? session.session_date);
+  const clock = productClock(String(session.session_date).slice(0, 10), (intake as TrackIntake & { clock?: string }).clock);
   const sessionDate = String(session.session_date).slice(0, 10);
   const testedOn = sessionDate > clock ? clock : sessionDate;
   if (testId && testId !== "easy_aerobic") {
@@ -505,7 +508,7 @@ function morning(date: string, sleep: number, energy: number, recovery: number, 
 export async function saveMorning(input: { sleep: number; energy: number; recovery: number; soreness: number; readiness: number; pain: boolean }) {
   const db = await ensureAthlete();
   const intake = await readIntake();
-  const clock = String((intake as TrackIntake & { clock?: string }).clock ?? "2026-11-17");
+  const clock = productClock("2026-11-17", (intake as TrackIntake & { clock?: string }).clock);
   const row = morning(clock, input.sleep, input.energy, input.recovery, input.soreness, input.readiness, input.pain);
   const prior = await readMornings();
   const state = interpretReadiness({ athleteId: productAthleteId(), localDate: clock, submissions: [...prior, row] });
@@ -639,9 +642,10 @@ export async function completeTraining(input: { sessionId: string; completion: s
 
 export async function saveCheckIn(answers: Record<string, string | number | boolean>) {
   const db = await ensureAthlete();
+  const weekOf = productionTrackAccessEnabled() ? mondayOf(productClock(WEEK_START)) : WEEK_START;
   const { error } = await db.from("track_weekly_checkins").insert({
     athlete_id: productAthleteId(),
-    week_of: WEEK_START,
+    week_of: weekOf,
     answers,
   });
   if (error) throw new Error(error.message);
@@ -765,7 +769,7 @@ export async function loadCanary(): Promise<CanaryView> {
   await ensureAthlete();
   const intake = await readIntake();
   const results = await readResults();
-  const clock = String((intake as TrackIntake & { clock?: string }).clock ?? "2026-11-17");
+  const clock = productClock("2026-11-17", (intake as TrackIntake & { clock?: string }).clock);
   const state = intake.goal ? evaluateTrackFoundation({ intake, results, asOf: clock }) : null;
   const sessions = await activeSessions();
   const training = sessions.filter((row) => row.kind === "training");
@@ -1038,7 +1042,8 @@ export async function completeStationAssessment(input: {
   const { data: session, error } = await db.from("track_calendar_sessions").select("*").eq("id", input.sessionId).eq("athlete_id", productAthleteId()).single();
   if (error || !session) throw new Error(error?.message ?? "Session missing.");
   if (session.test_id !== "hyrox_station_battery") throw new Error("This session is not the station assessment.");
-  const clock = String((await readIntake() as TrackIntake & { clock?: string }).clock ?? productClock("2026-11-19"));
+  const stored = await readIntake();
+  const clock = productClock("2026-11-19", (stored as TrackIntake & { clock?: string }).clock);
   const protocol = "One station session. Rest between stations. Record the number. This is not a race.";
   const rows = [
     { test_id: "wall_ball", result_value: input.wallBallReps, unit: "reps" },

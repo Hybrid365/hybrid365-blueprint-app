@@ -5,7 +5,9 @@
 import { evaluateTrackFoundation } from "../app/lib/track-foundation/pipeline";
 import { TRACK_FIXTURES } from "../app/lib/track-foundation/fixtures";
 import { resolveStationDomains } from "../app/lib/track-foundation/stationEvidence";
+import { mondayOf } from "../app/lib/track-foundation/dates";
 import { TRACK_PROGRAMME_MUTATION_ENABLED } from "../app/lib/track-foundation/productionBoundary";
+import { productionClockLeakedFixture, resolveTrackClock } from "../app/lib/track-production/clock";
 import { recommendNextWeek } from "../app/lib/track-loop/progression";
 import type { TrackAthleteRecord } from "../app/lib/track-loop/store";
 import {
@@ -23,6 +25,13 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 assert(TRACK_PROGRAMME_MUTATION_ENABLED === false, "mutation flag moved");
+
+const friday = new Date("2026-11-20T12:00:00Z");
+const productionToday = resolveTrackClock({ production: true, intakeClock: "2026-11-19", fixtureClock: "2026-11-17", now: friday });
+assert(productionToday === "2026-11-20", "production Track used the stored fixture clock");
+assert(mondayOf(productionToday) === "2026-11-16", "Friday is outside the Monday 16 Nov week");
+assert(!productionClockLeakedFixture(productionToday, friday), "production clock matched a fixture date");
+assert(resolveTrackClock({ production: false, intakeClock: "2026-11-19", now: friday }) === "2026-11-19", "staging fixture clock was discarded");
 
 const recent = TRACK_FIXTURES.find((item) => item.id === "hyrox_recent");
 const complete = TRACK_FIXTURES.find((item) => item.id === "complete_recent");

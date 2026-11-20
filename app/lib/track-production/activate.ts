@@ -75,6 +75,7 @@ export function buildActivationRows(input: {
 }): { programmeKey: string; weekStart: string; rows: ActivationRow[] } {
   assertTrackMutationStaysOff();
   if (input.storedWeeks.length !== 12) throw new Error("Stored review does not contain 12 weeks.");
+  // Programme origin for this already-written block. Live Today does not read this clock.
   const clock = String((input.intake as TrackIntake & { clock?: string }).clock ?? "2026-11-19").slice(0, 10);
   const weekStart = mondayOnOrBefore(clock);
   const generated = generate12WeekProgramme(productionGeneratorInput(input.intake, input.results));
@@ -128,6 +129,7 @@ export function generatedCalendarRows(input: {
 }): { programmeKey: string; weekStart: string; rows: ActivationRow[] } {
   assertTrackMutationStaysOff();
   const unavailable = new Set(input.intake.availability.unavailableDays);
+  // Programme origin for this already-written block. Live Today does not read this clock.
   const clock = String((input.intake as TrackIntake & { clock?: string }).clock ?? "2026-11-19").slice(0, 10);
   const weekStart = mondayOnOrBefore(clock);
   const generated = generate12WeekProgramme(productionGeneratorInput(input.intake, input.results));
