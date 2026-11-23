@@ -24,10 +24,13 @@ function iconFor(category: string) {
 export function SecondarySessionRow({
   session,
   onOpen,
+  showTimeline = false,
   className,
 }: {
   session: AthleteSessionCardViewModel;
   onOpen?: () => void;
+  /** Show the proportional preview under the row. Off by default so opener rows stay unchanged. */
+  showTimeline?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -85,6 +88,11 @@ export function SecondarySessionRow({
           </motion.span>
         )}
       </button>
+      {showTimeline && session.timeline?.segments.length ? (
+        <div className="px-4 pb-4">
+          <CompactWorkoutPreview timeline={session.timeline} />
+        </div>
+      ) : null}
       {!opensDrawer ? (
         <AnimatePresence initial={false}>
           {open ? (

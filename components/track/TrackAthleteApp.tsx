@@ -3,6 +3,13 @@
 import { useState, useTransition } from "react";
 import type { CanaryView } from "@/app/lib/track-canary/model";
 import type { DayKey, EquipmentId, SessionLength, TrackIntake } from "@/app/lib/track-foundation/types";
+import { minutesIn, trackSessionCard, weekAccent } from "@/app/lib/track-presentation/sessionVisual";
+import { PrimarySessionCard } from "@/components/athlete-command-centre/visual-system/sessions/PrimarySessionCard";
+import { SecondarySessionRow } from "@/components/athlete-command-centre/visual-system/sessions/SecondarySessionRow";
+import { WorkoutTimeline } from "@/components/athlete-command-centre/visual-system/workout/WorkoutTimeline";
+import { WeekDateNav } from "@/components/athlete-command-centre/visual-system/navigation/WeekDateNav";
+import { VsSectionHeader } from "@/components/athlete-command-centre/visual-system/primitives/SectionHeader";
+import { VsStat } from "@/components/athlete-command-centre/visual-system/primitives/Stat";
 import {
   acceptAction,
   acceptNextWeekAction,
@@ -33,27 +40,33 @@ const KIT: Array<{ id: EquipmentId; label: string }> = [
 
 export default function TrackAthleteApp({ view }: { view: CanaryView }) {
   const [pending, start] = useTransition();
-  const [screen, setScreen] = useState<"today" | "session" | "choice" | "week" | "progress" | "checkin" | "next" | "pain">("today");
+  const [screen, setScreen] = useState<"today" | "session" | "choice" | "week" | "progress" | "performance" | "checkin" | "next" | "pain">("today");
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const session = view.sessions.find((item) => item.id === sessionId) ?? view.sessions.find((item) => item.day === dayOf(view.clock));
+  const [dayId, setDayId] = useState(dayOf(view.clock));
+  const session = view.sessions.find((item) => item.id === sessionId) ?? view.sessions.find((item) => item.day === dayId) ?? view.sessions.find((item) => item.day === dayOf(view.clock));
+  const weekDays = view.homeDays.map((day) => ({
+    id: day.day,
+    dow: day.day,
+    dateNumber: dateNumberFor(view.clock, day.day),
+    isToday: day.today,
+    sessionStatuses: day.title === "Rest" ? [] : [day.changed ? "partial" as const : "upcoming" as const],
+  }));
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[390px] bg-black pb-24">
-      <header className="sticky top-0 z-10 border-b border-zinc-800 bg-black/95 px-4 py-3 backdrop-blur">
-        <div className="flex items-baseline justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f4d23c]">Track</p>
-          <p className="text-xs text-zinc-400">{view.countdown}</p>
-        </div>
-        {view.phase === "home" && (
-          <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px]">
-            {view.homeDays.map((day) => (
-              <div key={day.day} className={day.today ? "rounded-md bg-[#f4d23c] px-1 py-1 font-semibold text-black" : "rounded-md bg-zinc-900 px-1 py-1 text-zinc-400"}>
-                {day.day.slice(0, 1)}
-                <div className="truncate text-[9px] font-medium">{day.title.split(" ")[0]}</div>
-              </div>
-            ))}
+    <main className="mx-auto min-h-screen w-full max-w-[430px] bg-[var(--h365-background)] pb-24 text-[var(--h365-text)] lg:max-w-6xl">
+      <header className="px-4 pt-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="label-caps text-[var(--h365-accent)]">Hybrid365 Track</p>
+            <h1 className="font-display text-4xl font-bold uppercase leading-none">{homeTitle(screen, view.phase)}</h1>
           </div>
-        )}
+          <p className="max-w-[9rem] text-right text-xs text-[var(--h365-text-muted)]">{view.countdown}</p>
+        </div>
+        {view.phase === "home" ? (
+          <div className="sticky top-0 z-20 -mx-2 mt-3 border-b border-[var(--h365-border)] bg-[var(--h365-background)]/95 py-1 backdrop-blur">
+            <WeekDateNav days={weekDays} selectedId={dayId} onSelect={(id) => { setDayId(id); setScreen("today"); }} />
+          </div>
+        ) : null}
       </header>
 
       <div className="px-4 pt-4">
@@ -83,7 +96,7 @@ export default function TrackAthleteApp({ view }: { view: CanaryView }) {
           </section>
         )}
         {view.phase === "home" && screen === "today" && (
-          <Today view={view} onSession={() => { setSessionId(session?.id ?? null); setScreen("session"); }} onChoice={() => setScreen("choice")} onPain={() => setScreen("pain")} pending={pending} start={start} />
+          <Today view={view} dayId={dayId} onSession={() => { setSessionId(session?.id ?? null); setScreen("session"); }} onChoice={() => setScreen("choice")} onPain={() => setScreen("pain")} onCheckIn={() => setScreen("checkin")} onNext={() => setScreen("next")} pending={pending} start={start} />
         )}
         {view.phase === "home" && screen === "choice" && view.recommendation && (
           <Choice view={view} pending={pending} start={start} onDone={() => setScreen("week")} />
@@ -93,6 +106,7 @@ export default function TrackAthleteApp({ view }: { view: CanaryView }) {
           <SessionDetail session={session} pending={pending} start={start} onDone={() => setScreen("today")} />
         )}
         {view.phase === "home" && screen === "progress" && <Progress view={view} pending={pending} start={start} />}
+        {view.phase === "home" && screen === "performance" && <Performance view={view} />}
         {view.phase === "home" && screen === "checkin" && <CheckIn pending={pending} start={start} saved={view.checkIn} />}
         {view.phase === "home" && screen === "next" && <NextWeek view={view} pending={pending} start={start} />}
         {view.phase === "home" && screen === "pain" && (
@@ -105,16 +119,43 @@ export default function TrackAthleteApp({ view }: { view: CanaryView }) {
       </div>
 
       {view.phase === "home" && (
-        <nav className="fixed bottom-0 left-1/2 flex w-full max-w-[390px] -translate-x-1/2 justify-between border-t border-zinc-800 bg-black px-4 py-3 text-xs">
-          <button type="button" onClick={() => setScreen("today")}>Today</button>
-          <button type="button" onClick={() => setScreen("week")}>Week</button>
-          <button type="button" onClick={() => setScreen("progress")}>Progress</button>
-          <button type="button" onClick={() => setScreen("checkin")}>Check-in</button>
-          <button type="button" onClick={() => setScreen("next")}>Next</button>
+        <nav className="fixed bottom-0 left-1/2 z-30 flex w-full max-w-[430px] -translate-x-1/2 justify-between border-t border-[var(--h365-border)] bg-[var(--h365-background)]/95 px-2 py-2 lg:max-w-6xl">
+          {(
+            [
+              ["today", "Home"],
+              ["week", "Week"],
+              ["progress", "Progress"],
+              ["performance", "Performance"],
+            ] as const
+          ).map(([id, label]) => (
+            <button key={id} type="button" onClick={() => setScreen(id)} className={`min-h-11 flex-1 text-[11px] font-bold uppercase tracking-[0.14em] ${screen === id || (id === "today" && screen === "session") ? "text-[var(--h365-accent)]" : "text-[var(--h365-text-muted)]"}`}>
+              <span className={screen === id || (id === "today" && screen === "session") ? "border-b-2 border-[var(--h365-accent)] pb-1" : ""}>{label}</span>
+            </button>
+          ))}
         </nav>
       )}
     </main>
   );
+}
+
+function homeTitle(screen: string, phase: string): string {
+  if (phase !== "home") return "Track";
+  if (screen === "week") return "Week";
+  if (screen === "progress") return "Progress";
+  if (screen === "performance") return "Performance";
+  if (screen === "checkin") return "Check-in";
+  if (screen === "next") return "Next week";
+  return "Today";
+}
+
+function dateNumberFor(clock: string, day: string): number {
+  const base = new Date(`${clock}T00:00:00Z`);
+  const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const delta = order.indexOf(day) - order.indexOf(names[base.getUTCDay()] ?? "Mon");
+  const next = new Date(base);
+  next.setUTCDate(base.getUTCDate() + delta);
+  return next.getUTCDate();
 }
 
 function dayOf(iso: string): string {
@@ -256,31 +297,37 @@ function Assessment({ view, pending, start, onOpen }: { view: CanaryView; pendin
   );
 }
 
-function Today({ view, onSession, onChoice, onPain, pending, start }: { view: CanaryView; onSession: () => void; onChoice: () => void; onPain: () => void; pending: boolean; start: (fn: () => void) => void }) {
+function Today({ view, dayId, onSession, onChoice, onPain, onCheckIn, onNext, pending, start }: { view: CanaryView; dayId: string; onSession: () => void; onChoice: () => void; onPain: () => void; onCheckIn: () => void; onNext: () => void; pending: boolean; start: (fn: () => void) => void }) {
+  const today = view.sessions.find((item) => item.day === dayId);
+  const card = today
+    ? trackSessionCard({ id: today.id, title: today.title, summary: today.summary, pace: today.pace, effort: today.effort, blocks: today.blocks, status: today.status, kind: today.kind })
+    : null;
   return (
-    <section className="space-y-3">
-      <h1 className="text-2xl font-semibold">{dayOf(view.clock)}</h1>
-      <button type="button" onClick={onSession} className="w-full rounded-2xl bg-zinc-900 p-4 text-left">
-        <p className="text-xs uppercase tracking-wide text-zinc-500">Today</p>
-        <p className="mt-1 text-xl">{view.todayTitle}</p>
-      </button>
-      {view.recommendation ? (
-        <button type="button" onClick={onChoice} className="w-full rounded-2xl border border-[#f4d23c] p-4 text-left">
-          <p className="text-xs uppercase tracking-wide text-[#f4d23c]">{view.recommendation.canChoose ? "Recovery lower than normal" : "Suggestion · week unchanged"}</p>
-          <p className="mt-2 text-sm leading-6">{view.recommendation.also || view.recommendation.why}</p>
-        </button>
-      ) : (
-        <Morning view={view} pending={pending} start={start} />
-      )}
-      {view.accepted && (
-        <div className="rounded-2xl bg-zinc-950 p-4 text-sm leading-6">
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Why</p>
-          <p className="mt-1">{view.accepted.why}</p>
-          <div className="mt-3 space-y-1">{view.accepted.changes.map((line) => <p key={line}>{line}</p>)}</div>
+    <section className="space-y-3 lg:grid lg:grid-cols-[1.3fr_0.7fr] lg:items-start lg:gap-6">
+      <div className="space-y-3">
+        {card ? <PrimarySessionCard session={card} onOpen={onSession} /> : <p className="font-display text-3xl font-bold uppercase">Rest</p>}
+      </div>
+      <div className="space-y-3">
+        {view.recommendation ? (
+          <button type="button" onClick={onChoice} className="w-full rounded-xl bg-[var(--h365-surface)] p-4 text-left">
+            <p className="label-caps text-[var(--h365-accent)]">{view.recommendation.canChoose ? "Recovery lower than normal" : "Suggestion · week unchanged"}</p>
+            <p className="mt-2 text-sm leading-6">{view.recommendation.also || view.recommendation.why}</p>
+          </button>
+        ) : (
+          <Morning view={view} pending={pending} start={start} />
+        )}
+        {view.accepted ? (
+          <div className="rounded-xl bg-[var(--h365-surface)] p-4 text-sm">
+            <p className="label-caps text-[var(--h365-text-muted)]">Why</p>
+            <p className="mt-1">{view.accepted.why}</p>
+          </div>
+        ) : null}
+        <div className="flex gap-4 text-xs font-bold uppercase tracking-[0.12em] text-[var(--h365-text-muted)]">
+          <button type="button" onClick={onCheckIn}>Weekly check-in</button>
+          <button type="button" onClick={onNext}>Next week</button>
+          <button type="button" onClick={onPain}>Report pain</button>
         </div>
-      )}
-      {view.painNote && <p className="text-sm leading-6 text-zinc-300">{view.painNote}</p>}
-      <button type="button" onClick={onPain} className="text-sm text-zinc-500">Report pain</button>
+      </div>
     </section>
   );
 }
@@ -297,22 +344,22 @@ function Morning({ view, pending, start }: { view: CanaryView; pending: boolean;
       ["Readiness", saved.readiness],
     ] as const;
     return (
-      <div className="space-y-3 rounded-2xl bg-zinc-950 p-4">
-        <p className="text-xs uppercase tracking-wide text-zinc-500">Morning check-in saved · {saved.localDate.slice(0, 10)}</p>
-        {scores.map(([label, value]) => (
-          <div key={label} className="flex justify-between text-sm"><span>{label}</span><span>{value}</span></div>
-        ))}
-        <p className="text-sm text-zinc-400">Pain · {saved.pain ? "Yes" : "No"}</p>
+      <div className="rounded-xl bg-[var(--h365-surface)] px-4 py-3">
+        <p className="label-caps text-[var(--h365-text-muted)]">Morning readiness · {saved.localDate.slice(0, 10)}</p>
+        <p className="mt-1 text-sm font-semibold">{scores.map(([label, value]) => `${label} ${value}`).join(" · ")}</p>
+        <p className="mt-1 text-xs text-[var(--h365-text-muted)]">Pain {saved.pain ? "yes" : "no"} · programme unchanged</p>
       </div>
     );
   }
   if (!open) {
     return (
-      <div className="space-y-3 rounded-2xl bg-zinc-950 p-4">
-        <p className="text-xs uppercase tracking-wide text-zinc-500">Morning check-in · {view.clock}</p>
-        <p className="text-sm text-zinc-300">Not completed.</p>
-        <button type="button" onClick={() => setOpen(true)} className="w-full rounded-xl bg-[#f4d23c] py-3 font-semibold text-black">Complete morning check-in</button>
-      </div>
+      <button type="button" onClick={() => setOpen(true)} className="flex w-full items-center justify-between rounded-xl bg-[var(--h365-surface)] px-4 py-3 text-left">
+        <span>
+          <span className="label-caps text-[var(--h365-text-muted)]">Morning readiness</span>
+          <span className="mt-1 block text-sm font-semibold">Not checked in</span>
+        </span>
+        <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--h365-accent)]">Check in</span>
+      </button>
     );
   }
   return <MorningForm pending={pending} start={start} locked={!view.activationOpen} onClose={() => setOpen(false)} />;
@@ -380,39 +427,37 @@ function Choice({ view, pending, start, onDone }: { view: CanaryView; pending: b
 
 function Week({ view, onOpen }: { view: CanaryView; onOpen: (id: string) => void }) {
   return (
-    <section className="space-y-2">
-      <h1 className="text-2xl font-semibold">This week</h1>
-      <p className="text-xs uppercase tracking-wide text-zinc-500">Week {view.currentWeek} of {view.programmeWeeks}</p>
+    <section className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+      <p className="label-caps text-[var(--h365-text-muted)]">Week {view.currentWeek} of {view.programmeWeeks}</p>
       {view.homeDays.map((day) => {
         const session = view.sessions.find((item) => item.day === day.day);
+        if (!session) {
+          return <p key={day.day} className="px-1 py-2 text-sm text-[var(--h365-text-muted)]">{day.day} · Rest</p>;
+        }
+        const card = trackSessionCard({ id: session.id, title: session.title, summary: session.summary, pace: session.pace, effort: session.effort, blocks: session.blocks, status: session.status, kind: session.kind });
         return (
-          <button key={day.day} type="button" onClick={() => session && onOpen(session.id)} className="flex w-full items-center justify-between rounded-xl bg-zinc-900 px-4 py-3 text-left">
-            <span className="text-zinc-500">{day.day}</span>
-            <span className="text-right">{day.title}</span>
-          </button>
+          <SecondarySessionRow
+            key={session.id}
+            session={card}
+            showTimeline
+            className={weekAccent(card.categoryLabel)}
+            onOpen={() => onOpen(session.id)}
+          />
         );
       })}
-      {view.history.length > 0 && (
-        <div className="pt-4">
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Earlier</p>
-          {view.history.map((item) => (
-            <p key={`${item.day}${item.summary}`} className="mt-2 text-sm text-zinc-400">{item.day} · {item.summary}</p>
-          ))}
-        </div>
-      )}
     </section>
   );
 }
 
 function SessionDetail({ session, pending, start, onDone }: { session: CanaryView["sessions"][number]; pending: boolean; start: (fn: () => void) => void; onDone: () => void }) {
+  const card = trackSessionCard({ id: session.id, title: session.title, summary: session.summary, pace: session.pace, effort: session.effort, blocks: session.blocks, status: session.status, kind: session.kind });
+  const [selected, setSelected] = useState(card.timeline?.segments[0]?.id ?? "");
   const hyrox = /compromised|race-style/i.test(session.title);
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">{session.title}</h1>
-      {session.summary && <p className="text-sm leading-6 text-zinc-300">{session.summary}</p>}
-      {session.pace && <p className="text-sm">Target pace {session.pace}</p>}
-      {session.effort && <p className="text-sm text-zinc-400">{session.effort}</p>}
-      <div className="space-y-2">{session.blocks.slice(0, 6).map((line) => <p key={line} className="rounded-xl bg-zinc-900 px-4 py-3 text-sm">{line}</p>)}</div>
+      <PrimarySessionCard session={card} />
+      {card.timeline ? <WorkoutTimeline timeline={card.timeline} selectedId={selected} onSelect={setSelected} /> : null}
+      <div className="space-y-2">{session.blocks.slice(0, 6).map((line) => <p key={line} className="text-sm leading-relaxed text-[var(--h365-text)]/85">{line}</p>)}</div>
       {session.status !== "completed" && session.kind === "training" && (
         <button type="button" disabled={pending} onClick={() => start(async () => {
           const threshold = /threshold/i.test(session.title);
@@ -425,49 +470,91 @@ function SessionDetail({ session, pending, start, onDone }: { session: CanaryVie
             actuals: hyrox ? { note: "Stations as planned" } : threshold ? { minutes: 25, note: "threshold" } : { note: "logged" },
           });
           onDone();
-        })} className="w-full rounded-xl bg-white py-3 font-semibold text-black">Completed · RPE 7 · as expected · no pain</button>
+        })} className="h-12 w-full rounded-lg bg-[var(--h365-accent)] text-sm font-bold text-black">Completed · RPE 7 · as expected · no pain</button>
       )}
     </section>
   );
 }
 
 function Progress({ view, pending, start }: { view: CanaryView; pending: boolean; start: (fn: () => void) => void }) {
+  const stations = view.stations.filter((station) => station.evidence === "YES" && station.graph === "YES");
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">Progress</h1>
-      <p className="text-xs uppercase tracking-wide text-zinc-500">This week · week {view.currentWeek}</p>
-      {view.workload.length === 0 && <p className="text-sm text-zinc-400">Workload appears once the week is active.</p>}
-      {view.workload.map((card) => (
-        <div key={card.label} className="rounded-2xl bg-zinc-900 p-4">
-          <p className="text-xs uppercase text-zinc-500">{card.label}</p>
-          <p className="mt-1">Planned {card.planned}</p>
-          <p className="text-sm text-zinc-400">{card.completed ? `Done ${card.completed}` : "Not logged yet"}</p>
+    <section className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+      <div className="space-y-3">
+        <VsSectionHeader eyebrow={`Week ${view.currentWeek} of ${view.programmeWeeks}`} title="Training load" />
+        {view.workload.length === 0 ? <p className="text-sm text-[var(--h365-text-muted)]">Workload appears once the week is active.</p> : null}
+        {view.workload.map((card) => (
+          <LoadRow key={card.label} label={card.label} planned={card.planned} completed={card.completed} />
+        ))}
+      </div>
+      {stations.length > 0 ? (
+        <div>
+          <VsSectionHeader title="Stations" />
+          <ul className="mt-3 space-y-2">
+            {stations.map((station) => (
+              <li key={station.label} className="text-sm">
+                <span className="font-semibold">{station.label}</span>
+                <span className="text-[var(--h365-text-muted)]"> · {station.note}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      ))}
-      {view.previousCompleted.length > 0 && (
-        <div className="rounded-2xl bg-zinc-900 p-4">
-          <p className="text-xs uppercase text-zinc-500">Previous week · completed</p>
-          {view.previousCompleted.map((title) => <p key={title} className="mt-2 text-sm">{title}</p>)}
-        </div>
-      )}
-      {view.impact.length > 0 && (
-        <div className="rounded-2xl bg-zinc-900 p-4">
-          <p className="text-xs uppercase text-zinc-500">This week and next week</p>
-          {view.impact.map((line) => (
-            <p key={line.label} className="mt-2 text-sm">{line.label} · {line.current} → {line.next}</p>
-          ))}
-        </div>
-      )}
-      {view.stationNeeded && <StationForm pending={pending} start={start} />}
-      <h2 className="pt-2 text-lg font-semibold">Performance</h2>
-      {view.performance.map((item) => (
-        <div key={item.label} className="rounded-2xl bg-zinc-900 p-4">
-          <p className="text-xs uppercase text-zinc-500">{item.label}</p>
-          <p className="mt-1 text-lg">{item.display}</p>
-          {item.provenance && <p className="mt-1 text-xs text-zinc-500">{item.provenance}</p>}
-        </div>
-      ))}
+      ) : null}
+      {view.stationNeeded ? <StationForm pending={pending} start={start} /> : null}
     </section>
+  );
+}
+
+function Performance({ view }: { view: CanaryView }) {
+  return (
+    <section className="space-y-5">
+      <VsSectionHeader title="Athlete profile" meta={`Week ${view.currentWeek}`} />
+      <div className="grid grid-cols-2 gap-4">
+        {view.performance.map((item) => (
+          <div key={item.label}>
+            <VsStat label={item.label} value={item.display} accent />
+            {item.provenance ? <p className="mt-1 text-[11px] text-[var(--h365-text-muted)]">{item.provenance}</p> : null}
+          </div>
+        ))}
+      </div>
+      {view.impact.length > 0 ? (
+        <div>
+          <VsSectionHeader title="Progression" />
+          <ol className="mt-3 space-y-2">
+            {view.impact.map((line) => (
+              <li key={line.label} className="font-display text-2xl font-bold uppercase leading-none">
+                {line.label}
+                <span className="mt-1 block text-base text-[var(--h365-text-muted)]">{line.current} → {line.next}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function LoadRow({ label, planned, completed }: { label: string; planned: string; completed: string | null }) {
+  const plan = minutesIn(planned);
+  const done = completed ? minutesIn(completed) : null;
+  const max = Math.max(plan ?? 0, done ?? 0);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="label-caps text-[var(--h365-text-muted)]">{label}</p>
+        <p className="text-xs text-[var(--h365-text)]">{planned}{completed ? ` · done ${completed}` : " · not logged"}</p>
+      </div>
+      {plan != null && max > 0 ? (
+        <div className="mt-2 h-2 bg-[var(--h365-border)]">
+          <div className="h-2 bg-[var(--h365-accent)]" style={{ width: `${Math.min(100, (plan / max) * 100)}%` }} />
+        </div>
+      ) : null}
+      {done != null && max > 0 ? (
+        <div className="mt-1 h-2 bg-[var(--h365-border)]">
+          <div className="h-2 bg-[var(--h365-text)]/70" style={{ width: `${Math.min(100, (done / max) * 100)}%` }} />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
