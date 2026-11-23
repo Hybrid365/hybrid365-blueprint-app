@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { journeyContinueTarget } from "@/app/lib/track-production/journeyContinue";
 import { evaluateTrackFoundation } from "@/app/lib/track-foundation/pipeline";
 import { fixtureById, TRACK_FIXTURES } from "@/app/lib/track-foundation/fixtures";
 import { getTest, protocolForAthlete, TEST_LIBRARY } from "@/app/lib/track-foundation/testLibrary";
@@ -140,6 +141,7 @@ export default function TrackFoundationPreview({
   const [intake, setIntake] = useState<TrackIntake>(journey ? { ...blankIntake(), ...starting.intake, athleteId: starting.intake.athleteId, displayName: starting.intake.displayName } : starting.intake);
   const [results, setResults] = useState<BenchmarkResultInput[]>(starting.results);
   const [saving, setSaving] = useState(false);
+  const [continueError, setContinueError] = useState<string | null>(null);
   const [openTest, setOpenTest] = useState<string | null>(null);
   const [draft, setDraft] = useState({
     testId: "run_5k",
@@ -168,18 +170,33 @@ export default function TrackFoundationPreview({
   }
 
   async function forward() {
-    const nextStep = steps[Math.min(steps.length - 1, stepIndex + 1)] ?? step;
+    const needsAssessment = state.week.stillNeed.length > 0;
+    const target = journey
+      ? journeyContinueTarget({ step, steps, needsAssessment })
+      : { step: steps[Math.min(steps.length - 1, stepIndex + 1)] ?? step, action: "advance" as const };
+    if (journey && target.step === step) {
+      setContinueError("This is the last setup screen.");
+      return;
+    }
     if (journey && onSaveIntake) {
+      setContinueError(null);
       setSaving(true);
       try {
-        await onSaveIntake(intake, nextStep);
-      } catch {
+        await onSaveIntake(intake, target.step);
+      } catch (error) {
+        console.error("[track journey] continue failed", {
+          step,
+          next: target.step,
+          message: error instanceof Error ? error.message : "unknown",
+        });
+        setContinueError("We couldn't open the next step. Nothing new was saved. Try again.");
         setSaving(false);
         return;
       }
       setSaving(false);
     }
-    go(stepIndex + 1);
+    const nextIndex = steps.indexOf(target.step);
+    go(nextIndex >= 0 ? nextIndex : stepIndex + 1);
   }
 
   function applyFixture(id: string) {
@@ -713,6 +730,7 @@ export default function TrackFoundationPreview({
       </div>
 
       <footer className="fixed bottom-0 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 border-t border-zinc-800 bg-zinc-950 px-4 py-3">
+        {continueError ? <p className="mb-2 text-sm text-red-300">{continueError}</p> : null}
         <div className="flex gap-2">
           <button type="button" onClick={() => go(stepIndex - 1)} className="flex-1 rounded-full border border-zinc-700 py-3 text-sm font-bold text-zinc-300">
             Back
