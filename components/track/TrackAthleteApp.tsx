@@ -44,13 +44,16 @@ export default function TrackAthleteApp({ view }: { view: CanaryView }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [dayId, setDayId] = useState(dayOf(view.clock));
   const session = view.sessions.find((item) => item.id === sessionId) ?? view.sessions.find((item) => item.day === dayId) ?? view.sessions.find((item) => item.day === dayOf(view.clock));
-  const weekDays = view.homeDays.map((day) => ({
-    id: day.day,
-    dow: day.day,
-    dateNumber: dateNumberFor(view.clock, day.day),
-    isToday: day.today,
-    sessionStatuses: day.title === "Rest" ? [] : [day.changed ? "partial" as const : "upcoming" as const],
-  }));
+  const weekDays = view.homeDays.map((day) => {
+    const session = view.sessions.find((item) => item.day === day.day);
+    return {
+      id: day.day,
+      dow: day.day,
+      dateNumber: storedDateNumber(session?.date) ?? dateNumberFor(view.clock, day.day),
+      isToday: day.today,
+      sessionStatuses: day.title === "Rest" ? [] : [day.changed ? "partial" as const : "upcoming" as const],
+    };
+  });
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[430px] bg-[var(--h365-background)] pb-24 text-[var(--h365-text)] lg:max-w-6xl">
@@ -146,6 +149,12 @@ function homeTitle(screen: string, phase: string): string {
   if (screen === "checkin") return "Check-in";
   if (screen === "next") return "Next week";
   return "Today";
+}
+
+function storedDateNumber(date: string | undefined): number | null {
+  const stored = date?.slice(0, 10);
+  if (!stored || !/^\d{4}-\d{2}-\d{2}$/.test(stored)) return null;
+  return Number(stored.slice(8));
 }
 
 function dateNumberFor(clock: string, day: string): number {
