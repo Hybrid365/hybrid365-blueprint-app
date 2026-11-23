@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { BenchmarkResultInput, TrackIntake } from "@/app/lib/track-foundation/types";
 import { productionTrackAccessEnabled } from "@/app/lib/track-production/access";
+import { saveJourneyIntake, saveJourneyResult } from "@/app/lib/track-production/journeyAccess";
 import { proposeProductionProgramme } from "@/app/lib/track-production/propose";
 import {
   activateProgramme,
@@ -62,6 +63,16 @@ export async function completeStationAssessmentAction(input: {
 export async function activateProgrammeAction() {
   if (productionTrackAccessEnabled()) await proposeProductionProgramme();
   else await activateProgramme();
+  refresh();
+}
+
+export async function saveJourneyIntakeAction(intake: TrackIntake, step: string) {
+  await saveJourneyIntake(intake, step);
+  refresh();
+}
+
+export async function saveJourneyResultAction(input: { testId: string; resultValue: string; date: string; source: BenchmarkResultInput["source"]; notes: string | null }) {
+  await saveJourneyResult(input);
   refresh();
 }
 

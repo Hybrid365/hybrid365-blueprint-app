@@ -7,6 +7,7 @@ import {
 } from "@/app/lib/membershipAccess";
 import { claimPendingWhopMembershipForUser } from "@/app/lib/whopMembershipSync";
 import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
+import { trackJourneyMayPassWhop } from "@/app/lib/track-production/journeyAccess";
 import { createClient } from "@/app/lib/supabase/server";
 
 export default async function NoAccessPage() {
@@ -14,6 +15,8 @@ export default async function NoAccessPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user?.id && (await trackJourneyMayPassWhop(user.id))) redirect("/track");
 
   if (user?.email) {
     try {

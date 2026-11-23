@@ -113,16 +113,33 @@ const DISPOSITION: Record<EvidenceDisposition, string> = {
 export default function TrackFoundationPreview({
   initialFixture,
   initialScreen,
+  journey = false,
+  initialIntake = null,
+  initialResults = [],
+  initialStep = null,
+  asOf,
+  onSaveIntake,
+  onSaveResult,
 }: {
   initialFixture: string | null;
   initialScreen: string | null;
+  journey?: boolean;
+  initialIntake?: TrackIntake | null;
+  initialResults?: BenchmarkResultInput[];
+  initialStep?: string | null;
+  asOf?: string;
+  onSaveIntake?: (intake: TrackIntake, step: string) => Promise<void>;
+  onSaveResult?: (input: { testId: string; resultValue: string; date: string; source: EvidenceSource; notes: string | null }) => Promise<void>;
 }) {
-  const starting = loadFixture(initialFixture);
-  const startIndex = STEPS.indexOf((initialScreen as Step) ?? "goal");
-  const [stepIndex, setStepIndex] = useState(startIndex >= 0 ? startIndex : initialFixture ? STEPS.indexOf("summary") : 0);
-  const [fixtureId, setFixtureId] = useState(initialFixture);
-  const [intake, setIntake] = useState<TrackIntake>(starting.intake);
+  const steps: readonly string[] = journey ? ["welcome", ...STEPS] : STEPS;
+  const starting = journey ? { intake: initialIntake ?? blankIntake(), results: initialResults } : loadFixture(initialFixture);
+  const requested = journey ? (initialStep ?? "welcome") : ((initialScreen as Step) ?? "goal");
+  const startIndex = steps.indexOf(requested);
+  const [stepIndex, setStepIndex] = useState(startIndex >= 0 ? startIndex : !journey && initialFixture ? STEPS.indexOf("summary") : 0);
+  const [fixtureId, setFixtureId] = useState(journey ? null : initialFixture);
+  const [intake, setIntake] = useState<TrackIntake>(journey ? { ...blankIntake(), ...starting.intake, athleteId: starting.intake.athleteId, displayName: starting.intake.displayName } : starting.intake);
   const [results, setResults] = useState<BenchmarkResultInput[]>(starting.results);
+  const [saving, setSaving] = useState(false);
   const [openTest, setOpenTest] = useState<string | null>(null);
   const [draft, setDraft] = useState({
     testId: "run_5k",
@@ -133,20 +150,36 @@ export default function TrackFoundationPreview({
     correctsResultId: "" as string,
   });
 
-  const step = STEPS[stepIndex] ?? "goal";
+  const step = steps[stepIndex] ?? steps[0];
   const state = useMemo(
     () =>
       evaluateTrackFoundation({
         intake,
         results,
-        workload: fixtureById(fixtureId ?? "")?.workload ?? [],
+        asOf,
+        workload: journey ? [] : fixtureById(fixtureId ?? "")?.workload ?? [],
       }),
-    [intake, results, fixtureId]
+    [asOf, fixtureId, intake, journey, results]
   );
 
   function go(next: number) {
-    setStepIndex(Math.max(0, Math.min(STEPS.length - 1, next)));
+    setStepIndex(Math.max(0, Math.min(steps.length - 1, next)));
     setOpenTest(null);
+  }
+
+  async function forward() {
+    const nextStep = steps[Math.min(steps.length - 1, stepIndex + 1)] ?? step;
+    if (journey && onSaveIntake) {
+      setSaving(true);
+      try {
+        await onSaveIntake(intake, nextStep);
+      } catch {
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+    }
+    go(stepIndex + 1);
   }
 
   function applyFixture(id: string) {
@@ -171,8 +204,11 @@ export default function TrackFoundationPreview({
       correctsResultId: draft.correctsResultId || null,
     };
     setResults((current) => [...current, row]);
+    if (journey && onSaveResult) {
+      void onSaveResult({ testId: row.testId, resultValue: row.resultValue, date: row.date, source: row.source, notes: row.notes ?? null });
+    }
     setDraft((current) => ({ ...current, resultValue: "", notes: "", correctsResultId: "" }));
-    setStepIndex(STEPS.indexOf("decisions"));
+    setStepIndex(steps.indexOf("decisions"));
   }
 
   const test = openTest ? getTest(openTest) : null;
@@ -184,13 +220,13 @@ export default function TrackFoundationPreview({
         <div className="mt-2 flex items-center justify-between gap-3">
           <h1 className="text-lg font-black tracking-tight">Performance setup</h1>
           <p className="text-[11px] font-semibold text-zinc-500">
-            {stepIndex + 1}/{STEPS.length}
+            {stepIndex + 1}/{steps.length}
           </p>
         </div>
         <div className="mt-3 h-1 overflow-hidden rounded-full bg-zinc-800">
-          <div className="h-full bg-[#f4d23c]" style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }} />
+          <div className="h-full bg-[#f4d23c]" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
         </div>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {!journey && <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {TRACK_FIXTURES.map((fixture) => (
             <button
               key={fixture.id}
@@ -203,10 +239,15 @@ export default function TrackFoundationPreview({
               {fixture.label}
             </button>
           ))}
-        </div>
+        </div>}
       </header>
 
       <div className="px-4 py-5">
+        {step === "welcome" ? (
+          <Screen title="Welcome to Track" body="Your setup has not been started. Continue when you are ready to choose a goal. Nothing is filled in for you.">
+            <p className="text-sm leading-relaxed text-zinc-300">You can leave and come back. Track keeps the step you reached.</p>
+          </Screen>
+        ) : null}
         {step === "goal" ? (
           <Screen title="Primary goal" body="Track starts from the event you are training for. This is not a medical form.">
             <Choice
@@ -676,8 +717,8 @@ export default function TrackFoundationPreview({
           <button type="button" onClick={() => go(stepIndex - 1)} className="flex-1 rounded-full border border-zinc-700 py-3 text-sm font-bold text-zinc-300">
             Back
           </button>
-          <button type="button" onClick={() => go(stepIndex + 1)} className="flex-[2] rounded-full bg-[#f4d23c] py-3 text-sm font-black text-black">
-            Continue
+          <button type="button" disabled={saving} onClick={() => void forward()} className="flex-[2] rounded-full bg-[#f4d23c] py-3 text-sm font-black text-black disabled:opacity-60">
+            {step === "welcome" ? "Get started" : "Continue"}
           </button>
         </div>
       </footer>

@@ -7,6 +7,7 @@ import {
 } from "@/app/lib/membershipGate";
 import { claimPendingWhopMembershipForUser } from "@/app/lib/whopMembershipSync";
 import { createServiceRoleClient } from "@/app/lib/supabaseAdmin";
+import { trackJourneyMayPassWhop } from "@/app/lib/track-production/journeyAccess";
 import { createClient } from "@/app/lib/supabase/server";
 
 function logAuth(
@@ -68,6 +69,7 @@ export async function requireDashboardMemberAccess(route: string): Promise<{
   const gate = assertMembershipAllowsDashboard({ membership, userId: user.id });
 
   if (!gate.allowed) {
+    if (await trackJourneyMayPassWhop(user.id)) redirect("/track");
     logAuth("no access", route, { hasUser: true, activeMembership: false });
     redirect("/dashboard/no-access");
   }

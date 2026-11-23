@@ -8,7 +8,7 @@ import { resolveStationDomains } from "../app/lib/track-foundation/stationEviden
 import { mondayOf } from "../app/lib/track-foundation/dates";
 import { TRACK_PROGRAMME_MUTATION_ENABLED } from "../app/lib/track-foundation/productionBoundary";
 import { savedMorningForDate } from "../app/lib/track-canary/morningCard";
-import { productionTrackAllowsUser } from "../app/lib/track-production/access";
+import { PRODUCTION_TRACK_CANARY_AUTH_USER_ID, PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID, isTrackJourneyWhopException, productionTrackAllowsUser } from "../app/lib/track-production/access";
 import { productionClockLeakedFixture, resolveTrackClock } from "../app/lib/track-production/clock";
 import { recommendNextWeek } from "../app/lib/track-loop/progression";
 import type { TrackAthleteRecord } from "../app/lib/track-loop/store";
@@ -48,6 +48,12 @@ assert(productionTrackAllowsUser({ id: "31115568-5181-479d-ad17-4d653c7f8fa8" })
 process.env.HYROX_TRACK_PRODUCTION_CANARY = "1";
 assert(productionTrackAllowsUser(null) === false, "D: a missing user could open Track");
 assert(productionTrackAllowsUser({ id: "1c0e603e-71a0-4852-a582-def1ca9ec7e2" }) === false, "E: a non-canary athlete could open Track");
+assert(productionTrackAllowsUser({ id: PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID }) === true, "journey canary was locked out of Track");
+assert(productionTrackAllowsUser({ id: PRODUCTION_TRACK_CANARY_AUTH_USER_ID }) === true, "mature canary lost Track access");
+assert(isTrackJourneyWhopException(PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID) === true, "journey Whop exception did not match the allowlisted user");
+assert(isTrackJourneyWhopException(PRODUCTION_TRACK_CANARY_AUTH_USER_ID) === false, "mature canary received the journey Whop exception");
+assert(isTrackJourneyWhopException("1c0e603e-71a0-4852-a582-def1ca9ec7e2") === false, "a non-canary received the journey Whop exception");
+assert(isTrackJourneyWhopException(PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID, { HYROX_TRACK_PRODUCTION_CANARY: "0", NEXT_PUBLIC_SUPABASE_URL: "https://uuqdgbsntdjhojjkjkgd.supabase.co" }) === false, "the journey exception survived the canary flag being off");
 if (previousFlag === undefined) delete process.env.HYROX_TRACK_PRODUCTION_CANARY;
 else process.env.HYROX_TRACK_PRODUCTION_CANARY = previousFlag;
 if (previousUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;

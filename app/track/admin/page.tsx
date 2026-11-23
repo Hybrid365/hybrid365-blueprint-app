@@ -1,4 +1,7 @@
+import { notFound } from "next/navigation";
 import { loadAdmin } from "@/app/lib/track-canary/model";
+import { createClient } from "@/app/lib/supabase/server";
+import { PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID } from "@/app/lib/track-production/access";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +12,9 @@ function proposalWeeks(proposal: { proposal?: unknown } | null): Array<{ week: n
 }
 
 export default async function TrackAdminPage() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (data.user?.id === PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID) notFound();
   const admin = await loadAdmin();
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
