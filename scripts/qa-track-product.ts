@@ -9,7 +9,8 @@ import { mondayOf } from "../app/lib/track-foundation/dates";
 import { TRACK_PROGRAMME_MUTATION_ENABLED } from "../app/lib/track-foundation/productionBoundary";
 import { savedMorningForDate } from "../app/lib/track-canary/morningCard";
 import { PRODUCTION_TRACK_CANARY_AUTH_USER_ID, PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID, isTrackJourneyWhopException, productionTrackAllowsUser } from "../app/lib/track-production/access";
-import { JOURNEY_STEP_ORDER, journeyContinueTarget, journeyResumeStep } from "../app/lib/track-production/journeyContinue";
+import { CORE_JOURNEY_STEPS, journeyContinueTarget, journeyResumeStep } from "../app/lib/track-production/journeyContinue";
+import { accessReady, performanceSetup } from "../app/lib/track-production/journeyProduct";
 import { productionClockLeakedFixture, resolveTrackClock } from "../app/lib/track-production/clock";
 import { recommendNextWeek } from "../app/lib/track-loop/progression";
 import type { TrackAthleteRecord } from "../app/lib/track-loop/store";
@@ -55,21 +56,39 @@ assert(isTrackJourneyWhopException(PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID) === tr
 assert(isTrackJourneyWhopException(PRODUCTION_TRACK_CANARY_AUTH_USER_ID) === false, "mature canary received the journey Whop exception");
 assert(isTrackJourneyWhopException("1c0e603e-71a0-4852-a582-def1ca9ec7e2") === false, "a non-canary received the journey Whop exception");
 assert(isTrackJourneyWhopException(PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID, { HYROX_TRACK_PRODUCTION_CANARY: "0", NEXT_PUBLIC_SUPABASE_URL: "https://uuqdgbsntdjhojjkjkgd.supabase.co" }) === false, "the journey exception survived the canary flag being off");
-const journeySteps = JOURNEY_STEP_ORDER;
+const journeySteps = CORE_JOURNEY_STEPS;
 for (const step of journeySteps) {
-  for (const needsAssessment of [true, false]) {
-    const target = journeyContinueTarget({ step, steps: journeySteps, needsAssessment });
-    assert(journeySteps.indexOf(target.step as (typeof journeySteps)[number]) >= journeySteps.indexOf(step), `${step} continued backward`);
+  const target = journeyContinueTarget({ step, steps: journeySteps });
+  if (target.action === "advance") {
+    assert(journeySteps.indexOf(target.step as (typeof journeySteps)[number]) > journeySteps.indexOf(step), `${step} continued backward`);
   }
 }
-assert(journeyContinueTarget({ step: "summary", steps: journeySteps, needsAssessment: true }).step === "week", "summary skipped the assessment week");
-assert(journeyContinueTarget({ step: "week", steps: journeySteps, needsAssessment: true }).reason === "assessment-open", "an open assessment week advanced");
-assert(journeyContinueTarget({ step: "week", steps: journeySteps, needsAssessment: false }).step === "profile", "a finished assessment week stayed put");
-assert(journeyContinueTarget({ step: "profile", steps: journeySteps, needsAssessment: true }).reason === "backward-blocked", "profile jumped back to the assessment week");
-assert(journeyContinueTarget({ step: "home", steps: journeySteps, needsAssessment: false }).reason === "last-screen", "a finished setup left Home");
-assert(journeyResumeStep({ step: "profile", steps: journeySteps, needsAssessment: true }).step === "week", "resume left an open assessment on the profile preview");
-assert(journeyResumeStep({ step: "week", steps: journeySteps, needsAssessment: true }).step === "week", "resume left the assessment week");
-assert(journeyResumeStep({ step: "summary", steps: journeySteps, needsAssessment: true }).step === "summary", "resume bounced a passed setup screen");
+assert(journeyContinueTarget({ step: "goal", steps: journeySteps }).step === "event", "goal skipped the event");
+assert(journeyContinueTarget({ step: "summary", steps: journeySteps }).action === "enter", "summary stayed inside the wizard");
+assert(journeyContinueTarget({ step: "summary", steps: journeySteps }).step === "dashboard", "summary did not enter Track");
+assert(journeyResumeStep({ step: "week", steps: journeySteps, accessReady: true }).step === "dashboard", "a finished setup resumed inside the wizard");
+assert(journeyResumeStep({ step: "goal", steps: journeySteps, accessReady: false }).step === "goal", "an unfinished setup jumped to the dashboard");
+const fresh = TRACK_FIXTURES.find((item) => item.id === "new_athlete");
+const partial = TRACK_FIXTURES.find((item) => item.id === "hyrox_recent");
+const done = TRACK_FIXTURES.find((item) => item.id === "complete_recent");
+const pain = TRACK_FIXTURES.find((item) => item.id === "pain_review");
+if (!fresh || !partial || !done || !pain) throw new Error("journey fixtures missing");
+assert(accessReady(fresh.intake), "A: core onboarding was not enough to enter Track");
+const freshState = evaluateTrackFoundation({ intake: fresh.intake, results: fresh.results });
+const freshSetup = performanceSetup(freshState.requirements);
+assert(freshSetup.complete === 0 && freshSetup.nextTestId != null, "A: a new athlete had no assessment to start");
+assert(freshState.profile.programmingReadiness !== "READY", "A: a new athlete was programming-ready");
+const partialState = evaluateTrackFoundation({ intake: partial.intake, results: partial.results });
+const partialSetup = performanceSetup(partialState.requirements);
+assert(partialSetup.complete > 0 && partialSetup.complete < partialSetup.total, "B: partial evidence asked for every test again");
+assert(partialState.profile.programmingReadiness !== "READY", "B: partial evidence unlocked the full programme");
+const doneState = evaluateTrackFoundation({ intake: done.intake, results: done.results });
+assert(accessReady(done.intake), "C: a complete athlete was locked out of Track");
+assert(doneState.profile.programmingReadiness === "READY" || performanceSetup(doneState.requirements).nextTestId == null, "C: complete evidence still demanded a test");
+const painState = evaluateTrackFoundation({ intake: pain.intake, results: pain.results });
+assert(accessReady(pain.intake), "E: pain review blocked Track access");
+assert(painState.profile.programmingReadiness === "NOT_READY", "E: unresolved pain was programming-ready");
+assert(painState.week.manualReview, "E: pain review still booked maximal tests");
 if (previousFlag === undefined) delete process.env.HYROX_TRACK_PRODUCTION_CANARY;
 else process.env.HYROX_TRACK_PRODUCTION_CANARY = previousFlag;
 if (previousUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { JOURNEY_STEP_ORDER, journeyContinueTarget } from "@/app/lib/track-production/journeyContinue";
+import { useRouter } from "next/navigation";
+import { CORE_JOURNEY_STEPS, journeyContinueTarget } from "@/app/lib/track-production/journeyContinue";
 import { evaluateTrackFoundation } from "@/app/lib/track-foundation/pipeline";
 import { fixtureById, TRACK_FIXTURES } from "@/app/lib/track-foundation/fixtures";
 import { getTest, protocolForAthlete, TEST_LIBRARY } from "@/app/lib/track-foundation/testLibrary";
@@ -132,7 +133,8 @@ export default function TrackFoundationPreview({
   onSaveIntake?: (intake: TrackIntake, step: string) => Promise<void>;
   onSaveResult?: (input: { testId: string; resultValue: string; date: string; source: EvidenceSource; notes: string | null }) => Promise<void>;
 }) {
-  const steps: readonly string[] = journey ? JOURNEY_STEP_ORDER : STEPS;
+  const steps: readonly string[] = journey ? CORE_JOURNEY_STEPS : STEPS;
+  const router = useRouter();
   const starting = journey ? { intake: initialIntake ?? blankIntake(), results: initialResults } : loadFixture(initialFixture);
   const requested = journey ? (initialStep ?? "welcome") : ((initialScreen as Step) ?? "goal");
   const startIndex = steps.indexOf(requested);
@@ -170,10 +172,30 @@ export default function TrackFoundationPreview({
   }
 
   async function forward() {
-    const needsAssessment = state.week.stillNeed.length > 0;
     const target = journey
-      ? journeyContinueTarget({ step, steps, needsAssessment })
+      ? journeyContinueTarget({ step, steps })
       : { step: steps[Math.min(steps.length - 1, stepIndex + 1)] ?? step, action: "advance" as const, reason: "next" as const };
+    if (journey && target.action === "enter") {
+      setContinueError(null);
+      setSaving(true);
+      try {
+        if (onSaveIntake) await onSaveIntake(intake, "dashboard");
+      } catch (error) {
+        console.error("[track journey] continue failed", {
+          step,
+          requested: "dashboard",
+          resolved: "dashboard",
+          persisted: step,
+          reason: error instanceof Error ? error.message : "unknown",
+        });
+        setContinueError("We couldn't open Track. Nothing new was saved. Try again.");
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+      router.refresh();
+      return;
+    }
     const currentIndex = Math.max(0, steps.indexOf(step));
     const resolvedIndex = steps.indexOf(target.step);
     if (journey && (resolvedIndex < 0 || resolvedIndex < currentIndex)) {
@@ -198,13 +220,7 @@ export default function TrackFoundationPreview({
           reason: target.reason,
         });
       }
-      setContinueError(
-        target.reason === "assessment-open"
-          ? "The remaining tests are on this assessment week."
-          : blocked
-            ? "We couldn't move you on. Your place in setup was not changed."
-            : "This is the last setup screen."
-      );
+      setContinueError(blocked ? "We couldn't move you on. Your place in setup was not changed." : "This is the last setup screen.");
       return;
     }
     if (journey && onSaveIntake) {
@@ -265,9 +281,9 @@ export default function TrackFoundationPreview({
       <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/95 px-4 py-3 backdrop-blur">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4d23c]">Hybrid365 Track</p>
         <div className="mt-2 flex items-center justify-between gap-3">
-          <h1 className="text-lg font-black tracking-tight">Performance setup</h1>
-          <p className="text-[11px] font-semibold text-zinc-500">
-            {stepIndex + 1}/{steps.length}
+        <h1 className="text-lg font-black tracking-tight">{journey ? "Setup" : "Performance setup"}</h1>
+        <p className="text-[11px] font-semibold text-zinc-500">
+            {stepIndex + 1} of {steps.length}
           </p>
         </div>
         <div className="mt-3 h-1 overflow-hidden rounded-full bg-zinc-800">
@@ -737,7 +753,7 @@ export default function TrackFoundationPreview({
         ) : null}
 
         {step === "home" ? (
-          <Screen title="Home" body="Today first. The rest of the week stays attached.">
+          <Screen title="Week preview" body="Today first. The rest of the week stays attached.">
             <div className="grid grid-cols-7 gap-1">
               {state.home.days.map((day) => (
                 <div key={day.day} className={`rounded-lg py-2 text-center ${day.isToday ? "bg-[#f4d23c] text-black" : "bg-zinc-900 text-zinc-400"}`}>
@@ -766,7 +782,7 @@ export default function TrackFoundationPreview({
             Back
           </button>
           <button type="button" disabled={saving} onClick={() => void forward()} className="flex-[2] rounded-full bg-[#f4d23c] py-3 text-sm font-black text-black disabled:opacity-60">
-            {step === "welcome" ? "Get started" : "Continue"}
+            {step === "welcome" ? "Get started" : journey && step === "summary" ? "Enter Track" : "Continue"}
           </button>
         </div>
       </footer>

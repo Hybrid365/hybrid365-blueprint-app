@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import type { BenchmarkResultInput, TrackIntake } from "@/app/lib/track-foundation/types";
 import { productionTrackAccessEnabled } from "@/app/lib/track-production/access";
-import { saveJourneyIntake, saveJourneyResult } from "@/app/lib/track-production/journeyAccess";
+import { saveJourneyIntake, saveJourneyMorning, saveJourneyResult } from "@/app/lib/track-production/journeyAccess";
+import type { JourneyMorning } from "@/app/lib/track-production/journeyProduct";
 import { proposeProductionProgramme } from "@/app/lib/track-production/propose";
 import {
   activateProgramme,
@@ -73,6 +74,11 @@ export async function saveJourneyIntakeAction(intake: TrackIntake, step: string)
 
 export async function saveJourneyResultAction(input: { testId: string; resultValue: string; date: string; source: BenchmarkResultInput["source"]; notes: string | null }) {
   await saveJourneyResult(input);
+  refresh();
+}
+
+export async function saveJourneyMorningAction(localDate: string, input: JourneyMorning) {
+  await saveJourneyMorning(localDate, input);
   refresh();
 }
 

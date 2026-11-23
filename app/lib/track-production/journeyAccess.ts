@@ -1,4 +1,5 @@
 import type { BenchmarkResultInput, TrackIntake } from "@/app/lib/track-foundation/types";
+import type { JourneyMorning } from "@/app/lib/track-production/journeyProduct";
 import { getTest } from "@/app/lib/track-foundation/testLibrary";
 import { createClient } from "@/app/lib/supabase/server";
 import { productionTrackDb } from "@/app/lib/track-production/db";
@@ -132,6 +133,45 @@ export async function saveJourneyResult(input: { testId: string; resultValue: st
     source: input.source,
     notes: input.notes,
     details: {},
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function readJourneyMorning(localDate: string): Promise<JourneyMorning | null> {
+  if (!productionTrackAccessEnabled()) return null;
+  const allowed = await signedInJourney();
+  if (!allowed) return null;
+  const db = productionTrackDb();
+  const { data } = await db
+    .from("track_morning_readiness")
+    .select("answers")
+    .eq("athlete_id", PRODUCTION_TRACK_JOURNEY_ATHLETE_ID)
+    .eq("local_date", localDate)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const answers = (data?.[0]?.answers ?? null) as Partial<JourneyMorning> | null;
+  if (!answers) return null;
+  return {
+    sleep: Number(answers.sleep ?? 0),
+    energy: Number(answers.energy ?? 0),
+    recovery: Number(answers.recovery ?? 0),
+    soreness: Number(answers.soreness ?? 0),
+    readiness: Number(answers.readiness ?? 0),
+    pain: Boolean(answers.pain),
+  };
+}
+
+export async function saveJourneyMorning(localDate: string, input: JourneyMorning): Promise<void> {
+  const allowed = await signedInJourney();
+  if (!allowed) throw new Error("Track journey canary refused.");
+  const existing = await readJourneyMorning(localDate);
+  if (existing) return;
+  const db = productionTrackDb();
+  const { error } = await db.from("track_morning_readiness").insert({
+    athlete_id: PRODUCTION_TRACK_JOURNEY_ATHLETE_ID,
+    local_date: localDate,
+    answers: input,
+    interpretation: "SAVED",
   });
   if (error) throw new Error(error.message);
 }
