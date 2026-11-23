@@ -9,7 +9,7 @@ import { mondayOf } from "../app/lib/track-foundation/dates";
 import { TRACK_PROGRAMME_MUTATION_ENABLED } from "../app/lib/track-foundation/productionBoundary";
 import { savedMorningForDate } from "../app/lib/track-canary/morningCard";
 import { PRODUCTION_TRACK_CANARY_AUTH_USER_ID, PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID, isTrackJourneyWhopException, productionTrackAllowsUser } from "../app/lib/track-production/access";
-import { journeyContinueTarget } from "../app/lib/track-production/journeyContinue";
+import { JOURNEY_STEP_ORDER, journeyContinueTarget, journeyResumeStep } from "../app/lib/track-production/journeyContinue";
 import { productionClockLeakedFixture, resolveTrackClock } from "../app/lib/track-production/clock";
 import { recommendNextWeek } from "../app/lib/track-loop/progression";
 import type { TrackAthleteRecord } from "../app/lib/track-loop/store";
@@ -55,11 +55,21 @@ assert(isTrackJourneyWhopException(PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID) === tr
 assert(isTrackJourneyWhopException(PRODUCTION_TRACK_CANARY_AUTH_USER_ID) === false, "mature canary received the journey Whop exception");
 assert(isTrackJourneyWhopException("1c0e603e-71a0-4852-a582-def1ca9ec7e2") === false, "a non-canary received the journey Whop exception");
 assert(isTrackJourneyWhopException(PRODUCTION_TRACK_JOURNEY_AUTH_USER_ID, { HYROX_TRACK_PRODUCTION_CANARY: "0", NEXT_PUBLIC_SUPABASE_URL: "https://uuqdgbsntdjhojjkjkgd.supabase.co" }) === false, "the journey exception survived the canary flag being off");
-const journeySteps = ["welcome", "goal", "event", "availability", "background", "equipment", "pain", "evidence", "decisions", "summary", "week", "profile", "ready", "progress", "home"];
-assert(journeyContinueTarget({ step: "home", steps: journeySteps, needsAssessment: true }).step === "week", "home continued nowhere while tests remain");
-assert(journeyContinueTarget({ step: "home", steps: journeySteps, needsAssessment: false }).step === "home", "a finished setup left Home");
+const journeySteps = JOURNEY_STEP_ORDER;
+for (const step of journeySteps) {
+  for (const needsAssessment of [true, false]) {
+    const target = journeyContinueTarget({ step, steps: journeySteps, needsAssessment });
+    assert(journeySteps.indexOf(target.step as (typeof journeySteps)[number]) >= journeySteps.indexOf(step), `${step} continued backward`);
+  }
+}
 assert(journeyContinueTarget({ step: "summary", steps: journeySteps, needsAssessment: true }).step === "week", "summary skipped the assessment week");
-assert(journeyContinueTarget({ step: "week", steps: journeySteps, needsAssessment: true }).step === "profile", "the assessment week was forced closed");
+assert(journeyContinueTarget({ step: "week", steps: journeySteps, needsAssessment: true }).reason === "assessment-open", "an open assessment week advanced");
+assert(journeyContinueTarget({ step: "week", steps: journeySteps, needsAssessment: false }).step === "profile", "a finished assessment week stayed put");
+assert(journeyContinueTarget({ step: "profile", steps: journeySteps, needsAssessment: true }).reason === "backward-blocked", "profile jumped back to the assessment week");
+assert(journeyContinueTarget({ step: "home", steps: journeySteps, needsAssessment: false }).reason === "last-screen", "a finished setup left Home");
+assert(journeyResumeStep({ step: "profile", steps: journeySteps, needsAssessment: true }).step === "week", "resume left an open assessment on the profile preview");
+assert(journeyResumeStep({ step: "week", steps: journeySteps, needsAssessment: true }).step === "week", "resume left the assessment week");
+assert(journeyResumeStep({ step: "summary", steps: journeySteps, needsAssessment: true }).step === "summary", "resume bounced a passed setup screen");
 if (previousFlag === undefined) delete process.env.HYROX_TRACK_PRODUCTION_CANARY;
 else process.env.HYROX_TRACK_PRODUCTION_CANARY = previousFlag;
 if (previousUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;

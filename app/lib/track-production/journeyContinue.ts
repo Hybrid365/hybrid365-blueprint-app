@@ -1,23 +1,68 @@
-const ASSESSMENT_HANDOFF_STEPS = new Set(["profile", "ready", "progress", "home"]);
+export const JOURNEY_STEP_ORDER = [
+  "welcome",
+  "goal",
+  "event",
+  "availability",
+  "background",
+  "equipment",
+  "pain",
+  "evidence",
+  "decisions",
+  "summary",
+  "week",
+  "profile",
+  "ready",
+  "progress",
+  "home",
+] as const;
+
+export type JourneyContinueReason = "next" | "assessment-open" | "last-screen" | "backward-blocked";
 
 export type JourneyContinueTarget = {
   step: string;
-  action: "advance" | "assessment";
+  action: "advance" | "stay";
+  reason: JourneyContinueReason;
 };
 
 /**
- * The setup wizard's last screens are a preview. Outstanding tests hand back
- * to the assessment week instead of staying on a fake Home.
+ * One setup order for the wizard, the saved step, and resume.
+ * Continue never returns an earlier step. An open assessment week is the
+ * milestone: later preview screens are not a forward move, and they are not
+ * a backward jump either.
  */
 export function journeyContinueTarget(args: {
   step: string;
   steps: readonly string[];
   needsAssessment: boolean;
 }): JourneyContinueTarget {
-  if (args.needsAssessment && args.steps.includes("week") && ASSESSMENT_HANDOFF_STEPS.has(args.step)) {
-    return { step: "week", action: "assessment" };
+  const current = args.steps.indexOf(args.step);
+  const here = current >= 0 ? current : 0;
+  const currentStep = args.steps[here] ?? args.step;
+  const week = args.steps.indexOf("week");
+  if (args.needsAssessment && week >= 0 && here >= week) {
+    return {
+      step: currentStep,
+      action: "stay",
+      reason: here === week ? "assessment-open" : "backward-blocked",
+    };
   }
-  const index = Math.max(0, args.steps.indexOf(args.step));
-  const next = args.steps[Math.min(args.steps.length - 1, index + 1)] ?? args.step;
-  return { step: next, action: "advance" };
+  const next = args.steps[here + 1];
+  if (!next || args.steps.indexOf(next) < here) {
+    return { step: currentStep, action: "stay", reason: next ? "backward-blocked" : "last-screen" };
+  }
+  return { step: next, action: "advance", reason: "next" };
+}
+
+export function journeyResumeStep(args: {
+  step: string;
+  steps: readonly string[];
+  needsAssessment: boolean;
+}): { step: string; reason: "stored" | "assessment-still-required" } {
+  const current = args.steps.indexOf(args.step);
+  const week = args.steps.indexOf("week");
+  if (args.needsAssessment && week >= 0 && current > week) {
+    return { step: args.steps[week] ?? "week", reason: "assessment-still-required" };
+  }
+  if (current < 0) return { step: args.steps[0] ?? "welcome", reason: "stored" };
+  return { step: args.step, reason: "stored" };
 }

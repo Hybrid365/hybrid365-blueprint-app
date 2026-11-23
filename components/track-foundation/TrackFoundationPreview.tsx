@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { journeyContinueTarget } from "@/app/lib/track-production/journeyContinue";
+import { JOURNEY_STEP_ORDER, journeyContinueTarget } from "@/app/lib/track-production/journeyContinue";
 import { evaluateTrackFoundation } from "@/app/lib/track-foundation/pipeline";
 import { fixtureById, TRACK_FIXTURES } from "@/app/lib/track-foundation/fixtures";
 import { getTest, protocolForAthlete, TEST_LIBRARY } from "@/app/lib/track-foundation/testLibrary";
@@ -132,7 +132,7 @@ export default function TrackFoundationPreview({
   onSaveIntake?: (intake: TrackIntake, step: string) => Promise<void>;
   onSaveResult?: (input: { testId: string; resultValue: string; date: string; source: EvidenceSource; notes: string | null }) => Promise<void>;
 }) {
-  const steps: readonly string[] = journey ? ["welcome", ...STEPS] : STEPS;
+  const steps: readonly string[] = journey ? JOURNEY_STEP_ORDER : STEPS;
   const starting = journey ? { intake: initialIntake ?? blankIntake(), results: initialResults } : loadFixture(initialFixture);
   const requested = journey ? (initialStep ?? "welcome") : ((initialScreen as Step) ?? "goal");
   const startIndex = steps.indexOf(requested);
@@ -173,9 +173,38 @@ export default function TrackFoundationPreview({
     const needsAssessment = state.week.stillNeed.length > 0;
     const target = journey
       ? journeyContinueTarget({ step, steps, needsAssessment })
-      : { step: steps[Math.min(steps.length - 1, stepIndex + 1)] ?? step, action: "advance" as const };
-    if (journey && target.step === step) {
-      setContinueError("This is the last setup screen.");
+      : { step: steps[Math.min(steps.length - 1, stepIndex + 1)] ?? step, action: "advance" as const, reason: "next" as const };
+    const currentIndex = Math.max(0, steps.indexOf(step));
+    const resolvedIndex = steps.indexOf(target.step);
+    if (journey && (resolvedIndex < 0 || resolvedIndex < currentIndex)) {
+      console.error("[track journey] continue blocked", {
+        step,
+        requested: target.step,
+        resolved: target.step,
+        persisted: step,
+        reason: "backward",
+      });
+      setContinueError("We couldn't move you on. Your place in setup was not changed.");
+      return;
+    }
+    if (journey && (target.action === "stay" || target.step === step)) {
+      const blocked = target.reason === "backward-blocked";
+      if (blocked) {
+        console.error("[track journey] continue blocked", {
+          step,
+          requested: target.step,
+          resolved: target.step,
+          persisted: step,
+          reason: target.reason,
+        });
+      }
+      setContinueError(
+        target.reason === "assessment-open"
+          ? "The remaining tests are on this assessment week."
+          : blocked
+            ? "We couldn't move you on. Your place in setup was not changed."
+            : "This is the last setup screen."
+      );
       return;
     }
     if (journey && onSaveIntake) {
@@ -186,8 +215,10 @@ export default function TrackFoundationPreview({
       } catch (error) {
         console.error("[track journey] continue failed", {
           step,
-          next: target.step,
-          message: error instanceof Error ? error.message : "unknown",
+          requested: target.step,
+          resolved: target.step,
+          persisted: step,
+          reason: error instanceof Error ? error.message : "unknown",
         });
         setContinueError("We couldn't open the next step. Nothing new was saved. Try again.");
         setSaving(false);
@@ -195,8 +226,7 @@ export default function TrackFoundationPreview({
       }
       setSaving(false);
     }
-    const nextIndex = steps.indexOf(target.step);
-    go(nextIndex >= 0 ? nextIndex : stepIndex + 1);
+    go(resolvedIndex);
   }
 
   function applyFixture(id: string) {
@@ -732,7 +762,7 @@ export default function TrackFoundationPreview({
       <footer className="fixed bottom-0 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 border-t border-zinc-800 bg-zinc-950 px-4 py-3">
         {continueError ? <p className="mb-2 text-sm text-red-300">{continueError}</p> : null}
         <div className="flex gap-2">
-          <button type="button" onClick={() => go(stepIndex - 1)} className="flex-1 rounded-full border border-zinc-700 py-3 text-sm font-bold text-zinc-300">
+          <button type="button" onClick={() => { setContinueError(null); go(stepIndex - 1); }} className="flex-1 rounded-full border border-zinc-700 py-3 text-sm font-bold text-zinc-300">
             Back
           </button>
           <button type="button" disabled={saving} onClick={() => void forward()} className="flex-[2] rounded-full bg-[#f4d23c] py-3 text-sm font-black text-black disabled:opacity-60">
